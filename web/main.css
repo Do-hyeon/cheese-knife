@@ -178,3 +178,12 @@
   background-color: #18181b99;
   z-index: 10;
 }
+
+.knife-preview[hidden] { display: none; }
+
+.knife-comp { display: inline-flex; align-items: center; gap: 4px; }
+.knife-comp .knife-gain-slider { width: 64px; accent-color: #00ffa3; }
+.knife-comp [hidden] { display: none; }
+.knife-comp[data-state="on"] > button { color: #00ffa3; }
+.knife-comp[data-state="pending"] > button { opacity: 0.5; }
+.knife-owned button:focus-visible, button.knife-owned:focus-visible { outline: 2px solid #00ffa3; outline-offset: -2px; }
