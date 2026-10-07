@@ -8,7 +8,7 @@
 
 Vue 없이 플레이어 버튼·컴프레서·VOD 길게 눌러 2배속을 제공하고 HLS.js 미리보기, 화면 전환 수명 관리, 기능별 준비 상태를 추가했습니다. [설계](docs/superpowers/specs/2026-10-08-chzzk-compatibility-design.md), [검토](docs/superpowers/reviews/2026-10-08-chzzk-compatibility-review.md), [검증 결과와 제한](docs/superpowers/validation/2026-10-08-chzzk-compatibility.md)을 함께 확인하세요.
 
-자동 테스트 47개와 별도 브라우저의 실제 오디오·공개 방송 미리보기 검증을 통과했습니다. [독립 구현 검토와 수정 기록](docs/superpowers/reviews/2026-10-08-implementation-review.md)도 공개합니다. 사용자 Chrome에 설치한 뒤의 전체 기능 검증과 출시 승인은 아직 완료되지 않았습니다.
+자동 테스트 54개와 별도 브라우저의 실제 오디오·공개 방송 미리보기 검증을 통과했습니다. [독립 구현 검토](docs/superpowers/reviews/2026-10-08-implementation-review.md)와 [실제 Chrome VOD 길게 누르기 수정 검토](docs/superpowers/reviews/2026-10-08-vod-hold-review.md)도 공개합니다. 설치된 Chrome에서 일부 기능을 검증했으나 전체 기능 검증과 출시 승인은 아직 완료되지 않았습니다.
 
 ### 로컬 Chrome에서 시험하기
 

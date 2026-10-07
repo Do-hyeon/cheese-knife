@@ -79,9 +79,9 @@ function nativeVOD(t, initiallyPaused) {
   });
   const video = dom.window.document.querySelector('video');
   const target = dom.window.document.querySelector('.pzp-pc__video');
-  const send = (type, destination = target, detail = type === 'click' ? 1 : 0) => {
+  const send = (type, destination = target, detail = type === 'click' ? 1 : 0, pointerId = 7) => {
     const event = new dom.window.MouseEvent(type, { button: 0, bubbles: true, cancelable: true, detail, clientX: 10, clientY: 10 });
-    Object.defineProperty(event, 'pointerId', { value: 7 });
+    Object.defineProperty(event, 'pointerId', { value: pointerId });
     destination.dispatchEvent(event); return event;
   };
   return { dom, video, target, send };
@@ -118,5 +118,31 @@ test('cancelled VOD hold restores speed without consuming a later click', async 
   video.playbackRate = 1.5;
   send('pointerdown'); await new Promise(resolve => setTimeout(resolve, 550)); send('pointercancel');
   assert.equal(video.playbackRate, 1.5); assert.equal(video.paused, false);
+  assert.equal(send('click').defaultPrevented, false); assert.equal(video.paused, true);
+});
+
+test('another pointer cannot end the active hold or consume its click token', async t => {
+  const { video, send } = nativeVOD(t, false);
+  send('pointerdown'); await new Promise(resolve => setTimeout(resolve, 550));
+  send('pointerup', undefined, 0, 8); assert.equal(video.playbackRate, 2);
+  send('pointerup');
+  assert.equal(send('click', undefined, 1, 8).defaultPrevented, false);
+  assert.equal(send('click').defaultPrevented, true);
+});
+
+test('unused completed-hold click token expires without intercepting a later activation', async t => {
+  const { video, send } = nativeVOD(t, false);
+  send('pointerdown'); await new Promise(resolve => setTimeout(resolve, 550)); send('pointerup');
+  await new Promise(resolve => setTimeout(resolve, 1100));
+  assert.equal(send('click').defaultPrevented, false); assert.equal(video.paused, true);
+});
+
+test('route disposal restores an active hold and removes its click interception', async t => {
+  const { dom, video, send } = nativeVOD(t, false);
+  video.playbackRate = 1.5;
+  send('pointerdown'); await new Promise(resolve => setTimeout(resolve, 550));
+  dom.reconfigure({ url: 'https://chzzk.naver.com/following' }); runtime(dom).reconcile();
+  assert.equal(video.playbackRate, 1.5);
+  assert.equal(dom.window.document.querySelector('.knife-ff-indicator'), null);
   assert.equal(send('click').defaultPrevented, false); assert.equal(video.paused, true);
 });

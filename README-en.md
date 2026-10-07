@@ -6,7 +6,7 @@
 
 Branch `codex/chzzk-compatibility-recovery` contains a 2.13.2 recovery preview based on upstream v2.13.1. It adds Vue-free controls/compression, cancelable HLS previews, scoped page lifecycles, and per-tab feature readiness. It is not the upstream store release.
 
-47 automated tests, controlled real audio output and separate-browser public preview frame progression passed. See the [independent implementation review and fixes](docs/superpowers/reviews/2026-10-08-implementation-review.md). Installed-Chrome acceptance and full release approval remain pending.
+54 automated tests, controlled real audio output and separate-browser public preview frame progression passed. See the [independent implementation review](docs/superpowers/reviews/2026-10-08-implementation-review.md) and [installed-Chrome VOD hold fix review](docs/superpowers/reviews/2026-10-08-vod-hold-review.md). Scoped installed-Chrome checks passed; full acceptance and release approval remain pending.
 
 Check out this branch, load the repository root or built `dist` at `chrome://extensions`, temporarily disable the old Cheese Knife extension to avoid duplicate injection, and reload CHZZK tabs. A local extension with a different ID does not automatically share store-extension settings. Do not delete the old extension or its settings.
 

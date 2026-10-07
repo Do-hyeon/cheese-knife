@@ -7,7 +7,7 @@ PASS means the named check ran; it does not imply other features are verified.
 | Check | Environment | Result | Evidence / limit |
 | --- | --- | --- | --- |
 | Settings partial/malformed objects and finite ranges | Node 24.19.0 | PASS | tests/config.test.cjs: 4 tests |
-| Full production-module regression suite | Node 24.19.0 / jsdom, Windows | PASS | `node --test tests/*.test.cjs`: 47 passed, 0 failed; 14 review regressions first demonstrated RED |
+| Full production-module regression suite | Node 24.19.0 / jsdom, Windows | PASS | Latest `node --test tests/*.test.cjs`: 54 passed, 0 failed; original review regressions and VOD native-click RED→GREEN; boundary characterization included |
 | Portable package/vendor inclusion and missing reference rejection | Node 24.19.0, Windows | PASS | tests/package.test.cjs: 3 tests; source check and dist build succeed |
 | Actual MAIN framework availability | Playwright Headless Shell 151.0.7922.34, fresh unauthenticated public CHZZK live page | PASS | Known webpack chunk absent; Vue absent; React on player/chat present; core player, chat filter and blind listener accessible |
 | Public preview API and HLS playlist | Same page | PASS | live-detail HTTP/code 200; HLS and LLHLS paths present; master HLS playlist HTTP 200 / #EXTM3U |
@@ -17,7 +17,8 @@ PASS means the named check ran; it does not imply other features are verified.
 | Independent public HLS.js/MSE preview | Same browser/page, `--hls-js` suppresses only native HLS support response | PASS | 480p AVC/AAC; time 0.511785→2.486229; frames 4→64. This selects the actual fallback, not a Chrome 121 compatibility test |
 | Preview hide cleanup | Both public preview runs | PASS | Media removed and panel hidden. After 500ms settling, next 2s: 0 additional m3u8/ts/m4s requests. Does not prove all network types or 30s stability |
 | Independent branch review | Immutable original→346ce95 | PASS (performed) | 6 Important and 3 Minor findings; [fix record](../reviews/2026-10-08-implementation-review.md). Not an approval of all features or a second review of the fixed commit |
-| Installed user Chrome extension / authenticated streams | User's Chrome | UNVERIFIED | Not changed/installed by this work |
+| Installed user Chrome bootstrap / scoped live and VOD checks | User's Chrome, version UI not read | PASS (scoped) | User loaded/refreshed preview; live compressor toggles with audible output (user confirmation), VOD native arrows ±5s, completed hold restores play/pause and 1x/1.5x. [Actual acceptance and follow-up](2026-10-08-installed-chrome-acceptance.md) |
+| Authenticated/protected streams and complete installed-feature acceptance | User's Chrome | UNVERIFIED | No authentication/age gate bypass. Remaining matrix below is incomplete |
 | Firefox | Not run | UNVERIFIED | No compatibility claim |
 
 The full Chrome-for-Testing executable returned `spawn UNKNOWN` in this environment. Headless Shell launched for D0/controlled audio. System Chrome subsequently launched with a separate temporary profile. CHZZK showed “이 브라우저는 고화질 라이브를 감상할 수 없습니다” and no native player on that headless page; independent public previews still decoded frames through native HLS and HLS.js. No notice, authentication, age gate or security setting was bypassed. No user profile was altered.
@@ -28,6 +29,6 @@ Reproduce: `node scripts/smoke-browser.mjs` (controlled audio); `node scripts/sm
 
 ## Installed-Chrome acceptance still required
 
-Load `dist` or source using the README instructions. Temporarily disable the original extension without deleting its settings. Verify live/VOD buttons, one 5-second seek per key press, text-input arrows, held/cancelled 2x speed, compressor on/off/gain and audible output, SPA switching, native miniplayer/PIP/fullscreen, preview hover/unmute/hide, and enabled style/chat options. Repeat with source and dist. Record PASS/FAIL separately; remaining limited original features prevent a full-restoration declaration.
+Scoped actual installation tests are recorded above; do not repeat them as prerequisites already unmet. Remaining acceptance includes allowed-timemachine live/DVR, text-input keyboard interactions, broader SPA switching, native miniplayer/PIP/fullscreen/bfcache, real installed preview hover/unmute/hide, and enabled style/chat options. Source-vs-dist installation equivalence is not established merely by a matching player file hash. Record PASS/FAIL separately; remaining limited original features prevent a full-restoration declaration.
 
 Dependencies: npm install reported 16 advisories in development dependencies inherited from publishing/test tooling. `npm audit --omit=dev` returned 0. These tools are not copied into the extension package; no automatic major-version audit fix was applied. Vendored runtime libraries require their own audit/provenance check.
