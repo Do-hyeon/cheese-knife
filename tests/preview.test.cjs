@@ -93,3 +93,71 @@ test('preview display honors hover delay and hide cancels the scheduled display'
   preview.hide(); await new Promise(resolve => setTimeout(resolve, 150));
   assert.equal(dom.window.document.querySelector('.knife-preview').hidden, true);
 });
+
+function clockPreview(dom) {
+  let now=0, sequence=0;
+  const timers=new Map();
+  dom.window.Date.now=()=>now;
+  dom.window.setTimeout=(callback,delay=0)=>{const id=++sequence;timers.set(id,{at:now+delay,callback});return id;};
+  dom.window.clearTimeout=id=>timers.delete(id);
+  return time=>{now=time;for(let count=0;count<100;count++){
+    const next=[...timers].filter(([,timer])=>timer.at<=now).sort((a,b)=>a[1].at-b[1].at)[0];
+    if(!next)return;timers.delete(next[0]);next[1].callback();
+  }throw new Error('timer loop');};
+}
+
+test('metadata latency consumes hover delay instead of starting an additional full delay', async t => {
+  const {dom,preview,one,pending,response}=setup(t);
+  const tick=clockPreview(dom);
+  const showing=preview.show(one.href,one,true);
+  tick(75);pending[0].resolve(response('https://images.invalid/one.jpg'));await showing;
+  assert.equal(dom.window.document.querySelector('.knife-preview').hidden,true);
+  tick(99);assert.equal(dom.window.document.querySelector('.knife-preview').hidden,true);
+  tick(100);assert.equal(dom.window.document.querySelector('.knife-preview').hidden,false);
+});
+
+test('stream prepares during remaining hover delay and leaving disposes the preloaded graph', async t => {
+  const {dom,preview,one,pending}=setup(t);
+  dom.window.HTMLMediaElement.prototype.pause=()=>{};
+  dom.window.HTMLMediaElement.prototype.load=()=>{};
+  let attached=0,destroyed=0;
+  runtime(dom).Hls=class{static isSupported(){return true;}static Events={ERROR:'error',MANIFEST_PARSED:'manifest'};
+    on(){}loadSource(){}attachMedia(){attached++;}destroy(){destroyed++;}};
+  deliver(dom,{preview:true,livePreview:true,previewDelay:0.1},2);
+  const tick=clockPreview(dom),showing=preview.show(one.href,one,true);
+  tick(25);pending[0].resolve({ok:true,json:async()=>({code:200,content:{status:'OPEN',livePlaybackJson:JSON.stringify({media:[{mediaId:'HLS',path:'https://media.invalid/master.m3u8'}]})}})});
+  await showing;
+  assert.equal(attached,1);
+  assert.equal(dom.window.document.querySelector('.knife-preview').hidden,true);
+  preview.hide();tick(200);
+  assert.equal(destroyed,1);assert.equal(dom.window.document.querySelector('.knife-preview-video'),null);
+  assert.equal(dom.window.document.querySelector('.knife-preview').hidden,true);
+});
+
+test('metadata arriving after the hover deadline does not add another configured wait', async t => {
+  const {dom,preview,one,pending,response}=setup(t),tick=clockPreview(dom);
+  const showing=preview.show(one.href,one,true);
+  tick(150);pending[0].resolve(response('https://images.invalid/one.jpg'));await showing;tick(150);
+  assert.equal(dom.window.document.querySelector('.knife-preview').hidden,false);
+});
+
+test('cached re-entry still waits its own hover delay without another API request', async t => {
+  const {dom,preview,one,pending,response}=setup(t),tick=clockPreview(dom);
+  const first=preview.show(one.href,one,true);
+  tick(75);pending[0].resolve(response('https://images.invalid/one.jpg'));await first;tick(100);
+  preview.hide();tick(200);await preview.show(one.href,one,true);
+  assert.equal(pending.length,1);
+  tick(299);assert.equal(dom.window.document.querySelector('.knife-preview').hidden,true);
+  tick(300);assert.equal(dom.window.document.querySelector('.knife-preview').hidden,false);
+});
+
+test('preloading never constructs media for an age-restricted stream', async t => {
+  const {dom,preview,one,pending}=setup(t);
+  deliver(dom,{preview:true,livePreview:true,previewDelay:0.1},2);
+  const tick=clockPreview(dom),showing=preview.show(one.href,one,true);
+  pending[0].resolve({ok:true,json:async()=>({code:200,content:{status:'OPEN',adult:true,livePlaybackJson:JSON.stringify({media:[{mediaId:'HLS',path:'https://media.invalid/master.m3u8'}]})}})});
+  await showing;tick(100);
+  assert.equal(dom.window.document.querySelector('.knife-preview').hidden,false);
+  assert.equal(dom.window.document.querySelector('.knife-preview-video'),null);
+  assert.equal(runtime(dom).statuses.livePreview.reason,'age-restricted-stream');
+});

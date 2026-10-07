@@ -7,7 +7,7 @@ PASS means the named check ran; it does not imply other features are verified.
 | Check | Environment | Result | Evidence / limit |
 | --- | --- | --- | --- |
 | Settings partial/malformed objects and finite ranges | Node 24.19.0 | PASS | tests/config.test.cjs: 4 tests |
-| Full automated regression suite | Node 24.19.0 / jsdom, Windows | PASS | Latest `node --test tests/*.test.cjs`: 64 passed, 0 failed; includes seven audio metric tests, three Gain smoothing regressions, original review regressions and VOD native-click RED→GREEN; boundary characterization included |
+| Full automated regression suite | Node 24.19.0 / jsdom, Windows | PASS | Latest `node --test tests/*.test.cjs`: 70 passed, 0 failed; includes audio metrics, Gain smoothing/retry and hover deadline/preload cases, original review regressions and VOD native-click RED→GREEN; boundary characterization included |
 | Portable package/vendor inclusion and missing reference rejection | Node 24.19.0, Windows | PASS | tests/package.test.cjs: 3 tests; source check and dist build succeed |
 | Actual MAIN framework availability | Playwright Headless Shell 151.0.7922.34, fresh unauthenticated public CHZZK live page | PASS | Known webpack chunk absent; Vue absent; React on player/chat present; core player, chat filter and blind listener accessible |
 | Public preview API and HLS playlist | Same page | PASS | live-detail HTTP/code 200; HLS and LLHLS paths present; master HLS playlist HTTP 200 / #EXTM3U |

@@ -138,3 +138,25 @@ test('unchanged Gain during configuration or repeated enable does not restart it
   context().currentTime = 3.1; audio.setGain(video, 0);
   assert.deepEqual(parameter.events.slice(-3),[['cancel',3.1],['set',1.5,3.1],['ramp',0,3.11]]);
 });
+
+test('source-creation retry initializes the replacement Gain node at the stored target', async t => {
+  const { audio, video, nodes, context } = setup(t);
+  audio.setGain(video, 1.5);
+  // First attempt creates the context but fails before intercepting the video.
+  const original = video.currentSrc;
+  await audio.setEnabled(video, true);
+  // Reproduce a failure on a fresh media entry with the already-created context.
+  const second = video.cloneNode(); video.replaceWith(second);
+  Object.defineProperty(second,'currentSrc',{value:original});
+  runtime({window:second.ownerDocument.defaultView}).reconcile();
+  const createSource = context().createMediaElementSource;
+  context().createMediaElementSource = () => { throw new Error('temporary source failure'); };
+  await audio.setEnabled(second,true);
+  assert.equal(audio.getState(second),'unavailable');
+  context().createMediaElementSource = () => ({ outputs:new Set(),connect(node){this.outputs.add(node);},disconnect(){this.outputs.clear();} });
+  await audio.setEnabled(second,true);
+  assert.equal(audio.getState(second),'on');
+  const lastCompressor = nodes.filter(node=>node.type==='compressor').at(-1);
+  assert.equal([...lastCompressor.outputs][0].gain.value,1.5);
+  context().createMediaElementSource = createSource;
+});

@@ -98,6 +98,7 @@
       if (current?.href === href && current.anchor === anchor) return;
       cleanup();
       const token = generation;
+      const hoverStarted = Date.now();
       const id = url.pathname.split('/')[2];
       const request = controller = new AbortController();
       current = { id, href, anchor, route: location.pathname, live: runtime.config.livePreview === true };
@@ -142,12 +143,15 @@
         } else uptime.textContent = '';
         later(updateUptime, 1000);
       };
+      // Metadata/network time is part of the user's hover delay. Start muted
+      // loading in parallel with the remaining wait, not after another full wait.
+      if (runtime.config.livePreview === true && info.status === 'OPEN' && !info.adult) prepare(info, anchor, href, token);
+      else if (info.adult) runtime.setStatus('livePreview', 'limited', 'age-restricted-stream');
+      const delay = Math.max(100, Math.min(3000, Number(runtime.config.previewDelay) * 1000 || 1000));
       later(() => {
         if (!valid(token, anchor, href)) return;
         panel.hidden = false; updateUptime(); runtime.setStatus('preview', 'ready');
-        if (runtime.config.livePreview === true && info.status === 'OPEN' && !info.adult) prepare(info, anchor, href, token);
-        else if (info.adult) runtime.setStatus('livePreview', 'limited', 'age-restricted-stream');
-      }, Math.max(100, Math.min(3000, Number(runtime.config.previewDelay) * 1000 || 1000)));
+      }, Math.max(0, hoverStarted + delay - Date.now()));
     },
     hide(href) { if (!href || current?.href === href) cleanup(); },
   };

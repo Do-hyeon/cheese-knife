@@ -98,7 +98,7 @@
           entry.dry = context.createGain(); entry.dry.gain.value = 1;
           entry.wet = context.createGain(); entry.wet.gain.value = 0;
           entry.compressor = context.createDynamicsCompressor();
-          entry.gainNode = context.createGain(); apply(entry);
+          entry.gainNode = context.createGain(); entry.gainTransition = null; apply(entry);
           entry.source = context.createMediaElementSource(video);
         }
         connect(entry); apply(entry);
