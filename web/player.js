@@ -59,16 +59,32 @@
     });
     const track = node => { state.nodes.add(node); return node; };
     state.track = track;
-    const stopHold = () => {
+    const clearClick = () => { clearTimeout(state.clickTimer); state.clickTimer = null; state.clickBlock = null; };
+    scope.add(clearClick);
+    const stopHold = event => {
       const hold = state.pointer;
       if (!hold) return;
+      if (event?.type?.startsWith('pointer') && event.pointerId != null && hold.id != null && event.pointerId !== hold.id) return;
       state.pointer = null; clearTimeout(hold.timer);
+      if (hold.active && event?.type === 'pointerup') {
+        clearClick(); state.clickBlock = { target: hold.target, id: hold.id };
+        // pointerup restores our gesture; its following click must not then
+        // toggle native playback. Bound the token, and clear on the next down.
+        state.clickTimer = setTimeout(clearClick, 1000);
+      }
       if (hold.active && state.video.playbackRate === 2) state.video.playbackRate = hold.originalRate;
       if (hold.active && hold.startedPlaying && !state.video.paused) state.video.pause();
       hold.indicator?.remove();
       if (hold.target.hasPointerCapture?.(hold.id)) hold.target.releasePointerCapture(hold.id);
     };
     state.stopHold = stopHold; scope.add(stopHold);
+    scope.on(window, 'pointerdown', clearClick, true);
+    scope.on(window, 'click', event => {
+      const block = state.clickBlock;
+      if (!block || event.detail === 0 || (event.pointerId != null && block.id != null && event.pointerId !== block.id) ||
+        !(block.target.contains(event.target) || event.target === state.pzp)) return;
+      clearClick(); event.preventDefault(); event.stopImmediatePropagation();
+    }, true);
     scope.on(window, 'blur', stopHold);
     scope.on(window, 'pagehide', stopHold);
     scope.on(window, 'pointerup', stopHold, true);
