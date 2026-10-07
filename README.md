@@ -8,7 +8,9 @@
 
 Vue 없이 플레이어 버튼·컴프레서·VOD 길게 눌러 2배속을 제공하고 HLS.js 미리보기, 화면 전환 수명 관리, 기능별 준비 상태를 추가했습니다. [설계](docs/superpowers/specs/2026-10-08-chzzk-compatibility-design.md), [검토](docs/superpowers/reviews/2026-10-08-chzzk-compatibility-review.md), [검증 결과와 제한](docs/superpowers/validation/2026-10-08-chzzk-compatibility.md)을 함께 확인하세요.
 
-자동 테스트 54개와 별도 브라우저의 실제 오디오·공개 방송 미리보기 검증을 통과했습니다. [독립 구현 검토](docs/superpowers/reviews/2026-10-08-implementation-review.md)와 [실제 Chrome VOD 길게 누르기 수정 검토](docs/superpowers/reviews/2026-10-08-vod-hold-review.md)도 공개합니다. 설치된 Chrome에서 일부 기능을 검증했으나 전체 기능 검증과 출시 승인은 아직 완료되지 않았습니다.
+자동 테스트 61개와 별도 브라우저의 실제 오디오·공개 방송 미리보기 검증을 통과했습니다. [독립 구현 검토](docs/superpowers/reviews/2026-10-08-implementation-review.md)와 [실제 Chrome VOD 길게 누르기 수정 검토](docs/superpowers/reviews/2026-10-08-vod-hold-review.md)도 공개합니다. 설치된 Chrome에서 일부 기능을 검증했으나 전체 기능 검증과 출시 승인은 아직 완료되지 않았습니다.
+
+Gain 바를 48px·끝 여백 8px로 조정해 실제 라이브에서 확인했습니다. [합성 신호 음질 검사](docs/superpowers/validation/2026-10-08-audio-quality-and-gain-spacing.md)는 기본 설정의 출력과 전환 시 개선 후보를 기록하며, 실제 음성·음악의 음질 보장은 아닙니다. 오디오 처리 방식은 이번 검사에서 변경하지 않았습니다.
 
 ### 로컬 Chrome에서 시험하기
 
@@ -34,6 +36,8 @@ Node 24.x에서 `npm ci`, `npm test`, `npm run check`, `npm run build`를 실행
 별도 프로필의 브라우저 점검은 `npx playwright install chromium` 후 `node scripts/smoke-browser.mjs`로 실행합니다. 이 검사는 통제된 음원에 실제 미디어/Web Audio API를 적용하는 검사이며, 사용자 방송의 음성 검증이나 확장 설치 검증과 구분합니다.
 
 시스템 Chrome의 공개 미리보기 검사는 `node scripts/smoke-browser.mjs --public --chrome`, HLS.js 대체 경로 검사는 여기에 `--hls-js`를 추가합니다. 로그인·연령 제한은 우회하지 않습니다.
+
+합성 신호의 컴프레서 출력 측정은 `node scripts/check-audio-quality.mjs --chrome`으로 실행합니다. 별도 프로필에서 스피커로 0을 출력하는 캡처 경로를 사용하며 방송 음성을 녹음하지 않습니다. 결과는 ignored `output/audio-quality/report.json`에 저장합니다.
 
 [Website](https://www.chz.app/) | [Discord](https://discord.gg/9kq3UNKAkz) | [Chrome Web Store (Chromium, Edge, Whale 호환)](https://chromewebstore.google.com/detail/nfkfgkkhgglkgnlppncolmpekidapkjh) | [Firefox Add-ons](https://addons.mozilla.org/addon/cheese-knife/) | [English](./README-en.md)
 

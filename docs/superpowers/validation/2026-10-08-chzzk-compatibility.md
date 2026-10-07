@@ -7,12 +7,13 @@ PASS means the named check ran; it does not imply other features are verified.
 | Check | Environment | Result | Evidence / limit |
 | --- | --- | --- | --- |
 | Settings partial/malformed objects and finite ranges | Node 24.19.0 | PASS | tests/config.test.cjs: 4 tests |
-| Full production-module regression suite | Node 24.19.0 / jsdom, Windows | PASS | Latest `node --test tests/*.test.cjs`: 54 passed, 0 failed; original review regressions and VOD native-click RED→GREEN; boundary characterization included |
+| Full automated regression suite | Node 24.19.0 / jsdom, Windows | PASS | Latest `node --test tests/*.test.cjs`: 61 passed, 0 failed; includes seven audio metric tests, original review regressions and VOD native-click RED→GREEN; boundary characterization included |
 | Portable package/vendor inclusion and missing reference rejection | Node 24.19.0, Windows | PASS | tests/package.test.cjs: 3 tests; source check and dist build succeed |
 | Actual MAIN framework availability | Playwright Headless Shell 151.0.7922.34, fresh unauthenticated public CHZZK live page | PASS | Known webpack chunk absent; Vue absent; React on player/chat present; core player, chat filter and blind listener accessible |
 | Public preview API and HLS playlist | Same page | PASS | live-detail HTTP/code 200; HLS and LLHLS paths present; master HLS playlist HTTP 200 / #EXTM3U |
 | Actual playing live audio/video | Same page | UNVERIFIED | Probe saw readyState=0 and no buffered ranges; API accessibility is not playback proof |
 | Controlled actual Web Audio output | Headless Shell 151.0.7922.34, synthetic same-origin WAV blob | PASS | Source 1; context running; compressor on RMS 0.2423407 / bypass RMS 0.3441080; page errors 0. Not authenticated/live listening proof |
+| Synthetic audio quality / installed Gain spacing | Separate system Chrome 155 / user's installed Chrome | Per-check findings | Default 14 cases no >1 samples; measurable Gain discontinuities/toggle dips, not listening assurance. Installed slider 48px/gap 8px. [Report and limits](2026-10-08-audio-quality-and-gain-spacing.md) |
 | Independent public native-HLS preview video | Separate system Chrome 155.0.8059.39, fresh public CHZZK page | PASS | 2s sample: time 0→1.898459; decoded frames 0→60; readyState 4. Native page refused high-quality playback in headless mode; no primary player/control claim |
 | Independent public HLS.js/MSE preview | Same browser/page, `--hls-js` suppresses only native HLS support response | PASS | 480p AVC/AAC; time 0.511785→2.486229; frames 4→64. This selects the actual fallback, not a Chrome 121 compatibility test |
 | Preview hide cleanup | Both public preview runs | PASS | Media removed and panel hidden. After 500ms settling, next 2s: 0 additional m3u8/ts/m4s requests. Does not prove all network types or 30s stability |
