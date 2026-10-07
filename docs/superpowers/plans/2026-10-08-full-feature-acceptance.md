@@ -39,6 +39,7 @@
 - [x] 느린 API가 hover 기한을 지난 경우, 캐시 재진입, 사전 로딩 중 disabled/기존 generation cleanup/연령 제한 보존 검사. 실제 route/bfcache 화면 전환은 전체 acceptance에 남김.
 - [x] `node --test tests/*.test.cjs`70/70, build, source/dist check, 독립 검토 완료; 후보 커밋으로 보존. 리뷰 Minor: 시스템 시각 조정에 영향받는 Date.now deadline. monotonic 보완은 다음 변경 묶음에서 regression과 함께 검토.
 - [ ] 사용자 확장 새로고침 후 실제 설치본 hover 시간/영상 진행/음소거/정리·Gain 입력·재생 유지 검사.
+- [x] 사용자 미리보기 정상 확인(설정0.1초). 설치본 Gain 키보드 충돌 재현/회귀 후보; 최종 설치본 검사는 새로고침 후 남음.
 
 ### Task 2: 기능 설정 전체 매트릭스
 
@@ -53,6 +54,7 @@
 - [ ] compressorDefault/threshold/knee/ratio/attack/release/Gain: 초기 실행·설정 변화·OFF/ON·실제 재생·remount/SPA.
 - [ ] hideDonation/showDeleted, resize/timestamp: 실제 controller/메시지 구조를 제한적으로 조사; 삭제 이벤트는 확인 가능한 범위만, 후원/채팅을 보내거나 남의 moderation을 변경하지 않는다.
 - [ ] 통계/시작 시각/채널 채팅 링크/설정 저장·팝업 상태: 실제 값·누락/실패 표시·새 탭/SPA 일관성.
+- [x] 통계 해상도/측정FPS/코덱,PIP,팝업 생성·이동·닫기 설치본 검사. 모든25개 leaf와25개 스타일 저장 UI 계약 자동 검사. native sidebar·VOD시각·Gain키보드·drag 해제·스타일 등록 경쟁/legacy 이관 후보(설치본 재검사 남음).
 - [ ] 재현된 각 결함은 RED→minimal fix→전체 suite GREEN→실제 설치본 검사. 내부 데이터가 없으면 명시적으로 미검증/지원 제한, PR 완료 조건 미충족으로 남긴다.
 
 ### Task 3: 스타일 전체 매트릭스
@@ -68,6 +70,7 @@
 - [ ] toolbar: static-logo, hide-topics, hide-studio, auto-hide-toolbar.
 - [ ] home/explore/misc: hide-recommended-live, top-explore, hide-blocked, hide-live-badge, rectangle-profile.
 - [ ] 필요한 실제 화면에서 각 OFF/ON 및 기본 복원 확인. 오래된 선택자 불일치는 현행 DOM으로 제한 수정하고 해당 소비 동작의 regression을 작성.
+- [x] right-sidebar/static-logo/rectangle-profile/hide-live-badge와 VOD chat-resize/chat-font-size/left-chat 후보. native CSS15/15, 가능한 현행 DOM A/B·복원; 실제 옵션 조합 미완료.
 - [ ] 작은 화면, wide/normal, fullscreen/PIP, SPA/bfcache, 스타일 조합 충돌과 cleanup 검사.
 
 ### Task 4: 기여 PR 완료 조건

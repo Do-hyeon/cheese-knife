@@ -2,13 +2,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { page, load, runtime, deliver, playerHTML, flush } = require('./helpers.cjs');
 
-function setup(t, html = playerHTML, url) {
+function setup(t, html = playerHTML, url, beforeInject = () => {}) {
   const dom = page(html, url);
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
   dom.window.document.documentElement.style.setProperty('--knife-chat-resize', '1');
   dom.window.document.documentElement.style.setProperty('--knife-chat-timestamp', '1');
   for (const file of ['web/runtime.js','web/site-adapter.js','web/audio.js','web/player.js']) load(dom, file);
   deliver(dom, { arrowSeek: true, hideDonation: false });
+  beforeInject(dom);
   load(dom, 'web/inject.js');
   return dom;
 }
@@ -64,6 +65,20 @@ test('timestamp capability remains pending until supported message rows are obse
   assert.match(row.firstElementChild.dataset.timestamp, /^\d\d:\d\d$/);
 });
 
+test('VOD timestamps find message rows rather than nested nickname wrappers and update reused rows', async t => {
+  const html = playerHTML.replace('live_player_layout', 'player_layout').replace('</main>', '<aside id="vod-aside" class="_aside_test"><div role="log"><div class="_list_test"><div class="_item_test"><span class="_nickname_test"><span class="_wrapper_test"></span></span><span class="_chatting_message_test">Synthetic</span></div></div></div></aside></main>');
+  const dom = setup(t, html, 'https://chzzk.naver.com/video/123', dom => {
+    dom.window.document.querySelector('._item_test').__reactProps$test = { children: { props: { chatMessage: { playerMessageTime: 61000 } } } };
+  });
+  const row = dom.window.document.querySelector('._item_test');
+  runtime(dom).reconcile(); await flush();
+  const target = row.querySelector('._chatting_message_test');
+  assert.equal(target.dataset.timestamp, '1:01');
+  row.__reactProps$test.children.props.chatMessage.playerMessageTime = 62000;
+  target.firstChild.textContent = 'Reused'; await flush();
+  assert.equal(target.dataset.timestamp, '1:02');
+});
+
 test('live start tooltip reads verified React metadata without a network request', async t => {
   const dom = setup(t);
   const node = dom.window.document.createElement('span'); node.className = 'video_information_count__test';
@@ -102,4 +117,90 @@ test('VOD start tooltip shows successful metadata and reuses bounded cache', asy
   const node = dom.window.document.querySelector('span');
   for (let i = 0; i < 2; i++) { node.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush(); }
   assert.match(node.dataset.knifeTooltip || '', /2026-10-08 10:00:00/); assert.equal(calls, 1);
+});
+
+function sidebarFixture(t, config = {}) {
+  const html = '<div id="root"><aside id="sidebar">' +
+    '<nav><strong class="_title_test">인기 카테고리</strong><button aria-label="새로고침" id="foreign-refresh"></button><button class="_more_button_test" aria-expanded="false" id="foreign-more">더보기</button></nav>' +
+    '<nav id="following"><div class="_header_test"><strong class="_title_test">팔로잉 채널</strong><button aria-label="새로고침" id="refresh"></button></div><button class="_more_button_test" aria-expanded="false" id="more">더보기</button></nav>' +
+    '</aside><div id="layout-body"></div></div>';
+  const dom = page(html);
+  const timers = new Map(); let next = 10000;
+  const setInterval = dom.window.setInterval.bind(dom.window), clearInterval = dom.window.clearInterval.bind(dom.window);
+  dom.window.setInterval = (fn, ms) => { if (ms !== 30000) return setInterval(fn, ms); const id = next++; timers.set(id, fn); return id; };
+  dom.window.clearInterval = id => { timers.delete(id); clearInterval(id); };
+  t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
+  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
+  deliver(dom, config); load(dom, 'web/inject.js');
+  const counts = { refresh: 0, more: 0, foreign: 0 };
+  dom.window.document.getElementById('refresh').addEventListener('click', () => counts.refresh++);
+  dom.window.document.getElementById('more').addEventListener('click', event => { counts.more++; event.currentTarget.setAttribute('aria-expanded', 'true'); });
+  for (const id of ['foreign-refresh', 'foreign-more']) dom.window.document.getElementById(id).addEventListener('click', () => counts.foreign++);
+  return { dom, timers, counts, tick() { for (const fn of [...timers.values()]) fn(); } };
+}
+
+test('sidebar refresh uses only following native control and stops when disabled or disposed', t => {
+  const { dom, timers, counts, tick } = sidebarFixture(t, { updateSidebar: true });
+  for (let i = 0; i < 10; i++) runtime(dom).reconcile();
+  assert.equal(timers.size, 1, 'one 30-second refresh timer');
+  tick(); assert.equal(counts.refresh, 1); assert.equal(counts.foreign, 0);
+  const button = dom.window.document.getElementById('refresh'); button.disabled = true;
+  tick(); assert.equal(counts.refresh, 1, 'busy native control is not clicked'); button.disabled = false;
+  deliver(dom, { updateSidebar: false }, 2);
+  assert.equal(timers.size, 0); tick(); assert.equal(counts.refresh, 1);
+  deliver(dom, { updateSidebar: true }, 3);
+  assert.equal(timers.size, 1); tick(); assert.equal(counts.refresh, 2);
+  dom.reconfigure({ url: 'https://chzzk.naver.com/settings/profile' }); runtime(dom).reconcile();
+  assert.equal(timers.size, 0); tick(); assert.equal(counts.refresh, 2);
+});
+
+test('following expansion handles late controls and option changes without reopening a user collapse', async t => {
+  const { dom, counts } = sidebarFixture(t, { expandFollowings: false });
+  deliver(dom, { expandFollowings: true }, 2);
+  assert.equal(counts.more, 1); assert.equal(counts.foreign, 0);
+  const button = dom.window.document.getElementById('more'); button.setAttribute('aria-expanded', 'false');
+  runtime(dom).reconcile(); assert.equal(counts.more, 1);
+  deliver(dom, { expandFollowings: false }, 3); deliver(dom, { expandFollowings: true }, 4);
+  assert.equal(counts.more, 2);
+  button.remove(); runtime(dom).reconcile();
+  const replacement = button.cloneNode(true); replacement.setAttribute('aria-expanded', 'false');
+  replacement.addEventListener('click', () => counts.more++);
+  dom.window.document.getElementById('following').append(replacement); await flush();
+  assert.equal(counts.more, 3);
+});
+
+test('sidebar refresh suspends for bfcache and restores one timer after pageshow', t => {
+  const { dom, timers, counts, tick } = sidebarFixture(t, { updateSidebar: true });
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide', { persisted: true }));
+  assert.equal(timers.size, 0); tick(); assert.equal(counts.refresh, 0);
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow', { persisted: true }));
+  assert.equal(timers.size, 1); tick(); assert.equal(counts.refresh, 1);
+});
+
+test('unavailable following section never refreshes or expands another sidebar section', t => {
+  const { dom, timers, counts, tick } = sidebarFixture(t, { updateSidebar: true });
+  dom.window.document.getElementById('following').remove();
+  deliver(dom, { updateSidebar: true, expandFollowings: true }, 2);
+  assert.equal(timers.size, 0); tick(); assert.equal(counts.foreign, 0);
+  assert.equal(runtime(dom).statuses.sidebarRefresh.state, 'limited');
+  assert.equal(runtime(dom).statuses.expandFollowings.state, 'limited');
+});
+
+test('closing a popup during a drag restores the document cursor and removes drag listeners', async t => {
+  const dom = setup(t);
+  deliver(dom, { popupPlayer: true }, 2);
+  const body = dom.window.document.getElementById('layout-body');
+  const drop = new dom.window.Event('drop', { bubbles: true, cancelable: true });
+  Object.defineProperties(drop, { dataTransfer: { value: { getData: () => 'https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' } }, pageX: { value: 400 }, pageY: { value: 200 } });
+  body.dispatchEvent(drop);
+  const popup = body.querySelector('.knife-popup');
+  popup.querySelector('.knife-popup-drag-area').dispatchEvent(new dom.window.MouseEvent('mousedown', { bubbles: true, clientX: 400, clientY: 200 }));
+  dom.window.document.dispatchEvent(new dom.window.MouseEvent('mousemove', { clientX: 450, clientY: 250 }));
+  assert.equal(dom.window.document.body.classList.contains('knife-dragging'), true);
+  popup.querySelector('.knife-popup-close-button').click();
+  assert.equal(body.querySelector('.knife-popup'), null);
+  assert.equal(dom.window.document.body.classList.contains('knife-dragging'), false);
+  dom.window.document.dispatchEvent(new dom.window.MouseEvent('mousemove', { clientX: 500, clientY: 300 }));
+  assert.equal(dom.window.document.body.classList.contains('knife-dragging'), false);
+  await flush();
 });

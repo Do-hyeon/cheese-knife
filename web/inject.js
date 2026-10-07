@@ -10,6 +10,7 @@
   let chats;
   let anchors;
   let sidebar;
+  let sidebarRecord;
   let timestampRoots;
   const popups = new Map();
   const videoMetadata = new Map();
@@ -49,8 +50,11 @@
     let y = 0;
     let dx = 0;
     let dy = 0;
+    let dragActive = false;
+    popupScope.add(() => { if (dragActive) document.body.classList.remove('knife-dragging'); });
     popupScope.on(dragArea, "mousedown", (e) => {
       e.preventDefault();
+      dragActive = true;
       popup.style.zIndex = `${zIndex++}`;
       x = e.clientX;
       y = e.clientY;
@@ -70,6 +74,7 @@
         popup.style.left = `${popup.offsetLeft + dx}px`;
       };
       const onMouseUp = () => {
+        dragActive = false;
         document.removeEventListener("mousemove", onMouseMove);
         document.removeEventListener("mouseup", onMouseUp);
         document.body.classList.remove("knife-dragging");
@@ -133,7 +138,8 @@
   };
   const timestamps = (container, isLive, scope) => {
     if (getComputedStyle(document.documentElement).getPropertyValue('--knife-chat-timestamp').trim() !== '1') return;
-    const root = container.querySelector('[role="log"] [class^="_wrapper_"], [class^="live_chatting_list_wrapper__"], [class^="vod_chatting_list__"]') || container.querySelector('[role="log"]');
+    // Current VOD rows contain nickname wrappers too; those are not log roots.
+    const root = container.querySelector('[role="log"], [class^="live_chatting_list_wrapper__"], [class^="vod_chatting_list__"]');
     if (!root || timestampRoots.has(root)) return;
     timestampRoots.add(root);
     const apply = () => {
@@ -197,8 +203,44 @@
     findController();
   };
   const bindSidebar = (node, scope) => {
-    if (!node || sidebar === node) return;
+    if (!node) return;
+    if (sidebar === node) { sidebarRecord.sync(); return; }
     sidebar = node;
+    const record = sidebarRecord = { timer: null, expanded: new WeakSet(), suspended: false };
+    const followingSection = () => [...node.querySelectorAll('nav')].find(section =>
+      /^(팔로잉 채널|Following channels)$/i.test(section.querySelector('[class*="_title_"], [class^="navigation_bar_title__"]')?.textContent.trim() || ''));
+    const refreshControl = () => followingSection()?.querySelector('button[aria-label="새로고침"], button[aria-label="Refresh"]');
+    const stopRefresh = () => { clearInterval(record.timer); record.timer = null; };
+    const refresh = () => {
+      if (scope.disposed || record.suspended || document.hidden || !node.isConnected || config.updateSidebar !== true) return;
+      const button = refreshControl();
+      if (button && !button.disabled) button.click();
+    };
+    record.sync = () => {
+      if (scope.disposed || !node.isConnected) { stopRefresh(); return; }
+      const button = refreshControl();
+      if (config.updateSidebar === true && button) {
+        if (record.timer == null && !record.suspended) record.timer = scope.interval(refresh, 30000);
+        runtime.setStatus('sidebarRefresh', 'ready');
+      } else {
+        stopRefresh();
+        runtime.setStatus('sidebarRefresh', config.updateSidebar ? 'limited' : 'disabled', config.updateSidebar ? 'following-control-unavailable' : '');
+      }
+      if (config.expandFollowings !== true) {
+        record.expanded = new WeakSet(); runtime.setStatus('expandFollowings', 'disabled'); return;
+      }
+      const more = followingSection()?.querySelector('button[class*="_more_button_"], button[class^="navigation_bar_more_button__"]');
+      if (!more || !['true', 'false'].includes(more.getAttribute('aria-expanded'))) {
+        runtime.setStatus('expandFollowings', 'limited', 'following-control-unavailable'); return;
+      }
+      if (more.getAttribute('aria-expanded') === 'false' && !more.disabled && !record.expanded.has(more)) {
+        record.expanded.add(more); more.click();
+      }
+      runtime.setStatus('expandFollowings', record.expanded.has(more) || more.getAttribute('aria-expanded') === 'true' ? 'ready' : 'pending');
+    };
+    scope.add(stopRefresh);
+    scope.on(window, 'pagehide', () => { record.suspended = true; stopRefresh(); });
+    scope.on(window, 'pageshow', () => { record.suspended = false; record.sync(); });
     const attach = anchor => {
       const url = liveURL(anchor.href);
       if (!url || anchors.has(anchor)) return;
@@ -218,14 +260,9 @@
         if (added.matches('a[href]')) attach(added);
         added.querySelectorAll('a[href]').forEach(attach);
       }
-    }), node, { childList: true, subtree: true });
-    if (config.expandFollowings) {
-      const button = node.querySelector('[class*="_more_button_"], [class^="navigation_bar_more_button__"]');
-      if (button?.ariaExpanded === 'false' && propsOf(button)?.onClick?.toString().includes('50')) {
-        button.click(); runtime.setStatus('expandFollowings', 'ready');
-      } else runtime.setStatus('expandFollowings', 'limited', 'following-control-unavailable');
-    }
-    runtime.setStatus('sidebarRefresh', config.updateSidebar ? 'limited' : 'disabled', config.updateSidebar ? 'refresh-adapter-unavailable' : '');
+      record.sync();
+    }), node, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-expanded', 'disabled'] });
+    record.sync();
   };
   const channelButton = (state, scope) => {
     if (state.route.kind !== 'channel' || !state.body) return;
@@ -281,7 +318,11 @@
   runtime.subscribe(state => {
     config = runtime.config; i18n = runtime.i18n;
     for (const [node, scope] of popups) if (!node.isConnected) scope.dispose();
-    if (!runtime.configReady) return;
+    if (!runtime.configReady || state.route.kind === 'excluded') {
+      owner?.dispose(); owner = null; sidebar = null;
+      if (state.route.kind === 'excluded') for (const scope of popups.values()) scope.dispose();
+      return;
+    }
     if (!owner || ownerGeneration !== runtime.generation) {
       owner?.dispose(); owner = runtime.createScope(); ownerGeneration = runtime.generation;
       chats = new WeakMap(); anchors = new WeakSet(); timestampRoots = new WeakSet(); sidebar = null;

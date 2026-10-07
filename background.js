@@ -16,6 +16,7 @@ async function initConfig() {
   if (t != null) {
     if (!isNaN(t)) {
       changed = true;
+      config ||= {};
       config.sharpness = t;
     }
     await chrome.storage.local.remove("t");
@@ -34,7 +35,15 @@ function onStylesChanged({ styles }) {
   }
 }
 
-async function registerStyles(styles) {
+let stylesRegistration = Promise.resolve();
+function registerStyles(styles) {
+  const snapshot = Array.isArray(styles) ? [...styles] : styles;
+  const next = stylesRegistration.catch(() => {}).then(() => applyStyles(snapshot));
+  stylesRegistration = next;
+  return next;
+}
+
+async function applyStyles(styles) {
   await chrome.scripting.unregisterContentScripts();
   if (!Array.isArray(styles)) {
     return;

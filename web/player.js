@@ -160,6 +160,9 @@
           runtime.audio.setEnabled(video, !['on','pending'].includes(runtime.audio.getState(video)));
         });
         scope.on(slider, 'input', () => runtime.audio.setGain(video, Number(slider.value)));
+        // Native player shortcuts otherwise prevent the range's own defaults.
+        // Do not preventDefault: arrows/Home/End and Tab retain browser behavior.
+        scope.on(slider, 'keydown', event => event.stopPropagation());
         scope.add(runtime.audio.subscribe(video, (status, gain) => {
           box.dataset.state = status; button.setAttribute('aria-pressed', String(status === 'on'));
           const text = label(status === 'on' || status === 'pending' ? 'disableCompressor' : 'enableCompressor', 'Compressor');
