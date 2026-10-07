@@ -29,7 +29,7 @@
     if (panel) { panel.hidden = true; panel.querySelector('img').removeAttribute('src'); }
   };
   const ensurePanel = () => {
-    if (panel) return;
+    if (panel?.isConnected) return;
     panel = document.createElement('div'); panel.className = 'knife-preview knife-owned'; panel.hidden = true;
     const image = document.createElement('img'); image.alt = '';
     const player = document.createElement('div'); player.className = 'knife-preview-player';
@@ -93,13 +93,14 @@
     diagnostics: diagnostic,
     async show(href, anchor, tooltip = false) {
       const url = parseURL(href);
-      if (!url || !anchor?.isConnected || runtime.config.preview !== true || !runtime.configReady) return;
+      if (!url || !anchor?.isConnected || href !== anchor.href ||
+        (tooltip ? runtime.config.preview !== true : runtime.config.preview !== true && runtime.config.customPreview !== true) || !runtime.configReady) return;
       if (current?.href === href && current.anchor === anchor) return;
       cleanup();
       const token = generation;
       const id = url.pathname.split('/')[2];
       const request = controller = new AbortController();
-      current = { id, href, anchor, route: location.pathname };
+      current = { id, href, anchor, route: location.pathname, live: runtime.config.livePreview === true };
       const timeout = later(() => request.abort(), 5000);
       let info;
       try {
@@ -141,13 +142,12 @@
         } else uptime.textContent = '';
         later(updateUptime, 1000);
       };
-      panel.hidden = false; updateUptime();
-      runtime.setStatus('preview', 'ready');
-      if (runtime.config.livePreview === true && info.status === 'OPEN' && !info.adult) {
-        later(() => prepare(info, anchor, href, token), Math.max(100, Math.min(3000, Number(runtime.config.previewDelay) * 1000 || 1000)));
-      } else if (info.adult) {
-        runtime.setStatus('livePreview', 'limited', 'age-restricted-stream');
-      }
+      later(() => {
+        if (!valid(token, anchor, href)) return;
+        panel.hidden = false; updateUptime(); runtime.setStatus('preview', 'ready');
+        if (runtime.config.livePreview === true && info.status === 'OPEN' && !info.adult) prepare(info, anchor, href, token);
+        else if (info.adult) runtime.setStatus('livePreview', 'limited', 'age-restricted-stream');
+      }, Math.max(100, Math.min(3000, Number(runtime.config.previewDelay) * 1000 || 1000)));
     },
     hide(href) { if (!href || current?.href === href) cleanup(); },
   };
@@ -162,9 +162,25 @@
   });
   scope.on(document, 'visibilitychange', () => { if (document.hidden) cleanup(); });
   scope.on(document, 'contextmenu', event => {
-    if (!current?.anchor.contains(event.target) || !media || runtime.config.rightClickToUnmute !== true) return;
-    event.preventDefault(); media.volume = Math.max(0, Math.min(1, Number(runtime.config.previewVolume || 0) / 100)); media.muted = !media.muted;
+    if (runtime.config.rightClickToUnmute !== true) return;
+    let video = current?.anchor.contains(event.target) ? media : null;
+    if (!video && runtime.config.customPreview !== true) {
+      const anchor = event.target.closest?.('a[href]');
+      if (!anchor?.closest('#layout-body') || anchor.closest('#sidebar, .pzp-pc, .knife-popup') || !parseURL(anchor.href)) return;
+      const candidates = anchor.querySelectorAll('video');
+      if (candidates.length === 1) video = candidates[0];
+    }
+    if (!video) return;
+    event.preventDefault(); video.volume = Math.max(0, Math.min(1, Number(runtime.config.previewVolume || 0) / 100)); video.muted = !video.muted;
   });
   scope.on(window, 'pagehide', event => { cleanup(); if (!event.persisted) scope.dispose(); });
-  runtime.subscribe(state => { if (current && (state.route?.path !== current.route || runtime.config.preview !== true)) cleanup(); });
+  const checkActive = () => {
+    if (current && (location.pathname !== current.route || !current.anchor.isConnected || current.anchor.href !== current.href ||
+      (panel && !panel.isConnected) || (runtime.config.preview !== true && runtime.config.customPreview !== true) ||
+      (current.live && runtime.config.livePreview !== true))) cleanup();
+  };
+  // Constant-time identity check, not a document-wide card scan. Invalidation
+  // must stop an existing stream as well as reject future async completions.
+  scope.observe(new MutationObserver(checkActive), document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['href'] });
+  runtime.subscribe(checkActive);
 })();

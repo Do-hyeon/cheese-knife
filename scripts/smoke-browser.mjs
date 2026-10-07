@@ -6,11 +6,15 @@ const require = createRequire(import.meta.url);
 const { playerHTML } = require('../tests/helpers.cjs');
 const manifest = JSON.parse(await fs.readFile('manifest.json', 'utf8'));
 const scripts = manifest.content_scripts.find(script => script.world === 'MAIN').js;
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, ...(process.argv.includes('--chrome') ? { channel: 'chrome' } : {}) });
 try {
   const context = await browser.newContext({ locale: 'ko-KR' });
   const page = await context.newPage();
   const errors = [];
+  let mediaRequests = 0;
+  page.on('request', request => {
+    try { if (/\.(?:m3u8|ts|m4s)(?:$|\/)/i.test(new URL(request.url()).pathname)) mediaRequests++; } catch {}
+  });
   page.on('pageerror', error => errors.push(error.name + ': ' + error.message.slice(0, 120)));
   if (!process.argv.includes('--public')) {
     await page.route('https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', route => route.fulfill({ contentType: 'text/html', body: playerHTML }));
@@ -33,10 +37,23 @@ try {
       const href = await page.locator('#layout-body a[href^="/live/"]').first().getAttribute('href');
       await page.goto(new URL(href, 'https://chzzk.naver.com').href, { waitUntil: 'domcontentloaded' });
     }
-    await page.locator('.pzp-pc').waitFor({ state: 'attached' });
+    try { await page.locator('.pzp-pc').waitFor({ state: 'attached', timeout: 15000 }); }
+    catch {
+      console.log(JSON.stringify({ mode: 'public-page-unavailable', title: await page.title(),
+        headings: await page.locator('h1,h2').allTextContents(), errors: errors.map(value => value.split(':')[0]) }, null, 2));
+      // The native player can refuse a headless browser's high-quality codec.
+      // Continue only with the extension's independent public preview probe;
+      // do not dismiss the notice or claim native player verification.
+    }
   }
   // DevTools MAIN evaluation checks production logic, not extension loading or
   // ISOLATED Chrome APIs. The distinction is retained in the validation record.
+  if (process.argv.includes('--hls-js')) await page.evaluate(() => {
+    const native = HTMLMediaElement.prototype.canPlayType;
+    HTMLMediaElement.prototype.canPlayType = function(type) {
+      return type === 'application/vnd.apple.mpegurl' ? '' : native.call(this, type);
+    };
+  });
   for (const file of scripts) await page.evaluate(await fs.readFile(file, 'utf8'));
   await page.evaluate(await fs.readFile('config.js', 'utf8'));
   await page.addStyleTag({ content: await fs.readFile('web/main.css', 'utf8') });
@@ -46,7 +63,7 @@ try {
       revision: 100, config: normalizeConfig({ customPreview: true }),
       i18n: { fastForward: 'Live edge', enableCompressor: 'Enable compressor', disableCompressor: 'Disable compressor', speed2x: '2x' } }, location.origin);
   });
-  await page.locator('.knife-comp button').waitFor();
+  if (!process.argv.includes('--public') || await page.locator('.pzp-pc').count()) await page.locator('.knife-comp button').waitFor();
   if (process.argv.includes('--public')) {
     await page.evaluate(() => {
       const anchor = document.createElement('a'); anchor.href = location.href;
@@ -59,7 +76,9 @@ try {
       const status = window[Symbol.for('cheese-knife.runtime.v1')].statuses.livePreview;
       return status?.state === 'ready' || status?.state === 'limited';
     }, null, { timeout: 20000 });
-    console.log(JSON.stringify(await page.evaluate(() => {
+    const before = await page.locator('.knife-preview video').evaluate(video => ({ time: video.currentTime, frames: video.getVideoPlaybackQuality?.().totalVideoFrames })).catch(() => null);
+    await page.waitForTimeout(2000);
+    const report = await page.evaluate(() => {
       const runtime = window[Symbol.for('cheese-knife.runtime.v1')];
       const video = document.querySelector('.knife-preview video');
       const main = runtime.state.player?.video;
@@ -70,7 +89,15 @@ try {
         fastForwardButtons: document.querySelectorAll('.knife-ff').length,
         compressorButtons: document.querySelectorAll('.knife-comp').length,
         preview: video ? { readyState: video.readyState, time: video.currentTime, decodedFrames: video.getVideoPlaybackQuality?.().totalVideoFrames } : null };
-    }), null, 2));
+    });
+    await page.evaluate(() => window[Symbol.for('cheese-knife.runtime.v1')].preview.hide());
+    await page.waitForTimeout(500);
+    const stoppedAt = mediaRequests;
+    await page.waitForTimeout(2000);
+    const afterHide = await page.evaluate(() => ({ mediaRemoved: !document.querySelector('.knife-preview video'), panelHidden: document.querySelector('.knife-preview')?.hidden === true }));
+    console.log(JSON.stringify({ browser: browser.version(), forcedHlsJs: process.argv.includes('--hls-js'), ...report, before, afterHide, mediaRequestsAfterSettling: mediaRequests - stoppedAt }, null, 2));
+    if (!report.preview || !before || report.preview.time <= before.time || report.preview.decodedFrames <= before.frames || !afterHide.mediaRemoved || !afterHide.panelHidden)
+      throw new Error('Public preview did not demonstrate advancing video frames and cleanup');
   } else {
     await page.locator('.pzp-pc__playback-switch:not(.knife-ff)').click();
     await page.locator('video').evaluate(async video => {

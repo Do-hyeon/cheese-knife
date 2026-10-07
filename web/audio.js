@@ -44,7 +44,7 @@
     entry.connected = true; connected.add(entry);
   };
   const bypass = entry => {
-    if (entry.source && entry.connected) { ramp(entry.dry.gain, 1); ramp(entry.wet.gain, 0); }
+    if (entry.source) { ramp(entry.dry.gain, 1); ramp(entry.wet.gain, 0); }
   };
   const eligible = video => {
     if (!video || video.ownerDocument !== document || video.mediaKeys) return false;
@@ -110,13 +110,19 @@
       if (entry.video.isConnected || !entry.video.paused) { entry.detachedSince = null; continue; }
       entry.detachedSince ||= Date.now();
       if (Date.now() - entry.detachedSince >= 5000) {
-        for (const node of [entry.source, entry.dry, entry.compressor, entry.gainNode, entry.wet]) node.disconnect();
+        // MediaElementSource interception is irreversible. Retire the expensive
+        // wet graph and our strong reference, never the video's audible path.
+        runtime.audio.bypass(entry.video);
+        for (const node of [entry.source, entry.compressor, entry.gainNode, entry.wet]) node.disconnect();
+        entry.source.connect(entry.dry);
         entry.connected = false; connected.delete(entry);
       }
     }
   }, 1000);
   scope.on(window, 'pagehide', event => {
-    for (const entry of connected) runtime.audio.bypass(entry.video);
-    if (!event.persisted) scope.dispose();
+    if (!event.persisted) {
+      for (const entry of connected) runtime.audio.bypass(entry.video);
+      scope.dispose();
+    }
   });
 })();

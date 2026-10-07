@@ -140,7 +140,11 @@
     const interesting = '#root, #layout-body, #sidebar, #live_player_layout, #player_layout, .pzp-pc, .pzp-pc__video, .pzp-pc__bottom-buttons-left, #license, video, section, aside, [role="tablist"]';
     if (runtime.state.player && !runtime.state.player.pzp.isConnected) return runtime.schedule();
     for (const mutation of mutations) {
-      for (const node of [...mutation.addedNodes, ...mutation.removedNodes]) {
+      const changed = [...mutation.addedNodes, ...mutation.removedNodes];
+      const foreign = changed.some(node => node.nodeType === 1 && !node.classList?.contains('knife-owned') && !node.closest?.('.knife-owned'));
+      if (foreign && !mutation.target.closest?.('.knife-owned') &&
+        mutation.target.closest?.('.pzp-pc__bottom-buttons-left, .pzp-pc__video, #license')) return runtime.schedule();
+      for (const node of changed) {
         if (node.nodeType !== 1 || node.classList?.contains('knife-owned') || node.closest?.('.knife-owned')) continue;
         if (node.matches?.(interesting) || node.querySelector?.(interesting)) return runtime.schedule();
       }

@@ -2,11 +2,11 @@
 // authentication state, raw playback URLs, chat content or tokens are exported.
 import { chromium } from 'playwright';
 
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, ...(process.argv.includes('--chrome') ? { channel: 'chrome' } : {}) });
 try {
   const context = await browser.newContext({ locale: 'ko-KR', viewport: { width: 1365, height: 900 } });
   const page = await context.newPage();
-  let target = process.argv[2] || 'https://chzzk.naver.com/lives';
+  let target = process.argv.slice(2).find(value => !value.startsWith('--')) || 'https://chzzk.naver.com/lives';
   const parsed = new URL(target);
   if (parsed.origin !== 'https://chzzk.naver.com' || parsed.search || parsed.hash) throw new Error('Expected a public CHZZK URL without query/hash');
   await page.goto(target, { waitUntil: 'domcontentloaded', timeout: 45000 });
@@ -59,7 +59,7 @@ try {
         api = { httpStatus: response.status, code: data.code, status: data.content?.status,
           media: media.map(item => ({ id: item.mediaId, hasPath: typeof item.path === 'string', trackCount: item.encodingTrack?.length || 0 })) };
         const hls = media.find(item => ['HLS', 'LLHLS'].includes(item.mediaId) && item.path?.startsWith('https://'));
-        if (hls) {
+        if (hls && !data.content?.adult) {
           const playlist = await fetch(hls.path, { credentials: 'omit', signal: AbortSignal.timeout(7000) });
           const body = await playlist.text();
           api.playlist = { httpStatus: playlist.status, isM3u8: body.startsWith('#EXTM3U'), isMaster: body.includes('#EXT-X-STREAM-INF'), hasLowLatencyParts: body.includes('#EXT-X-PART') };
@@ -74,6 +74,9 @@ try {
       chatFilter: !!controller, blindListener: typeof controller?.notiBlindListener === 'function',
       licenseMenu: !!document.getElementById('license'),
       pzpCount: document.querySelectorAll('.pzp-pc').length,
+      mediaCandidates: { videos: document.querySelectorAll('video').length,
+        playerClasses: [...document.querySelectorAll('[class*="pzp"], [id*="player"]')].slice(0, 12).map(node => ({ tag: node.tagName, id: node.id, classes: String(node.className) })),
+        unsupportedBrowserNotice: [...document.querySelectorAll('main, [role="dialog"]')].some(node => node.innerText?.includes('이 브라우저는 고화질 라이브를 감상할 수 없습니다')) },
       video: video ? { sourceKind: video.currentSrc.startsWith('blob:') ? 'blob' : 'other',
         crossOrigin: video.crossOrigin, paused: video.paused, readyState: video.readyState,
         finiteDuration: Number.isFinite(video.duration), buffered: ranges(video.buffered), seekable: ranges(video.seekable) } : null,

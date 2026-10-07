@@ -55,3 +55,10 @@ test('quick VOD release preserves original user speed', async t => {
   await flush();
   assert.equal(video.playbackRate, 1.5);
 });
+
+test('native replacement of control children automatically restores owned controls', async t => {
+  const dom = setup(t);
+  dom.window.document.querySelector('.pzp-pc__bottom-buttons-left').innerHTML = '<button class="pzp-pc__playback-switch"></button><div class="pzp-pc__volume-control"></div>';
+  await flush(); await flush();
+  assert.equal(dom.window.document.querySelectorAll('.knife-ff').length, 1);
+});

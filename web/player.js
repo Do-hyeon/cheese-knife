@@ -50,8 +50,13 @@
   };
   const mount = player => {
     const scope = runtime.createScope();
-    const state = { ...player, scope, nodes: new Set(), pointer: null, generation: runtime.generation };
-    scope.add(() => { runtime.audio?.bypass(state.video); for (const node of state.nodes) node.remove(); });
+    const state = { ...player, scope, nodes: new Set(), pointer: null, path: runtime.state.route.path };
+    scope.add(() => {
+      // UI ownership is not audio ownership: React can remount controls/layout
+      // while keeping the very same irreversibly intercepted media element.
+      if (runtime.selectPlayer()?.video !== state.video) runtime.audio?.bypass(state.video);
+      for (const node of state.nodes) node.remove();
+    });
     const track = node => { state.nodes.add(node); return node; };
     state.track = track;
     const stopHold = () => {
@@ -179,7 +184,7 @@
   runtime.player = { seek, liveEdge, ranges, readStats };
   runtime.subscribe(state => {
     const player = state.player;
-    if (current && (!runtime.configReady || !player || current.pzp !== player.pzp || current.video !== player.video || current.generation !== runtime.generation)) {
+    if (current && (!runtime.configReady || !player || current.pzp !== player.pzp || current.video !== player.video || current.layout !== player.layout || current.path !== state.route.path)) {
       current.scope.dispose(); current = null;
     }
     if (!runtime.configReady || !player?.video) return;

@@ -12,6 +12,7 @@
   let sidebar;
   let timestampRoots;
   const popups = new Map();
+  const videoMetadata = new Map();
   const pad = value => String(value).padStart(2, '0');
   const formatTime = value => {
     const total = Math.max(0, Math.floor(value / 1000));
@@ -136,6 +137,7 @@
     if (!root || timestampRoots.has(root)) return;
     timestampRoots.add(root);
     const apply = () => {
+      let supported = 0;
       for (const node of root.querySelectorAll('[class^="_item_"], [class^="live_chatting_item__"], [class^="vod_chatting_item__"]')) {
         const props = propsOf(node);
         const message = props?.chatMessage || props?.children?.props?.chatMessage;
@@ -143,26 +145,29 @@
         if (!message || !target) continue;
         if (isLive) {
           const date = new Date(message.time);
-          if (Number.isFinite(date.getTime())) target.dataset.timestamp = pad(date.getHours()) + ':' + pad(date.getMinutes());
-        } else if (Number.isFinite(message.playerMessageTime)) target.dataset.timestamp = formatTime(message.playerMessageTime);
+          if (Number.isFinite(date.getTime())) { target.dataset.timestamp = pad(date.getHours()) + ':' + pad(date.getMinutes()); supported++; }
+        } else if (Number.isFinite(message.playerMessageTime)) { target.dataset.timestamp = formatTime(message.playerMessageTime); supported++; }
       }
+      runtime.setStatus('chatTimestamp', supported ? 'ready' : 'pending', supported ? '' : 'message-props-unavailable');
     };
     apply();
     scope.observe(new MutationObserver(apply), root, { childList: true, subtree: true, characterData: true });
-    runtime.setStatus('chatTimestamp', 'ready');
   };
   const attachChat = (container, isLive, scope) => {
-    if (!container || chats.has(container)) return;
-    chats.add(container);
-    resizeChat(isLive ? container : container.closest('aside') || container.parentElement, scope);
+    if (!container) return;
     timestamps(container, isLive, scope);
-    scope.observe(new MutationObserver(() => timestamps(container, isLive, scope)), container, { childList: true, subtree: true });
+    if (chats.has(container)) { chats.get(container).find(); return; }
+    resizeChat(isLive ? container : container.closest('aside') || container.parentElement, scope);
+    const record = { timer: null, restore: null, controller: null, replacement: null };
     let attempts = 0;
     const findController = () => {
       if (scope.disposed || !container.isConnected) return;
       const controller = stateOf(container, value => typeof value.messageFilter === 'function');
+      if (controller === record.controller && controller?.messageFilter === record.replacement) return;
+      record.restore?.(); record.restore = null; record.controller = null;
       if (!controller) {
-        if (++attempts < 20) scope.timeout(findController, 100);
+        if (record.timer) return;
+        if (++attempts < 20) record.timer = scope.timeout(() => { record.timer = null; findController(); }, 100);
         else {
           runtime.setStatus('donationChat', config.hideDonation ? 'limited' : 'disabled', config.hideDonation ? 'chat-controller-unavailable' : '');
           runtime.setStatus('deletedChat', config.showDeleted ? 'limited' : 'disabled', config.showDeleted ? 'chat-controller-unavailable' : '');
@@ -174,12 +179,21 @@
         return original.call(this, message) && !(config.hideDonation === true && message?.type === 10);
       };
       controller.messageFilter = replacement;
-      scope.add(() => { if (controller.messageFilter === replacement) controller.messageFilter = original; });
+      record.controller = controller; record.replacement = replacement;
+      record.restore = () => { if (controller.messageFilter === replacement) controller.messageFilter = original; };
       runtime.setStatus('donationChat', config.hideDonation ? 'ready' : 'disabled');
       // The current site has no webpack JSX factory. Do not fabricate React
       // elements or suppress the native blind listener with guessed internals.
       runtime.setStatus('deletedChat', config.showDeleted ? 'limited' : 'disabled', config.showDeleted ? 'jsx-adapter-unavailable' : '');
     };
+    record.find = findController; chats.set(container, record);
+    scope.add(() => record.restore?.());
+    scope.observe(new MutationObserver(mutations => {
+      timestamps(container, isLive, scope);
+      if (mutations.some(mutation => [...mutation.addedNodes, ...mutation.removedNodes].some(node => node.nodeType === 1 && !node.closest?.('.knife-owned')))) {
+        attempts = 0; findController();
+      }
+    }), container, { childList: true, subtree: true });
     findController();
   };
   const bindSidebar = (node, scope) => {
@@ -223,14 +237,56 @@
     scope.on(button, 'click', () => { location.href = '/live/' + state.route.id; });
     list.append(button); scope.add(() => button.remove());
   };
+  const bindStartTimes = (body, scope) => {
+    const pending = new WeakSet();
+    scope.on(body, 'mouseover', async event => {
+      const node = event.target.closest?.('[class^="video_information_count__"], span[class^="video_card_item__"]');
+      if (!node || node.contains(event.relatedTarget) || node.dataset.knifeTooltip || pending.has(node)) return;
+      const annotate = date => {
+        if (scope.disposed || !node.isConnected || typeof date !== 'string' || !date.trim()) return;
+        const text = (i18n.liveStart || 'Live start') + ': ' + date;
+        node.dataset.knifeTooltip = text;
+        scope.add(() => { if (node.dataset.knifeTooltip === text) delete node.dataset.knifeTooltip; });
+        runtime.setStatus('startTime', 'ready');
+      };
+      if (node.className.startsWith('video_information_count__')) {
+        const detail = stateOf(node, value => Array.isArray(value) && typeof value[0]?.openDate === 'string');
+        if (detail) annotate(detail[0].openDate);
+        else runtime.setStatus('startTime', 'limited', 'start-metadata-unavailable');
+        return;
+      }
+      if (node.nextElementSibling) return;
+      const link = node.parentElement?.parentElement?.querySelector('a[href]');
+      let url;
+      try { url = new URL(link?.href); } catch { return; }
+      const match = url.origin === location.origin && url.pathname.match(/^\/video\/(\d+)\/?$/);
+      if (!match) return;
+      const cached = videoMetadata.get(match[1]);
+      if (cached && cached.expires > Date.now()) { annotate(cached.date); return; }
+      const controller = new AbortController(); const abort = scope.add(() => controller.abort());
+      const timeout = setTimeout(abort, 5000); pending.add(node);
+      try {
+        const response = await fetch('https://api.chzzk.naver.com/service/v3/videos/' + match[1], { credentials: 'include', signal: controller.signal });
+        if (!response.ok) throw new Error('metadata-unavailable');
+        const info = await response.json();
+        if (scope.disposed || !node.isConnected || link.href !== url.href) return;
+        if (info.code !== 200 || typeof info.content?.liveOpenDate !== 'string') throw new Error('metadata-unavailable');
+        videoMetadata.delete(match[1]); videoMetadata.set(match[1], { date: info.content.liveOpenDate, expires: Date.now() + 1800000 });
+        while (videoMetadata.size > 100) videoMetadata.delete(videoMetadata.keys().next().value);
+        annotate(info.content.liveOpenDate);
+      } catch { if (!scope.disposed) runtime.setStatus('startTime', 'limited', 'start-metadata-unavailable'); }
+      finally { clearTimeout(timeout); pending.delete(node); }
+    });
+  };
   runtime.subscribe(state => {
     config = runtime.config; i18n = runtime.i18n;
     for (const [node, scope] of popups) if (!node.isConnected) scope.dispose();
     if (!runtime.configReady) return;
     if (!owner || ownerGeneration !== runtime.generation) {
       owner?.dispose(); owner = runtime.createScope(); ownerGeneration = runtime.generation;
-      chats = new WeakSet(); anchors = new WeakSet(); timestampRoots = new WeakSet(); sidebar = null;
+      chats = new WeakMap(); anchors = new WeakSet(); timestampRoots = new WeakSet(); sidebar = null;
       if (state.body) {
+        bindStartTimes(state.body, owner);
         owner.on(state.body, 'drop', event => {
           const href = event.dataTransfer?.getData('knife-data');
           if (!config.popupPlayer || !liveURL(href)) return;
