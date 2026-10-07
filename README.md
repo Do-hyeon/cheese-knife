@@ -41,6 +41,8 @@ Node 24.x에서 `npm ci`, `npm test`, `npm run check`, `npm run build`를 실행
 
 합성 신호의 컴프레서 출력 측정은 `node scripts/check-audio-quality.mjs --chrome`으로 실행합니다. 별도 프로필에서 스피커로 0을 출력하는 캡처 경로를 사용하며 방송 음성을 녹음하지 않습니다. 결과는 ignored `output/audio-quality/report.json`에 저장합니다.
 
+현재 DOM용 스타일의 실제 렌더링 검사는 `node scripts/check-styles.mjs --chrome`으로 실행합니다. [설치본 미리보기 시간 측정·스타일 점검](docs/superpowers/validation/2026-10-08-preview-timing-and-style-audit.md)에 1초 설정과 임시 0.1초 비교, 네 가지 스타일 수정 후보 및 아직 남은 검증을 기록했습니다. 브라우저 검사는 일반 `npm test`와 별도입니다.
+
 [Website](https://www.chz.app/) | [Discord](https://discord.gg/9kq3UNKAkz) | [Chrome Web Store (Chromium, Edge, Whale 호환)](https://chromewebstore.google.com/detail/nfkfgkkhgglkgnlppncolmpekidapkjh) | [Firefox Add-ons](https://addons.mozilla.org/addon/cheese-knife/) | [English](./README-en.md)
 
 ![스크린샷](./images/ko.png)

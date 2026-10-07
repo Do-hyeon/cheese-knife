@@ -253,3 +253,14 @@
   + .live_chatting_username_nickname__dDbbj {
   margin-left: calc(var(--knife-chat-size-20) + 1px) !important;
 }
+
+/* Current chat CSS modules; scope generic prefixes to actual chat messages. */
+#aside-chatting [role="log"] [class^="_chatting_message_"],
+#aside-chatting [role="log"] [class^="_nickname_"] {
+  font-size: calc(var(--knife-chat-size-1, 0px) + 14px) !important;
+}
+
+#aside-chatting [role="log"] [class^="_chatting_message_"] img {
+  width: calc(var(--knife-chat-size-1, 0px) + 24px) !important;
+  height: calc(var(--knife-chat-size-1, 0px) + 24px) !important;
+}

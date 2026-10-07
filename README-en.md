@@ -18,6 +18,8 @@ Deleted-message display and automatic sidebar refresh are currently limited. Sta
 
 Develop with Node 24: `npm ci`, `npm test`, `npm run check`, `npm run build`. The package excludes dependencies, tests and backup files.
 
+Run explicit native CSS checks with `node scripts/check-styles.mjs --chrome`; these do not add a browser requirement to the Node test suite. [Installed preview timing and style audit](docs/superpowers/validation/2026-10-08-preview-timing-and-style-audit.md) records the configured one-second wait, temporary 100ms comparison, four scoped style candidates and remaining acceptance.
+
 [Website](https://www.chz.app/) | [Discord](https://discord.gg/9kq3UNKAkz) | [Chrome Web Store (compatible with Chromium, Edge, Whale)](https://chromewebstore.google.com/detail/nfkfgkkhgglkgnlppncolmpekidapkjh) | [Firefox Add-ons](https://addons.mozilla.org/addon/cheese-knife/) | [Korean](./README-en.md)
 
 ![Screenshot](./images/en.png)

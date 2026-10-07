@@ -62,6 +62,7 @@
 **Interfaces:** STYLES의 25개 항목을 해당 화면과 연결하고 사용자 저장 설정을 보존한다. 실제 설정 UI 접근이 불가할 경우 모듈/임시 CSS 검사는 별도 수준으로 기록한다.
 
 - [ ] player: fit-player, volume-percentage, hide-ff, hide-comp.
+- [x] 현재 live/종료 화면의 studio/topics/offline/chat-font 선택자 불일치 보완 후보. native fixture6/6, 실제 DOM 임시 A/B·복원 완료. 실제 저장 옵션/등록 검사는 새 확장 새로고침을 기다림.
 - [ ] chat: chat-resize, chat-font-size, chat-timestamp, hide-ranking, hide-mission, left-chat.
 - [ ] sidebar: hide-offline, hide-recommended, hide-schedule, hide-sidebar-partner, hide-shortcut, right-sidebar.
 - [ ] toolbar: static-logo, hide-topics, hide-studio, auto-hide-toolbar.
