@@ -8,9 +8,11 @@
 
 Vue 없이 플레이어 버튼·컴프레서·VOD 길게 눌러 2배속을 제공하고 HLS.js 미리보기, 화면 전환 수명 관리, 기능별 준비 상태를 추가했습니다. [설계](docs/superpowers/specs/2026-10-08-chzzk-compatibility-design.md), [검토](docs/superpowers/reviews/2026-10-08-chzzk-compatibility-review.md), [검증 결과와 제한](docs/superpowers/validation/2026-10-08-chzzk-compatibility.md)을 함께 확인하세요.
 
-자동 테스트 61개와 별도 브라우저의 실제 오디오·공개 방송 미리보기 검증을 통과했습니다. [독립 구현 검토](docs/superpowers/reviews/2026-10-08-implementation-review.md)와 [실제 Chrome VOD 길게 누르기 수정 검토](docs/superpowers/reviews/2026-10-08-vod-hold-review.md)도 공개합니다. 설치된 Chrome에서 일부 기능을 검증했으나 전체 기능 검증과 출시 승인은 아직 완료되지 않았습니다.
+자동 테스트 64개와 별도 브라우저의 실제 오디오·공개 방송 미리보기 검증을 통과했습니다. [독립 구현 검토](docs/superpowers/reviews/2026-10-08-implementation-review.md)와 [실제 Chrome VOD 길게 누르기 수정 검토](docs/superpowers/reviews/2026-10-08-vod-hold-review.md)도 공개합니다. 설치된 Chrome에서 일부 기능을 검증했으나 전체 기능 검증과 출시 승인은 아직 완료되지 않았습니다.
 
 Gain 바를 48px·끝 여백 8px로 조정해 실제 라이브에서 확인했습니다. [합성 신호 음질 검사](docs/superpowers/validation/2026-10-08-audio-quality-and-gain-spacing.md)는 기본 설정의 출력과 전환 시 개선 후보를 기록하며, 실제 음성·음악의 음질 보장은 아닙니다. 오디오 처리 방식은 이번 검사에서 변경하지 않았습니다.
+
+[후속 Gain 평활화 후보](docs/superpowers/validation/2026-10-08-gain-smoothing-follow-up.md)는 값 변경을 10ms 동안 이어지게 처리합니다. 합성 신호 검사는 통과했으나, 수정 후보의 실제 설치본 검증은 사용자 확장 새로고침을 기다리는 중입니다. 사용자 환경의 미리보기 문제 원인은 아직 확정하지 못했으며 기여 PR은 열지 않았습니다.
 
 ### 로컬 Chrome에서 시험하기
 

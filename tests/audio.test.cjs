@@ -7,7 +7,7 @@ function setup(t, suspended = false, manualClock = false) {
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
   const video = dom.window.document.querySelector('video');
   Object.defineProperty(video, 'currentSrc', { value: 'blob:https://chzzk.naver.com/test-media', configurable: true });
-  const parameter = value => ({ value, setValueAtTime(next) { this.value = next; }, cancelScheduledValues() {}, linearRampToValueAtTime(next) { this.value = next; } });
+  const parameter = value => ({ value, events: [], setValueAtTime(next, at) { this.events.push(['set', next, at]); this.value = next; }, cancelScheduledValues(at) { this.events.push(['cancel', at]); }, linearRampToValueAtTime(next, at) { this.events.push(['ramp', next, at]); this.value = next; } });
   const nodes = [];
   const node = type => { const value = { type, outputs: new Set(), connect(dest) { this.outputs.add(dest); }, disconnect() { this.outputs.clear(); } }; nodes.push(value); return value; };
   let resolveResume;
@@ -101,4 +101,40 @@ test('sidebar identity changes and player UI reparenting preserve compression', 
   runtime(dom).reconcile();
   assert.equal(audio.getState(video), 'on'); assert.equal(sources(), 1);
   assert.equal(dom.window.document.querySelectorAll('.knife-comp').length, 1);
+});
+
+test('Gain changes schedule a short transition while UI and stored target update immediately', async t => {
+  const { audio, video, nodes, context, dom } = setup(t);
+  await audio.setEnabled(video, true);
+  const compressor = nodes.find(node => node.type === 'compressor');
+  const parameter = [...compressor.outputs][0].gain;
+  context().currentTime = 1;
+  assert.equal(audio.setGain(video, 1.5), 1.5);
+  assert.equal(dom.window.localStorage.getItem('knifeGain'), '1.5');
+  assert.deepEqual(parameter.events.slice(-3), [['cancel',1],['set',1,1],['ramp',1.5,1.01]]);
+});
+
+test('rapid Gain retargeting continues from the in-flight value instead of jumping to the previous target', async t => {
+  const { audio, video, nodes, context } = setup(t);
+  await audio.setEnabled(video, true);
+  const parameter = [...nodes.find(node => node.type === 'compressor').outputs][0].gain;
+  context().currentTime = 2; audio.setGain(video, 2);
+  context().currentTime = 2.005; audio.setGain(video, 0);
+  const [cancel,anchor,end] = parameter.events.slice(-3);
+  assert.deepEqual(cancel,['cancel',2.005]);
+  assert.equal(anchor[0],'set'); assert.ok(Math.abs(anchor[1]-1.5)<1e-10);
+  assert.equal(anchor[2],2.005); assert.equal(end[0],'ramp'); assert.equal(end[1],0);
+  assert.ok(Math.abs(end[2]-2.015)<1e-10);
+});
+
+test('unchanged Gain during configuration or repeated enable does not restart its transition', async t => {
+  const { audio, video, nodes, context } = setup(t);
+  await audio.setEnabled(video, true);
+  const parameter = [...nodes.find(node => node.type === 'compressor').outputs][0].gain;
+  context().currentTime = 3; audio.setGain(video, 1.5);
+  const count = parameter.events.length;
+  context().currentTime = 3.002; audio.configure(); await audio.setEnabled(video, true);
+  assert.equal(parameter.events.length, count);
+  context().currentTime = 3.1; audio.setGain(video, 0);
+  assert.deepEqual(parameter.events.slice(-3),[['cancel',3.1],['set',1.5,3.1],['ramp',0,3.11]]);
 });

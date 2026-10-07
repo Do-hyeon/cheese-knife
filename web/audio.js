@@ -27,12 +27,32 @@
     if (parameter.linearRampToValueAtTime) parameter.linearRampToValueAtTime(value, context.currentTime + 0.01);
     else parameter.value = value;
   };
+  const applyGain = entry => {
+    const parameter = entry.gainNode.gain;
+    const previous = entry.gainTransition;
+    const now = context.currentTime;
+    if (!previous) {
+      // The new wet graph is not connected yet: initialize without a fade-in.
+      parameter.value = entry.gain;
+      entry.gainTransition = { from: entry.gain, to: entry.gain, start: now, end: now };
+      return;
+    }
+    if (previous.to === entry.gain) return;
+    // Track our own linear automation so rapid changes anchor at the in-flight
+    // value, rather than the previous target or an implementation-specific .value.
+    const progress = previous.end > previous.start ? Math.max(0, Math.min(1, (now - previous.start) / (previous.end - previous.start))) : 1;
+    const from = previous.from + (previous.to - previous.from) * progress;
+    parameter.cancelScheduledValues(now);
+    parameter.setValueAtTime(from, now);
+    parameter.linearRampToValueAtTime(entry.gain, now + 0.01);
+    entry.gainTransition = { from, to: entry.gain, start: now, end: now + 0.01 };
+  };
   const apply = entry => {
     if (!entry.compressor) return;
     for (const [key, [min, max, fallback]] of Object.entries(limits)) {
       entry.compressor[key].value = number(runtime.config[`compressor${key[0].toUpperCase()}${key.slice(1)}`], min, max, fallback);
     }
-    entry.gainNode.gain.value = entry.gain;
+    applyGain(entry);
   };
   const connect = entry => {
     if (entry.connected) return;
