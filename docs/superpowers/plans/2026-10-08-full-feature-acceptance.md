@@ -40,6 +40,7 @@
 - [x] `node --test tests/*.test.cjs`70/70, build, source/dist check, 독립 검토 완료; 후보 커밋으로 보존. 리뷰 Minor: 시스템 시각 조정에 영향받는 Date.now deadline. monotonic 보완은 다음 변경 묶음에서 regression과 함께 검토.
 - [ ] 사용자 확장 새로고침 후 실제 설치본 hover 시간/영상 진행/음소거/정리·Gain 입력·재생 유지 검사.
 - [x] 사용자 미리보기 정상 확인(설정0.1초). 설치본 Gain 키보드 충돌 재현/회귀 후보; 최종 설치본 검사는 새로고침 후 남음.
+- [x] 다음 설치본 Gain 키보드150→155→150%/on/재생 유지/off 복원 확인. 팔로잉 자동42개 및30초 갱신6회, VOD timestamp 행·handle 관찰.
 
 ### Task 2: 기능 설정 전체 매트릭스
 
@@ -71,6 +72,7 @@
 - [ ] home/explore/misc: hide-recommended-live, top-explore, hide-blocked, hide-live-badge, rectangle-profile.
 - [ ] 필요한 실제 화면에서 각 OFF/ON 및 기본 복원 확인. 오래된 선택자 불일치는 현행 DOM으로 제한 수정하고 해당 소비 동작의 regression을 작성.
 - [x] right-sidebar/static-logo/rectangle-profile/hide-live-badge와 VOD chat-resize/chat-font-size/left-chat 후보. native CSS15/15, 가능한 현행 DOM A/B·복원; 실제 옵션 조합 미완료.
+- [x] 사용자 live 왼쪽 채팅 화면 축소59px 재현. native main column과 바깥chat wrapper 관계 확인; 회귀 RED→GREEN16/16. 현재 문서 임시 복구1963px/재생 유지. 영구 후보는 추가 확장 새로고침 후 검사 필요.
 - [ ] 작은 화면, wide/normal, fullscreen/PIP, SPA/bfcache, 스타일 조합 충돌과 cleanup 검사.
 
 ### Task 4: 기여 PR 완료 조건

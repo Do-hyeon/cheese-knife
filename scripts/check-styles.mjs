@@ -96,6 +96,14 @@ try{
     await page.setContent(vodFixture);await page.addStyleTag({content:await fs.readFile('styles/left-chat.css','utf8')});
     assert.equal(await page.locator('#vod-aside').evaluate(n=>getComputedStyle(n.parentElement).flexDirection),'row-reverse');
   });
+  await checkNative('live left-chat reverses the outer chat row without shrinking the inner player main',async()=>{
+    await page.setViewportSize({width:1200,height:900});
+    await page.setContent('<style>#layout-body>div{display:flex;width:1000px}main{display:flex;flex-direction:column;flex:1;min-width:0}.contents{min-width:60px}.player{height:300px;width:100%}#aside-chatting{width:200px;flex:none}</style><div id="layout-body"><div><main class="_container_live"><div class="contents"><div id="live_player_layout" class="player"></div></div></main><aside id="aside-chatting"></aside></div></div><main id="foreign-main" class="_container_unrelated"><div>Other view</div></main>');
+    await page.addStyleTag({content:await fs.readFile('styles/left-chat.css','utf8')});
+    assert.equal(await page.locator('#live_player_layout').evaluate(n=>n.getBoundingClientRect().width),800,'player retains full remaining width');
+    assert.equal(await page.locator('#aside-chatting').evaluate(n=>getComputedStyle(n.parentElement).flexDirection),'row-reverse');
+    assert.equal(await page.locator('#foreign-main').evaluate(n=>getComputedStyle(n).flexDirection),'column','other main containers stay unchanged');
+  });
   console.log(JSON.stringify({browser:browser.version(),checks:checked,passed:checked-failures.length,failures},null,2));
   assert.equal(failures.length,0,'Native CSS behavior regressions');
 }finally{await browser.close();}
