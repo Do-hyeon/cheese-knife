@@ -143,3 +143,11 @@ ignored 로그는 deleted-chat-red/props-red/readonly-red/focused-green/full-nod
 사용자가 확장 새로고침을 완료했다. 같은 browser7의 새 own live에서 최초 허용 MAIN 조회는 configuration ready/live route/showDeleted=false/hideDonation=false를 확인했다. 이후 controller 원본 참조를 보존하고 임시 showDeleted ON을 적용하려던 명령은 문서 응답 대기 제한으로 실행 전에 거부됐다. probe Symbol/설정/handler mutation은 실행되지 않았다. 같은 제한을 다른 transport로 우회하거나 반복 Chrome 재시작을 요청하지 않았다.
 
 일반 read-only DOM 조회는 가능했고 주 live video1920/ready4/playing,chat root 존재/삭제 표지0을 관찰했다. 이는 OFF/일반 재생 관찰이며 삭제 표시 성공/새 callback 연결 PASS가 아니다. 설치본의 실제 설정 UI를 통한 ON 및 팝업의 해당 탭 capability 문구 확인을 사용자에게 요청했고 own 탭은 handoff로 보존했다. 정확한 기존 옵션명은 ‘블라인드된 메시지 보기’, 상태 feature명은 ‘삭제된 채팅 표시’다. 원래 OFF를 보존 기준으로 기록했고 시험 후 원복할 예정이다. 이번에는 제품/build/추가 suite/PR를 변경하거나 기존158/94/17을 fresh 실행으로 재표기하지 않았다.
+
+### 설치본 저장 옵션 ON의 사용자 상태 확인
+
+사용자가 삭제 메시지가 없어 확인하기 어렵다고 알렸다. 채팅 내용이 아니라 확장 팝업의 readiness 문구를 요청한 것임을 설명했고, 이어서 사용자가 ‘준비됨’을 보고했다. 이는 저장 옵션 ON 및 설치본의 검증된 native 연결 계약 수용에 대한 사용자 보고다. 자동 raw controller identity 측정이나 실제 삭제 처리/취소선·label 렌더링 성공으로 환산하지 않는다.
+
+새 own live를 일반 DOM API로만 검사했다. 최초 player/chat 없는 로딩 상태는 수용에서 제외하고, player video attached 후 chat 존재/videoWidth1920/ready4/playing/삭제 marker0을 관찰했다. height는 이번 조회에서 읽지 않았으므로 새 해상도 전체 확인이라고 하지 않는다. 표지 스타일 표본은 비어 있었다. 원문/사용자 정보/이벤트 payload를 읽거나 삭제 이벤트를 emit하지 않았으며, 자연 발생 삭제 표시 사례는 미검증이다. 새 own 탭을 닫았고 제품·저장 설정·미디어를 agent가 변경하지 않았다.
+
+원래 OFF 복원을 위해 사용자에게 옵션을 다시 끄고 해당 live 팝업 상태가 ‘끔’인지 확인해 달라고 요청했다. OFF 복원은 아직 사용자 응답 전이다. 별도 자동검사158/94/17은 이전 결과로 유지하며, 이번 사용자 준비 상태/marker0 관찰을 전체 복구 또는 기여 PR 승인으로 바꾸지 않는다.
