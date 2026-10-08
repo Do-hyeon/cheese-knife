@@ -183,3 +183,15 @@ own 페이지의 DOM에서 정상 card3개는 DIV container/direct thumbnail과 
 허용된 page-origin CDP DOM/CSS 읽기로 해당 미션 container의 matched styles를 확인했다. mission을 포함한 일치 규칙0, inline display0이었다. DOM/CSS domain을 비활성화했다. 이 자료는 현재 문서에 숨김 규칙이 일치하지 않는다는 관찰이지 CSS 우선순위 결함·설정 OFF·background 등록 실패 중 어느 원인인지 확정한 것은 아니다. 브라우저 제한 URL의 확장 UI나 저장값을 우회 조회하지 않는다. 두 옵션의 실제 체크 및 페이지 적용 상태를 사용자에게 확인해야 한다.
 
 제품/CSS/dist/설정/계정/미디어/viewport를 변경하지 않았고 임시 CSS를 넣지 않았다. own 검사 탭은 수동 설정 적용 후 재검사를 위해 handoff로 보존한다. 원래 두 옵션 OFF의 복원 기준은 유지한다. 이번 관찰을 이전 자동158/108/17의 fresh 재실행 또는 실제 미션 숨김 성공으로 표기하지 않으며 PR는 아직 열지 않는다.
+
+### 사용자 저장 스타일 적용 후 실제 미션 숨김 ON 수용
+
+사용자가 두 옵션이 적용되지 않았던 것을 확인하고 다시 적용 완료했다고 알렸다. own handoff live를 reload했다. 초기 chat/mission0은 로딩으로 제외했고 native mission button attached 뒤 선택자와 일치하는 실제 미션1의 display none/height0/expandedtrue를 확인했다. 임시 probe/test/candidate style0이며 제품 CSS를 재주입하거나 저장 설정을 agent가 변경하지 않았다. chat log 존재/height1040/aside width353, main layout width1964를 관찰했고 정상 native card5개는 card display block/direct LI parent list-item으로 보존됐다. 파티와 차단 대상0은 계속 실제 미검증이다.
+
+이번 reload에서는 초기 pzp main video가 없었다. 재생 가능한 영상1개는1280×720/ready4/playing/표시폭1963이며 ancestor에 vod_player_wrap이 있었고 다른 video는 ready0였다. 광고/본영상 전환 경계일 가능성이 있지만 그 원인을 확정하지 않았고 해당 영상을 본방송 정상 재생 PASS로 합산하지 않는다. 광고 건너뛰기·play/pause/seek/mute·계정 조작을 하지 않았다. 이전 정상 주영상1920×1080 재생 관찰은 별도 자료로 유지한다.
+
+숨김 규칙의 CDP matched style 추가 확인은 첫 DOM.enable 명령에서 문서 응답 대기 제한으로 거부됐다. 명령 실행 전 거부이므로 이번 추가 domain enable/설정/DOM mutation은 없었다. 일반 read-only DOM의 display none 관찰은 수용하되 원본 rule identity 자동 확인으로 확대하지 않는다. 같은 차단을 다른 transport/브라우저 재시작/임시 스타일로 우회하지 않는다.
+
+후속 최종 DOM 조회에서는 native pzp main video가 생성돼1920×1080/ready4/playing/rate1/표시폭1963을 확인했다. 실제 미션 display none/height0과 chat log 존재도 유지됐다. 앞선 alternative video/주영상 없음 상태를 정상 주영상으로 소급 분류하지 않고 이 후속 관찰만 주영상 기본 재생 수용으로 기록한다. 전환의 정확한 원인이나 모든 광고 조합 검증은 아니다.
+
+새 미션 숨김의 실제 펼침 상태 ON 기본 동작 및 후속 주영상 재생은 수용했고, 저장 OFF 복원 및 정상 패널 표시는 다음 수동 단계다. 원래 두 옵션은 모두 OFF이며 own 탭은 복원 후 검사에 사용하도록 handoff로 남긴다. 새 제품/build/자동 전체 suite/추가 review/기여 PR는 이번 관찰로 수행 또는 완료 처리하지 않는다.
