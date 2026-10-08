@@ -218,6 +218,45 @@ try{
     assert.equal(await page.locator('#recommended').evaluate(n=>getComputedStyle(n).display),'block');
     assert.ok(await page.locator('#recommended').evaluate(n=>n.getBoundingClientRect().height>0));
   });
+  // Break caught: the current VOD inline height wins over the non-important
+  // generic player rule; the legacy VOD selector no longer matches this DOM.
+  const fitFixture='<style>body{margin:0}#layout-body{height:640px;width:800px}._player_current,.vod_player__old{height:100%;width:100%}</style><main id="layout-body"><div id="fit-player" class="_player_current" style="max-height:calc(100% - 84px)"><div id="player_layout" class="type_vod"></div></div></main>';
+  for(const large of [false,true])await checkNative(`fit-player fills current VOD despite inline limit, wide=${large}`,async()=>{
+    await page.setViewportSize({width:1800,height:700});
+    await page.setContent(large?fitFixture.replace('id="layout-body"','id="layout-body" class="_is_large_current"'):fitFixture);
+    assert.equal(await page.locator('#fit-player').evaluate(n=>n.getBoundingClientRect().height),556,'native reserved space');
+    await page.addStyleTag({content:await fs.readFile('styles/fit-player.css','utf8')});
+    assert.equal(await page.locator('#fit-player').evaluate(n=>n.getBoundingClientRect().height),640,'option uses available parent height');
+  });
+  await checkNative('fit-player retains legacy VOD fill',async()=>{
+    await page.setContent(fitFixture.replace('class="_player_current"','class="vod_player__old"'));
+    await page.addStyleTag({content:await fs.readFile('styles/fit-player.css','utf8')});
+    assert.equal(await page.locator('#fit-player').evaluate(n=>n.getBoundingClientRect().height),640);
+  });
+  for(const [name,html] of [
+    ['live',fitFixture.replace('id="player_layout" class="type_vod"','id="live_player_layout" class="type_live"')],
+    ['foreign layout',fitFixture.replaceAll('layout-body','foreign-layout')],
+    ['popup',fitFixture.replace('<main id="layout-body">','<main id="layout-body"><div class="knife-popup">').replace('</main>','</div></main>').replace('.vod_player__old{height:100%;width:100%}', '.vod_player__old,.knife-popup{height:100%;width:100%}')],
+  ])await checkNative(`fit-player does not override ${name} inline height`,async()=>{
+    await page.setContent(html);await page.addStyleTag({content:await fs.readFile('styles/fit-player.css','utf8')});
+    assert.equal(await page.locator('#fit-player').evaluate(n=>n.getBoundingClientRect().height),556);
+  });
+  await checkNative('removing fit-player restores current VOD inline reservation',async()=>{
+    await page.setContent(fitFixture);const css=await page.addStyleTag({content:await fs.readFile('styles/fit-player.css','utf8')});
+    assert.equal(await page.locator('#fit-player').evaluate(n=>n.getBoundingClientRect().height),640);
+    await css.evaluate(n=>n.remove());
+    assert.equal(await page.locator('#fit-player').evaluate(n=>n.getBoundingClientRect().height),556);
+  });
+  // Break caught: overriding an ancestor of a fullscreen player or a
+  // fullscreen root changes native mode sizing. Use real fullscreen state.
+  for(const target of ['player_layout','root'])await checkNative(`fit-player leaves native fullscreen height when ${target} is fullscreen`,async()=>{
+    await page.setContent(fitFixture+`<button id="enter" onclick="${target==='root'?'document.documentElement':'document.getElementById(\'player_layout\')'}.requestFullscreen()">Fullscreen</button>`);
+    await page.addStyleTag({content:await fs.readFile('styles/fit-player.css','utf8')});
+    await page.locator('#enter').click();
+    await page.waitForFunction(()=>!!document.fullscreenElement,{},{timeout:2000});
+    assert.equal(await page.locator('#fit-player').evaluate(n=>getComputedStyle(n).maxHeight),'calc(100% - 84px)');
+    await page.evaluate(()=>document.exitFullscreen());
+  });
   console.log(JSON.stringify({browser:browser.version(),checks:checked,passed:checked-failures.length,failures},null,2));
   assert.equal(failures.length,0,'Native CSS behavior regressions');
 }finally{await browser.close();}

@@ -85,3 +85,26 @@ VOD의 현행 `_player_` max-height는 `calc(100% - 84px)`였다. 1800×700의 �
 이 제한된 결함의 in-chat 보완 설계는 **사용자 승인 대기**다: `styles/fit-player.css`의 legacy 규칙을 유지하고, `#layout-body` 내부에서 `#player_layout.type_vod`를 실제 포함하는 현행 `_player_` wrapper에만 `max-height:100% !important`를 추가한다. native fullscreen이 활성인 wrapper는 새 override에서 제외하고, live/iframe popup/foreign layout은 새 규칙에 매치하지 않도록 한다. 영상 크롭·속도·음량·설정 저장·권한·JS는 바꾸지 않는다. 인라인 제한을 가진 현행 VOD fixture에서 실패를 먼저 확인하고, legacy/live/foreign/fullscreen 보호와 CSS 제거 복원, 실제 낮은 높이 ON/OFF/wide/normal 검사를 수행할 예정이다. 이 구체안 승인 전 제품/검사 코드를 쓰거나 임시 후보 CSS를 적용하지 않았다.
 
 뷰포트 override는 reset했고 기본 VOD2560×1249를 다시 확인했다. 허용된 CSS/DOM 진단 도메인은 disable하고 검사 탭은 닫았다. 이번에 확인한 원래 설정 복원은 플레이어4개에 해당하며 나머지 스타일을 변경하거나 전체25개를 재검증한 결과가 아니다. PR은 아직 열지 않았다.
+
+## 승인된 VOD 화면 채우기 보완 후보
+
+사용자가 위 bounded 설계를 승인했다. `styles/fit-player.css`에 현행 VOD override 한 규칙만 추가했다. HTML root/자손 어디든 fullscreen 상태가 있으면 새 규칙을 제외하고, root 안의 `#layout-body`/현행 `_player_`/`#player_layout.type_vod`를 모두 요구하며 `.knife-popup` 내부는 제외한다. legacy와 기존 live 규칙은 그대로 유지했다. 설정 키/JS/속도/음량/권한/의존성은 바꾸지 않았다.
+
+`scripts/check-styles.mjs`의 실제 Chrome CSS 검사에 9개를 추가했다. 현재 VOD normal/wide의 인라인 제한 회귀 2개와 옵션 제거 복원 1개는 예상한556≠640으로 RED였고, 최소 수정 후 GREEN이었다. legacy/live/foreign/popup/root-fullscreen/player-fullscreen 6개는 기존 보호 characterization PASS이고 후보에서도 PASS다. fullscreen은 synthetic 새 프로필에서 실제 requestFullscreen/exitFullscreen을 사용했으며 설치된 사용자 Chrome의 모든 fullscreen 모드 검증은 아니다. 총49/49 PASS(Chrome155.0.8059.39), 전체 Node109/109 PASS였다.
+
+실제 연결 Chrome의 별도 VOD에서 새 override만 임시 적용해 다음을 확인했다. 전체 source CSS의 설치본 수용과 구분한다.
+
+| 1800×700 VOD | 규칙 OFF | 임시 규칙 ON | 다시 OFF |
+| --- | --- | --- | --- |
+| 일반 화면 container/player 높이 | 556px | 640px | 556px |
+| 넓은 화면 높이 | 700px | 700px | 700px |
+
+native 일반 모드 인라인 `calc(100% - 84px)`를 수정하지 않고 CSS 우선순위로만 넘었다. native 넓은 모드는 인라인 제한이 없어 높이가700px로 같았다. 넓은 모드 전환 직후 native 스크롤/사이드바 애니메이션 중 읽힌 좌표는 안정된 레이아웃 결과로 사용하지 않았다. 일반 모드로 돌린 뒤 실제 양수 scrollTop을 가진 검사 탭의 player/video/section만 상단으로 복원해 player y=15/높이640을 재확인했다. 검사자가 사용자 시청 탭을 조작하지 않았다.
+
+검사 탭에서 중복 오디오를 피하려고 runtime이 선택한 주 video의 원래 muted값(false)을 보존하여 임시 mute했다. 마지막에 false로 복원했고 playing/readyState4/시간 진행/object-fit=contain을 확인했다. 새 override 제거 후556px, 임시CSS0/진단Symbol없음/일반모드/원래 expanded sidebar를 확인하고 탭을 닫았다. viewport reset 직후 읽기는 지연된1189×640였으므로 기본 크기 복원으로 주장하지 않았다. 새 별도 홈 탭에서2560×1305를 확인한 뒤 닫았다.
+
+VOD 캡처는 이번에도 Page.captureScreenshot5000ms timeout으로 성공 이미지가 없다. 보안 정책을 우회하거나 다른 전송 방식을 쓰지 않았으며 실제 visual screenshot 검증은 미확인으로 유지한다.
+
+빌드/패키지 v2.13.2·20 entry resources·diff check PASS. source/dist `fit-player.css` SHA256은 모두 `B2A56D16DC93EDC057BB059F28BDD7DDC39FA7E69AF0F07187C9DE4AF846EE89`다. 로그는 로컬 ignored `output/acceptance/vod-fill-css-red.log`, `vod-fill-css-green.log`, `vod-fill-node.log`에 남겼고 민감 payload는 추가하지 않았다.
+
+아직 실제 저장 옵션 ON을 통한 전체 후보 CSS 등록/일반·넓은 화면/OFF 복원 수용은 남았다. 제품 변경으로 새 dist가 생겼으므로 사용자 확장 새로고침이 반드시 필요하다. 도구 정책상 이를 자율 수행할 수 없어 이 단계에서 중지한다. 기존 저장 설정은 화면 채우기OFF 등 사용자 원래 값 그대로이며, 새로고침 후 ON 테스트와 다시OFF 복원은 다음 단계다. 전체 기능/독립 최종 검토/PR 완료를 선언하지 않는다.
