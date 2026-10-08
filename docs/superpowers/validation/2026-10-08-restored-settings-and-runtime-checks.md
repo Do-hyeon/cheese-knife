@@ -137,3 +137,9 @@ controller/client 재사용·교체, 동일 이벤트 반복, CANCEL, OFF, nativ
 | web/main.css | 3CD4AA2F5E463D04786E7C95D4CDEF1248C77EFFBF517DB1822195FCF7A7D99D |
 
 ignored 로그는 deleted-chat-red/props-red/readonly-red/focused-green/full-node/css-red/css-green/filter-green이다. 추가 reviewer나 해결된 whole-branch 범위 재검토는 하지 않았다. 새 dist 설치본 listener 연결/OFF/cleanup, 실제 자연 발생 삭제 이벤트와 다른 미검증 경계는 남았다. showDeleted/hideDonation은 둘 다 OFF인 원래 저장값이고 나머지 설정도 변경하지 않았다. 직접 확장 새로고침이 불가능한 필수 단계에서 중지한다. 기여 PR/전체 기능 복구 완료를 선언하지 않는다.
+
+### 304f0ff 사용자 새로고침 이후 초기 검사
+
+사용자가 확장 새로고침을 완료했다. 같은 browser7의 새 own live에서 최초 허용 MAIN 조회는 configuration ready/live route/showDeleted=false/hideDonation=false를 확인했다. 이후 controller 원본 참조를 보존하고 임시 showDeleted ON을 적용하려던 명령은 문서 응답 대기 제한으로 실행 전에 거부됐다. probe Symbol/설정/handler mutation은 실행되지 않았다. 같은 제한을 다른 transport로 우회하거나 반복 Chrome 재시작을 요청하지 않았다.
+
+일반 read-only DOM 조회는 가능했고 주 live video1920/ready4/playing,chat root 존재/삭제 표지0을 관찰했다. 이는 OFF/일반 재생 관찰이며 삭제 표시 성공/새 callback 연결 PASS가 아니다. 설치본의 실제 설정 UI를 통한 ON 및 팝업의 해당 탭 capability 문구 확인을 사용자에게 요청했고 own 탭은 handoff로 보존했다. 정확한 기존 옵션명은 ‘블라인드된 메시지 보기’, 상태 feature명은 ‘삭제된 채팅 표시’다. 원래 OFF를 보존 기준으로 기록했고 시험 후 원복할 예정이다. 이번에는 제품/build/추가 suite/PR를 변경하거나 기존158/94/17을 fresh 실행으로 재표기하지 않았다.
