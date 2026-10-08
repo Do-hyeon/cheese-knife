@@ -118,8 +118,8 @@
 
 **Files:** README.md, README-en.md, docs/superpowers/validation/ 및 한글 PR 본문.
 
-- [ ] 항목별 PASS/FAIL/미검증/조건부 지원 증거와 남은 항목을 정리. 모든 요청된 검사/조치 완료 전에 PR을 열지 않는다.
-- [ ] 전체 suite·빌드·패키지 검사·설치본 검증·독립 검토·source/dist 일치 확인.
+- [x] 항목별 기본 수용/자동 계약/미검증/지원 제한 및 남은 환경을 contribution-readiness.md에 정리. 사용자 최신 승인에 따라 전면 정상 아닌 제한 명시 기여 PR로 제출했으며 실제 전체 기능 수용 체크는 그대로 유지한다.
+- [x] 승인된 기여 범위의 fresh 전체165·nativeCSS108·filter17·빌드·source/dist package20/일치,독립 검토·Important 보완 회귀 및 설치본 준비/OFF 복원 확인. 자연 이벤트·실제 파티/차단·DVR·GPU/청취·Firefox/전체 조합 검증 완료를 의미하지 않는다.
 - [x] 현재 후보 전체 브랜치 독립 검토1회 및 한 번의 보완 패스.98개 Node/16개 nativeCSS/11개 native 필터 픽셀 검사 및 build/package PASS.보완 후보 설치본 검사는 새 확장 새로고침 후 남음.검토의 미검증 경계를 전체 수용 PASS로 바꾸지 않음.
-- [ ] 포크 브랜치를 push하고 main/upstream 미변경 및 원격 SHA를 확인.
-- [ ] 기존 중복 PR/원본 default branch를 읽기 전용 확인 후 Do-hyeon 작업 브랜치→jebibot 원본으로 한글 PR 생성, 이 채팅에 attach. 자동 merge/store 배포 없음.
+- [x] 포크 브랜치를 push하고 main/upstream 미변경 및 원격 SHA를 확인. 양쪽main5ccb2bfdb660534c6fb64ceda511124ae3784416/최초제출head7a54d10429ac95544e2c6959269e3cb9358d707d.
+- [x] 중복0/defaultmain 확인 후 Do-hyeon 작업 브랜치→jebibot 원본에 [한글 PR #81](https://github.com/jebibot/cheese-knife/pull/81) 생성·이 채팅 attach. OPEN/notDraft/author·head·base·본문 일치 확인. 원격CI0이며 자동 merge/store 배포 없음.

@@ -227,3 +227,9 @@ own 탭을 원래 설정 복원 후 확인에 사용하도록 handoff로 보존�
 제품 a994241의 변경 없이 final 전체 Node165/165/실패0/skip0,별도Chrome155.0.8059.39 CSS108/108/필터17/17,build/source 및 dist package 각v2.13.2/20resources/diffcheck PASS를 새로 확인했다. ignored로그 contribution-final-node/css/filter.log다. source/dist inject717424F10B48737ED3B82715B0ED40B15E1A3C8457AEC9960CF2947AFBECFAEB,hide-mission E139E91BCCE10E91D37626A05D6193DA32D10C86F064867E35EA36167A15289F,hide-blocked3980981F2D38DE792D524DC9D0F4D1EDF820BC349021C232A42666B074E60C38은각각일치한다. 동일 제품 파일 재빌드이지 새로운 설치 후보/새 청취·GPU 검사는 아니다.
 
 GitHub CLI의 read-only metadata로 upstream jebibot/cheese-knife default branch main, Do-hyeon/cheese-knife isFork true/parent jebibot, 해당 작업 branch의 기존 PR0을 확인했다. PR을 만들거나 원본/main/스토어를 변경하지 않았다. 원복 단계는 끝났고 known Important 보완의7RED→GREEN/전체suite와 설치본 준비/OFF 복원이 기록됐다. 그러나 자연 삭제·후원/활성 파티·차단 대상/유료 DVR 및 다른 환경별 공백은 남는다. 이를 명시한 복구 시험판 기여 PR로 진행할지 사용자에게 범위 판단을 요청한다. 전면 정상·전체 검증 완료 조건을 묵시적으로 면제하지 않는다.
+
+### 사용자 범위 승인 후 한글 기여 PR 제출
+
+사용자는 미검증을 명시한 복구 시험판 기여 PR에 ‘진행’이라고 승인했다. 최초 제출head7a54d10429ac95544e2c6959269e3cb9358d707d의fresh Node165/CSS108/filter17/build/packageboth20/diff check,양쪽 main5ccb2bfdb660534c6fb64ceda511124ae3784416을 확인했다. [한글 PR #81](https://github.com/jebibot/cheese-knife/pull/81)을 Do-hyeon feature→jebibot main으로 생성해 이 채팅에 attach했다. author/headowner Do-hyeon/base main/head codex/chzzk-compatibility-recovery/stateOPEN/notDraft,서버의본문과작성한한글본문동일을 확인했다. status checks0은CI PASS가아니다.
+
+실제 이벤트/대상·유료DVR·GPU/청취·보호소스·장기GC/전체조합·Firefox 및 synthetic toggle dip/극단설정 clipping·Date.now deferredMinor를 본문에 명시했다. 제품 코드·설정·사용자 브라우저를 바꾸거나 병합/스토어 배포를 하지 않았고, 마지막 변경은 제출URL·문서 상태 기록만이다. 승인된 기여 제출은 완료됐지만 실제 전체환경검증/출시승인으로 확대하지 않는다. 브랜치와 로컬 checkout을 보존한다.

@@ -6,15 +6,17 @@
 
 현재 브랜치 `codex/chzzk-compatibility-recovery`는 원본 v2.13.1을 기반으로 한 2.13.2 복구 시험판입니다. Chrome Web Store의 원본 배포판과 다르며, 기존 저장소와 라이선스를 유지합니다.
 
+[한글 기여 PR #81](https://github.com/jebibot/cheese-knife/pull/81)을 원본 저장소에 제출했습니다. 검증한 범위와 미검증·음질/환경 한계를 명시한 복구 시험판 기여이며 전체 정상·출시 승인이나 스토어 배포가 아닙니다. 아래 시점별 후보 기록의 대기 상태는 당시 결과이며 최신 상태는 [기여 준비 상태](docs/superpowers/validation/2026-10-08-contribution-readiness.md)를 기준으로 확인하세요.
+
 Vue 없이 플레이어 버튼·컴프레서·VOD 길게 눌러 2배속을 제공하고 HLS.js 미리보기, 화면 전환 수명 관리, 기능별 준비 상태를 추가했습니다. [설계](docs/superpowers/specs/2026-10-08-chzzk-compatibility-design.md), [검토](docs/superpowers/reviews/2026-10-08-chzzk-compatibility-review.md), [검증 결과와 제한](docs/superpowers/validation/2026-10-08-chzzk-compatibility.md)을 함께 확인하세요.
 
 자동 테스트 165개를 통과했으며, 별도 브라우저의 실제 오디오·공개 방송 미리보기 검증도 기록했습니다. [독립 구현 검토](docs/superpowers/reviews/2026-10-08-implementation-review.md), [실제 Chrome VOD 길게 누르기 수정 검토](docs/superpowers/reviews/2026-10-08-vod-hold-review.md), [전체 브랜치 독립 검토와 보완](docs/superpowers/reviews/2026-10-08-whole-branch-review.md)도 공개합니다. [최신 기여 준비 상태](docs/superpowers/validation/2026-10-08-contribution-readiness.md)에서 25개 기능 설정·25개 스타일의 실제 수용/자동 계약/미검증을 구분합니다. 과거 검증 문서의 후보·새로고침 대기 문구는 해당 시점의 기록이며, 전체 기능 검증과 출시 승인은 아직 완료되지 않았습니다.
 
-[후속 readiness 독립 검토](docs/superpowers/reviews/2026-10-08-final-readiness-review.md)의 링크·VOD 툴팁 재사용과 2배속 OFF 취소 결함을 승인된 한 번의 보완 패스로 수정했습니다. 신규14개 중12개 실패→통과와2개 보호 검사, 당시 전체Node136·스타일91·필터17을 확인했습니다. 사용자 확장 새로고침 후 [통제된 설치본 재사용·실제 VOD 입력 검사](docs/superpowers/validation/2026-10-08-restored-settings-and-runtime-checks.md)도 통과했습니다. 이후 삭제 채팅 후보와 미션·차단 CSS를 추가했지만 남은 실제 이벤트/환경 미검증을 전체 정상으로 합산하지 않으며, 기여 PR은 아직 열지 않았습니다.
+[후속 readiness 독립 검토](docs/superpowers/reviews/2026-10-08-final-readiness-review.md)의 링크·VOD 툴팁 재사용과 2배속 OFF 취소 결함을 승인된 한 번의 보완 패스로 수정했습니다. 신규14개 중12개 실패→통과와2개 보호 검사, 당시 전체Node136·스타일91·필터17을 확인했습니다. 사용자 확장 새로고침 후 [통제된 설치본 재사용·실제 VOD 입력 검사](docs/superpowers/validation/2026-10-08-restored-settings-and-runtime-checks.md)도 통과했습니다. 이후 삭제 채팅 후보와 미션·차단 CSS를 추가했고, 남은 실제 이벤트/환경 미검증을 전체 정상으로 합산하지 않는 범위로 기여 PR에 제출했습니다.
 
 Gain 바를 48px·끝 여백 8px로 조정해 실제 라이브에서 확인했습니다. [합성 신호 음질 검사](docs/superpowers/validation/2026-10-08-audio-quality-and-gain-spacing.md)는 기본 설정의 출력과 전환 시 개선 후보를 기록하며, 실제 음성·음악의 음질 보장은 아닙니다. 오디오 처리 방식은 이번 검사에서 변경하지 않았습니다.
 
-[후속 Gain 평활화·미리보기 지연 수정](docs/superpowers/validation/2026-10-08-gain-smoothing-follow-up.md)은 Gain을 10ms 동안 이어지게 처리하고 API 대기와 hover 지연이 중복되지 않도록 합니다. 사용자가 미리보기 정상 동작을 확인했습니다. [전체 기능 점검](docs/superpowers/validation/2026-10-08-full-feature-audit.md) 이후 왼쪽 채팅의 라이브 화면 축소를 수정하고 실제 라이브·VOD 배치와 너비 조절을 확인했습니다. 최신 검토 보완본은 설정 경쟁·미리보기 취소·팝업 드래그·기능 상태 갱신을 수정했으며 설치본 검사를 위한 확장 새로고침이 필요합니다. [전체 기능 계획](docs/superpowers/plans/2026-10-08-full-feature-acceptance.md)의 미완료 항목이 남아 기여 PR은 열지 않았습니다.
+[후속 Gain 평활화·미리보기 지연 수정](docs/superpowers/validation/2026-10-08-gain-smoothing-follow-up.md)은 Gain을 10ms 동안 이어지게 처리하고 API 대기와 hover 지연이 중복되지 않도록 합니다. 사용자가 미리보기 정상 동작을 확인했습니다. [전체 기능 점검](docs/superpowers/validation/2026-10-08-full-feature-audit.md) 이후 왼쪽 채팅의 라이브 화면 축소를 수정하고 실제 라이브·VOD 배치와 너비 조절을 확인했습니다. 당시 검토 보완본의 설정 경쟁·미리보기 취소·팝업 드래그·상태 갱신 수정에는 설치본 새로고침이 필요했고, 후속 결과를 별도로 기록했습니다. [전체 기능 계획](docs/superpowers/plans/2026-10-08-full-feature-acceptance.md)의 미검증 항목은 유지하며 사용자가 승인한 제한 명시 기여 PR 범위와 구분합니다.
 
 ### 로컬 Chrome에서 시험하기
 

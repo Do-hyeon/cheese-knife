@@ -60,3 +60,11 @@
 설치본 미션 OFF와 소유권 보완 설치본 준비됨→원래 OFF/끔 복원은 완료했다. upstream default main·정상 포크 parent·같은 작업 브랜치의 기존 PR0을 읽기 전용 확인했다. 위 실제 대상/환경 공백이 남으므로 ‘전체 기능 정상’ 조건이 충족됐다고 간주하지 않는다. 제한을 명시한 복구 시험판 기여 PR로 진행할지 사용자에게 범위 판단을 요청한다. 원래 PR 방향은 유지하되 미검증을 묵시적으로 정상 처리하지 않는다. PR/스토어 배포/원본 main 병합은 아직 하지 않았다.
 
 사용자는 이 한계를 명시하고 ‘전체 정상’이 아닌 복구 시험판 기여 PR을 한글로 여는 방향에 ‘진행’이라고 승인했다. 실제 대상·환경의 미검증을 정상으로 재분류하지 않고 공개한다. 이 추가 승인에 따라 `Do-hyeon:codex/chzzk-compatibility-recovery`→`jebibot:main`의 PR 제출을 준비한다. 자동 병합/스토어 게시/계정·moderation 변경은 승인 범위가 아니다. PR 실제 생성 여부는 생성 후 별도로 확인하고 URL을 기록한다.
+
+## PR 제출 완료
+
+[한글 PR #81 — 치지직 현행 UI 대응 및 기능 복구 시험판 (2.13.2)](https://github.com/jebibot/cheese-knife/pull/81)을 생성하고 이 채팅에 연결했다. GitHub readback에서 author/head owner Do-hyeon, base main/head codex/chzzk-compatibility-recovery, state OPEN/isDraft false 및 제출한 한글 본문 일치를 확인했다. 생성 직후 status checks는0개였으므로 원격 CI 통과로 주장하지 않는다. 병합·출시·스토어 배포는 하지 않았다.
+
+제출 직전 현재 제품/트리의 Node165/165·native CSS108/108·필터17/17·build/source 및 dist package 각v2.13.2/20resources/diff check를 재확인했다. 로그는 pr-submit-node/css/filter.log다. 양쪽 main SHA는5ccb2bfdb660534c6fb64ceda511124ae3784416, 최초 PR 제출 head는7a54d10429ac95544e2c6959269e3cb9358d707d였다. 이후 제출 URL/문서 상태만 같은 브랜치에 기록한다. 제품 코드와 설치본 설정은 변경하지 않는다.
+
+PR에는 위 실제 이벤트·대상·DVR·음질/환경 제한 및 deferred Minor(시스템 시각 변경의 hover deadline 영향)를 포함했다. 사용자 승인된 제한 명시 기여 제출은 완료됐으며, 전체 기능 수용·병합·배포 승인이나 실제 환경 공백의 해소를 의미하지 않는다. 작업 브랜치/원본 체크아웃은 PR 피드백 대응을 위해 보존한다.
