@@ -206,3 +206,19 @@ source/dist hash는 위E0D61E...값 그대로다. 이는 현재 저장font8의 �
 ownhome 검색은 빈 필드에 focus만 했고 입력/전송하지 않았다. 최근검색/계정 내용을 기록하지 않았다. 마지막 focus를blur/포인터를헤더에서이동/viewport override reset/own탭을정리했다. 새 별도home2560×1249를 확인한 뒤 닫았다. 사용자 설정 저장과 사용자 시청 탭 조작은 하지 않았다.
 
 다음은 사이드바6개 원래값(offlineOFF/popularON/scheduleOFF/partnerON/shortcutON/rightOFF)의 수동 복원과 폰트 슬라이더0 확인·적용이다. 채팅 다른 항목은 이번 새live 기본복원 관찰을 유지한다. 제품을 바꾸지 않아 확장 자체 새로고침은 필요 없고 페이지 적용만 필요하다. 모든 스타일/전체기능/PR 완료 조건은 아직 미충족이다.
+
+## 원래 설정 복원 확인 및 초기 메뉴 오숨김
+
+사용자가 폰트0 재조정과 나머지 원복 완료를 알렸다. 새home/live에서 rootfont0px, 실제본문14px/닉네임배지18px/live시각attribute/handle1/왼쪽채팅x240·폭353/player폭1963을 확인했다. font 원복 때문에 제품을 수정하지 않았다. sidebarx0/폭240/body left240/right0,offline36개가모두표시,nav6 정착 후 팔로잉·일정표시/인기·파트너·바로가기숨김도 확인했다. 수량은 당시 관찰값이며 사용자 채널 목록은 저장하지 않았다.
+
+그러나 같은 새home 초기 읽기에서는 native nav가2개만 있고 **일반 첫 메뉴와 서비스 메뉴 모두displaynone**이었다. 데이터 정착 뒤 nav6이 되자 일반 메뉴가block으로 돌아왔다. 초기 일반 메뉴는 native 고유 숨김 대상이 아니며 현재 `hide-sidebar-partner.css`의 `aside[aria-label="사이드바"] nav:nth-last-of-type(2)`가 nav2의첫 메뉴를 선택한다. 이 기본 기능은 섹션 수와 로딩에 따라 잘못된 대상을 숨길 수 있으므로 이전 nav6 상태만으로 전체 사이드바 수용을 닫지 않는다. hide-recommended/schedule/shortcut에도 같은 ordinal 방식이 있다.
+
+고유 descriptor 확인은 직접 native 제목/aria/공개 링크만 사용했다. 일반 메뉴에는 직접 header제목과aria가 없고, 팔로잉 nav는aria팔로우,인기 nav는aria인기카테고리다. 파트너의 직접header에relative `/partner` 링크가 있었다. 서비스 nav의 공개 링크는 NAVER Game 홈/esports/original_series/pcgame/CHZZK lounge다. 일정은 직접 strong제목이확장 때‘다가오는 방송 일정’,접힘 때‘방송일정’이었다. 일정 항목은 현재 일반type_profile이며 `_type_schedule_`는0개여서 그 구형 marker를 일정 식별로 쓰지 않는다. 버튼/직접제목이 접힘 때 비거나 없어질 수 있으므로 표시 순서나 새로고침 버튼 하나로 분류하지 않는다.
+
+잘못 닫힌 조회 표현식 한 번은 실행 전에 거부되었고 수정 후 read-only 결과만 증거로 사용했다. 추가 새 문서의 최초nav0 읽기도 메뉴 문제 재현으로 합산하지 않았다. 실제 핵심 재현은 위 첫 새home의nav2 none→정착nav6 block이다. 근거 없는 지속 장애/guest 실제 성공을 주장하지 않는다.
+
+**사용자 승인 대기 bounded 보완:** 기존 `web/inject.js` sidebar 관찰/수명 관리에 실제 섹션 descriptor를 분류하는 소유표지를 추가하고 숨김4개 CSS를 이표지로 연결한다. 실제aria/직접header/공개링크 및 접힘일정 제목을 사용하며 일반메뉴·팔로잉·알 수 없는 섹션은 숨김 대상으로 추측하지 않는다. 기존 observer를 재사용하고 필요한 제목/descriptor 변경만 관찰한다. 새observer/타이머/네트워크 요청/권한/설정키는 만들지 않는다. Current DOM의 ordinal 선택자는 제거하고 별도 구형class 경계의 legacy CSS는 유지한다. scope 해제/section 제거·재사용에서 표지를 정리하고 다른 주체가 바꾼 값을 덮어쓰지 않는다. Bootstrap/metadata가없으면 순서fallback으로 다른메뉴를숨기지 않고 기본표시로 둔다.
+
+승인 후 초기2→6/섹션누락·순서변경/접힘·확장/같은노드 제목변경/외부 표지변경/SPA·sidebar-root 교체 정리의 production 회귀와 native CSS 보호·legacy·옵션제거 검사를 먼저 실패로 재현한다. 모든 suite와build/package/hash를 확인하고 필요한 새dist 수용은 필수 수동 확장 새로고침 단계에서 중지한다. 아직 구현/테스트/후보CSS를 작성·적용하지 않았다. 나머지 툴바/탐색/프로필 검사 및 전체 기능/PR 완료도 남아 있다.
+
+진단 과정의 own메뉴 접힘/확장은 끝에expandedtrue로 복원했고 검색focus를blur/포인터를옮긴 뒤 모든 own탭을닫았다. 사용자 시청 탭/저장소/viewport/제품/build는 변경하지 않았다. 원래 스타일 기준은 유지된다.

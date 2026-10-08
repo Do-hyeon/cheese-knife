@@ -93,6 +93,7 @@
 - [x] 승인된 배지보완 CSS1규칙/legacy·emoji·텍스트 보존/복수wrapper nativeflex유지. native7RED→GREEN+2보호(total58),Node109/build/package/hash PASS. 실제live/VOD 임시규칙 badge26/icon26/single26/double56/text22/VOD분류emoji32 및 제거원복 확인. 새dist 등록/현재font8 저장설정 수용은 수동확장 새로고침 후,원래채팅값 복원·전체수용·최종독립검토·PR는 남음.
 - [x] 79ef 새설치본 font8/live·VOD text22/badge26/single26/double56/triple86/분류VODemoji32/임시CSS0 기본수용. 사용자live 읽기전용/별도VOD 탭정리,제품변경없음. 채팅 원래6값과사이드바 반대6값의 수동적용 후 검사·사이드바원복이 다음단계;특수메시지/전체스타일/PR완료 아님.
 - [x] 새home/live 사이드바 inverse 기본수용(offline숨김/live보존·일정숨김·다른3section표시/right240),채팅resize/time/left/ranking 기본복원/player1963 유지. 실제2560/1800메뉴-검색 분리·1200기본sidebar와native접기/확장 관찰;첫wrong-tab resize/timeout·collapsed82/pad78 경계는전체PASS로합산안함. font8잔존으로0/8 UI값 질문/사이드바6 원래값 복원 남음. 제품수정·전체스타일·PR완료 아님.
+- [x] 사용자font0재조정/sidebar원복 후 새font0/본문14/배지18/원래채팅·sidebar 기본복원 확인. 초기native nav2에서partner nth-last2가일반메뉴숨김→정착nav6정상 FAIL발견;ordinal4개와고유descriptor/접힘일정별명 조사. 기존sidebar소유표지/4CSS연결·legacy보존·동적목록/lifecycle회귀 bounded설계승인대기. 구현/전체스타일/PR완료 아님.
 
 ### Task 4: 기여 PR 완료 조건
 
