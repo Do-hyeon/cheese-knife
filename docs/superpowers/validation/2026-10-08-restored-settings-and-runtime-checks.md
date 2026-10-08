@@ -151,3 +151,15 @@ ignored 로그는 deleted-chat-red/props-red/readonly-red/focused-green/full-nod
 새 own live를 일반 DOM API로만 검사했다. 최초 player/chat 없는 로딩 상태는 수용에서 제외하고, player video attached 후 chat 존재/videoWidth1920/ready4/playing/삭제 marker0을 관찰했다. height는 이번 조회에서 읽지 않았으므로 새 해상도 전체 확인이라고 하지 않는다. 표지 스타일 표본은 비어 있었다. 원문/사용자 정보/이벤트 payload를 읽거나 삭제 이벤트를 emit하지 않았으며, 자연 발생 삭제 표시 사례는 미검증이다. 새 own 탭을 닫았고 제품·저장 설정·미디어를 agent가 변경하지 않았다.
 
 원래 OFF 복원을 위해 사용자에게 옵션을 다시 끄고 해당 live 팝업 상태가 ‘끔’인지 확인해 달라고 요청했다. OFF 복원은 아직 사용자 응답 전이다. 별도 자동검사158/94/17은 이전 결과로 유지하며, 이번 사용자 준비 상태/marker0 관찰을 전체 복구 또는 기여 PR 승인으로 바꾸지 않는다.
+
+### OFF 복원 및 남은 스타일의 공개 코드 비교
+
+사용자가 요청된 OFF·팝업 ‘끔’ 확인에 ‘복원 완료’라고 응답했다. 원래 showDeleted OFF 복원은 사용자 보고로 수용한다. 직접 raw callback identity를 확인한 것으로 확대하지 않는다. 삭제 이벤트/취소선의 실제 발생은 계속 미검증이다.
+
+일반 DOM 자산 인벤토리에서 관측된 [공개 앱 코드](https://ssl.pstatic.net/static/nng/glive/resource/p/static/js/index-VdvK-ysl.js)는 query가 없는 pstatic 정적 파일이다. pageAssets는 script export를 지원하지 않고 web reader도 이 JS를 읽지 못했다. 브라우저의 차단된 MAIN 진단 대신 내부 상태를 다른 도구로 읽은 것이 아니다. 인증/쿠키 없이 공개 HTTPS 파일만 독립적으로 읽었고 원격 코드를 실행하거나 파일로 저장하지 않았다. 현재 payload UTF-8 SHA256은 `895AA5E054F7A80936DB80D47FB20CB98485657D3DDAD1A752FDCE8EA6778668`, 길이5,394,916자다. 상수는 TEXT1/DONATION10을 확인해 기존 후원 filter의 type 의미를 뒷받침한다. 실제 후원 이벤트 숨김 PASS는 아니다.
+
+구형 hide-mission/hide-blocked 선택자는 현행 entry의 CSS module 이름과 맞지 않는다. 고정 미션은 container→header→mission_button(icon_mission), 파티는 container→header button(aria-controls=party-wrapper) 구조이며 접힘에서도 header가 남는다. 차단 video card는 container의 is_block modifier와 direct thumbnail이고, 다른 block widget과 구분된다. 해시 suffix 자체를 제품에 고정하지 않는 selector 후보를 검토한다. 이 내용은 정적 renderer 근거이며 실제 활성 미션/차단 UI 관찰은 아니다.
+
+own 페이지의 DOM에서 정상 card3개는 DIV container/direct thumbnail과 LI item direct parent를 확인했다. 현재 chat ID/미션/파티/차단 후보는0이어서 해당 상태의 실사용 검사로 세지 않는다. aside body 경계는 앞선 chat controller 조사와 기존 coordinator 소비 경계를 기준으로 삼으며, 이번 문서의 chat ID0을 정상/결함으로 단정하지 않는다. own 탭을 닫았고 사용자 탭/설정/채팅/후원/차단/미디어에는 mutation을 하지 않았다. 임시 artifact나 signed URL을 배포하지 않는다.
+
+**Bounded 후보(승인 전):** hide-mission.css에 현재 layout-body의 비사이드바 aside 안 고정 미션 header/button 및 파티 aria-controls/header 관계를 추가한다. hide-blocked.css는 현재 body 안의 차단 card 자체 및 직접 바깥 item을 함께 숨겨 빈 목록 칸을 남기지 않는다. 일반 카드/다른 block widget/상위 목록을 보존하고 기존 floating-popup 예외와 legacy 선택자는 유지한다. 새 JS/observer/설정키/권한은 없다. source-derived native fixture의 접힘·펼침/blocked grid·standalone/정상·foreign widget·popup·OFF·legacy를 RED→GREEN으로 검사할 계획이다. 활성 미션/파티 공개 URL을 사용자에게 요청했으며 실제 차단을 만들어 검증하지 않는다. 제품/테스트/build 수정 전 디자인 승인 단계에서 중지한다. 전체 검증/기여 PR 게이트는 유지한다.
