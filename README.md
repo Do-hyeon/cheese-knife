@@ -8,7 +8,7 @@
 
 Vue 없이 플레이어 버튼·컴프레서·VOD 길게 눌러 2배속을 제공하고 HLS.js 미리보기, 화면 전환 수명 관리, 기능별 준비 상태를 추가했습니다. [설계](docs/superpowers/specs/2026-10-08-chzzk-compatibility-design.md), [검토](docs/superpowers/reviews/2026-10-08-chzzk-compatibility-review.md), [검증 결과와 제한](docs/superpowers/validation/2026-10-08-chzzk-compatibility.md)을 함께 확인하세요.
 
-자동 테스트 136개를 통과했으며, 별도 브라우저의 실제 오디오·공개 방송 미리보기 검증도 기록했습니다. [독립 구현 검토](docs/superpowers/reviews/2026-10-08-implementation-review.md), [실제 Chrome VOD 길게 누르기 수정 검토](docs/superpowers/reviews/2026-10-08-vod-hold-review.md), [전체 브랜치 독립 검토와 보완](docs/superpowers/reviews/2026-10-08-whole-branch-review.md)도 공개합니다. 설치된 Chrome에서 일부 기능을 검증했으나 전체 기능 검증과 출시 승인은 아직 완료되지 않았습니다.
+자동 테스트 158개를 통과했으며, 별도 브라우저의 실제 오디오·공개 방송 미리보기 검증도 기록했습니다. [독립 구현 검토](docs/superpowers/reviews/2026-10-08-implementation-review.md), [실제 Chrome VOD 길게 누르기 수정 검토](docs/superpowers/reviews/2026-10-08-vod-hold-review.md), [전체 브랜치 독립 검토와 보완](docs/superpowers/reviews/2026-10-08-whole-branch-review.md)도 공개합니다. 설치된 Chrome에서 일부 기능을 검증했으나 전체 기능 검증과 출시 승인은 아직 완료되지 않았습니다.
 
 [후속 readiness 독립 검토](docs/superpowers/reviews/2026-10-08-final-readiness-review.md)의 링크·VOD 툴팁 재사용과 2배속 OFF 취소 결함을 승인된 한 번의 보완 패스로 수정했습니다. 신규14개 중12개 실패→통과와2개 보호 검사, 전체Node136·스타일91·필터17을 확인했습니다. 사용자 확장 새로고침 후 [통제된 설치본 재사용·실제 VOD 입력 검사](docs/superpowers/validation/2026-10-08-restored-settings-and-runtime-checks.md)도 통과했습니다. 삭제된 채팅 표시 미지원과 남은 기능/환경의 미검증을 전체 정상으로 합산하지 않으며, 기여 PR은 아직 열지 않았습니다.
 
@@ -27,7 +27,9 @@ Gain 바를 48px·끝 여백 8px로 조정해 실제 라이브에서 확인했�
 
 ### 현재 제한
 
-- 삭제된 채팅 표시는 여전히 지원 제한입니다. 사이드바 자동 갱신·팔로잉 펼침은 현재 기본 사이트 버튼으로 보완한 후보이며 설치본 검사가 남아 있습니다.
+라이브의 새 일반 채팅 삭제에 대한 [guarded 복구 후보](docs/superpowers/validation/2026-10-08-restored-settings-and-runtime-checks.md)를 추가했습니다. JSX/서버 조회 없이 native content와 다른 listener를 보존하고 OFF/CANCEL 시 원복합니다. 신규 Node22개·전체158·native CSS94·필터17을 확인했지만, 새 dist의 설치본 연결/실제 삭제 이벤트 검증에는 수동 확장 새로고침이 필요합니다. 과거 숨김 내역이나 VOD 삭제 표시를 복구하지 않습니다.
+
+- 삭제된 채팅 표시의 라이브 후보는 아직 설치본 수용 전이며, 연결 계약이 없거나 VOD이면 지원 제한입니다. 사이드바 자동 갱신·팔로잉 펼침은 현재 기본 사이트 버튼으로 보완했고 기본 설치본 검사를 기록했으나 모든 변형을 보장하지 않습니다.
 - 통계는 해상도와 측정 FPS를 제공하며, 확인되지 않은 비트레이트/지연시간은 알 수 없음으로 표시합니다.
 - 컴프레서는 안전하게 연결 가능한 같은 origin의 blob 영상만 지원합니다. 오디오 자동재생 정책에 따라 버튼을 다시 눌러야 할 수 있습니다.
 - HLS 미리보기는 네트워크·브라우저 코덱·권한에 영향을 받으며, 연령 제한 방송은 재생하지 않습니다.

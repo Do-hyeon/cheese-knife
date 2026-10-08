@@ -116,3 +116,24 @@ own 탭을 닫았다. 제품/테스트/CSS/dist/저장 설정/사용자 탭/미�
 기존 attachChat 안에서 live+showDeleted ON이며 확인한 native NORMAL·blind callback·event record 계약이 모두 맞을 때만 연결한다. 다른 listener의 순서/once 설정은 유지하고 자신의 callback identity만 교체·복원한다. 원래 native 삭제/CANCEL 처리 자체는 호출한다. 새로 관측된 삭제에서 직전 일반 메시지의 기존 content를 유지해 로컬에 표시하되, 삭제 표지는 현행 text DOM의 owned attribute와 기존 번역 문구/CSS로 표현한다. JSX 생성/외부 원문 조회/별도 채팅 저장/과거 삭제 내역 복구는 하지 않는다. 기존 cleanbot/이미 숨겨진 항목은 새로 공개하지 않고, OFF·CANCEL·route dispose 시 자신의 표시/상태/연결만 되돌린다. 현재 목록 밖으로 밀려난 메시지나 다른 writer의 변경은 복원하지 않는다. 연결 계약이 바뀌면 해당 기능만 limited다.
 
 controller/client 재사용·교체, 동일 이벤트 반복, CANCEL, OFF, native/다른 callback identity 변경, 외부 표지, 일반 text/처리된 emote 보존을 production-module 회귀 RED→GREEN으로 검증할 계획이다. 실서비스 listener 연결/해제는 별도 설치본 검사이며 실제 삭제 이벤트를 보내거나 제조하지 않는다. 설계가 승인되기 전에는 구현 skill/새 제품 의존성/제품 코드/회귀 테스트를 추가하지 않는다.
+
+## 승인된 삭제 표시 보완 후보 — 설치본 새로고침 대기
+
+사용자가 bounded 설계를 승인하고 개입이 불필요하면 계속 진행하도록 했다. 기존 attachChat에 live 한정 manager를 연결하고 observer/config notify를 재사용했다. 일반 type1/이전 NORMAL/현재 callback·writable event record 계약이 맞을 때만 연결한다. 같은 copied listener slot을 바꾸므로 다른 listener의 순서·once 설정과 emitter 함수는 건드리지 않는다. native callback은 원래 receiver/arguments로 호출하고 반환값을 유지한다. native 처리 뒤 같은 key/user/time/type/content이며 새로운 blind status인 경우만 기존 content를 유지한 NORMAL 사본을 현재 목록에 놓는다. JSX 생성/외부 원문 조회/별도 채팅 저장/과거 삭제 내역 복구는 없고 metadata는 WeakMap이다.
+
+표지는 현행 text span의 `data-knife-deleted="1"`이다. 기존 번역 문구/취소선 CSS를 text 자체에도 적용하되 native inline 색상만 owned selector에서 덮어쓴다. 글꼴·이미지 크기·legacy `.knife-deleted`는 유지한다. OFF/CANCEL/dispose/controller 변경에서 현재 목록의 자신이 만든 항목만 native blind status로 되돌리고 표지와 자기 callback identity를 복원한다. 외부 callback/메시지/표지 변경은 덮어쓰지 않는다. client reconnect는 자기 copied callback만 풀고 새 verified slot에 연결한다. chat root의 단일 disposer가 최신 manager만 소유해 이전 controller의 closure를 scope에 계속 쌓지 않는다.
+
+처음 신규 Node19개 중9개 예상 RED와10개 기존 보호 PASS를 확인한 뒤19개 GREEN을 확인했다. React props만 갱신하고 DOM mutation을 만들지 않는 경우의 표지 누락1개도 추가 RED로 재현했다. 같은 현재 메시지 key/user/time/content와 row NORMAL을 확인해 polling 없이 표시한다. 이 보완 중 기존 controller 교체 검사가 같은 synthetic identity의 이전 BLIND row를 잘못 표시해 FAIL했고, row NORMAL 가드로 GREEN을 확인했다. readonly callback slot/field2개도 잘못 ready/교체되는 RED를 먼저 확인하고 writable descriptor 가드로 GREEN을 만들었다. 신규 총22개는12RED→GREEN+10보호 characterization이다. 실제 production classic scripts/DOM을 실행했으며 외부 사이트 controller/emitter/렌더링 경계만 모델링했다. 제품 소스 문자열 변형이나 테스트용 내부 API는 없다.
+
+별도 Chrome CSS 신규3개는 owned text 색상/취소선·label2RED→GREEN 및 OFF/일반 text/legacy label 보호1개이다. source label placeholder 검사는 설치된 확장의 번역·실제 삭제 이벤트 성공을 대신하지 않는다. 처리된 emote content 참조 보존은 Node 계약 검사, native CSS 이미지24px 유지도 통제 fixture다. 실제 채팅 renderer의 모든 특수 메시지/이모티콘을 검증했다고 주장하지 않는다.
+
+일반 type1 근거는 새 own live에서 content/user/time 값 없이 NORMAL row33개와 type code 집합[1]만 추가 확인한 뒤 탭을 닫았다. 기존 설치본에 새 제품 모듈을 강제로 재주입하지 않았다. 실제 채팅/후원/삭제/차단/계정/저장 설정·사용자 시청 탭/미디어/viewport를 변경하지 않았다.
+
+최종 전체 `node --test tests/*.test.cjs`158/158/실패0/skip0, Chrome155.0.8059.39 CSS94/94/필터17/17 PASS. 최초 npm test는 shell PATH에 npm이 없어 실행되지 않았다. PowerShell LASTEXITCODE가 이를 반영하지 않아 command wrapper exit0였지만 PASS로 세지 않았다. package.json의 test와 동일한 Node 명령을 직접 실행한 실제158건 결과만 수용한다. syntax/build/source·dist package 각v2.13.2/20 entry resources/diff check PASS. DSP 변경·새 청취 검사는 없다.
+
+| 파일 | source/dist SHA256 |
+| --- | --- |
+| web/inject.js | 68B94AAB12B79092A99DA4441E8ABA12011691D155AE4EC147A91E3EE8D96907 |
+| web/main.css | 3CD4AA2F5E463D04786E7C95D4CDEF1248C77EFFBF517DB1822195FCF7A7D99D |
+
+ignored 로그는 deleted-chat-red/props-red/readonly-red/focused-green/full-node/css-red/css-green/filter-green이다. 추가 reviewer나 해결된 whole-branch 범위 재검토는 하지 않았다. 새 dist 설치본 listener 연결/OFF/cleanup, 실제 자연 발생 삭제 이벤트와 다른 미검증 경계는 남았다. showDeleted/hideDonation은 둘 다 OFF인 원래 저장값이고 나머지 설정도 변경하지 않았다. 직접 확장 새로고침이 불가능한 필수 단계에서 중지한다. 기여 PR/전체 기능 복구 완료를 선언하지 않는다.

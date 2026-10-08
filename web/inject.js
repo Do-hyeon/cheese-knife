@@ -164,21 +164,135 @@
     apply();
     scope.observe(new MutationObserver(apply), root, { childList: true, subtree: true, characterData: true });
   };
+  const bindDeletedChat = (controller, container, isLive, scope) => {
+    // Native blind events retain content and alter status. Preserve native
+    // handling, then disclose only an ordinary message seen before deletion.
+    // No JSX, historical cache, server lookup or extra DOM observer is needed.
+    const retained = new WeakMap();
+    const markers = new Set();
+    let binding;
+    let conflicted = false;
+    const rows = '[class^="_item_"], [class^="live_chatting_item__"]';
+    const texts = '[class^="_chatting_message_"] > span[class^="_text_"], [class^="live_chatting_message_chatting_message__"] > span[class^="live_chatting_message_text__"]';
+    const releaseMarker = node => {
+      if (node.dataset.knifeDeleted === '1') delete node.dataset.knifeDeleted;
+      markers.delete(node);
+    };
+    const paint = () => {
+      const wanted = new Set();
+      if (config.showDeleted === true && !scope.disposed) for (const row of container.querySelectorAll(rows)) {
+        const props = propsOf(row);
+        const message = props?.chatMessage || props?.children?.props?.chatMessage;
+        // Memoized native rendering can update props without any DOM mutation.
+        // Match only the same currently retained message, never a row ordinal.
+        const current = message && Array.isArray(controller.messageList) && controller.messageList.find(value =>
+          value.key === message.key && value.user === message.user && value.time === message.time);
+        const saved = current && retained.get(current);
+        if (!saved || message.status !== 'NORMAL' || current.status !== 'NORMAL' ||
+          current.content !== saved.content || message.content !== saved.content) continue;
+        for (const node of row.querySelectorAll(texts)) wanted.add(node);
+      }
+      for (const node of markers) if (!wanted.has(node) || !node.isConnected) releaseMarker(node);
+      for (const node of wanted) {
+        if (markers.has(node)) {
+          if (node.dataset.knifeDeleted !== '1') markers.delete(node); // Foreign writer now owns it.
+        } else if (!node.hasAttribute('data-knife-deleted')) {
+          node.dataset.knifeDeleted = '1'; markers.add(node);
+        }
+      }
+    };
+    const rehide = () => {
+      let changed = false;
+      if (Array.isArray(controller.messageList)) for (let i = 0; i < controller.messageList.length; i++) {
+        const message = controller.messageList[i], saved = message && retained.get(message);
+        if (!saved) continue;
+        retained.delete(message);
+        if (message.status !== 'NORMAL' || message.content !== saved.content || message.key !== saved.key ||
+          message.user !== saved.user || message.time !== saved.time || message.type !== 1) continue;
+        controller.messageList[i] = { ...message, status: saved.status }; changed = true;
+      }
+      if (changed) controller.notiUpdateMessageList();
+      for (const node of markers) releaseMarker(node);
+    };
+    const unbind = () => {
+      if (!binding) return;
+      const { entry, original, replacement } = binding;
+      if (entry.listener === replacement) entry.listener = original;
+      if (controller.notiBlindListener === replacement) controller.notiBlindListener = original;
+      binding = null;
+    };
+    const dispose = () => { unbind(); rehide(); };
+    const sync = () => {
+      if (config.showDeleted !== true) {
+        dispose(); conflicted = false; runtime.setStatus('deletedChat', 'disabled'); return;
+      }
+      const client = controller.chatClient;
+      const entries = Object.getOwnPropertyDescriptor(client || {}, '_events')?.value?.notiBlind;
+      if (binding) {
+        const { entry, original, replacement } = binding;
+        if (controller.notiBlindListener !== replacement || entry.listener !== replacement) {
+          conflicted = true; dispose();
+        } else if (client === binding.client && Array.isArray(entries) && entries.includes(entry)) {
+          paint(); runtime.setStatus('deletedChat', 'ready'); return;
+        } else {
+          // A native reconnect may already have copied our instance callback.
+          // Retire the old slot, and unwrap only our exact copied identity.
+          unbind();
+          if (Array.isArray(entries)) for (const next of entries) if (next?.listener === replacement) next.listener = original;
+        }
+      }
+      const original = controller.notiBlindListener;
+      const matches = Array.isArray(entries) ? entries.filter(entry => entry?.listener === original) : [];
+      if (!isLive || conflicted || controller.emptyMessage?.status !== 'NORMAL' || !Array.isArray(controller.messageList) ||
+        typeof original !== 'function' || typeof controller.notiUpdateMessageList !== 'function' ||
+        matches.length !== 1 || matches[0].once !== false ||
+        Object.getOwnPropertyDescriptor(matches[0], 'listener')?.writable !== true ||
+        Object.getOwnPropertyDescriptor(controller, 'notiBlindListener')?.writable !== true) {
+        rehide(); runtime.setStatus('deletedChat', 'limited', 'native-deletion-adapter-unavailable'); return;
+      }
+      const next = { client, entry: matches[0], original };
+      const replacement = next.replacement = function (event, ...args) {
+        const enabled = binding === next && !scope.disposed && config.showDeleted === true;
+        const before = enabled && Array.isArray(controller.messageList) && event &&
+          controller.messageList.find(message => message.time === event.messageTime && message.user === event.userId);
+        const previous = before && retained.get(before);
+        const eligible = before && before.type === 1 && (before.status === 'NORMAL' || previous) &&
+          typeof event.blindType === 'string' && event.blindType.length > 0 && event.blindType.length <= 80 &&
+          !['CANCEL', 'NORMAL', 'CBOTBLIND'].includes(event.blindType);
+        const result = original.call(this, event, ...args);
+        if (!eligible || binding !== next || scope.disposed || config.showDeleted !== true || result?.then) { paint(); return result; }
+        const index = controller.messageList.findIndex(message => message.time === before.time && message.user === before.user);
+        const after = controller.messageList[index];
+        if (after && after !== before && after.key === before.key && after.type === 1 &&
+          after.status === event.blindType && after.content === before.content) {
+          const visible = { ...after, status: 'NORMAL' };
+          retained.delete(before);
+          retained.set(visible, { status: after.status, content: before.content, key: before.key, user: before.user, time: before.time });
+          controller.messageList[index] = visible; controller.notiUpdateMessageList();
+        }
+        paint(); return result;
+      };
+      next.entry.listener = replacement; controller.notiBlindListener = replacement; binding = next;
+      paint(); runtime.setStatus('deletedChat', 'ready');
+    };
+    return { sync, paint, dispose };
+  };
   const attachChat = (container, isLive, scope) => {
     if (!container) return;
     timestamps(container, isLive, scope);
     if (chats.has(container)) { chats.get(container).find(); return; }
     resizeChat(isLive ? container : container.closest('aside') || container.parentElement, scope);
-    const record = { timer: null, restore: null, controller: null, replacement: null };
+    const record = { timer: null, restore: null, controller: null, replacement: null, deleted: null };
     const reportControllerStatus = () => {
       runtime.setStatus('donationChat', config.hideDonation ? 'ready' : 'disabled');
-      runtime.setStatus('deletedChat', config.showDeleted ? 'limited' : 'disabled', config.showDeleted ? 'jsx-adapter-unavailable' : '');
+      record.deleted?.sync();
     };
     let attempts = 0;
     const findController = () => {
       if (scope.disposed || !container.isConnected) return;
       const controller = stateOf(container, value => typeof value.messageFilter === 'function');
       if (controller === record.controller && controller?.messageFilter === record.replacement) { reportControllerStatus(); return; }
+      record.deleted?.dispose(); record.deleted = null;
       record.restore?.(); record.restore = null; record.controller = null;
       if (!controller) {
         if (record.timer) return;
@@ -196,14 +310,16 @@
       controller.messageFilter = replacement;
       record.controller = controller; record.replacement = replacement;
       record.restore = () => { if (controller.messageFilter === replacement) controller.messageFilter = original; };
-      // The current site has no webpack JSX factory. Do not fabricate React
-      // elements or suppress the native blind listener with guessed internals.
+      record.deleted = bindDeletedChat(controller, container, isLive, scope);
       reportControllerStatus();
     };
     record.find = findController; chats.set(container, record);
-    scope.add(() => record.restore?.());
+    // One disposer per chat root; replaced controller managers are released
+    // immediately instead of retained by a new scope callback each time.
+    scope.add(() => { record.deleted?.dispose(); record.restore?.(); });
     scope.observe(new MutationObserver(mutations => {
       timestamps(container, isLive, scope);
+      record.deleted?.paint();
       if (mutations.some(mutation => [...mutation.addedNodes, ...mutation.removedNodes].some(node => node.nodeType === 1 && !node.closest?.('.knife-owned')))) {
         attempts = 0; findController();
       }

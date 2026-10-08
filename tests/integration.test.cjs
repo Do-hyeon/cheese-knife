@@ -104,7 +104,7 @@ test('chat capability status follows option changes without repatching the same 
   assert.equal(controller.messageFilter({ type: 10 }), false);
   assert.equal(runtime(dom).statuses.donationChat.state, 'ready');
   assert.equal(runtime(dom).statuses.deletedChat.state, 'limited');
-  assert.equal(runtime(dom).statuses.deletedChat.reason, 'jsx-adapter-unavailable');
+  assert.equal(runtime(dom).statuses.deletedChat.reason, 'native-deletion-adapter-unavailable');
   deliver(dom, { hideDonation: false, showDeleted: false }, 3);
   assert.equal(controller.messageFilter({ type: 10 }), true);
   assert.equal(runtime(dom).statuses.donationChat.state, 'disabled');

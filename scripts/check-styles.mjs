@@ -30,6 +30,23 @@ let checked=0;
 const checkNative=async(name,fn)=>{checked++;try{await fn();}catch(error){failures.push({name,error:error.message});}};
 try{
   const page=await browser.newPage();
+  // Break caught: a marker on the native text itself must style/label it
+  // without JSX children, overriding only its native inline text color.
+  const deletedFixture='<style>:root{--color-content-04:rgb(120,120,120);--color-content-05:rgb(160,160,160)}span{font-size:22px}</style><aside><div role="log"><div class="_item_current"><div class="_chatting_message_current"><button class="_nickname_current">Synthetic</button><span id="deleted-current" class="_text_current" style="color:rgb(255,0,0)" data-knife-deleted="1">Synthetic<img id="deleted-emote" width="24" height="24"></span><span id="normal-current" class="_text_current" style="color:rgb(255,0,0)">Ordinary</span></div></div><span id="legacy-deleted" class="live_chatting_message_text__old"><span class="knife-deleted">Legacy</span></span></div></aside>';
+  for(const part of ['style','label'])await checkNative(`native deleted text ${part} uses an owned marker without JSX`,async()=>{
+    await page.setContent(deletedFixture);await page.addStyleTag({content:await fs.readFile('web/main.css','utf8')});
+    if(part==='style'){
+      const style=await page.locator('#deleted-current').evaluate(n=>({color:getComputedStyle(n).color,decoration:getComputedStyle(n).textDecorationLine,size:getComputedStyle(n).fontSize}));
+      assert.deepEqual(style,{color:'rgb(120, 120, 120)',decoration:'line-through',size:'22px'});
+      assert.equal(await page.locator('#deleted-emote').evaluate(n=>getComputedStyle(n).width),'24px');
+    }else assert.equal(await page.locator('#deleted-current').evaluate(n=>getComputedStyle(n,'::after').content),'"__MSG_content_deletedMessage__"');
+  });
+  await checkNative('native deletion OFF restores ordinary color and preserves legacy labeling',async()=>{
+    await page.setContent(deletedFixture);await page.addStyleTag({content:await fs.readFile('web/main.css','utf8')});
+    await page.locator('#deleted-current').evaluate(n=>n.removeAttribute('data-knife-deleted'));
+    for(const id of ['deleted-current','normal-current'])assert.deepEqual(await page.locator('#'+id).evaluate(n=>({color:getComputedStyle(n).color,decoration:getComputedStyle(n).textDecorationLine,label:getComputedStyle(n,'::after').content})),{color:'rgb(255, 0, 0)',decoration:'none',label:'none'});
+    assert.equal(await page.locator('#legacy-deleted').evaluate(n=>getComputedStyle(n,'::after').content),'"__MSG_content_deletedMessage__"');
+  });
   for(const check of checks){
     checked++;
     await page.setContent(fixture);

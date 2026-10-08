@@ -54,6 +54,7 @@
 - [ ] brightness/contrast/saturation/gamma/sharpness: 변경/초기화, 실제 영상의 필터 및 SVG, 하드웨어 조건은 미확인 시 표시.
 - [ ] compressorDefault/threshold/knee/ratio/attack/release/Gain: 초기 실행·설정 변화·OFF/ON·실제 재생·remount/SPA.
 - [ ] hideDonation/showDeleted, resize/timestamp: 실제 controller/메시지 구조를 제한적으로 조사; 삭제 이벤트는 확인 가능한 범위만, 후원/채팅을 보내거나 남의 moderation을 변경하지 않는다.
+- [x] 승인된live삭제표시 bounded후보:검증한native NORMAL/blind/copiedlistener/ownedDOMmarker 연결,기존native처리·다른listener·OFF/CANCEL/dispose복원/과거숨김미공개. Node신규22(12RED→GREEN+10보호)/전체158/nativeCSS94/filter17/build/package/hash PASS. 새dist필수수동확장새로고침/설치본hook·실제삭제이벤트/전체PR수용은남음. 실제채팅·후원·moderation을제조하지않음.
 - [ ] 통계/시작 시각/채널 채팅 링크/설정 저장·팝업 상태: 실제 값·누락/실패 표시·새 탭/SPA 일관성.
 - [x] 통계 해상도/측정FPS/코덱,PIP,팝업 생성·이동·닫기 설치본 검사. 모든25개 leaf와25개 스타일 저장 UI 계약 자동 검사. native sidebar·VOD시각·Gain키보드·drag 해제·스타일 등록 경쟁/legacy 이관 후보(설치본 재검사 남음).
 - [ ] 재현된 각 결함은 RED→minimal fix→전체 suite GREEN→실제 설치본 검사. 내부 데이터가 없으면 명시적으로 미검증/지원 제한, PR 완료 조건 미충족으로 남긴다.
