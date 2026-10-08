@@ -85,6 +85,7 @@
 - [x] 사용자 승인 후 시작시각 currentlive/currentVOD 선택자추가,기존조회/캐시/취소/URL검증/legacy 보존.6RED→GREEN+2보호characterization/전체Node109/nativeCSS40/build/package/hash PASS.새dist 실제hover·표시·route 수용은 수동확장 새로고침후 남음.
 - [x] 5c03 설치본actual live/VOD 툴팁/이탈·재진입/route 정리/새동일VOD노드cache조회1회 유지 수용.라이브캡처확인/VOD캡처timeout 보류.현재방송timeMachineActive=false 확인;허용DVR URL과스타일원래상태캡처 요청.모든모드/동일노드다른VOD재사용/전체기능PASS로확대하지 않음.
 - [ ] 작은 화면, wide/normal, fullscreen/PIP, SPA/bfcache, 스타일 조합 충돌과 cleanup 검사.
+- [x] 사용자 전체 스타일 캡처로 25개 복원 기준(ON10/OFF15/font0) 확보. 현재 설치본 live1963/왼쪽채팅353/시각HH:mm/볼륨표시/사이드바 숨김3과 보존2 확인. 초기 native 미니 상태는 정상 주 플레이어 PASS로 합산하지 않으며 반대 설정/전체 조합은 남음. 타임머신은 사용자 미결제로 허용-DVR 실사용 미검증 제외 조건을 기록;결제/우회 없이 PR에 제한 명시.
 
 ### Task 4: 기여 PR 완료 조건
 
