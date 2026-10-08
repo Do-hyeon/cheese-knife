@@ -73,3 +73,15 @@ VOD의 현행 `_player_` max-height는 `calc(100% - 84px)`였다. 1800×700의 �
 하단의 채팅 제외 screenshot 요청은 `Page.captureScreenshot`5000ms timeout이었다. 저장된 성공 이미지가 없으며 다른 전송 방식으로 반복하지 않았다. 검사 탭을 모두 닫았고 사용자 탭/저장소/제품/build는 변경하지 않았다.
 
 다음 단계는 플레이어 원래 값(화면 채우기OFF/볼륨 표시ON/빨리 감기 숨김OFF/컴프레서 숨김OFF)의 수동 복원과 실제 재검사다. 이 확인 전에는 플레이어 스타일 전체 수용/설정 복원 완료를 선언하지 않는다.
+
+## 복원 확인 및 VOD 화면 채우기 결함 확정
+
+사용자가 원래 4개 값으로 복원/페이지 적용 완료를 알렸다. 별도 VOD에서 컴프레서 `display:flex`, 볼륨 `::before="100 퍼센트"`를 확인했다. 별도 live는 다시 native player가 생기기 전 timeout이어서 이 관찰로 복원 성공을 주장하지 않았다. 대신 현재 목록에서 기존 사용자 live 탭을 정확한 URL/ID로 확인하고 **읽기 전용** DOM 검사만 수행했다. 해당 실제 player 폭1963px/빨리 감기flex/컴프레서flex/볼륨 `100 퍼센트`가 복원되어 있었다. 사용자 탭을 reload/탐색/클릭/음량 조절하지 않았으며 시청을 변경하지 않았다.
+
+동일 VOD `/video/15573896`, 동일 viewport1800×700에서 OFF도 container1545×556/player1189×556/max-height `calc(100% - 84px)`였다. 앞선 ON과 값이 같으므로 현행 VOD의 화면 채우기는 **FAIL**이다. 라이브 화면 채우기 전체 모드는 별도이며, 이 결함을 전 기능 장애로 확대하지 않는다.
+
+허용된 동일 VOD 탭의 DOM/CSS 진단으로 해당 DIV의 높이 제한이 **인라인 style**임을 확인했다. 기존 `[class^="vod_player__"]` 대상은0개이고 현재 `#player_layout.type_vod` 대상은1개다. 일반 `_player_` rule은 non-important이므로 인라인 max-height를 넘지 못한다. 기존 VOD important rule은 구형 선택자라 현행 요소에 적용되지 않는다. CSS 진단은 root depth0/정확한 player query/높이 속성만 사용했으며 전체 문서/개인 내용/React 객체/네트워크 payload를 기록하지 않았다.
+
+이 제한된 결함의 in-chat 보완 설계는 **사용자 승인 대기**다: `styles/fit-player.css`의 legacy 규칙을 유지하고, `#layout-body` 내부에서 `#player_layout.type_vod`를 실제 포함하는 현행 `_player_` wrapper에만 `max-height:100% !important`를 추가한다. native fullscreen이 활성인 wrapper는 새 override에서 제외하고, live/iframe popup/foreign layout은 새 규칙에 매치하지 않도록 한다. 영상 크롭·속도·음량·설정 저장·권한·JS는 바꾸지 않는다. 인라인 제한을 가진 현행 VOD fixture에서 실패를 먼저 확인하고, legacy/live/foreign/fullscreen 보호와 CSS 제거 복원, 실제 낮은 높이 ON/OFF/wide/normal 검사를 수행할 예정이다. 이 구체안 승인 전 제품/검사 코드를 쓰거나 임시 후보 CSS를 적용하지 않았다.
+
+뷰포트 override는 reset했고 기본 VOD2560×1249를 다시 확인했다. 허용된 CSS/DOM 진단 도메인은 disable하고 검사 탭은 닫았다. 이번에 확인한 원래 설정 복원은 플레이어4개에 해당하며 나머지 스타일을 변경하거나 전체25개를 재검증한 결과가 아니다. PR은 아직 열지 않았다.
