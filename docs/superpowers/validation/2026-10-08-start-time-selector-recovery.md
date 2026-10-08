@@ -1,4 +1,4 @@
-# 시작 시각 선택자 복구 — 설치본 수용 대기
+# 시작 시각 선택자 복구 — 기본 설치본 수용
 
 2026-10-08. 사용자가 현행 live/VOD 연결점만 추가하고 기존 조회·캐시·취소·URL 검증을 유지하는 제한 수정을 승인했다. 기준76cc0af, 시험판v2.13.2다. [실제 연결점 조사](2026-10-08-installed-remaining-function-checks.md)에 근거하며, 전체 기능/PR 완료 판정이 아니다.
 
@@ -29,6 +29,17 @@ production listener/adapter 검사8개를 추가하고, 원격HTTP 경계만 대
 
 검토 제외 범위에 대한 작성자 판단: 실제hover 위치/클리핑·SPA·cache는 수동새로고침 후 필수 수용 항목으로 유지한다. 미래DOM/동일구조 충돌은 현재 재현 결함이 아닌사이트 변경 위험으로 남긴다. 이미주석된DOM 노드의다른VOD 재사용·기존timeout/cache상한·React 메타데이터 모호성은 이번패치의새회귀로확인되지 않았으나실제설치본 검사에서관찰할 경계로 남기고PASS로 합산하지 않는다. 기존조회계약을 추측으로 바꾸지 않으며, 전체브랜치/모든기능/PR 준비 여부는 원래계획의미완료 조건을 유지한다.
 
-## 다음 게이트
+## 실제 설치본 수용 — 사용자 새로고침 후
 
-새 후보의 실제installed hover/날짜표시/재진입/cache/route정리는 아직 검사하지 않았다. 기존 설치본에 새coordinator를 중복실행하거나 옛DOM을 새것처럼 꾸며PASS로 판정하지 않는다. 로컬시험판 확장을 직접 새로고침할 수 없는 도구제한을 유지하므로 수동 확장 새로고침 후 실제live/VOD를 검사한다. 그 필요단계에서 중지하고PR을 열지 않는다.
+사용자가5c03f5c 제품 코드/eaaeac6 기록 후보의 확장 새로고침을 완료했다. 별도 검사 탭에서임시product JS/CSS 없이 실제native hover를 검사했다.
+
+- 라이브 시청자 수에서 한국어‘라이브 시작’과 이전에 확인한openDate가 표시됐고,pseudo-element content/visibility/hover 및캡처에서 실제표시를 확인했다. 경과시간span에는주석이없었다. 초기player 생성에따른generation 정리로처음툴팁이제거된뒤,안정된player에서실제이탈→재진입으로다시표시됐다. focus 변경만으로는pointer가이탈하지않아재입력만으로표시되지않는과정도구분했다.
+- 라이브→전체방송 이동후 현재annotation0/owned player controls0을확인했다. muted native miniplayer는계속재생했으며사용자의시청탭은조작하지 않았다.
+- 홈의현재VOD 날짜에서기존API의liveOpenDate와일치하는한국어툴팁/content/visible을확인했다. 정보/area/card ancestor의overflow는visible이었다. 해당VOD 전용PerformanceObserver의실제조회는1회였다.
+- 같은문서의홈→목록 전환에서generation2→3,이전노드tooltip=null/current annotation0을확인했다. 홈복귀후날짜클릭이의도와다르게채널이동을일으켜그경로를의도한홈수용으로세지않았다. 홈URL을다시확정하고날짜의실제hit-test/좌표를확인한뒤,지원되는CDP mouseMoved로이탈→재진입했다. generation6/새노드(sameNode=false)/sameDocument=true에서동일VOD tooltip visible,조회누계1회유지로캐시재사용을확인했다.
+
+캡처가2회5초timeout과지원되는동일탭CDP 캡처의15초timeout으로실패해VOD screenshot 수용은보류했다. 다른전송/extension origin으로우회하거나새도구를설치하지 않았다. 성공한라이브캡처는채팅을제외한공개방송정보영역만ignored `output/acceptance/start-time-live-installed-5c03f5c.png`에저장했고실제툴팁표시를직접확인했다. VOD의DOM/content/overflow 증거를캡처성공으로표시하지 않는다.
+
+진단observer.disconnect/Symbol 제거/포커스정리를확인하고검사용탭을닫았다. 라이브검사때잠시native mute를사용했으며주native player를원래unmuted로복원한뒤닫았다(별도native preview media는muted 유지). 저장된extension 옵션은바꾸지 않았고coordinator를중복주입하지 않았다.
+
+이번선택자복구의기본installed live/VOD 표시·재진입·SPA정리·새노드cache 재사용은수용한다. 이미주석된동일DOM의다른VOD 재사용/모든클리핑·모드/bfcache 조합과전체기능수용은여전히검사범위를넘으므로PASS로합산하지 않는다. PR을아직열지 않는다.
