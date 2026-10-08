@@ -97,3 +97,22 @@ owned anchor 제거, tooltip의 원래 href/속성 및 fetch 원본 identity 복
 - 허용 DVR은 사용자 미결제로 실사용 불가이며 기존 명시적 환경 제외를 유지한다. 이번 세 수정의 수용이나 green suite를 전체 기능 복구로 합산하지 않는다. 기여 PR은 아직 열지 않는다.
 
 사용자가 조사용 live 페이지 새로고침을 완료했다. 같은 탭의 동일한 제한 진단을 한 번 재시도했지만 같은 문서 응답 대기 제한이 유지됐다. controller 조회는 실행되지 않았고 사이트 함수/채팅/계정/설정에 mutation을 하지 않았다. 공식 browser-troubleshooting 문서에도 이 상태의 별도 해제 방법은 없었다. 새 탭·다른 transport·browser 재선택으로 같은 제한을 우회하거나 사용자 새로고침을 반복 요청하지 않는다. 대기 중인 브라우저 제어 확인 요청이 사용자에게 보이는지 확인이 필요한 상태다. 제품 결함의 원인으로 이 도구 제한을 혼동하지 않는다.
+
+## Chrome 재시작 후 삭제 표시 연결점 조사 — 구현 전
+
+사용자는 대기 요청 없음과 Chrome 재시작 완료를 알렸다. 현재 인벤토리는 이전 browser6 대신 browser7의 같은 extensionInstanceId였다. 공식 recovery 안내에 따라 이 재연결을 선택하고 전체 API/cdp 계약을 읽었다. 새 own HTTP live 탭의 MAIN 조회가 실행됐고 runtime/configReady/live route를 확인했다. 재시작으로 관찰된 조회 제한 해소이며, 앞선 제한의 정확한 원인을 확정한 것은 아니다.
+
+채팅 controller와 messageList 배열/메서드가 발견됐다. 실제 저장 옵션 hideDonation/showDeleted는 둘 다 false, 해당 statuses disabled였다. 알려진 webpack 전역은 없었다. 채팅 본문·닉네임·user/time 값·토큰·전체 React 객체는 출력하거나 저장하지 않았다. 제한된 메서드 소스와 렌더링 자료형/상수/수만 조사했다.
+
+- native `notiBlindListener`는 현재 목록에서 event의 messageTime/userId에 해당하는 항목을 찾는다. CANCEL은 native makeMessage로 복구하고, 그 외에는 기존 항목의 content를 유지하며 status를 blindType으로 교체한 뒤 목록 갱신을 요청한다. 원문을 새 API로 조회할 필요가 없다는 근거다. renderer는 NORMAL에서 원래 content를 사용하고 다른 status에서는 안내 문구를 선택한다. emptyMessage의 defaultStatus 및 관측한 일반 row의 status는 NORMAL이었다.
+- renderer의 현재 native text에는 문자열뿐 아니라 이미 처리된 React child가 올 수 있다. 관측 row는 string, 실제 child element의 symbol은 react.element였다. 이는 새로운 React element/JSX factory를 만들어도 된다는 승인이 아니다. JSX 없이 native content 자체를 보존하고 별도 DOM 표시 표지를 쓰는 후보를 우선 검토한다.
+- controller.connect가 client.on('notiBlind', controller.notiBlindListener)로 함수 참조를 등록한다. 현재 `_events.notiBlind`에는 정확히 native 함수와 같은 listener1개/once=false가 있었다. emitter dispatch는 record의 listener를 호출하며, addListener/removeListener/getListeners 구현도 읽기 전용 확인했다. 따라서 controller 함수 필드만 바꾸는 후보는 이미 등록된 callback을 바꾸지 못한다. 다른 listener 제거나 이벤트 일괄 재등록을 후보로 삼지 않는다.
+- 현행 `[class^="_chatting_message_"] > span[class^="_text_"]`는 실제 text target35개였다. 삭제 상태 row는0이어서 실제 삭제 이벤트 처리 성공은 미검증이다. native listener를 호출하거나 client 이벤트를 emit하지 않았고, 채팅/후원/삭제/차단/계정 변경을 실행하지 않았다.
+
+own 탭을 닫았다. 제품/테스트/CSS/dist/저장 설정/사용자 탭/미디어/viewport에 mutation을 하지 않았다. 아래 bounded 후보는 디자인 승인 전이며 구현되지 않았다. 기존 삭제 표시 미지원/전체 PR 게이트는 유지한다.
+
+### 제한된 후보 계약
+
+기존 attachChat 안에서 live+showDeleted ON이며 확인한 native NORMAL·blind callback·event record 계약이 모두 맞을 때만 연결한다. 다른 listener의 순서/once 설정은 유지하고 자신의 callback identity만 교체·복원한다. 원래 native 삭제/CANCEL 처리 자체는 호출한다. 새로 관측된 삭제에서 직전 일반 메시지의 기존 content를 유지해 로컬에 표시하되, 삭제 표지는 현행 text DOM의 owned attribute와 기존 번역 문구/CSS로 표현한다. JSX 생성/외부 원문 조회/별도 채팅 저장/과거 삭제 내역 복구는 하지 않는다. 기존 cleanbot/이미 숨겨진 항목은 새로 공개하지 않고, OFF·CANCEL·route dispose 시 자신의 표시/상태/연결만 되돌린다. 현재 목록 밖으로 밀려난 메시지나 다른 writer의 변경은 복원하지 않는다. 연결 계약이 바뀌면 해당 기능만 limited다.
+
+controller/client 재사용·교체, 동일 이벤트 반복, CANCEL, OFF, native/다른 callback identity 변경, 외부 표지, 일반 text/처리된 emote 보존을 production-module 회귀 RED→GREEN으로 검증할 계획이다. 실서비스 listener 연결/해제는 별도 설치본 검사이며 실제 삭제 이벤트를 보내거나 제조하지 않는다. 설계가 승인되기 전에는 구현 skill/새 제품 의존성/제품 코드/회귀 테스트를 추가하지 않는다.
