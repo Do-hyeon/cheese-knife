@@ -104,6 +104,76 @@ try{
     assert.equal(await page.locator('#aside-chatting').evaluate(n=>getComputedStyle(n.parentElement).flexDirection),'row-reverse');
     assert.equal(await page.locator('#foreign-main').evaluate(n=>getComputedStyle(n).flexDirection),'column','other main containers stay unchanged');
   });
+  const exploreFixture='<style>body{margin:0}#sidebar{position:fixed;left:0;top:60px;width:240px}#sidebar ._content_current{position:relative;padding:4px 20px}nav{padding-bottom:15px}ul{display:block;margin:0;padding:0;list-style:none}li{margin-top:3px}a{display:block;white-space:nowrap}#layout-body{padding-left:240px}</style><aside id="sidebar" class="_container_current _is_expanded_current" aria-label="사이드바"><div class="_wrapper_current"><div class="_content_current"><nav id="explore" class="_section_current _is_expanded_current"><ul id="explore-list" class="_list_current"><li class="_item_current"><a href="/lives">Live</a></li><li class="_item_current"><a href="/clips">Clips</a></li><li class="_item_current"><a href="/category">Categories</a></li></ul></nav><nav id="following" class="_section_current"><ul id="following-list" class="_list_current"><li>Following</li></ul></nav></div></div></aside><main id="layout-body" class="_is_expanded_current"></main><nav id="foreign-explore"><ul id="foreign-list"><li>Other</li></ul></nav>';
+  for(const [width,right] of [[1800,false],[1800,true],[1799,false],[1100,false]])await checkNative(`top-explore current first section width ${width}, right=${right}`,async()=>{
+    await page.setViewportSize({width,height:900});await page.setContent(exploreFixture);
+    if(right)await page.addStyleTag({content:await fs.readFile('styles/right-sidebar.css','utf8')});
+    await page.addStyleTag({content:await fs.readFile('styles/top-explore.css','utf8')});
+    const nav=await page.locator('#explore').evaluate(n=>({position:getComputedStyle(n).position,x:n.getBoundingClientRect().x,y:n.getBoundingClientRect().y}));
+    assert.equal(nav.position,width>=1800?'absolute':'static','only wide view moves the first section');
+    assert.equal(await page.locator('#explore-list').evaluate(n=>getComputedStyle(n).display),width>=1800?'flex':'block');
+    if(width>=1800){assert.ok(nav.x>=0&&nav.x<width,'top navigation remains within viewport');assert.ok(nav.y>=0&&nav.y<60,'top navigation reaches toolbar row');}
+    for(const id of ['following','foreign-explore'])assert.equal(await page.locator(`#${id}`).evaluate(n=>getComputedStyle(n).position),'static',id);
+    for(const id of ['following-list','foreign-list'])assert.equal(await page.locator(`#${id}`).evaluate(n=>getComputedStyle(n).display),'block',id);
+  });
+  for(const width of [1800,1799,1100])await checkNative(`top-explore keeps promotional farm out of toolbar only at wide breakpoint ${width}`,async()=>{
+    await page.setViewportSize({width,height:900});
+    await page.setContent(exploreFixture.replace('</ul>','<li id="farm"><a href="/cheezefarm">Promotional farm</a></li></ul>')+'<a id="foreign-farm" href="/cheezefarm">Unrelated farm link</a>');
+    await page.addStyleTag({content:await fs.readFile('styles/top-explore.css','utf8')});
+    assert.equal(await page.locator('#farm').evaluate(n=>getComputedStyle(n).display),width>=1800?'none':'list-item');
+    assert.notEqual(await page.locator('#explore-list>li').first().evaluate(n=>getComputedStyle(n).display),'none','ordinary navigation remains visible');
+    assert.notEqual(await page.locator('#foreign-farm').evaluate(n=>getComputedStyle(n).display),'none','no global farm-link hiding');
+  });
+  const toolbarFixture='<style>body{margin:0}header{position:sticky;top:0;height:60px;transform:translateY(0)}#layout-body{min-height:900px}#sidebar{position:fixed;top:60px}</style><div class="_glive_current"><header id="header" aria-label="헤더" style="transform:translateY(0px)"><input id="search" aria-label="Search"></header><aside id="sidebar" aria-label="사이드바"><nav><a id="nav-link" href="/lives">Live</a></nav></aside><main id="layout-body"></main></div>';
+  await checkNative('auto-hide collapses current sticky header and reveals it on hover',async()=>{
+    await page.setViewportSize({width:1600,height:900});await page.setContent(toolbarFixture);await page.mouse.move(1100,400);
+    await page.addStyleTag({content:await fs.readFile('styles/auto-hide-toolbar.css','utf8')});
+    await page.waitForFunction(()=>Math.abs(document.querySelector('#header').getBoundingClientRect().y+45)<0.1,{},{timeout:2000});
+    assert.equal(Math.round(await page.locator('#header').evaluate(n=>n.getBoundingClientRect().y)),-45,'collapsed toolbar leaves a 15px hover strip');
+    await page.mouse.move(500,5);
+    await page.waitForFunction(()=>Math.abs(document.querySelector('#header').getBoundingClientRect().y)<0.1,{},{timeout:2000});
+    assert.ok(Math.abs(await page.locator('#header').evaluate(n=>n.getBoundingClientRect().y))<0.1,'expanded toolbar returns to top');
+  });
+  await checkNative('auto-hide reveals current toolbar for keyboard focus without hover',async()=>{
+    await page.setContent(toolbarFixture);await page.mouse.move(1100,400);await page.locator('#search').focus();
+    await page.addStyleTag({content:await fs.readFile('styles/auto-hide-toolbar.css','utf8')});
+    assert.equal(await page.locator('#header').evaluate(n=>n.matches(':hover')),false);
+    assert.equal(Math.round(await page.locator('#header').evaluate(n=>n.getBoundingClientRect().y)),0,'focused search remains visible');
+    assert.equal(await page.locator('._glive_current').evaluate(n=>getComputedStyle(n).getPropertyValue('--knife-top-explore-top').trim()),'-11px','top-explore follows keyboard focus');
+  });
+  await checkNative('top-explore follows auto-hide offset and returns on keyboard focus',async()=>{
+    await page.setViewportSize({width:1800,height:900});
+    await page.setContent(toolbarFixture.replace('<aside id="sidebar"','<aside class="_container_current _is_expanded_current" id="sidebar"'));await page.mouse.move(1100,400);
+    await page.addStyleTag({content:await fs.readFile('styles/auto-hide-toolbar.css','utf8')});
+    await page.addStyleTag({content:await fs.readFile('styles/top-explore.css','utf8')});
+    assert.ok(await page.locator('#sidebar nav').evaluate(n=>n.getBoundingClientRect().bottom<=15),'navigation must not stay over the collapsed toolbar');
+    await page.locator('#search').focus();
+    await page.waitForFunction(()=>{const y=document.querySelector('#sidebar nav').getBoundingClientRect().y;return y>=0&&y<15},{},{timeout:2000});
+    assert.ok(await page.locator('#sidebar nav').evaluate(n=>n.getBoundingClientRect().y>=0),'focused header exposes navigation');
+  });
+  const searchFixture=`<style>body{margin:0}#header{height:60px;display:flex;align-items:center;padding:0 20px;position:relative;box-sizing:border-box}.logo{width:129px;flex:none}.tools{display:flex;flex:1;justify-content:space-between;align-items:center}.topics{width:244.5px;height:40px;flex:none}.search{position:absolute;left:50%;transform:translateX(-50%);width:400px;height:38px}form{margin:0}input{box-sizing:border-box;width:100%}._section_controls{width:340px;height:40px;flex:none}#sidebar{position:fixed;top:60px;left:0;width:240px}._content_current{position:relative;padding:4px 20px}nav{padding-bottom:15px}ul{margin:0;padding:0;list-style:none}li{flex-shrink:0;height:38px}li:nth-child(1),li:nth-child(2){width:111.9375px}li:nth-child(3){width:108.65625px}li:nth-child(4){width:104px}li:nth-child(5){width:96px}#layout-body{padding-left:240px}</style>
+    <header id="header"><div class="logo">Logo</div><div class="tools"><div class="topics">Topics</div><div id="search-container" class="search"><form><div><input id="search-input" aria-label="Search"></div></form></div><div id="controls" class="_section_controls">Account controls</div></div></header>
+    <aside id="sidebar" class="_container_current _is_expanded_current"><div class="_content_current"><nav id="explore"><ul><li>Live</li><li>Clips</li><li>Category</li><li>Schedule</li><li>Following</li></ul></nav><nav id="following">Following channels</nav></div></aside><main id="layout-body"></main><div><form><input id="foreign-search"></form></div>`;
+  for(const [width,right] of [[1200,false],[1799,false],[1800,false],[1920,false],[2560,false],[1800,true],[1920,true]])await checkNative(`top-explore avoids search and account overlap at ${width}, right=${right}`,async()=>{
+    await page.setViewportSize({width,height:900});await page.setContent(searchFixture);
+    if(right)await page.addStyleTag({content:await fs.readFile('styles/right-sidebar.css','utf8')});
+    const baseline=await page.locator('#search-container').evaluate(n=>n.getBoundingClientRect().x);
+    const css=await page.addStyleTag({content:await fs.readFile('styles/top-explore.css','utf8')});
+    const layout=await page.evaluate(()=>({nav:document.querySelector('#explore').getBoundingClientRect().toJSON(),search:document.querySelector('#search-container').getBoundingClientRect().toJSON(),controls:document.querySelector('#controls').getBoundingClientRect().toJSON(),position:getComputedStyle(document.querySelector('#explore')).position}));
+    if(width>=1800){
+      assert.ok(layout.nav.right+8<=layout.search.left,'search stays beyond navigation');
+      assert.ok(layout.search.right+8<=layout.controls.left,'search stays before account controls');
+      assert.ok(layout.nav.y>=0&&layout.nav.bottom<=60,'menu fits toolbar');
+      assert.ok(layout.search.width>=300,'search remains usable');
+    }else{
+      assert.equal(layout.position,'static','narrow view keeps sidebar navigation');
+      assert.equal(layout.search.x,baseline,'narrow view keeps native search placement');
+    }
+    assert.equal(await page.locator('#foreign-search').evaluate(n=>getComputedStyle(n.parentElement.parentElement).position),'static');
+    await css.evaluate(n=>n.remove());
+    assert.equal(await page.locator('#search-container').evaluate(n=>getComputedStyle(n).position),'absolute','removing option restores native search');
+    assert.equal(await page.locator('#search-container').evaluate(n=>n.getBoundingClientRect().x),baseline);
+  });
   console.log(JSON.stringify({browser:browser.version(),checks:checked,passed:checked-failures.length,failures},null,2));
   assert.equal(failures.length,0,'Native CSS behavior regressions');
 }finally{await browser.close();}

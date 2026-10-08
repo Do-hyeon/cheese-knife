@@ -74,6 +74,8 @@
 - [x] right-sidebar/static-logo/rectangle-profile/hide-live-badge와 VOD chat-resize/chat-font-size/left-chat 후보. native CSS15/15, 가능한 현행 DOM A/B·복원; 실제 옵션 조합 미완료.
 - [x] 사용자 live 왼쪽 채팅 화면 축소59px 재현. native main column과 바깥chat wrapper 관계 확인; 회귀 RED→GREEN16/16. 현재 문서 임시 복구1963px/재생 유지. 영구 후보는 추가 확장 새로고침 후 검사 필요.
 - [x] d985 영구 설치본 hotfix 없음/live1963px 확인.VOD left drag353→394/저장/353·null 복원 및 시각/재생 확인.전체 조합 검사는 아직 남음.
+- [x] 6bff 설치본 팝업/Gain/미리보기/VOD 편집·복원/SPA mini·채팅 버튼의 제한 수용.상단 탐색·자동 숨김 후보 native25사례 PASS이나 실제1200/1800px 검색 겹침 FAIL.후속 기록의 bounded 배치 승인 게이트에서 중지;전체 스타일 수용으로 간주하지 않음.
+- [x] 사용자 승인 후1800px 이상 한 줄 메뉴/native flex 검색·그 미만 기본 사이드바 구현.검색 겹침8FAIL→nativeCSS33PASS,실제7개 폭/우측 조합 및 focus/접힘 검사.PASS 범위는 임시 CSS이며 새 dist의 실제 저장 옵션 등록 검사는 새로고침 후 남음.
 - [ ] 작은 화면, wide/normal, fullscreen/PIP, SPA/bfcache, 스타일 조합 충돌과 cleanup 검사.
 
 ### Task 4: 기여 PR 완료 조건
