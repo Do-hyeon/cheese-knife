@@ -21,6 +21,14 @@ production listener/adapter 검사8개를 추가하고, 원격HTTP 경계만 대
 
 재현: `node --test tests/*.test.cjs`, `node scripts/check-styles.mjs --chrome`, `node scripts/build.mjs`, `node scripts/check-package.mjs`.
 
+## 독립 읽기 전용 검토
+
+범위76cc0af..5c03f5c의 검토1회: Critical/Important/Minor 없음. 검토자가 시작시각11/11, immutable diff check, source/dist SHA256 일치를 독립 확인했고 checkout은 변경하지 않았다. 실제 설치본 검사 단계로 진행 가능하다는 판정이며 merge/전체 기능/PR 승인서는 아니다.
+
+검토자의 sandbox 전체suite는107PASS/2FAIL이었다. `portable build contains referenced vendor and its license but not backups`, `build refuses a target outside its repository dist directory`가Windows TEMP realpath EPERM으로 본래package assertion 전에 실패했다. 이 실행을PASS로 표시하지 않는다. 작성자의 같은현재후보 전체suite는 앞서 문서화한 경로권한 제한 밖에서109/109 PASS했고, 검토자도 해당현재 로그를 읽었다. product의경로검증을약화하거나sandbox 회피용변경을추가하지 않았다.
+
+검토 제외 범위에 대한 작성자 판단: 실제hover 위치/클리핑·SPA·cache는 수동새로고침 후 필수 수용 항목으로 유지한다. 미래DOM/동일구조 충돌은 현재 재현 결함이 아닌사이트 변경 위험으로 남긴다. 이미주석된DOM 노드의다른VOD 재사용·기존timeout/cache상한·React 메타데이터 모호성은 이번패치의새회귀로확인되지 않았으나실제설치본 검사에서관찰할 경계로 남기고PASS로 합산하지 않는다. 기존조회계약을 추측으로 바꾸지 않으며, 전체브랜치/모든기능/PR 준비 여부는 원래계획의미완료 조건을 유지한다.
+
 ## 다음 게이트
 
 새 후보의 실제installed hover/날짜표시/재진입/cache/route정리는 아직 검사하지 않았다. 기존 설치본에 새coordinator를 중복실행하거나 옛DOM을 새것처럼 꾸며PASS로 판정하지 않는다. 로컬시험판 확장을 직접 새로고침할 수 없는 도구제한을 유지하므로 수동 확장 새로고침 후 실제live/VOD를 검사한다. 그 필요단계에서 중지하고PR을 열지 않는다.
