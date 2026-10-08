@@ -51,3 +51,11 @@ own탭2개를닫았고user탭/확장저장소/viewport/미디어를변경하지�
 새live의rawCDP는paused document response처리중제한으로적용명령을거절했다. 다른전송경로/isolated세계/ChromeAPI로우회하거나재시도루프를만들지않았다. live임시CSS0/wrappernone을DOM으로확인했으므로 **실제live A/B는미검증**이다. VOD의해당탭origin CDP는허용돼새wrapper규칙만임시적용했다. wrapper none→knifeFilter→none/nativevideo computedfilter동일/wrapper크기동일/playingready4를확인했고finally에서style과probeSymbol을삭제했다. 임시CSS0을확인하고새own탭2개도닫았다. 이A/B는제외selector까지포함한새전체CSS설치수용이아니며영상pixels캡처수용도아니다. 사용자시청탭/확장저장소/viewport/미디어를직접변경하지않았다.
 
 build/package v2.13.2·20 entry resources·diff check PASS,source/dist `web/main.css` SHA256 모두 `1BD89AAAC3225DCCCB63BA3A0A4DC0B405A238390D2BE2FF96FC3ED60589B9C7`다. 기존build경로검증/symlink거부를유지했다. 새dist에는필수수동확장새로고침이필요하므로여기서중지한다. 필터시험값1.5/1.1/0.5/0.8/2는유지한다. 새설치본live/VOD wrapper+native보존/재생검사후original1/1/1/1/0으로원복확인이남아있다. 모든기능/최종독립검토/PR는아직완료되지않았다.
+
+## accf43c 필터 보완 설치본 기본 수용
+
+사용자가확장새로고침완료를알렸다. 새ownlive/VOD를열어sourcewrapper/directVIDEO attached를기다렸다. 두문서bodyactive/knifeFilter1/자식5/임시probeCSS0을확인했다. 실제wrapper1개의computedfilter는knifeFilter이고directVIDEO는nativePZPfilter를유지하며knifeFilter를받지않았다. 임시CSS/설정주입이아닌새전체CSS설치본의한번적용·native보존수용이다. livewrapper1963×1104.75/VODwrapper1949×1096.3125였다.
+
+live주영상은1920×1080/playingready4였다. VOD초기wrapper영상은1280×720/pausedtrue/ready4였으므로재생PASS로세지않았다. 같은문서의정착을추가읽기로확인한뒤주영상1920×1080/playingready4/같은wrapper필터·native보존을확인했다. visible native일시정지버튼과duration22976초의VOD재생상태를관찰했으며버튼입력/play/pause/seek/mute/광고skip을실행하지않았다. 초기정지의원인을추측하거나모든구간무중단재생으로주장하지않는다.
+
+두own탭을닫았고user시청탭/확장저장소/viewport/미디어를변경하지않았다. source/distmainCSShash는위1BD89A...동일이다. 이번에는제품/build나suite를다시실행하지않아앞선122/91/17을fresh실행으로주장하지않는다. 사용자GPU/pixels와시각적변화확인은별도이며현재필터시험값은그대로다. 원래밝기1/대비1/채도1/감마1/선명도0을수동설정UI로복원하고새문서의bodyOFF/자식0/wrappernone/native영상filter보존을확인하는것이다음단계다. 전체기능/최종독립검토/PR은남아있다.
