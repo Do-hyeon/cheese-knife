@@ -73,6 +73,7 @@
 - [ ] 필요한 실제 화면에서 각 OFF/ON 및 기본 복원 확인. 오래된 선택자 불일치는 현행 DOM으로 제한 수정하고 해당 소비 동작의 regression을 작성.
 - [x] right-sidebar/static-logo/rectangle-profile/hide-live-badge와 VOD chat-resize/chat-font-size/left-chat 후보. native CSS15/15, 가능한 현행 DOM A/B·복원; 실제 옵션 조합 미완료.
 - [x] 사용자 live 왼쪽 채팅 화면 축소59px 재현. native main column과 바깥chat wrapper 관계 확인; 회귀 RED→GREEN16/16. 현재 문서 임시 복구1963px/재생 유지. 영구 후보는 추가 확장 새로고침 후 검사 필요.
+- [x] d985 영구 설치본 hotfix 없음/live1963px 확인.VOD left drag353→394/저장/353·null 복원 및 시각/재생 확인.전체 조합 검사는 아직 남음.
 - [ ] 작은 화면, wide/normal, fullscreen/PIP, SPA/bfcache, 스타일 조합 충돌과 cleanup 검사.
 
 ### Task 4: 기여 PR 완료 조건
@@ -81,5 +82,6 @@
 
 - [ ] 항목별 PASS/FAIL/미검증/조건부 지원 증거와 남은 항목을 정리. 모든 요청된 검사/조치 완료 전에 PR을 열지 않는다.
 - [ ] 전체 suite·빌드·패키지 검사·설치본 검증·독립 검토·source/dist 일치 확인.
+- [x] 현재 후보 전체 브랜치 독립 검토1회 및 한 번의 보완 패스.98개 Node/16개 nativeCSS/11개 native 필터 픽셀 검사 및 build/package PASS.보완 후보 설치본 검사는 새 확장 새로고침 후 남음.검토의 미검증 경계를 전체 수용 PASS로 바꾸지 않음.
 - [ ] 포크 브랜치를 push하고 main/upstream 미변경 및 원격 SHA를 확인.
 - [ ] 기존 중복 PR/원본 default branch를 읽기 전용 확인 후 Do-hyeon 작업 브랜치→jebibot 원본으로 한글 PR 생성, 이 채팅에 attach. 자동 merge/store 배포 없음.

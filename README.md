@@ -8,11 +8,11 @@
 
 Vue 없이 플레이어 버튼·컴프레서·VOD 길게 눌러 2배속을 제공하고 HLS.js 미리보기, 화면 전환 수명 관리, 기능별 준비 상태를 추가했습니다. [설계](docs/superpowers/specs/2026-10-08-chzzk-compatibility-design.md), [검토](docs/superpowers/reviews/2026-10-08-chzzk-compatibility-review.md), [검증 결과와 제한](docs/superpowers/validation/2026-10-08-chzzk-compatibility.md)을 함께 확인하세요.
 
-자동 테스트 82개와 별도 브라우저의 실제 오디오·공개 방송 미리보기 검증을 통과했습니다. [독립 구현 검토](docs/superpowers/reviews/2026-10-08-implementation-review.md)와 [실제 Chrome VOD 길게 누르기 수정 검토](docs/superpowers/reviews/2026-10-08-vod-hold-review.md)도 공개합니다. 설치된 Chrome에서 일부 기능을 검증했으나 전체 기능 검증과 출시 승인은 아직 완료되지 않았습니다.
+자동 테스트 98개와 별도 브라우저의 실제 오디오·공개 방송 미리보기 검증을 통과했습니다. [독립 구현 검토](docs/superpowers/reviews/2026-10-08-implementation-review.md), [실제 Chrome VOD 길게 누르기 수정 검토](docs/superpowers/reviews/2026-10-08-vod-hold-review.md), [전체 브랜치 독립 검토와 보완](docs/superpowers/reviews/2026-10-08-whole-branch-review.md)도 공개합니다. 설치된 Chrome에서 일부 기능을 검증했으나 전체 기능 검증과 출시 승인은 아직 완료되지 않았습니다.
 
 Gain 바를 48px·끝 여백 8px로 조정해 실제 라이브에서 확인했습니다. [합성 신호 음질 검사](docs/superpowers/validation/2026-10-08-audio-quality-and-gain-spacing.md)는 기본 설정의 출력과 전환 시 개선 후보를 기록하며, 실제 음성·음악의 음질 보장은 아닙니다. 오디오 처리 방식은 이번 검사에서 변경하지 않았습니다.
 
-[후속 Gain 평활화·미리보기 지연 수정](docs/superpowers/validation/2026-10-08-gain-smoothing-follow-up.md)은 Gain을 10ms 동안 이어지게 처리하고 API 대기와 hover 지연이 중복되지 않도록 합니다. 사용자가 미리보기 정상 동작을 확인했습니다. [전체 기능 점검](docs/superpowers/validation/2026-10-08-full-feature-audit.md)에서 Gain 키보드·사이드바·VOD채팅·스타일·설정 경로를 추가 보완했으며 새 후보의 설치본 검사를 위한 확장 새로고침이 필요합니다. [전체 기능 계획](docs/superpowers/plans/2026-10-08-full-feature-acceptance.md)의 미완료 항목이 남아 기여 PR은 열지 않았습니다.
+[후속 Gain 평활화·미리보기 지연 수정](docs/superpowers/validation/2026-10-08-gain-smoothing-follow-up.md)은 Gain을 10ms 동안 이어지게 처리하고 API 대기와 hover 지연이 중복되지 않도록 합니다. 사용자가 미리보기 정상 동작을 확인했습니다. [전체 기능 점검](docs/superpowers/validation/2026-10-08-full-feature-audit.md) 이후 왼쪽 채팅의 라이브 화면 축소를 수정하고 실제 라이브·VOD 배치와 너비 조절을 확인했습니다. 최신 검토 보완본은 설정 경쟁·미리보기 취소·팝업 드래그·기능 상태 갱신을 수정했으며 설치본 검사를 위한 확장 새로고침이 필요합니다. [전체 기능 계획](docs/superpowers/plans/2026-10-08-full-feature-acceptance.md)의 미완료 항목이 남아 기여 PR은 열지 않았습니다.
 
 ### 로컬 Chrome에서 시험하기
 
@@ -42,6 +42,8 @@ Node 24.x에서 `npm ci`, `npm test`, `npm run check`, `npm run build`를 실행
 합성 신호의 컴프레서 출력 측정은 `node scripts/check-audio-quality.mjs --chrome`으로 실행합니다. 별도 프로필에서 스피커로 0을 출력하는 캡처 경로를 사용하며 방송 음성을 녹음하지 않습니다. 결과는 ignored `output/audio-quality/report.json`에 저장합니다.
 
 현재 DOM용 스타일의 실제 렌더링 검사는 `node scripts/check-styles.mjs --chrome`으로 실행합니다. [설치본 미리보기 시간 측정·스타일 점검](docs/superpowers/validation/2026-10-08-preview-timing-and-style-audit.md)에 1초 설정과 임시 0.1초 비교, 네 가지 스타일 수정 후보 및 아직 남은 검증을 기록했습니다. 브라우저 검사는 일반 `npm test`와 별도입니다.
+
+합성 영상의 밝기·대비·감마·채도·샤프닝 필터 검사는 `node scripts/check-video-filters.mjs --chrome`으로 실행합니다. 실제 필터가 적용된 영상의 픽셀·초기화 등 11개 사례를 확인하며, 사용자 GPU나 샤프닝의 경계 화질을 보장하지 않습니다. [전체 브랜치 검토](docs/superpowers/reviews/2026-10-08-whole-branch-review.md)에 결과와 남은 검증을 기록했습니다.
 
 [Website](https://www.chz.app/) | [Discord](https://discord.gg/9kq3UNKAkz) | [Chrome Web Store (Chromium, Edge, Whale 호환)](https://chromewebstore.google.com/detail/nfkfgkkhgglkgnlppncolmpekidapkjh) | [Firefox Add-ons](https://addons.mozilla.org/addon/cheese-knife/) | [English](./README-en.md)
 

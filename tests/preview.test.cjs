@@ -45,6 +45,33 @@ test('untrusted hrefs do not request an API or create media', async t => {
   assert.equal(pending.length, 0);
 });
 
+for (const sidebar of [true, false]) for (const phase of ['fetch', 'preload', 'displayed']) {
+  test(`disabling ${sidebar ? 'sidebar' : 'custom-card'} preview cancels its ${phase} while the other surface stays enabled`, async t => {
+    const { dom, preview, pending, one } = setup(t);
+    dom.window.HTMLMediaElement.prototype.pause = () => {};
+    dom.window.HTMLMediaElement.prototype.load = () => {};
+    let destroyed = 0;
+    runtime(dom).Hls = class {
+      static isSupported() { return true; }
+      static Events = { ERROR: 'error', MANIFEST_PARSED: 'manifest' };
+      on() {} loadSource() {} attachMedia() {} destroy() { destroyed++; }
+    };
+    const config = { preview: true, customPreview: true, livePreview: true, previewDelay: 0.1 };
+    deliver(dom, config, 2);
+    const showing = preview.show(one.href, one, sidebar);
+    const response = { ok: true, json: async () => ({ code: 200, content: { status: 'OPEN', livePlaybackJson: JSON.stringify({ media: [{ mediaId: 'HLS', path: 'https://media.invalid/master.m3u8' }] }) } }) };
+    if (phase !== 'fetch') { pending[0].resolve(response); await showing; }
+    if (phase === 'displayed') { await new Promise(resolve => setTimeout(resolve, 150)); assert.equal(dom.window.document.querySelector('.knife-preview').hidden, false); }
+    deliver(dom, { ...config, [sidebar ? 'preview' : 'customPreview']: false }, 3);
+    assert.equal(pending[0].options.signal.aborted, true);
+    if (phase === 'fetch') { pending[0].resolve(response); await showing; }
+    await flush();
+    assert.equal(destroyed, phase === 'fetch' ? 0 : 1);
+    assert.equal(dom.window.document.querySelector('.knife-preview-video'), null);
+    assert.equal(dom.window.document.querySelector('.knife-preview')?.hidden ?? true, true);
+  });
+}
+
 for (const invalidation of ['removed', 'changed-href', 'disabled-live-preview']) {
   test('active HLS media is destroyed when its anchor/config is ' + invalidation, async t => {
     const { dom, preview, pending, one } = setup(t);

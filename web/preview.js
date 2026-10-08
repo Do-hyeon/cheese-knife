@@ -101,7 +101,8 @@
       const hoverStarted = Date.now();
       const id = url.pathname.split('/')[2];
       const request = controller = new AbortController();
-      current = { id, href, anchor, route: location.pathname, live: runtime.config.livePreview === true };
+      current = { id, href, anchor, route: location.pathname, live: runtime.config.livePreview === true,
+        permission: tooltip || runtime.config.customPreview !== true ? 'preview' : 'customPreview' };
       const timeout = later(() => request.abort(), 5000);
       let info;
       try {
@@ -180,7 +181,7 @@
   scope.on(window, 'pagehide', event => { cleanup(); if (!event.persisted) scope.dispose(); });
   const checkActive = () => {
     if (current && (location.pathname !== current.route || !current.anchor.isConnected || current.anchor.href !== current.href ||
-      (panel && !panel.isConnected) || (runtime.config.preview !== true && runtime.config.customPreview !== true) ||
+      (panel && !panel.isConnected) || runtime.config[current.permission] !== true ||
       (current.live && runtime.config.livePreview !== true))) cleanup();
   };
   // Constant-time identity check, not a document-wide card scan. Invalidation

@@ -22,6 +22,7 @@ let requestId;
 let statuses = {};
 let diagnostics = {};
 let changedBeforeLoad = false;
+let parametersChangedBeforeLoad = false;
 const sendConfig = () => window.postMessage({ namespace: "cheese-knife", protocol: 1,
   type: "config", requestId, revision: revision++, config: currentConfig, i18n }, location.origin);
 const configPromise = getConfig(true);
@@ -34,7 +35,7 @@ window.addEventListener("message", async (e) => {
     try {
       const stored = await configPromise;
       if (!changedBeforeLoad || !currentConfig) currentConfig = stored.config;
-      currentParameters = stored.styleParameters;
+      if (!parametersChangedBeforeLoad) currentParameters = stored.styleParameters;
       setFilters(currentConfig);
       initStyleParameters(currentParameters);
       sendConfig();
@@ -64,7 +65,9 @@ chrome.storage.local.onChanged.addListener((changes) => {
     initConfig(changes.config.newValue);
   }
   if (changes.styleParameters != null) {
-    initStyleParameters(changes.styleParameters.newValue || {});
+    parametersChangedBeforeLoad = true;
+    currentParameters = changes.styleParameters.newValue || {};
+    initStyleParameters(currentParameters);
   }
 });
 

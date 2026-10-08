@@ -50,16 +50,20 @@
     let y = 0;
     let dx = 0;
     let dy = 0;
-    let dragActive = false;
-    popupScope.add(() => { if (dragActive) document.body.classList.remove('knife-dragging'); });
+    let stopDrag = () => {};
+    popupScope.add(() => stopDrag());
+    popupScope.on(window, 'blur', () => stopDrag());
+    popupScope.on(window, 'pagehide', () => stopDrag());
     popupScope.on(dragArea, "mousedown", (e) => {
+      if (e.button !== 0) return;
       e.preventDefault();
-      dragActive = true;
+      stopDrag();
       popup.style.zIndex = `${zIndex++}`;
       x = e.clientX;
       y = e.clientY;
 
       const onMouseMove = (e) => {
+        if (!(e.buttons & 1)) { stopDrag(); return; }
         e.preventDefault();
         document.body.classList.add("knife-dragging");
         dx = e.clientX - x;
@@ -74,13 +78,14 @@
         popup.style.left = `${popup.offsetLeft + dx}px`;
       };
       const onMouseUp = () => {
-        dragActive = false;
         document.removeEventListener("mousemove", onMouseMove);
         document.removeEventListener("mouseup", onMouseUp);
         document.body.classList.remove("knife-dragging");
+        stopDrag = () => {};
       };
-      popupScope.on(document, "mousemove", onMouseMove);
-      popupScope.on(document, "mouseup", onMouseUp);
+      stopDrag = onMouseUp;
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
     });
 
     const button = document.createElement("button");
@@ -165,11 +170,15 @@
     if (chats.has(container)) { chats.get(container).find(); return; }
     resizeChat(isLive ? container : container.closest('aside') || container.parentElement, scope);
     const record = { timer: null, restore: null, controller: null, replacement: null };
+    const reportControllerStatus = () => {
+      runtime.setStatus('donationChat', config.hideDonation ? 'ready' : 'disabled');
+      runtime.setStatus('deletedChat', config.showDeleted ? 'limited' : 'disabled', config.showDeleted ? 'jsx-adapter-unavailable' : '');
+    };
     let attempts = 0;
     const findController = () => {
       if (scope.disposed || !container.isConnected) return;
       const controller = stateOf(container, value => typeof value.messageFilter === 'function');
-      if (controller === record.controller && controller?.messageFilter === record.replacement) return;
+      if (controller === record.controller && controller?.messageFilter === record.replacement) { reportControllerStatus(); return; }
       record.restore?.(); record.restore = null; record.controller = null;
       if (!controller) {
         if (record.timer) return;
@@ -187,10 +196,9 @@
       controller.messageFilter = replacement;
       record.controller = controller; record.replacement = replacement;
       record.restore = () => { if (controller.messageFilter === replacement) controller.messageFilter = original; };
-      runtime.setStatus('donationChat', config.hideDonation ? 'ready' : 'disabled');
       // The current site has no webpack JSX factory. Do not fabricate React
       // elements or suppress the native blind listener with guessed internals.
-      runtime.setStatus('deletedChat', config.showDeleted ? 'limited' : 'disabled', config.showDeleted ? 'jsx-adapter-unavailable' : '');
+      reportControllerStatus();
     };
     record.find = findController; chats.set(container, record);
     scope.add(() => record.restore?.());

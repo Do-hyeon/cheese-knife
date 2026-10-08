@@ -51,6 +51,25 @@ test('chat discovery recovers after bounded timeout and controller replacement',
   assert.equal(second.messageFilter({ type: 10 }), false);
 });
 
+test('chat capability status follows option changes without repatching the same controller', t => {
+  const controller = { messageFilter() { return true; } };
+  const dom = setup(t, playerHTML.replace('</main>', '<aside><div role="log"></div></aside></main>'), undefined, dom => {
+    dom.window.document.querySelector('aside').__reactFiber$test = { memoizedState: { memoizedState: controller, next: null }, return: null };
+  });
+  const patched = controller.messageFilter;
+  assert.equal(runtime(dom).statuses.donationChat.state, 'disabled');
+  deliver(dom, { hideDonation: true, showDeleted: true }, 2);
+  assert.equal(controller.messageFilter({ type: 10 }), false);
+  assert.equal(runtime(dom).statuses.donationChat.state, 'ready');
+  assert.equal(runtime(dom).statuses.deletedChat.state, 'limited');
+  assert.equal(runtime(dom).statuses.deletedChat.reason, 'jsx-adapter-unavailable');
+  deliver(dom, { hideDonation: false, showDeleted: false }, 3);
+  assert.equal(controller.messageFilter({ type: 10 }), true);
+  assert.equal(runtime(dom).statuses.donationChat.state, 'disabled');
+  assert.equal(runtime(dom).statuses.deletedChat.state, 'disabled');
+  assert.equal(controller.messageFilter, patched, 'config changes do not layer wrappers');
+});
+
 test('timestamp capability remains pending until supported message rows are observed', async t => {
   const dom = setup(t, playerHTML.replace('</main>', '<aside><div role="log"></div></aside></main>'));
   dom.window.document.documentElement.style.setProperty('--knife-chat-timestamp', '1');
@@ -195,7 +214,7 @@ test('closing a popup during a drag restores the document cursor and removes dra
   body.dispatchEvent(drop);
   const popup = body.querySelector('.knife-popup');
   popup.querySelector('.knife-popup-drag-area').dispatchEvent(new dom.window.MouseEvent('mousedown', { bubbles: true, clientX: 400, clientY: 200 }));
-  dom.window.document.dispatchEvent(new dom.window.MouseEvent('mousemove', { clientX: 450, clientY: 250 }));
+  dom.window.document.dispatchEvent(new dom.window.MouseEvent('mousemove', { clientX: 450, clientY: 250, buttons: 1 }));
   assert.equal(dom.window.document.body.classList.contains('knife-dragging'), true);
   popup.querySelector('.knife-popup-close-button').click();
   assert.equal(body.querySelector('.knife-popup'), null);
@@ -203,4 +222,23 @@ test('closing a popup during a drag restores the document cursor and removes dra
   dom.window.document.dispatchEvent(new dom.window.MouseEvent('mousemove', { clientX: 500, clientY: 300 }));
   assert.equal(dom.window.document.body.classList.contains('knife-dragging'), false);
   await flush();
+});
+
+for (const interruption of ['blur', 'pagehide', 'released']) test(`popup drag stops after ${interruption} and ignores later unpressed movement`, t => {
+  const dom = setup(t); deliver(dom, { popupPlayer: true }, 2);
+  const body = dom.window.document.getElementById('layout-body');
+  const drop = new dom.window.Event('drop', { bubbles: true, cancelable: true });
+  Object.defineProperties(drop, { dataTransfer: { value: { getData: () => 'https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' } }, pageX: { value: 400 }, pageY: { value: 200 } });
+  body.dispatchEvent(drop);
+  const popup = body.querySelector('.knife-popup');
+  popup.querySelector('.knife-popup-drag-area').dispatchEvent(new dom.window.MouseEvent('mousedown', { button: 0, clientX: 400, clientY: 200, buttons: 1 }));
+  dom.window.document.dispatchEvent(new dom.window.MouseEvent('mousemove', { clientX: 450, clientY: 250, buttons: 1 }));
+  assert.equal(dom.window.document.body.classList.contains('knife-dragging'), true);
+  const position = popup.style.cssText;
+  if (interruption === 'blur') dom.window.dispatchEvent(new dom.window.Event('blur'));
+  else if (interruption === 'pagehide') dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide', { persisted: true }));
+  else dom.window.document.dispatchEvent(new dom.window.MouseEvent('mousemove', { clientX: 500, clientY: 300, buttons: 0 }));
+  assert.equal(dom.window.document.body.classList.contains('knife-dragging'), false);
+  dom.window.document.dispatchEvent(new dom.window.MouseEvent('mousemove', { clientX: 550, clientY: 350, buttons: 0 }));
+  assert.equal(popup.style.cssText, position, 'interrupted gesture cannot keep moving the popup');
 });
