@@ -110,6 +110,8 @@
 
 ### Task 4: 기여 PR 완료 조건
 
+- [x] 사용자 최신 범위 승인: 미검증 항목을 명시하고 ‘전체 정상’이 아닌 복구 시험판 한글 기여 PR로 진행하도록 승인했다. 이전 전체 기능 수용 체크는 미검증으로 유지하고, 실제 이벤트·유료 DVR·파티/차단·GPU/청취·Firefox/전체 조합 공백을 공개한다. 알려진 Important 보완의 회귀·새 설치본 준비/OFF 복원과 최종165/108/17/build/package를 기여 범위의 증거로 사용한다. 원본/main 병합·스토어 게시 없음.
+
 - [x] 89b54c7 사용자 새로고침 후 설치본 sidebar 통제 href 재사용/tooltip 실제 API·동일 카드 cache/holdOFF trusted pending·active·정지·재생 기본 수용. 원래 설정/미디어/진단 정리·freshNode136/package/hash 확인. live 내부 연결점 추가 조회는 문서 응답 대기 제한으로 차단되어 조사 탭 페이지 새로고침만 사용자 요청. 삭제 표시 미지원/나머지 수용 공백/전체 PR 게이트는 열린 상태로 유지.
 
 - [x] 후속readiness 독립검토의Important2와사용자명시승인Minor1을한보완패스로수정:sidebar2/tooltip4/holdOFF6 RED→GREEN+2외부표지보호,Node136/nativeCSS91/filter17/build/package/hash PASS. 새JS설치본수용에는수동확장새로고침필요;전체기능/PR완료아님. 검토/보완이력은 `../reviews/2026-10-08-final-readiness-review.md`에이어짐.
