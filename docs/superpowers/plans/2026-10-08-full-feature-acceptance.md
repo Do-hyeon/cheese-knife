@@ -76,6 +76,7 @@
 - [x] d985 영구 설치본 hotfix 없음/live1963px 확인.VOD left drag353→394/저장/353·null 복원 및 시각/재생 확인.전체 조합 검사는 아직 남음.
 - [x] 6bff 설치본 팝업/Gain/미리보기/VOD 편집·복원/SPA mini·채팅 버튼의 제한 수용.상단 탐색·자동 숨김 후보 native25사례 PASS이나 실제1200/1800px 검색 겹침 FAIL.후속 기록의 bounded 배치 승인 게이트에서 중지;전체 스타일 수용으로 간주하지 않음.
 - [x] 사용자 승인 후1800px 이상 한 줄 메뉴/native flex 검색·그 미만 기본 사이드바 구현.검색 겹침8FAIL→nativeCSS33PASS,실제7개 폭/우측 조합 및 focus/접힘 검사.PASS 범위는 임시 CSS이며 새 dist의 실제 저장 옵션 등록 검사는 새로고침 후 남음.
+- [x] 267d17c 설치본 두 옵션ON 수용:임시 style0/focus-only 표시/5개 viewport 기본·상단 배치 PASS.우측 저장 옵션 조합과 나머지25스타일 전체 수용으로 환산하지 않음.홈 추천 숨김의 제한 설계 승인을 요청했고 전체 화면은 사용자 직접 검사 답변을 기다림.
 - [ ] 작은 화면, wide/normal, fullscreen/PIP, SPA/bfcache, 스타일 조합 충돌과 cleanup 검사.
 
 ### Task 4: 기여 PR 완료 조건

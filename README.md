@@ -43,7 +43,7 @@ Node 24.x에서 `npm ci`, `npm test`, `npm run check`, `npm run build`를 실행
 
 현재 DOM용 스타일의 실제 렌더링 검사는 `node scripts/check-styles.mjs --chrome`으로 실행합니다. [설치본 미리보기 시간 측정·스타일 점검](docs/superpowers/validation/2026-10-08-preview-timing-and-style-audit.md)에 1초 설정과 임시 0.1초 비교, 네 가지 스타일 수정 후보 및 아직 남은 검증을 기록했습니다. 브라우저 검사는 일반 `npm test`와 별도입니다.
 
-[후속 툴바 배치 검증](docs/superpowers/validation/2026-10-08-installed-follow-up-and-toolbar-design.md)에서는 native CSS 33개 사례와 실제 7개 폭·사이드바 조합을 확인했습니다. ‘사이드바 메뉴 툴바에 표시’는 1800px 이상에서 검색창과 분리해 배치하고 그보다 좁으면 기본 사이드바를 유지합니다. 자동 숨김은 현재 sticky 헤더와 키보드 포커스를 보완했습니다. 새 dist의 실제 저장 옵션 검사는 확장 새로고침 후 남아 있습니다.
+[후속 툴바 배치 검증](docs/superpowers/validation/2026-10-08-installed-follow-up-and-toolbar-design.md)에서는 native CSS 33개 사례와 실제 7개 폭·사이드바 조합을 확인했습니다. ‘사이드바 메뉴 툴바에 표시’는 1800px 이상에서 검색창과 분리해 배치하고 그보다 좁으면 기본 사이드바를 유지합니다. 자동 숨김은 현재 sticky 헤더와 키보드 포커스를 보완했습니다. 새 dist의 설치본에서도 두 옵션 적용·포커스 복원·5개 화면 폭을 확인했으며 전체 스타일 수용은 아직 미완료입니다.
 
 합성 영상의 밝기·대비·감마·채도·샤프닝 필터 검사는 `node scripts/check-video-filters.mjs --chrome`으로 실행합니다. 실제 필터가 적용된 영상의 픽셀·초기화 등 11개 사례를 확인하며, 사용자 GPU나 샤프닝의 경계 화질을 보장하지 않습니다. [전체 브랜치 검토](docs/superpowers/reviews/2026-10-08-whole-branch-review.md)에 결과와 남은 검증을 기록했습니다.
 
