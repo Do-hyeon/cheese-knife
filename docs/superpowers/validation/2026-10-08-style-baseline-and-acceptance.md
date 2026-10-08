@@ -54,3 +54,22 @@
 다음 수동 UI 적용 묶음은 플레이어 4개만 반전한다: 화면 채우기 ON, 볼륨 퍼센트 OFF, 빨리 감기 숨기기 ON, 컴프레서 숨기기 ON. 나머지 21개는 위 기준을 유지한다. 실제 설정 화면 접근은 여전히 도구 정책상 불가하므로 사용자 적용 후 검사하고, 이후 위 원래 값으로 복원한다. 페이지 적용용 새로고침만 필요하며 제품을 바꾸지 않았으므로 확장 자체 새로고침은 필요하지 않다.
 
 전체 기능/스타일 수용 및 기여 PR은 아직 완료하지 않았다.
+
+## 플레이어 반대 설정 적용 후 검사
+
+사용자가 위 4개 설정 적용 완료를 알린 뒤, 별도 live/VOD 탭을 만들었다. 최초 live 대기와 정상 reload 직후에도 native `.pzp-pc`/video가 없어서 소유 버튼 대기가 실패했다. 그 상태의 player 진단은 false이고 채팅/설정 bridge는 존재했다. 문서 응답 대기 중 CDP 제한을 다시 확인했으며 다른 제어 경로로 우회하지 않았다. 이후 live/VOD 모두 native player/video가 생성된 것을 확인했다. 초기 timeout을 제품 결함 또는 성공으로 바꾸지 않았고, 제품 코드는 수정하지 않았다.
+
+| 설정 | 실제 설치본 결과 | 경계 |
+| --- | --- | --- |
+| hide-ff ON | live 버튼 `display:none`, 크기 0×0 | VOD에는 원래 해당 live 버튼이 없어 VOD 숨김 PASS로 합산하지 않음 |
+| hide-comp ON | live/VOD 컴프레서 컨테이너 `display:none`, 크기 0×0 | UI 숨김이며 오디오 graph 상태를 변경하거나 DSP 검증으로 합산하지 않음 |
+| volume-percentage OFF | live/VOD slider `::before=none`, native aria값 `100 퍼센트` 보존 | 저장 UI 반대 설정 기본 수용. 원래 ON 복원 확인은 아직 남음 |
+| fit-player ON | live 현행 `_player_` max-height=1245px(1305−60), 주 player=1963×1104.75 | 적용값 관찰이지 모든 화면/모드에서 실제 공간 증가 PASS가 아님 |
+
+VOD의 현행 `_player_` max-height는 `calc(100% - 84px)`였다. 1800×700의 실제 VOD viewport에서 container 폭1545/높이556, player 폭1189/높이556이었다. native 높이 제한이 남아 있어 화면 채우기 효과는 **판정 보류**한다. 원래 fit-player OFF로 돌린 동일 조건을 비교해야 선택자/우선순위 결함인지 판별할 수 있다. ON이라는 이유로 실제 채우기 성공을 주장하거나 현재 근거만으로 CSS를 수정하지 않는다.
+
+같은 resize 호출 직후 live의 첫 읽기는 이전2560×1305 값이었으므로 live1800×700 검사로 합산하지 않았다. override reset 이후 live2560×1305와 VOD2560×1249의 기본 viewport를 확인했다. 두 탭의 기본 창 높이가 다르므로 동일 높이 비교로 취급하지 않는다. live/VOD의 주 영상은 readyState4/playing으로 시간이 증가했고 임시CSS는0이었다. native 초기 autoplay/mute 값은 검사자가 바꾸지 않았다.
+
+하단의 채팅 제외 screenshot 요청은 `Page.captureScreenshot`5000ms timeout이었다. 저장된 성공 이미지가 없으며 다른 전송 방식으로 반복하지 않았다. 검사 탭을 모두 닫았고 사용자 탭/저장소/제품/build는 변경하지 않았다.
+
+다음 단계는 플레이어 원래 값(화면 채우기OFF/볼륨 표시ON/빨리 감기 숨김OFF/컴프레서 숨김OFF)의 수동 복원과 실제 재검사다. 이 확인 전에는 플레이어 스타일 전체 수용/설정 복원 완료를 선언하지 않는다.
