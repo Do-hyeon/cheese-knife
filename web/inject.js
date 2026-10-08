@@ -284,9 +284,13 @@
   };
   const bindStartTimes = (body, scope) => {
     const pending = new WeakSet();
+    const liveCount = 'main [class*="_data_"] > strong[class*="_count_"]';
+    const vodDate = '[class*="_area_"] > [class*="_information_"] > span[class*="_item_"]:last-child';
     scope.on(body, 'mouseover', async event => {
-      const node = event.target.closest?.('[class^="video_information_count__"], span[class^="video_card_item__"]');
+      const node = event.target.closest?.('[class^="video_information_count__"], span[class^="video_card_item__"], ' + liveCount + ', ' + vodDate);
       if (!node || node.contains(event.relatedTarget) || node.dataset.knifeTooltip || pending.has(node)) return;
+      const currentLiveCount = node.matches(liveCount);
+      if (currentLiveCount && runtime.state.route.kind !== 'live') return;
       const annotate = date => {
         if (scope.disposed || !node.isConnected || typeof date !== 'string' || !date.trim()) return;
         const text = (i18n.liveStart || 'Live start') + ': ' + date;
@@ -294,7 +298,7 @@
         scope.add(() => { if (node.dataset.knifeTooltip === text) delete node.dataset.knifeTooltip; });
         runtime.setStatus('startTime', 'ready');
       };
-      if (node.className.startsWith('video_information_count__')) {
+      if (node.className.startsWith('video_information_count__') || currentLiveCount) {
         const detail = stateOf(node, value => Array.isArray(value) && typeof value[0]?.openDate === 'string');
         if (detail) annotate(detail[0].openDate);
         else runtime.setStatus('startTime', 'limited', 'start-metadata-unavailable');

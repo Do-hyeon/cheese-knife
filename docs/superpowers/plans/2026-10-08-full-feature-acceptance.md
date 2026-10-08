@@ -82,6 +82,7 @@
 - [x] 사용자 승인 후 좁은 화면 CSS 보완:홈 swap/content/direct grid 한정,legacy 보존.2 RED→GREEN+2 보호/제거 characterization,native40/Node101/build/package/hash PASS.실제 source CSS 임시A/B 및2560↔1200 재렌더 보존/원복 확인.새 dist 설치본·저장 옵션OFF 검사에는 수동 확장 새로고침이 필요함.
 - [x] 08ef30d 설치본 새로고침 후 임시CSS0/2560↔1200 추천 숨김·두 목록보존/홈→lives→홈 SPA 정리·재적용 수용.저장 옵션OFF는 수동 설정 적용 후 남음.전체 화면은 자동입력 성공 미확인/사용자 직접 결과 대기;시작시각 old targets0/new count 구조 확인·metadata 검증/보완 미완료.
 - [x] 저장 추천OFF 실제홈2560/1200 원복과 사용자ON 재복원/reload 수용.사용자 직접 전체화면/Esc 정상 확인(자동입력/모든조합 PASS 아님).현행live openDate adapter와VOD 날짜요소/기존API liveOpenDate 계약검증;시작시각 bounded선택자보완 설계승인 대기.
+- [x] 사용자 승인 후 시작시각 currentlive/currentVOD 선택자추가,기존조회/캐시/취소/URL검증/legacy 보존.6RED→GREEN+2보호characterization/전체Node109/nativeCSS40/build/package/hash PASS.새dist 실제hover·표시·route 수용은 수동확장 새로고침후 남음.
 - [ ] 작은 화면, wide/normal, fullscreen/PIP, SPA/bfcache, 스타일 조합 충돌과 cleanup 검사.
 
 ### Task 4: 기여 PR 완료 조건

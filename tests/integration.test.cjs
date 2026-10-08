@@ -180,6 +180,112 @@ test('VOD start tooltip shows successful metadata and reuses bounded cache', asy
   assert.match(node.dataset.knifeTooltip || '', /2026-10-08 10:00:00/); assert.equal(calls, 1);
 });
 
+// Break caught: legacy-only selectors leave current live/VOD metadata unbound.
+// Exercise the production listener and adapter; only the remote HTTP boundary is faked.
+test('current live viewer count reads ancestor metadata and leaves other count elements untouched', async t => {
+  const dom = setup(t);
+  const main = dom.window.document.querySelector('main');
+  main.insertAdjacentHTML('beforeend', '<div class="_data_current"><strong id="viewers" class="_count_current"><span>Viewers</span></strong><span id="elapsed" class="_count_current">Elapsed</span><p id="followers" class="_count_current">Followers</p></div><strong id="other-count" class="_count_current">Other</strong>');
+  const viewers = main.querySelector('#viewers');
+  const metadata = { memoizedState: { memoizedState: [{ openDate: '2026-10-08 10:00:00' }], next: null }, return: null };
+  for (const node of main.querySelectorAll('[class*="_count_"]')) node.__reactFiber$test = { memoizedState: null, return: metadata };
+  dom.window.fetch = () => { assert.fail('live start time must not request a network fallback'); };
+  viewers.firstElementChild.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush();
+  assert.equal(viewers.dataset.knifeTooltip, 'Live start: 2026-10-08 10:00:00');
+  assert.equal(runtime(dom).statuses.startTime.state, 'ready');
+  for (const id of ['elapsed','followers','other-count']) {
+    const node = main.querySelector('#' + id);
+    node.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush();
+    assert.equal(node.dataset.knifeTooltip, undefined, id);
+  }
+  dom.reconfigure({ url: 'https://chzzk.naver.com/following' }); runtime(dom).reconcile();
+  assert.equal(viewers.dataset.knifeTooltip, undefined, 'route disposal removes its annotation');
+});
+
+test('current live viewer count without verified metadata reports limited support', async t => {
+  const dom = setup(t);
+  dom.window.document.querySelector('main').insertAdjacentHTML('beforeend', '<div class="_data_current"><strong class="_count_current">Viewers</strong></div>');
+  const node = dom.window.document.querySelector('strong');
+  node.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush();
+  assert.equal(node.dataset.knifeTooltip, undefined);
+  assert.equal(runtime(dom).statuses.startTime?.state, 'limited');
+  assert.equal(runtime(dom).statuses.startTime?.reason, 'start-metadata-unavailable');
+});
+
+test('current live count shape on a nonlive route cannot acquire a live start annotation', async t => {
+  const dom = setup(t, playerHTML, 'https://chzzk.naver.com/following');
+  dom.window.document.querySelector('main').insertAdjacentHTML('beforeend', '<div class="_data_current"><strong class="_count_current">Not live</strong></div>');
+  const node = dom.window.document.querySelector('strong');
+  node.__reactFiber$test = { memoizedState: { memoizedState: [{ openDate: '2026-10-08 10:00:00' }], next: null }, return: null };
+  node.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush();
+  assert.equal(node.dataset.knifeTooltip, undefined);
+  assert.equal(runtime(dom).statuses.startTime, undefined);
+});
+
+function currentVodDate(dom, href = '/video/123') {
+  const card = dom.window.document.createElement('article'); card.className = '_area_current';
+  card.innerHTML = '<a class="_title_current">VOD</a><div class="_information_current"><span class="_item_current">Views</span><span class="_item_current">Date</span></div>';
+  card.querySelector('a').href = href;
+  dom.window.document.getElementById('layout-body').append(card);
+  return card.querySelector('span:last-child');
+}
+
+test('current VOD date shows metadata and reuses the cache for a replacement card', async t => {
+  const dom = setup(t, playerHTML, 'https://chzzk.naver.com/');
+  let calls = 0;
+  dom.window.fetch = async (url, options) => {
+    assert.equal(url, 'https://api.chzzk.naver.com/service/v3/videos/123');
+    assert.equal(options.credentials, 'include'); calls++;
+    return { ok: true, json: async () => ({ code: 200, content: { liveOpenDate: '2026-10-08 10:00:00' } }) };
+  };
+  const node = currentVodDate(dom);
+  node.previousElementSibling.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush();
+  assert.equal(calls, 0, 'views metadata is not the last date item');
+  node.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush();
+  assert.equal(node.dataset.knifeTooltip, 'Live start: 2026-10-08 10:00:00');
+  node.closest('article').remove();
+  const replacement = currentVodDate(dom);
+  replacement.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush();
+  assert.equal(replacement.dataset.knifeTooltip, 'Live start: 2026-10-08 10:00:00');
+  assert.equal(calls, 1, 'a new node for the same VOD consumes the metadata cache');
+});
+
+test('current VOD date rejects foreign and nonvideo links', async t => {
+  const dom = setup(t);
+  dom.window.fetch = () => { assert.fail('untrusted or nonvideo metadata must not request a date'); };
+  for (const href of ['https://foreign.invalid/video/123','/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','/video/123/extra']) {
+    const node = currentVodDate(dom, href);
+    node.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush();
+    assert.equal(node.dataset.knifeTooltip, undefined, href);
+  }
+});
+
+for (const change of ['href','route']) test(`current VOD date ignores a late response after ${change} changes`, async t => {
+  const dom = setup(t);
+  const node = currentVodDate(dom);
+  let resolve; let signal; let calls = 0;
+  dom.window.fetch = (url, options) => {
+    assert.equal(url, 'https://api.chzzk.naver.com/service/v3/videos/123');
+    calls++; signal = options.signal;
+    return new Promise(done => { resolve = done; });
+  };
+  node.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush();
+  assert.equal(calls, 1);
+  if (change === 'href') node.closest('article').querySelector('a').href = '/video/456';
+  else { dom.reconfigure({ url: 'https://chzzk.naver.com/following' }); runtime(dom).reconcile(); assert.equal(signal.aborted, true); }
+  resolve({ ok: true, json: async () => ({ code: 200, content: { liveOpenDate: '2026-10-08 10:00:00' } }) }); await flush();
+  assert.equal(node.dataset.knifeTooltip, undefined);
+});
+
+test('current VOD date without start metadata stays unannotated and limited', async t => {
+  const dom = setup(t);
+  dom.window.fetch = async () => ({ ok: true, json: async () => ({ code: 200, content: {} }) });
+  const node = currentVodDate(dom);
+  node.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush();
+  assert.equal(node.dataset.knifeTooltip, undefined);
+  assert.equal(runtime(dom).statuses.startTime?.state, 'limited');
+});
+
 function sidebarFixture(t, config = {}) {
   const html = '<div id="root"><aside id="sidebar">' +
     '<nav><strong class="_title_test">인기 카테고리</strong><button aria-label="새로고침" id="foreign-refresh"></button><button class="_more_button_test" aria-expanded="false" id="foreign-more">더보기</button></nav>' +

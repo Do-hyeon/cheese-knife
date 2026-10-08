@@ -6,7 +6,7 @@
 
 Branch `codex/chzzk-compatibility-recovery` contains a 2.13.2 recovery preview based on upstream v2.13.1. It adds Vue-free controls/compression, cancelable HLS previews, scoped page lifecycles, and per-tab feature readiness. It is not the upstream store release.
 
-101 automated tests, controlled real audio output and separate-browser public preview frame progression passed. See the [independent implementation review](docs/superpowers/reviews/2026-10-08-implementation-review.md), [installed-Chrome VOD hold fix review](docs/superpowers/reviews/2026-10-08-vod-hold-review.md), and [whole-branch review and follow-up](docs/superpowers/reviews/2026-10-08-whole-branch-review.md). Scoped installed-Chrome checks passed; full acceptance and release approval remain pending.
+109 automated tests, controlled real audio output and separate-browser public preview frame progression passed. See the [independent implementation review](docs/superpowers/reviews/2026-10-08-implementation-review.md), [installed-Chrome VOD hold fix review](docs/superpowers/reviews/2026-10-08-vod-hold-review.md), and [whole-branch review and follow-up](docs/superpowers/reviews/2026-10-08-whole-branch-review.md). Scoped installed-Chrome checks passed; full acceptance and release approval remain pending.
 
 The Gain slider is now 48px with an 8px end gap, checked in installed Chrome. [Synthetic audio-quality diagnostics](docs/superpowers/validation/2026-10-08-audio-quality-and-gain-spacing.md) document defaults and transition improvement candidates, not a subjective sound-quality guarantee. DSP is unchanged. Reproduce with `node scripts/check-audio-quality.mjs --chrome`; a fresh profile captures synthetic floating output while sending zeros to speakers, without recording broadcasts.
 
@@ -25,6 +25,8 @@ The [toolbar layout follow-up](docs/superpowers/validation/2026-10-08-installed-
 Run synthetic video filter diagnostics with `node scripts/check-video-filters.mjs --chrome`. Eleven cases check pixels from actual CSS-filtered video, filter composition and reset, but do not guarantee the user's GPU behavior or sharpening edge quality. Results and remaining acceptance are recorded in the [whole-branch review](docs/superpowers/reviews/2026-10-08-whole-branch-review.md).
 
 The [home recommendation hiding candidate](docs/superpowers/validation/2026-10-08-home-recommendation-recovery.md) hides only the ordinary home recommendation grid, preserving editorial promotions, following and recent VODs. The responsive fix passed Node 101 and native CSS 40 cases, followed by installed narrow/wide rerender, route cleanup/reapplication and stored-option OFF/ON restoration checks without temporary CSS. [Additional installed checks](docs/superpowers/validation/2026-10-08-installed-remaining-function-checks.md) include user-confirmed fullscreen/Esc operation, but outdated live/VOD start-time selectors remain, so full acceptance is still in progress.
+
+The [start-time follow-up candidate](docs/superpowers/validation/2026-10-08-start-time-selector-recovery.md) adds current live/VOD targets while preserving existing lookup, cache, cancellation and URL guards. Automated regressions passed; installed acceptance of the new dist still requires a manual extension refresh.
 
 [Website](https://www.chz.app/) | [Discord](https://discord.gg/9kq3UNKAkz) | [Chrome Web Store (compatible with Chromium, Edge, Whale)](https://chromewebstore.google.com/detail/nfkfgkkhgglkgnlppncolmpekidapkjh) | [Firefox Add-ons](https://addons.mozilla.org/addon/cheese-knife/) | [Korean](./README-en.md)
 
