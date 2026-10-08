@@ -162,6 +162,45 @@ test('deleted chat restoration never overwrites another writer changing message 
   assert.equal(f.text.dataset.knifeDeleted, 'external');
 });
 
+// Break caught: stale retention must not authorize a message that another
+// writer hid or rewrote in place; replacing the list object is not required.
+for (const reconcile of [true, false]) test('deleted chat never re-discloses an in-place cleanbot change with reconciliation=' + reconcile, async t => {
+  const f = setup(t); f.emit(); await flush();
+  assert.equal(f.text.dataset.knifeDeleted, '1');
+  f.controller.messageList[0].status = 'CBOTBLIND';
+  if (reconcile) { f.controller.notiUpdateMessageList(); runtime(f.dom).reconcile(); await flush(); }
+  const blind = reconcile ? 'BLIND' : 'RESTRICT';
+  f.emit(blind); await flush();
+  assert.equal(f.controller.messageList[0].status, blind, 'the immediately preceding hidden status cannot be authorized by old retention');
+  assert.equal(f.text.dataset.knifeDeleted, undefined);
+  deliver(f.dom, { showDeleted: false }, 2);
+  assert.equal(f.controller.messageList[0].status, blind);
+});
+
+for (const [field, value] of [['key', 'foreign-key'], ['user', 'foreign-user'], ['time', 456], ['type', 10]]) {
+  test('deleted chat retires markers after in-place foreign ' + field + ' changes', async t => {
+    const f = setup(t); f.emit(); await flush();
+    const foreign = f.controller.messageList[0]; foreign[field] = value;
+    f.controller.notiUpdateMessageList(); await flush();
+    assert.equal(f.text.dataset.knifeDeleted, undefined, 'owned marker requires unchanged message identity and ordinary type');
+    deliver(f.dom, { showDeleted: false }, 2);
+    assert.equal(f.controller.messageList[0], foreign);
+    assert.equal(f.controller.messageList[0][field], value);
+    assert.equal(f.controller.messageList[0].status, 'NORMAL', 'OFF cannot restore an old hidden status over a foreign rewrite');
+  });
+}
+
+test('deleted chat rejects stale retention when content is changed in place immediately before a native blind event', async t => {
+  const f = setup(t); f.emit(); await flush();
+  f.controller.messageList[0].content = 'External replacement content';
+  f.emit(); await flush();
+  assert.equal(f.controller.messageList[0].status, 'BLIND');
+  assert.equal(f.controller.messageList[0].content, 'External replacement content');
+  assert.equal(f.text.dataset.knifeDeleted, undefined);
+  deliver(f.dom, { showDeleted: false }, 2);
+  assert.equal(f.controller.messageList[0].status, 'BLIND');
+});
+
 test('deleted chat controller replacement retires the previous local disclosure', async t => {
   const f = setup(t); f.emit(); await flush();
   assert.equal(f.text.dataset.knifeDeleted, '1');

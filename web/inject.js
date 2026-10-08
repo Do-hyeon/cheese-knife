@@ -174,6 +174,8 @@
     let conflicted = false;
     const rows = '[class^="_item_"], [class^="live_chatting_item__"]';
     const texts = '[class^="_chatting_message_"] > span[class^="_text_"], [class^="live_chatting_message_chatting_message__"] > span[class^="live_chatting_message_text__"]';
+    const ownsMessage = (message, saved) => saved && message.status === 'NORMAL' && message.type === 1 &&
+      message.key === saved.key && message.user === saved.user && message.time === saved.time && message.content === saved.content;
     const releaseMarker = node => {
       if (node.dataset.knifeDeleted === '1') delete node.dataset.knifeDeleted;
       markers.delete(node);
@@ -188,8 +190,8 @@
         const current = message && Array.isArray(controller.messageList) && controller.messageList.find(value =>
           value.key === message.key && value.user === message.user && value.time === message.time);
         const saved = current && retained.get(current);
-        if (!saved || message.status !== 'NORMAL' || current.status !== 'NORMAL' ||
-          current.content !== saved.content || message.content !== saved.content) continue;
+        if (saved && !ownsMessage(current, saved)) retained.delete(current);
+        if (!ownsMessage(current, saved) || message.status !== 'NORMAL' || message.content !== saved.content) continue;
         for (const node of row.querySelectorAll(texts)) wanted.add(node);
       }
       for (const node of markers) if (!wanted.has(node) || !node.isConnected) releaseMarker(node);
@@ -256,7 +258,9 @@
         const before = enabled && Array.isArray(controller.messageList) && event &&
           controller.messageList.find(message => message.time === event.messageTime && message.user === event.userId);
         const previous = before && retained.get(before);
-        const eligible = before && before.type === 1 && (before.status === 'NORMAL' || previous) &&
+        const unchanged = !previous || ownsMessage(before, previous);
+        if (previous && !unchanged) retained.delete(before);
+        const eligible = before && before.type === 1 && before.status === 'NORMAL' && unchanged &&
           typeof event.blindType === 'string' && event.blindType.length > 0 && event.blindType.length <= 80 &&
           !['CANCEL', 'NORMAL', 'CBOTBLIND'].includes(event.blindType);
         const result = original.call(this, event, ...args);

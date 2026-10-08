@@ -195,3 +195,19 @@ own 페이지의 DOM에서 정상 card3개는 DIV container/direct thumbnail과 
 후속 최종 DOM 조회에서는 native pzp main video가 생성돼1920×1080/ready4/playing/rate1/표시폭1963을 확인했다. 실제 미션 display none/height0과 chat log 존재도 유지됐다. 앞선 alternative video/주영상 없음 상태를 정상 주영상으로 소급 분류하지 않고 이 후속 관찰만 주영상 기본 재생 수용으로 기록한다. 전환의 정확한 원인이나 모든 광고 조합 검증은 아니다.
 
 새 미션 숨김의 실제 펼침 상태 ON 기본 동작 및 후속 주영상 재생은 수용했고, 저장 OFF 복원 및 정상 패널 표시는 다음 수동 단계다. 원래 두 옵션은 모두 OFF이며 own 탭은 복원 후 검사에 사용하도록 handoff로 남긴다. 새 제품/build/자동 전체 suite/추가 review/기여 PR는 이번 관찰로 수행 또는 완료 처리하지 않는다.
+
+### 미션·차단 두 옵션 OFF 복원 완료
+
+사용자가 원래 두 옵션 OFF 복원 완료를 알렸다. 같은 own handoff live를 reload하고 초기 target0은 로딩으로 제외했다. mission button attached 뒤 display block/h141/expandedtrue,chat log 존재/aside353/임시 CSS0을 확인했다. 초기 pzp 영상 없는 상태는 재생 PASS로 세지 않았다. 후속 DOM에서는 native pzp main1920×1080/ready4/playing/rate1/표시폭1963,미션 block/h141 유지,chat log 존재 및 정상 card5개 block/direct LI parent list-item을 확인했다. own 검사 탭을 닫았다. 제품·저장 설정·계정·미디어·viewport를 agent가 변경하지 않았다.
+
+새 미션 CSS의 저장 ON 숨김→원래 OFF 표시 기본 수용은 완료했다. 파티/차단 대상은 없으므로 실제 숨김 PASS는 아니다. 차단 옵션 OFF 복원은 사용자 보고이며 내부 저장값 직접 조회를 우회하지 않는다. 모든 임시 설정 복원 기준을 유지한다. 최신 범위는 [기여 준비 상태](2026-10-08-contribution-readiness.md)에서 이전 후보/대기 기록과 구분한다.
+
+이전 readiness 검토 이후 새로 작성한 삭제 채팅 연결·표지와 미션/차단 CSS는 독립 검토를 받지 않았다. 따라서 code-review skill에 따라 immutable `2ce23a249644334428d0fb72bf3c4d4e5eaa3530`→`c1c29fa572ed5fed0e3025946733eeb1656b2a57`의 새 변경만 fresh-context 읽기 전용 검토1명에게 요청했다. 해결된 sidebar/tooltip/hold 범위의 재검토·추가 위임·제품/사용자 브라우저 변경은 금지했다. 진행 중 결과를 전체 검토 완료·PR 승인으로 바꾸지 않는다.
+
+### 새 소유권 검토 발견과 수정 후보 — 설치본 새로고침 대기
+
+검토자가 Important1을 확정했다. 이전 보관 객체를 다른 writer가 CBOTBLIND로 바꾸면 paint가 표지만 제거하고 retained metadata를 남겨, 다음 native BLIND에서 다시 NORMAL로 공개했다. 구체적 생산 모듈 재현과 구현자 확인은 [새 범위 검토와 한 번의 보완](../reviews/2026-10-08-deleted-chat-and-style-review.md)에 기록했다. 새 기능이 아니라 기존 승인된 외부 writer/이미 숨김 보호 조건의 결함 수정으로 계속 진행했다.
+
+새 회귀7개를 먼저 실행해7예상RED/기존22PASS를 확인했다. current NORMAL/type1/key/user/time/content 검증과 불일치 metadata 폐기만 보완했다. 이후focused29/29,전체Node165/165/실패0/skip0,별도Chrome155 CSS108/108/필터17/17,syntax/build/source와distpackage각v2.13.2/20resources/diffcheck PASS. source/dist inject SHA256 `717424F10B48737ED3B82715B0ED40B15E1A3C8457AEC9960CF2947AFBECFAEB` 일치다. 기존 listener/native CANCEL/repeated blind/외부 callback·표지 보호와 helper 경계는 green suite로 확인했으며 실제 자연 이벤트 검증은 아니다.
+
+추가 reviewer·수정 범위 재검토·새 API/권한/JSX/원문 조회/observer/타이머는 없다. 사용자 스타일/필터/Gain/showDeleted·hideDonation OFF 원복 기준을 유지하며 own 탭도 정리됐다. README의 예전 미구현/새로고침 대기 문구를 최신 진입점과 구분하고25개 설정·25개 스타일의 기본 수용/자동 계약/미검증을 한 표로 정리했다. 새 JS 설치본 준비 상태/OFF 복원 검사에는 필수 수동 확장 새로고침이 필요하므로 이 단계에서 중지한다. PR/전체 기능 복구 완료를 선언하지 않는다.
