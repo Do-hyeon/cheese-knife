@@ -266,3 +266,17 @@ ownhome 검색은 빈 필드에 focus만 했고 입력/전송하지 않았다. �
 - 최종 전체 Node122/122, 별도 synthetic Chrome155.0.8059.39 native84/84 PASS. build/package v2.13.2·20 entry resources·diff check PASS. source/dist inject SHA256 모두 `B3C2045FFF367801285CC2A255F889D7232F4232EEED787B2D9DEFF3E953517C`다. 로컬 ignored 로그 `output/acceptance/sidebar-compact-node-red.log`, `sidebar-compact-css-red.log`, `sidebar-compact-node-green.log`, `sidebar-compact-css-green.log`.
 
 새 보완본의 실제 설치 검증에는 다시 수동 확장 새로고침이 필요하므로 필수 중지한다. original 설정은 그대로 유지한다. 834da32의 초기/expanded/기본SPA 관찰과 새 보완본의 synthetic 결과를 구분하며 **새 설치본 접힘 수용/나머지 전체 검사/최종 독립 검토/PR은 미완료**다.
+
+## 6d333f0 실제 접힘 보완본 수용
+
+사용자가 새로고침 완료를 알렸다. 새 별도home의 첫nav2 일반메뉴block/서비스shortcut표지·none/임시probeCSS0을 확인했다. 데이터 정착nav6에서 original 메뉴/팔로잉block,인기/파트너/서비스none,일정block도 확인했다. 실제 메뉴 접기 후 서비스의 header가 없어졌지만 **shortcut 표지와displaynone이 유지**됐다. 인기 역시header없음/aria표지로none,파트너header링크로none,일정header/방송일정 표지로block이었다. 일반메뉴·팔로잉은표시했다. 이 사례는 새 설치본이며 임시 CSS/marker를 추가하지 않았다.
+
+own페이지를 접힌 상태에서 reload했다. 첫 렌더nav2는expandedtrue였고, 다음에는native 접힘 설정이 늦게 복원되어collapsed/nav6/서비스header없음·shortcutnone이었다. 그 사이 stale ‘메뉴 접기’ locator의 no-match timeout1회가 있었다. 상태를 새로 읽어 실제 ‘메뉴 확장’/collapsed를 확인한 뒤 중복 접기를 시도하지 않았다. 최초렌더부터 compact였다고 주장하지 않으며, reload 후native 접힘 복원으로 범위를 제한한다.
+
+접힌 상태의 실제 일반메뉴 링크로 home→`/lives`→header home링크→home SPA 전환에서도 일반·팔로잉 표시/인기·파트너·서비스숨김/일정표시가 유지됐다. 홈 복귀 직후 route는`/`였지만 home표지가 아직없었고, 이후 메뉴확장 동작 후 정착에서 home표지1을 확인했다. 중간표지값을 정착PASS/제품FAIL로 합산하지 않는다. 끝에original expandedtrue로 복원하고 임시probeCSS0을 확인했다.
+
+남은스타일 original 기준의 실제 대상도 읽기전용으로 확인했다. header logo85px/mask없음,Studioflex/주제탭flex,첫navabsolute(topExploreON),live배지5개중숨김0,main프로필20개중sample3개radius50%였다. 수량은 당시값이며 실제 공개채널/계정 내용을 기록하지 않는다. legacy blocked target은0개여서 실제차단 숨김을PASS로 선언하지 않는다. 차단계정을 만들거나채널을차단하지 않는다.
+
+own탭을닫았고 사용자 시청 탭·확장저장소·미디어·viewport는변경하지 않았다. source/dist inject hash는위B3C204...동일이며 제품/build를새로변경하지않았다. 이전Node122/native84 기록은 유지하되 이번실제DOM검사와fresh suite를혼동하지않는다. 새 독립검토/전체수용/PR은아직남아있다.
+
+다음수동style묶음은 original과반대로 static-logo/hide-topics/hide-studio/hide-live-badge/rectangle-profile/hide-blocked ON,auto-hide-toolbar/top-explore OFF다. 적용페이지새로고침만필요하며 확장자체새로고침은불필요하다. 이묶음검사후 모두original(앞6OFF/뒤2ON)로복원해야한다. hide-blocked에실제대상이없으면 등록확인과실제숨김미검증을분리한다.

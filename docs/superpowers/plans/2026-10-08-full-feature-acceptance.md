@@ -99,6 +99,8 @@
 
 - [x] 834 설치본 초기nav2 일반표시/서비스숨김,nav6 original표시·숨김,기본SPA home→lives→home 수용. 실제collapsed서비스header전체제거로식별해제 FAIL;nativefixture의빈strong 가정누락확인. 승인된접힘범위로 조건1개보완,Node2+native통합1 RED→GREEN(total122/84)/build/package/hash PASS. ownexpanded원복/탭정리,새dist필수수동새로고침에서중지. 전체수용/PR 미완료.
 
+- [x] 6d333 설치본 초기nav2/정착nav6 original수용,실제serviceheader없음collapsed숨김유지/reload후늦은native접힘복원/접힘SPA home↔lives 유지확인. stale메뉴locator timeout 및중간home표지없음은정착PASS에합산안함. expanded원복/own정리/sourcehash동일;제품변경없음. 남은toolbar/explore/misc8개 opposite설정수동적용검사→원복필요. blocked실제대상0/전체variant/최종검토/PR은미완료.
+
 ### Task 4: 기여 PR 완료 조건
 
 **Files:** README.md, README-en.md, docs/superpowers/validation/ 및 한글 PR 본문.

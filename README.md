@@ -55,7 +55,7 @@ Node 24.x에서 `npm ci`, `npm test`, `npm run check`, `npm run build`를 실행
 
 [시작 시각 보완](docs/superpowers/validation/2026-10-08-start-time-selector-recovery.md)은 현재 live/VOD 연결점을 추가하고 기존 조회·캐시·취소·URL 검증을 유지합니다. 수동 새로고침 후 실제 설치본의 기본 표시·재진입·화면 전환 정리·새 카드 캐시 재사용도 확인했습니다. VOD 캡처와 모든 모드/기타 기능의 전체 수용은 별도 경계로 남아 있습니다.
 
-사이드바 새 설치본에서 초기 일반메뉴 보존·확장 상태 숨김·기본 화면 전환을 확인했습니다. 실제 접힘에서 서비스 제목 영역 자체가 제거되는 입력을 보완해 Node122개·브라우저84개를 통과했습니다. 접힘 보완본의 설치 검증은 다시 수동 확장 새로고침 후 진행해야 합니다. 자세한 실패·보완·미검증 범위는 위 사이드바 후속 기록에 남겼습니다.
+사이드바 새 설치본에서 초기 일반메뉴 보존·확장 상태 숨김·기본 화면 전환을 확인했습니다. 실제 접힘에서 서비스 제목 영역 자체가 제거되는 입력을 보완해 Node122개·브라우저84개를 통과했습니다. 새 보완본에서도 임시CSS 없이 실제 접힘 숨김 유지·재로딩 후native접힘 복원·접힘SPA 전환을 확인했습니다. 남은 툴바·탐색·프로필 설정 검사와 전체 수용은 계속 진행 중이며, 자세한 실패·보완·미검증 범위는 위 사이드바 후속 기록에 남겼습니다.
 
 [Website](https://www.chz.app/) | [Discord](https://discord.gg/9kq3UNKAkz) | [Chrome Web Store (Chromium, Edge, Whale 호환)](https://chromewebstore.google.com/detail/nfkfgkkhgglkgnlppncolmpekidapkjh) | [Firefox Add-ons](https://addons.mozilla.org/addon/cheese-knife/) | [English](./README-en.md)
 
