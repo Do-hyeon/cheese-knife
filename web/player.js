@@ -59,18 +59,31 @@
     });
     const track = node => { state.nodes.add(node); return node; };
     state.track = track;
-    const clearClick = () => { clearTimeout(state.clickTimer); state.clickTimer = null; state.clickBlock = null; };
+    const clearClick = () => { clearTimeout(state.clickTimer); state.clickTimer = null; state.clickBlock = null; state.cancelledHold = null; };
     scope.add(clearClick);
+    const blockCompletingClick = hold => {
+      clearClick(); state.clickBlock = { target: hold.target, id: hold.id };
+      state.clickTimer = setTimeout(clearClick, 1000);
+    };
     const stopHold = event => {
+      const cancelled = state.cancelledHold;
+      if (cancelled) {
+        if (event?.type?.startsWith('pointer') && event.pointerId != null && cancelled.id != null && event.pointerId !== cancelled.id) return;
+        if (event?.type === 'pointerup') blockCompletingClick(cancelled);
+        else if (event?.type !== 'config-off') state.cancelledHold = null;
+      }
       const hold = state.pointer;
       if (!hold) return;
       if (event?.type?.startsWith('pointer') && event.pointerId != null && hold.id != null && event.pointerId !== hold.id) return;
       state.pointer = null; clearTimeout(hold.timer);
       if (hold.active && event?.type === 'pointerup') {
-        clearClick(); state.clickBlock = { target: hold.target, id: hold.id };
         // pointerup restores our gesture; its following click must not then
         // toggle native playback. Bound the token, and clear on the next down.
-        state.clickTimer = setTimeout(clearClick, 1000);
+        blockCompletingClick(hold);
+      } else if (hold.active && event?.type === 'config-off') {
+        // Restore immediately, but consume this completed hold's native click
+        // only when its physical pointerup arrives, even after a long delay.
+        clearClick(); state.cancelledHold = { target: hold.target, id: hold.id };
       }
       if (hold.active && state.video.playbackRate === 2) state.video.playbackRate = hold.originalRate;
       if (hold.active && hold.startedPlaying && !state.video.paused) state.video.pause();
@@ -97,6 +110,7 @@
   };
   const controls = state => {
     const { pzp, video, scope, track } = state;
+    if (runtime.config.pressToFastForward !== true) state.stopHold({ type: 'config-off' });
     if (runtime.state.route.kind === 'live') {
       const play = pzp.querySelector('.pzp-pc__playback-switch');
       if (play && !pzp.querySelector('.knife-ff')) {
@@ -184,6 +198,7 @@
         const hold = state.pointer = { target: container, id: event.pointerId, x: event.clientX, y: event.clientY, originalRate: video.playbackRate, active: false };
         hold.timer = setTimeout(async () => {
           if (state.pointer !== hold || scope.disposed) return;
+          if (runtime.config.pressToFastForward !== true) { state.stopHold(); return; }
           hold.active = true; hold.originalRate = video.playbackRate; video.playbackRate = 2;
           const indicator = hold.indicator = document.createElement('div'); indicator.className = 'knife-ff-indicator knife-owned';
           indicator.textContent = label('speed2x', '2x'); pzp.append(indicator);

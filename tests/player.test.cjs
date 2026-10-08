@@ -104,6 +104,57 @@ function nativeVOD(t, initiallyPaused) {
   return { dom, video, target, send };
 }
 
+// Break caught: OFF is checked only at pointerdown, so a delayed or already
+// active hold can outlive permission and change playback after being disabled.
+for (const paused of [false, true]) test('VOD option OFF cancels a pending hold, paused=' + paused, async t => {
+  const { dom, video, send } = nativeVOD(t, paused); video.playbackRate = 1.5;
+  send('pointerdown'); deliver(dom, { pressToFastForward: false }, 2);
+  await new Promise(resolve => setTimeout(resolve, 550));
+  assert.equal(video.playbackRate, 1.5); assert.equal(video.paused, paused);
+  assert.equal(dom.window.document.querySelector('.knife-ff-indicator'), null);
+  send('pointerup'); assert.equal(send('click').defaultPrevented, false, 'a never-activated gesture remains a native click');
+  assert.equal(video.paused, !paused);
+  deliver(dom, { pressToFastForward: true }, 3);
+  send('pointerdown'); await new Promise(resolve => setTimeout(resolve, 550));
+  assert.equal(video.playbackRate, 2, 'reenabling permits a new hold');
+  send('pointerup'); assert.equal(send('click').defaultPrevented, true);
+  assert.equal(video.playbackRate, 1.5); assert.equal(video.paused, !paused);
+});
+
+for (const paused of [false, true]) test('VOD option OFF restores an active hold and consumes only its completing click, paused=' + paused, async t => {
+  const { dom, video, send } = nativeVOD(t, paused); video.playbackRate = 1.5;
+  send('pointerdown'); await new Promise(resolve => setTimeout(resolve, 550));
+  assert.equal(video.playbackRate, 2); assert.equal(video.paused, false);
+  deliver(dom, { pressToFastForward: false }, 2);
+  assert.equal(video.playbackRate, 1.5); assert.equal(video.paused, paused);
+  assert.equal(dom.window.document.querySelector('.knife-ff-indicator'), null);
+  // OFF may occur long before physical release. Start the bounded click token
+  // on matching pointerup, not on OFF where it could expire while still held.
+  await new Promise(resolve => setTimeout(resolve, 1050));
+  send('pointerup', undefined, 0, 8);
+  send('pointerup'); assert.equal(send('click').defaultPrevented, true);
+  assert.equal(video.paused, paused, 'native click must not undo OFF restoration of a completed hold');
+  send('pointerdown'); send('pointerup'); assert.equal(send('click').defaultPrevented, false);
+  assert.equal(video.paused, !paused, 'future short clicks retain native behavior');
+});
+
+test('VOD hold timer rechecks permission immediately before activation', async t => {
+  const { dom, video, send } = nativeVOD(t, true); video.playbackRate = 1.5;
+  send('pointerdown'); runtime(dom).config.pressToFastForward = false;
+  await new Promise(resolve => setTimeout(resolve, 550));
+  assert.equal(video.playbackRate, 1.5); assert.equal(video.paused, true);
+  assert.equal(dom.window.document.querySelector('.knife-ff-indicator'), null);
+});
+
+test('OFF restoration of a VOD hold preserves a newer user-selected speed', async t => {
+  const { dom, video, send } = nativeVOD(t, false);
+  send('pointerdown'); await new Promise(resolve => setTimeout(resolve, 550));
+  video.playbackRate = 1.25; deliver(dom, { pressToFastForward: false }, 2);
+  assert.equal(video.playbackRate, 1.25);
+  assert.equal(dom.window.document.querySelector('.knife-ff-indicator'), null);
+  send('pointerup'); send('click'); assert.equal(video.paused, false);
+});
+
 for (const paused of [false, true]) {
   test('completed VOD hold restores speed/play state and consumes its native click, paused=' + paused, async t => {
     const { dom, video, send } = nativeVOD(t, paused);

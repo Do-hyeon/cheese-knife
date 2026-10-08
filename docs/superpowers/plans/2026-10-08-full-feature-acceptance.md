@@ -107,6 +107,8 @@
 
 ### Task 4: 기여 PR 완료 조건
 
+- [x] 후속readiness 독립검토의Important2와사용자명시승인Minor1을한보완패스로수정:sidebar2/tooltip4/holdOFF6 RED→GREEN+2외부표지보호,Node136/nativeCSS91/filter17/build/package/hash PASS. 새JS설치본수용에는수동확장새로고침필요;전체기능/PR완료아님. 검토/보완이력은 `../reviews/2026-10-08-final-readiness-review.md`에이어짐.
+
 **Files:** README.md, README-en.md, docs/superpowers/validation/ 및 한글 PR 본문.
 
 - [ ] 항목별 PASS/FAIL/미검증/조건부 지원 증거와 남은 항목을 정리. 모든 요청된 검사/조치 완료 전에 PR을 열지 않는다.

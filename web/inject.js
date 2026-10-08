@@ -307,17 +307,20 @@
       scope.on(anchor, 'mouseenter', () => { if (config.preview === true) runtime.preview?.show(anchor.href, anchor, true); });
       scope.on(anchor, 'mouseleave', () => runtime.preview?.hide(anchor.href));
       scope.on(anchor, 'dragstart', event => {
-        if (!config.popupPlayer || !event.dataTransfer) return;
+        if (!config.popupPlayer || !event.dataTransfer || !liveURL(anchor.href)) return;
         event.stopPropagation(); event.dataTransfer.effectAllowed = 'copy';
         event.dataTransfer.setData('knife-data', anchor.href);
       });
     };
     node.querySelectorAll('a[href]').forEach(attach);
     scope.observe(new MutationObserver(mutations => {
-      for (const mutation of mutations) for (const added of mutation.addedNodes) {
-        if (added.nodeType !== 1) continue;
-        if (added.matches('a[href]')) attach(added);
-        added.querySelectorAll('a[href]').forEach(attach);
+      for (const mutation of mutations) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'href' && mutation.target.matches('a[href]')) attach(mutation.target);
+        for (const added of mutation.addedNodes) {
+          if (added.nodeType !== 1) continue;
+          if (added.matches('a[href]')) attach(added);
+          added.querySelectorAll('a[href]').forEach(attach);
+        }
       }
       record.sync();
     }), node, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['aria-expanded', 'disabled', 'aria-label', 'href', 'class'] });
@@ -334,22 +337,30 @@
     list.append(button); scope.add(() => button.remove());
   };
   const bindStartTimes = (body, scope) => {
-    const pending = new WeakSet();
+    const pending = new WeakMap();
+    const annotations = new WeakMap();
     const liveCount = 'main [class*="_data_"] > strong[class*="_count_"]';
     const vodDate = '[class*="_area_"] > [class*="_information_"] > span[class*="_item_"]:last-child';
     scope.on(body, 'mouseover', async event => {
       const node = event.target.closest?.('[class^="video_information_count__"], span[class^="video_card_item__"], ' + liveCount + ', ' + vodDate);
-      if (!node || node.contains(event.relatedTarget) || node.dataset.knifeTooltip || pending.has(node)) return;
+      if (!node || node.contains(event.relatedTarget)) return;
       const currentLiveCount = node.matches(liveCount);
       if (currentLiveCount && runtime.state.route.kind !== 'live') return;
-      const annotate = date => {
+      const annotate = (date, id = null) => {
         if (scope.disposed || !node.isConnected || typeof date !== 'string' || !date.trim()) return;
+        let record = annotations.get(node);
+        if (node.dataset.knifeTooltip && node.dataset.knifeTooltip !== record?.text) return;
         const text = (i18n.liveStart || 'Live start') + ': ' + date;
+        if (!record) {
+          record = {}; annotations.set(node, record);
+          scope.add(() => { if (node.dataset.knifeTooltip === record.text) delete node.dataset.knifeTooltip; });
+        }
+        record.id = id; record.text = text;
         node.dataset.knifeTooltip = text;
-        scope.add(() => { if (node.dataset.knifeTooltip === text) delete node.dataset.knifeTooltip; });
         runtime.setStatus('startTime', 'ready');
       };
       if (node.className.startsWith('video_information_count__') || currentLiveCount) {
+        if (node.dataset.knifeTooltip) return;
         const detail = stateOf(node, value => Array.isArray(value) && typeof value[0]?.openDate === 'string');
         if (detail) annotate(detail[0].openDate);
         else runtime.setStatus('startTime', 'limited', 'start-metadata-unavailable');
@@ -358,24 +369,31 @@
       if (node.nextElementSibling) return;
       const link = node.parentElement?.parentElement?.querySelector('a[href]');
       let url;
-      try { url = new URL(link?.href); } catch { return; }
-      const match = url.origin === location.origin && url.pathname.match(/^\/video\/(\d+)\/?$/);
-      if (!match) return;
+      try { url = new URL(link?.href); } catch { /* Invalid links retire only our old annotation/request. */ }
+      const match = url?.origin === location.origin && url.pathname.match(/^\/video\/(\d+)\/?$/);
+      const record = annotations.get(node);
+      if (record && record.id !== match?.[1] && node.dataset.knifeTooltip === record.text) delete node.dataset.knifeTooltip;
+      const waiting = pending.get(node);
+      if (waiting && waiting.id !== match?.[1]) {
+        waiting.abort(); clearTimeout(waiting.timeout); pending.delete(node);
+      }
+      if (!match || node.dataset.knifeTooltip || pending.has(node)) return;
       const cached = videoMetadata.get(match[1]);
-      if (cached && cached.expires > Date.now()) { annotate(cached.date); return; }
+      if (cached && cached.expires > Date.now()) { annotate(cached.date, match[1]); return; }
       const controller = new AbortController(); const abort = scope.add(() => controller.abort());
-      const timeout = setTimeout(abort, 5000); pending.add(node);
+      const timeout = setTimeout(abort, 5000);
+      const request = { id: match[1], abort, timeout }; pending.set(node, request);
       try {
         const response = await fetch('https://api.chzzk.naver.com/service/v3/videos/' + match[1], { credentials: 'include', signal: controller.signal });
         if (!response.ok) throw new Error('metadata-unavailable');
         const info = await response.json();
-        if (scope.disposed || !node.isConnected || link.href !== url.href) return;
+        if (scope.disposed || !node.isConnected || link.href !== url.href || pending.get(node) !== request) return;
         if (info.code !== 200 || typeof info.content?.liveOpenDate !== 'string') throw new Error('metadata-unavailable');
         videoMetadata.delete(match[1]); videoMetadata.set(match[1], { date: info.content.liveOpenDate, expires: Date.now() + 1800000 });
         while (videoMetadata.size > 100) videoMetadata.delete(videoMetadata.keys().next().value);
-        annotate(info.content.liveOpenDate);
-      } catch { if (!scope.disposed) runtime.setStatus('startTime', 'limited', 'start-metadata-unavailable'); }
-      finally { clearTimeout(timeout); pending.delete(node); }
+        annotate(info.content.liveOpenDate, match[1]);
+      } catch { if (!scope.disposed && pending.get(node) === request) runtime.setStatus('startTime', 'limited', 'start-metadata-unavailable'); }
+      finally { clearTimeout(timeout); if (pending.get(node) === request) pending.delete(node); }
     });
   };
   runtime.subscribe(state => {

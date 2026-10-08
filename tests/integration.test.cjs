@@ -230,6 +230,83 @@ function currentVodDate(dom, href = '/video/123') {
   return card.querySelector('span:last-child');
 }
 
+// Break caught: a successful annotation short-circuits before validating a
+// reused card's new VOD identity. Expected dates/requests are independent data.
+for (const current of [true, false]) test('successful VOD tooltip follows a reused card identity, current=' + current, async t => {
+  const dom = setup(t, playerHTML, 'https://chzzk.naver.com/');
+  let node;
+  if (current) node = currentVodDate(dom);
+  else {
+    dom.window.document.getElementById('layout-body').insertAdjacentHTML('beforeend', '<article><a href="/video/123">VOD</a><div><span class="video_card_item__test">Date</span></div></article>');
+    node = dom.window.document.querySelector('span');
+  }
+  const calls = [];
+  dom.window.fetch = async (url, options) => {
+    assert.equal(options.credentials, 'include');
+    const id = url.split('/').at(-1); calls.push(id); assert.ok(['123', '456'].includes(id));
+    return { ok: true, json: async () => ({ code: 200, content: { liveOpenDate: id === '123' ? '2026-10-08 10:00:00' : '2026-10-08 11:00:00' } }) };
+  };
+  const link = node.closest('article').querySelector('a');
+  const hover = async () => { node.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush(); };
+  await hover(); assert.equal(node.dataset.knifeTooltip, 'Live start: 2026-10-08 10:00:00');
+  link.href = '/video/456'; await hover();
+  assert.equal(node.dataset.knifeTooltip, 'Live start: 2026-10-08 11:00:00');
+  link.href = '/video/123'; await hover();
+  assert.equal(node.dataset.knifeTooltip, 'Live start: 2026-10-08 10:00:00');
+  assert.deepEqual(calls, ['123', '456'], 'returning to the first VOD consumes its own cache entry');
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
+  assert.equal(node.dataset.knifeTooltip, undefined, 'disposal removes the latest owned annotation');
+});
+
+test('owned VOD tooltip is invalidated when its reused card no longer has a trusted VOD link', async t => {
+  const dom = setup(t);
+  const node = currentVodDate(dom); const link = node.closest('article').querySelector('a');
+  let calls = 0;
+  dom.window.fetch = async () => { calls++; return { ok: true, json: async () => ({ code: 200, content: { liveOpenDate: '2026-10-08 10:00:00' } }) }; };
+  const hover = async () => { node.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush(); };
+  for (const href of ['https://foreign.invalid/video/123', '/lives']) {
+    link.href = '/video/123'; await hover(); assert.ok(node.dataset.knifeTooltip);
+    link.href = href; await hover(); assert.equal(node.dataset.knifeTooltip, undefined);
+  }
+  assert.equal(calls, 1, 'invalid links never trigger lookup and valid cached ID is reused');
+});
+
+test('VOD identity change supersedes pending lookup without stale response or duplicate requests', async t => {
+  const dom = setup(t); const node = currentVodDate(dom); const link = node.closest('article').querySelector('a');
+  const requests = [];
+  dom.window.fetch = (url, options) => new Promise(resolve => { requests.push({ id: url.split('/').at(-1), signal: options.signal, resolve }); });
+  const hover = async () => { node.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush(); };
+  await hover(); link.href = '/video/456'; await hover();
+  assert.deepEqual(requests.map(r => r.id), ['123', '456']);
+  assert.equal(requests[0].signal.aborted, true, 'the previous identity is cancelled');
+  requests[0].resolve({ ok: true, json: async () => ({ code: 200, content: { liveOpenDate: '2026-10-08 10:00:00' } }) }); await flush();
+  assert.equal(node.dataset.knifeTooltip, undefined);
+  await hover(); assert.equal(requests.length, 2, 'old finally must not release a newer pending request');
+  requests[1].resolve({ ok: true, json: async () => ({ code: 200, content: { liveOpenDate: '2026-10-08 11:00:00' } }) }); await flush();
+  assert.equal(node.dataset.knifeTooltip, 'Live start: 2026-10-08 11:00:00');
+});
+
+test('VOD tooltip lookup leaves preexisting foreign annotations untouched', async t => {
+  const dom = setup(t); const node = currentVodDate(dom);
+  node.dataset.knifeTooltip = 'External annotation';
+  let calls = 0; dom.window.fetch = async () => { calls++; return { ok: false }; };
+  node.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush();
+  node.closest('article').querySelector('a').href = 'https://foreign.invalid/video/456';
+  node.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush();
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
+  assert.equal(node.dataset.knifeTooltip, 'External annotation'); assert.equal(calls, 0);
+});
+
+test('reused VOD card does not overwrite or remove an externally replaced annotation', async t => {
+  const dom = setup(t); const node = currentVodDate(dom); let calls = 0;
+  dom.window.fetch = async () => { calls++; return { ok: true, json: async () => ({ code: 200, content: { liveOpenDate: '2026-10-08 10:00:00' } }) }; };
+  node.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush();
+  node.dataset.knifeTooltip = 'External replacement'; node.closest('article').querySelector('a').href = '/video/456';
+  node.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush();
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
+  assert.equal(node.dataset.knifeTooltip, 'External replacement'); assert.equal(calls, 1);
+});
+
 test('current VOD date shows metadata and reuses the cache for a replacement card', async t => {
   const dom = setup(t, playerHTML, 'https://chzzk.naver.com/');
   let calls = 0;
@@ -351,6 +428,57 @@ test('unavailable following section never refreshes or expands another sidebar s
   assert.equal(timers.size, 0); tick(); assert.equal(counts.foreign, 0);
   assert.equal(runtime(dom).statuses.sidebarRefresh.state, 'limited');
   assert.equal(runtime(dom).statuses.expandFollowings.state, 'limited');
+});
+
+// Break caught: a reused offline anchor receives no hover/drag handlers when
+// only its href becomes live. Exercise the actual preview pipeline, mocking
+// only HTTP and the native DataTransfer boundary.
+test('reused offline sidebar anchor acquires live preview and popup drag without replacement', async t => {
+  const html = '<div id="root"><div id="layout-body"></div><aside id="sidebar"><a id="reused" href="/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">Channel</a></aside></div>';
+  const requests = [];
+  const dom = setup(t, html, 'https://chzzk.naver.com/', dom => {
+    const anchor = dom.window.document.getElementById('reused');
+    anchor.getBoundingClientRect = () => ({ left: 20, top: 80, bottom: 110, width: 180, height: 30 });
+    dom.window.fetch = async (url, options) => {
+      assert.equal(url, 'https://api.chzzk.naver.com/service/v3.3/channels/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/live-detail');
+      assert.equal(options.credentials, 'include'); requests.push(url);
+      return { ok: true, json: async () => ({ code: 200, content: { status: 'OPEN', adult: false, liveImageUrl: 'https://fixture.invalid/image.png' } }) };
+    };
+    load(dom, 'web/preview.js');
+  });
+  deliver(dom, { preview: true, livePreview: false, previewDelay: 0.1, popupPlayer: true }, 2);
+  const anchor = dom.window.document.getElementById('reused');
+  anchor.dispatchEvent(new dom.window.MouseEvent('mouseenter')); await flush();
+  assert.equal(requests.length, 0, 'offline links do not request a stream');
+  anchor.href = '/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'; await flush();
+  anchor.dispatchEvent(new dom.window.MouseEvent('mouseenter'));
+  await new Promise(resolve => setTimeout(resolve, 130));
+  assert.equal(requests.length, 1);
+  assert.equal(dom.window.document.querySelector('.knife-preview')?.hidden, false);
+  assert.equal(dom.window.document.querySelector('.knife-preview img')?.getAttribute('src'), 'https://fixture.invalid/image.png');
+  let payload; let writes = 0;
+  const transfer = { setData(type, value) { assert.equal(type, 'knife-data'); payload = value; writes++; } };
+  for (let i = 0; i < 3; i++) { anchor.href = '/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'; await flush(); anchor.href = '/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'; await flush(); }
+  const event = new dom.window.Event('dragstart', { bubbles: true }); Object.defineProperty(event, 'dataTransfer', { value: transfer });
+  anchor.dispatchEvent(event);
+  assert.equal(payload, 'https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+  assert.equal(writes, 1, 'href cycles must not duplicate the drag handler');
+  anchor.dispatchEvent(new dom.window.MouseEvent('mouseleave'));
+  assert.equal(dom.window.document.querySelector('.knife-preview')?.hidden, true);
+});
+
+test('sidebar drag validates a reused anchor current URL instead of its initial live URL', async t => {
+  const html = '<div id="root"><div id="layout-body"></div><aside id="sidebar"><a id="reused" href="/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">Channel</a></aside></div>';
+  const dom = setup(t, html, 'https://chzzk.naver.com/'); deliver(dom, { popupPlayer: true }, 2);
+  const anchor = dom.window.document.getElementById('reused');
+  for (const href of ['/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'https://foreign.invalid/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa']) {
+    anchor.href = href; await flush();
+    const payloads = [];
+    const event = new dom.window.Event('dragstart', { bubbles: true });
+    Object.defineProperty(event, 'dataTransfer', { value: { setData(type, value) { payloads.push({ type, value }); } } });
+    anchor.dispatchEvent(event);
+    assert.deepEqual(payloads, [], 'invalid current URL must not become a popup payload');
+  }
 });
 
 test('closing a popup during a drag restores the document cursor and removes drag listeners', async t => {
