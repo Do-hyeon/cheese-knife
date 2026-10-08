@@ -4,6 +4,8 @@
 #header button[class*="_profile_button_"] img,
 #layout-body a[class^="_image_"]:has(> img:not([class])),
 #layout-body a[class^="_image_"] > img:not([class]),
+#layout-body [class^="_container_"] > [class^="_row_"]:has(> [class^="_inner_"] > [class^="_channel_"]) > a[class^="_thumbnail_"]:has(> img:not([class])),
+#layout-body [class^="_container_"] > [class^="_row_"]:has(> [class^="_inner_"] > [class^="_channel_"]) > a[class^="_thumbnail_"] > img:not([class]),
 [class^="channel_card_profile__"],
 [class^="channel_item_thumbnail__"],
 [class^="channel_profile_thumbnail__"],

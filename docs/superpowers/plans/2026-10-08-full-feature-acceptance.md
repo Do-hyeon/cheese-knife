@@ -103,6 +103,8 @@
 
 - [x] 저장toolbar/explore/misc8개반전:home logo mask80(borderbox)/Studio·topicsnone/headerY0nofocushover/navstatic/livebadges5none·other31보존/profilehome25·sidebar49·account0radius;1200/1800검색·계정분리/가로넘침없음/default원복. 실제live/VOD播放ready4 유지지만방송정보channelthumbnail/image radius50 FAIL. directcontainer→row+inner→channel 구조조사/candidatequeryhome0/live1/VOD1. 제한CSS2선택자/nativeRED·보호·OFF원복 설계승인대기. blocked실제target0 UNVERIFIED/임시8값미원복/전체수용·PR미완료;제품수정없음.
 
+- [x] 사용자승인후방송정보profile CSS2선택자추가/legacy·크기·JS보존. native3RED→GREEN+4보호(total91)/Node122/build/package/hash PASS. 실제live/VOD임시50%→0→50%/wrapper70·image60유지/다른thumbnail관찰변화0/임시규칙·Symbol정리/own닫기. VOD초기pausedtrue·제거시false관찰을전체무중단PASS로합산하지않음. 새dist필수수동새로고침/8값원복/전체수용·최종검토·PR은남음.
+
 ### Task 4: 기여 PR 완료 조건
 
 **Files:** README.md, README-en.md, docs/superpowers/validation/ 및 한글 PR 본문.

@@ -57,6 +57,8 @@ Node 24.x에서 `npm ci`, `npm test`, `npm run check`, `npm run build`를 실행
 
 사이드바 새 설치본에서 초기 일반메뉴 보존·확장 상태 숨김·기본 화면 전환을 확인했습니다. 실제 접힘에서 서비스 제목 영역 자체가 제거되는 입력을 보완해 Node122개·브라우저84개를 통과했습니다. 새 보완본에서도 임시CSS 없이 실제 접힘 숨김 유지·재로딩 후native접힘 복원·접힘SPA 전환을 확인했습니다. 남은 툴바·탐색·프로필 설정 검사와 전체 수용은 계속 진행 중이며, 자세한 실패·보완·미검증 범위는 위 사이드바 후속 기록에 남겼습니다.
 
+툴바·탐색·배지 저장 옵션의 반전과 기본 반응형 배치를 확인했습니다. 라이브·다시보기 방송 정보의 사각 프로필 누락을 CSS 선택자2개로 보완해 Node122개·브라우저91개와 실제 임시 규칙 A/B를 통과했습니다. 크기·일반 영상 썸네일·기존 규칙을 보호하며, 새 설치본 수용과 원래 옵션 복원은 수동 확장 새로고침 후 진행해야 합니다. 실제 차단 방송이 없어 해당 숨김은 미검증이며 전체 정상으로 합산하지 않습니다.
+
 [Website](https://www.chz.app/) | [Discord](https://discord.gg/9kq3UNKAkz) | [Chrome Web Store (Chromium, Edge, Whale 호환)](https://chromewebstore.google.com/detail/nfkfgkkhgglkgnlppncolmpekidapkjh) | [Firefox Add-ons](https://addons.mozilla.org/addon/cheese-knife/) | [English](./README-en.md)
 
 ![스크린샷](./images/ko.png)

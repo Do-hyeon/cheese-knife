@@ -40,6 +40,8 @@ The [start-time follow-up](docs/superpowers/validation/2026-10-08-start-time-sel
 
 The refreshed extension preserved general navigation during cold loading, expanded hiding and basic SPA transitions. Actual collapse removes the entire service header; that input is now covered by a follow-up correction with Node122/browser84 passing. The refreshed follow-up retained hiding without temporary CSS during actual collapse, native compact-state restoration after reload and compact SPA transitions. Remaining toolbar/explore/profile setting checks, full acceptance and PR creation remain pending.
 
+Stored toolbar/explore/badge option inversion and basic responsive layout were checked. A two-selector CSS correction for missed live/VOD channel-info avatars passed Node122/browser91 and actual temporary-rule A/B checks, preserving sizes, generic thumbnails and existing rules. Installed acceptance and original-setting restoration still require manual extension refresh. Blocked-broadcast hiding remains unverified without an actual blocked target and is not counted as full acceptance.
+
 ### Explore
 
 - **Live Preview:** Preview live by hovering over the channel.

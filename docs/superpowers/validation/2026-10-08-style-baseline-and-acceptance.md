@@ -307,3 +307,17 @@ own탭을닫았고 사용자 시청 탭·확장저장소·미디어·viewport는
 승인후실제구조를사용한native live/VOD회귀를먼저RED로재현하고,비채널썸네일/foreign/metadata관계불일치/옵션OFF원복/legacy보존경계를검사한다. 최소CSS추가후wholeNode/native/build/package/hash와실제검사를진행한다. 새dist가생기면필수수동확장새로고침단계에서중지한다. 승인전제품/테스트/build/후보CSS를변경하지않았다.
 
 검사8개설정은현재임시반대값그대로이며 프로필보완검사후original로복원할예정이다. 모든ownhome/live/VOD탭을닫고viewport원복을확인했다. usertab/확장설정/ChromeAPI/미디어/계정차단은직접변경하지않았다. 제품변경없는조사이며전체옵션원복·나머지기능검증·최종독립검토·PR은남아있다.
+
+## 승인된 방송 정보 사각 프로필 보완 후보
+
+사용자가 위 bounded CSS 보완안을 승인했다. `styles/rectangle-profile.css`에 선택자2개만 추가했다. `#layout-body` 내부 direct container→row와 direct inner→channel 메타데이터 관계를 가진 thumbnail anchor 및 직접 classlessimg의radius를0으로만든다. 기존home/sidebar/header/legacy규칙·선언과70pxwrapper/60pximage 크기는그대로다. JS·권한·설정·의존성은바꾸지않았다.
+
+`scripts/check-styles.mjs` native7개를추가했다. 실제live/VOD와같은채널정보구조의wrapper/image 사각화2개와옵션제거원복1개는기존radius50% 때문에3RED였다. generic video썸네일/직접metadata불일치·nestedrow,foreign본문,클래스가있는비프로필image,legacy보존4개는기존PASS인보호characterization이다. CSS 추가후3GREEN/보호4PASS,전체native91/91(Chrome155.0.8059.39),전체Node122/122 PASS. 새기대값은literalradius0/50%와wrapper70×70/image60×60이고제품선택자로expected를계산하지않았다.
+
+실제A/B는별도ownlive/VOD에서current원본규칙에새규칙만임시추가했다. 두문서모두profile1개의wrapper/image반경50%→0px→50%였고wrapper70×70/image60×60크기를유지했다. live의다른thumbnail anchor5개와VOD의다른thumbnail element31개는관찰한반경변화0이었다. 이수량은당시값이다. 실제검사에유저이름/채널ID/이미지URL·alt/본문을출력하거나저장하지않았다. 사용자시청탭/확장저장소/ChromeAPI/viewport를변경하지않았다.
+
+live 임시적용에서는video playing/readyState4였다. VOD최초적용읽기는pausedtrue/readyState4였고제거직전·직후는둘다pausedfalse/readyState4였다. CSS/진단코드로미디어상태를설정하지않았지만이관찰만으로전체구간무중단재생을보장하지않는다. 정지상태를해제하기위해play/seek/mute/toggle하지않았다. 임시style0/probeSymbol없음/원래반경50%를확인한뒤두own탭을닫았다. 실제A/B는새전체CSS의설치등록수용과구분한다. 기존스크린샷전송제한을우회/반복하지않았으며metrics범위로기록한다.
+
+build/package v2.13.2·20 entry resources·diff check PASS. source/dist rectangle-profile SHA256 모두 `4E515030F77B12339D8D7A8A7CE48B38FD248275C7C1927AEC2FA7022A185EDC`다. local ignored로그 `output/acceptance/channel-profile-css-red.log`, `channel-profile-css-green.log`, `channel-profile-node.log`에기록했다.
+
+새dist의실제등록수용에는 **필수수동확장새로고침** 이필요해중지한다. 현재8개임시반대설정은유지하고새설치본의profile/radius·썸네일보호를확인한후original(정적로고/주제숨김/Studio숨김/live배지숨김/사각profile/차단숨김OFF,자동숨김/topExploreON)로원복해야한다. 차단방송실제대상부재·기타메시지/모드·전체기능/최종독립검토/PR조건은아직미완료다.

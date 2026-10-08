@@ -95,6 +95,41 @@ try{
     for(const id of ['profile','profile-avatar','sidebar-profile','sidebar-avatar'])assert.equal(await page.locator(`#${id}`).evaluate(n=>getComputedStyle(n).borderRadius),'0px',id);
     for(const id of ['video-thumb','foreign-profile'])assert.equal(await page.locator(`#${id}`).evaluate(n=>getComputedStyle(n).borderRadius),'50%',id);
   });
+  const channelProfileRow=(id,metadata='<div class="_inner_profile"><div class="_channel_profile"></div><div class="_control_profile"></div></div>',imageClass='')=>`<div class="_row_profile"><a id="${id}" class="_thumbnail_profile" href="/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"><img id="${id}-image"${imageClass?` class="${imageClass}"`:''}><span class="blind">Channel profile</span></a>${metadata}</div>`;
+  const channelProfileBase='<style>a._thumbnail_profile{display:block;box-sizing:border-box;width:70px;height:70px;padding:5px;border-radius:50%}a._thumbnail_profile>img{display:block;width:60px;height:60px;border-radius:50%}</style>';
+  const channelProfileFixture=route=>channelProfileBase+'<div id="layout-body">'+(route==='live'?'<main class="_container_live"><div class="_contents_live"><div id="live_player_layout"></div></div><div class="_details_live"><div class="_container_profile">'+channelProfileRow('channel-profile')+'</div></div></main>':'<section class="_container_vod"><div class="_wrapper_vod"><div id="player_layout"></div><div class="_area_vod"><div class="_content_vod"><div class="_content_left_vod"><div class="_container_profile">'+channelProfileRow('channel-profile')+'</div></div></div></div></div></section>')+'</div>';
+  for(const route of ['live','vod'])await checkNative(`rectangle-profile squares the native ${route} channel-info avatar without resizing it`,async()=>{
+    await page.setContent(channelProfileFixture(route));await page.addStyleTag({content:await fs.readFile('styles/rectangle-profile.css','utf8')});
+    for(const id of ['channel-profile','channel-profile-image'])assert.equal(await page.locator(`#${id}`).evaluate(n=>getComputedStyle(n).borderRadius),'0px',id);
+    assert.deepEqual(await page.locator('#channel-profile').evaluate(n=>({width:n.getBoundingClientRect().width,height:n.getBoundingClientRect().height})),{width:70,height:70});
+    assert.deepEqual(await page.locator('#channel-profile-image').evaluate(n=>({width:n.getBoundingClientRect().width,height:n.getBoundingClientRect().height})),{width:60,height:60});
+  });
+  await checkNative('channel-avatar rule leaves generic video thumbnails and mismatched direct metadata untouched',async()=>{
+    await page.setContent(channelProfileBase+'<div id="layout-body"><div class="_container_profile">'+channelProfileRow('video-thumbnail','<div class="_inner_profile"><div class="_video_profile"></div></div>')+channelProfileRow('nested-channel','<div class="_inner_profile"><div><div class="_channel_profile"></div></div></div>')+'<div>'+channelProfileRow('nested-row')+'</div></div></div>');
+    await page.addStyleTag({content:await fs.readFile('styles/rectangle-profile.css','utf8')});
+    for(const id of ['video-thumbnail','nested-channel','nested-row'])for(const nodeId of [id,id+'-image'])assert.equal(await page.locator(`#${nodeId}`).evaluate(n=>getComputedStyle(n).borderRadius),'50%',nodeId);
+  });
+  await checkNative('channel-avatar rule does not square matching foreign content outside layout-body',async()=>{
+    await page.setContent(channelProfileBase+'<div class="_container_profile">'+channelProfileRow('foreign-channel')+'</div>');
+    await page.addStyleTag({content:await fs.readFile('styles/rectangle-profile.css','utf8')});
+    for(const id of ['foreign-channel','foreign-channel-image'])assert.equal(await page.locator(`#${id}`).evaluate(n=>getComputedStyle(n).borderRadius),'50%',id);
+  });
+  await checkNative('channel-avatar rule requires the native classless direct profile image',async()=>{
+    await page.setContent(channelProfileBase+'<div id="layout-body"><div class="_container_profile">'+channelProfileRow('classed-image',undefined,'video-artwork')+'</div></div>');
+    await page.addStyleTag({content:await fs.readFile('styles/rectangle-profile.css','utf8')});
+    for(const id of ['classed-image','classed-image-image'])assert.equal(await page.locator(`#${id}`).evaluate(n=>getComputedStyle(n).borderRadius),'50%',id);
+  });
+  await checkNative('removing rectangle-profile restores both native channel-info avatar radii',async()=>{
+    await page.setContent(channelProfileFixture('vod'));const css=await page.addStyleTag({content:await fs.readFile('styles/rectangle-profile.css','utf8')});
+    assert.equal(await page.locator('#channel-profile-image').evaluate(n=>getComputedStyle(n).borderRadius),'0px');
+    await css.evaluate(n=>n.remove());
+    for(const id of ['channel-profile','channel-profile-image'])assert.equal(await page.locator(`#${id}`).evaluate(n=>getComputedStyle(n).borderRadius),'50%',id);
+  });
+  await checkNative('channel-avatar addition preserves legacy channel profile styling',async()=>{
+    await page.setContent('<style>.channel_profile_thumbnail__legacy{border-radius:50%}</style><div class="channel_profile_thumbnail__legacy" id="legacy-channel-profile"></div>');
+    await page.addStyleTag({content:await fs.readFile('styles/rectangle-profile.css','utf8')});
+    assert.equal(await page.locator('#legacy-channel-profile').evaluate(n=>getComputedStyle(n).borderRadius),'0px');
+  });
   await checkNative('hide-live-badge leaves non-live badges visible',async()=>{
     await page.setContent(currentFixture);await page.addStyleTag({content:await fs.readFile('styles/hide-live-badge.css','utf8')});
     assert.equal(await page.locator('#live-badge').evaluate(n=>getComputedStyle(n).display),'none');
