@@ -222,3 +222,31 @@ ownhome 검색은 빈 필드에 focus만 했고 입력/전송하지 않았다. �
 승인 후 초기2→6/섹션누락·순서변경/접힘·확장/같은노드 제목변경/외부 표지변경/SPA·sidebar-root 교체 정리의 production 회귀와 native CSS 보호·legacy·옵션제거 검사를 먼저 실패로 재현한다. 모든 suite와build/package/hash를 확인하고 필요한 새dist 수용은 필수 수동 확장 새로고침 단계에서 중지한다. 아직 구현/테스트/후보CSS를 작성·적용하지 않았다. 나머지 툴바/탐색/프로필 검사 및 전체 기능/PR 완료도 남아 있다.
 
 진단 과정의 own메뉴 접힘/확장은 끝에expandedtrue로 복원했고 검색focus를blur/포인터를옮긴 뒤 모든 own탭을닫았다. 사용자 시청 탭/저장소/viewport/제품/build는 변경하지 않았다. 원래 스타일 기준은 유지된다.
+
+## 승인된 사이드바 섹션 식별 보완 후보
+
+사용자가 위 bounded 설계를 승인했다. `web/inject.js`의 기존 sidebar observer와 route scope를 재사용해 current `nav[class^="_section_"]`에 `data-knife-sidebar-section`을 붙인다. 현재 DOM 숨김4개는 popular/schedule/partner/shortcut 표지를 소비하며, 별도 legacy class/ordinal 규칙은 그대로 유지한다. 새 observer·타이머·요청·권한·설정키·의존성은 추가하지 않았다. 기존 팔로잉 자동 확장/갱신 회귀도 전체 suite에서 유지한다.
+
+식별은 nav의 aria-label 또는 직접 header/strong의 직접 text만 읽는다. 팔로우/팔로잉은 보호하고 row 내부 제목·nested nav는 대상에서 제외한다. 접힘으로 제목이 비었을 때 파트너는 직접 header의 same-origin `/partner`, 서비스는 직접 ul의 NAVER Game root와 `/esports` 공개 링크 조합을 사용한다. Game root의 raw URL 끝 slash에 의존하지 않는다. 일정은 직접 제목 ‘다가오는 방송 일정’/접힘 ‘방송일정’을 사용하며 구형 `_type_schedule_` row를 추측 근거로 사용하지 않는다. 알려지지 않은 제목이나 metadata 없는 초기 상태는 표지를 붙이지 않아 기본 표시한다. 다른 주체가 미리 붙이거나 변경한 표지는 덮어쓰지 않는다. 제거·동일 노드 재사용·root 교체·excluded route·문서 최종 해제에서 자신이 붙인 표지만 정리한다. bfcache와 일반 SPA 전환에서는 유지/재분류한다.
+
+검증 기록:
+
+- 수정 전 기존 전체 Node109/109 PASS로 기준을 확인했다.
+- `tests/sidebar-sections.test.cjs` 최초10개 중 표지 부재를 검출한9개 RED→GREEN. 행·일반메뉴·팔로잉·nested nav 보호1개는 수정 전부터 PASS인 characterization이다. 초기2→6, 섹션 누락/재정렬, 접힘, text node/aria/href만 변경, 제거/재사용, 외부 marker, root 교체, SPA/bfcache/최종해제를 포함한다. 마지막 코드 점검에서 class만 바꾸는 동일 노드 section/header 재사용의 stale 표지1개도 추가 RED→GREEN으로 보완했다. 기존 observer의 attributeFilter에 class를 추가해 제거/재분류하며 새 observer는 없다. 총11개 중10개 RED→GREEN+1 characterization이다.
+- native CSS25개 추가 중 섹션16개 부분집합과 미식별 상태의 일반 메뉴 오숨김17개 RED→GREEN. 개별 옵션ON/OFF 및 legacy8개는 기존 PASS를 유지하는 characterization이다. 수정 후 production JS+CSS 통합1개를 추가해 config-unready→초기2→6/접힘/재사용/해제를 함께 검사했다. 이 통합 검사는 추가 수용 검사이며 RED 증거로 합산하지 않는다.
+- 통합 fixture의 첫 실패는 HTML Content-Type의 UTF-8 누락으로 한글 제목/aria가 깨진 입력 때문이었다. 제한 configReady/status/DOM 경계로 원인을 확인하고 fixture에 charset=utf-8을 지정했다. 그 실패를 제품 회귀나 성공으로 합산하지 않는다. 실제 서비스 페이지에는 이 fixture를 사용하지 않는다.
+- 최종 전체 Node120/120, Chrome155.0.8059.39 native84/84 PASS. native 브라우저는 별도 합성 프로필이며 설치 확장/사용자 방송 검증이 아니다. 모든 synthetic URL 요청을 로컬 응답으로 처리했다.
+- 새 별도 실제home 읽기 전용으로 첫nav2→다음nav6, `_section_` class·직접header/title·직접ul 관계와 제목/aria/파트너header 링크·Game root/esports 링크를 확인했다. 이것은 식별 입력 근거이지 새 설치본 수용이 아니다. 저장 설정/사용자 시청 탭/미디어/viewport를 변경하지 않았고 own탭을 닫았다. 채널/채팅 본문은 수집하지 않았다.
+- 기본 sandbox 빌드는 realpath EPERM으로 실행 전에 중단됐다. 기존 경로 안전장치를 바꾸지 않고 승인된 검증 권한으로 실행해 build/package v2.13.2·20 entry resources PASS. 변경 소스5개와 dist의 SHA256이 모두 일치했다. `git diff --check` PASS.
+
+| 파일 | source/dist SHA256 |
+| --- | --- |
+| web/inject.js | 64A89F871A95E36DB0D0C7C7CFE34F176BDB19A2AB33BC3431DD07AA05668826 |
+| styles/hide-recommended.css | A6C68B29792C1B856E9D690038AC01C4706026DC8897FCFE6B53CAD51D1FC894 |
+| styles/hide-schedule.css | DE231C66025B887C60AB06B8D3751855D074D3984B3D65776AFCC610847418D6 |
+| styles/hide-sidebar-partner.css | 3D17641E6F40637A8354805FA2BA0373A4C1D9C4BD912912235174B8CF7467A1 |
+| styles/hide-shortcut.css | 87D97504E26C42159FE3423DD6C66513CCE74A4842D6390D775A68BE12222B78 |
+
+로컬 ignored 로그는 `output/acceptance/sidebar-sections-baseline.log`, `sidebar-sections-node-red.log`, `sidebar-sections-class-red.log`, `sidebar-sections-css-red.log`, `sidebar-sections-node-green.log`, `sidebar-sections-css-green.log`다. 사용자 계정의 실제 섹션 개수를 회귀 기대값으로 고정하지 않는다. 현재 확인하지 않은 언어/미래 native descriptor는 보수적으로 기본 표시하며 전체 variant 지원을 보장하지 않는다.
+
+새 dist의 실제 등록/기본 설정 숨김·메뉴 보존/접힘·동적 전환 수용은 **사용자 수동 확장 새로고침이 필요한 필수 중지 단계**다. original25개 설정은 그대로 유지한다. 확인 후 나머지 툴바/탐색/프로필·전체 기능 검증 및 최종 독립 검토를 이어간다. 아직 전체 기능 수용/PR 생성 조건은 충족하지 않았으며 PR을 열지 않았다.

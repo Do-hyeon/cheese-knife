@@ -8,7 +8,7 @@
 
 Vue 없이 플레이어 버튼·컴프레서·VOD 길게 눌러 2배속을 제공하고 HLS.js 미리보기, 화면 전환 수명 관리, 기능별 준비 상태를 추가했습니다. [설계](docs/superpowers/specs/2026-10-08-chzzk-compatibility-design.md), [검토](docs/superpowers/reviews/2026-10-08-chzzk-compatibility-review.md), [검증 결과와 제한](docs/superpowers/validation/2026-10-08-chzzk-compatibility.md)을 함께 확인하세요.
 
-자동 테스트 109개와 별도 브라우저의 실제 오디오·공개 방송 미리보기 검증을 통과했습니다. [독립 구현 검토](docs/superpowers/reviews/2026-10-08-implementation-review.md), [실제 Chrome VOD 길게 누르기 수정 검토](docs/superpowers/reviews/2026-10-08-vod-hold-review.md), [전체 브랜치 독립 검토와 보완](docs/superpowers/reviews/2026-10-08-whole-branch-review.md)도 공개합니다. 설치된 Chrome에서 일부 기능을 검증했으나 전체 기능 검증과 출시 승인은 아직 완료되지 않았습니다.
+자동 테스트 120개를 통과했으며, 별도 브라우저의 실제 오디오·공개 방송 미리보기 검증도 기록했습니다. [독립 구현 검토](docs/superpowers/reviews/2026-10-08-implementation-review.md), [실제 Chrome VOD 길게 누르기 수정 검토](docs/superpowers/reviews/2026-10-08-vod-hold-review.md), [전체 브랜치 독립 검토와 보완](docs/superpowers/reviews/2026-10-08-whole-branch-review.md)도 공개합니다. 설치된 Chrome에서 일부 기능을 검증했으나 전체 기능 검증과 출시 승인은 아직 완료되지 않았습니다.
 
 Gain 바를 48px·끝 여백 8px로 조정해 실제 라이브에서 확인했습니다. [합성 신호 음질 검사](docs/superpowers/validation/2026-10-08-audio-quality-and-gain-spacing.md)는 기본 설정의 출력과 전환 시 개선 후보를 기록하며, 실제 음성·음악의 음질 보장은 아닙니다. 오디오 처리 방식은 이번 검사에서 변경하지 않았습니다.
 
@@ -50,6 +50,8 @@ Node 24.x에서 `npm ci`, `npm test`, `npm run check`, `npm run build`를 실행
 [홈 추천 방송 숨김 후보](docs/superpowers/validation/2026-10-08-home-recommendation-recovery.md)는 일반 홈의 상단 추천 grid만 숨기고 편집 추천 콘텐츠·팔로잉·최근 다시보기는 보존합니다. 좁은 화면 재렌더 결함을 보완해 Node 101개·native CSS 40개를 통과했고, 새 설치본에서 임시 CSS 없이 좁음↔넓음 재렌더·화면 전환·저장 옵션OFF 원복/ON 복원을 확인했습니다. [추가 설치본 검사](docs/superpowers/validation/2026-10-08-installed-remaining-function-checks.md)에서 전체 화면/Esc는 사용자 직접 정상 확인했고, 시작 시각 연결점 불일치도 후속 보완을 검증했습니다. 나머지 전체 수용은 계속 진행 중입니다.
 
 [플레이어 스타일 검사](docs/superpowers/validation/2026-10-08-style-baseline-and-acceptance.md)에서 버튼 숨김·볼륨 표시의 설정 반전/원복을 확인했고, 현행 VOD ‘화면 채우기’의 구형 선택자·인라인 높이 제한 결함을 보완했습니다. 당시 Node109개·native CSS49개와 실제 VOD 임시 규칙 A/B를 통과했고, 새 설치본의 저장 옵션ON도 임시CSS 없이 일반/넓은 화면에서 기본 수용하고 원래OFF 복원까지 확인했습니다. 채팅 글꼴의 닉네임 배지 크기 결함도 제한 보완해 Node109개·native CSS58개·실제live/VOD 임시A/B를 통과했고, 새 설치본에서도font8의 배지·복수배지·이모지 크기를 임시CSS 없이 기본 수용했습니다. 원래 채팅 설정 복원과 사이드바/나머지 전체 검사는 진행 중입니다. 타임머신은 현재 계정 조건으로 실사용 미검증이며 전체 정상으로 합산하지 않습니다.
+
+[사이드바 후속 검사](docs/superpowers/validation/2026-10-08-style-baseline-and-acceptance.md)에서 원래 채팅·사이드바 설정 복원을 확인했지만, 초기 로딩의 섹션 수에 따라 일반 메뉴까지 숨기는 결함을 발견했습니다. 현재 DOM의 숨김 4개를 실제 섹션 식별 표지에 연결하고 구형 DOM 규칙은 유지했습니다. Node120개·별도 프로필 브라우저84개(코드·CSS 통합 포함)와 빌드·패키지 검사를 통과했으며, 새 설치본 검증은 수동 확장 새로고침 후 진행해야 합니다. 전체 기능 수용과 PR 생성은 아직 미완료입니다.
 
 [시작 시각 보완](docs/superpowers/validation/2026-10-08-start-time-selector-recovery.md)은 현재 live/VOD 연결점을 추가하고 기존 조회·캐시·취소·URL 검증을 유지합니다. 수동 새로고침 후 실제 설치본의 기본 표시·재진입·화면 전환 정리·새 카드 캐시 재사용도 확인했습니다. VOD 캡처와 모든 모드/기타 기능의 전체 수용은 별도 경계로 남아 있습니다.
 

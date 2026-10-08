@@ -215,6 +215,54 @@
     if (sidebar === node) { sidebarRecord.sync(); return; }
     sidebar = node;
     const record = sidebarRecord = { timer: null, expanded: new WeakSet(), suspended: false };
+    // Native sections arrive independently. Never identify a hiding target by
+    // its position: cold loading may contain only the general menu and services.
+    const sectionAttribute = 'data-knife-sidebar-section';
+    const sectionMarkers = new Map();
+    const releaseSection = section => {
+      if (section.getAttribute(sectionAttribute) === sectionMarkers.get(section)) section.removeAttribute(sectionAttribute);
+      sectionMarkers.delete(section);
+    };
+    const sectionKind = section => {
+      const label = section.getAttribute('aria-label');
+      if (label === '팔로우') return null;
+      if (label === '인기 카테고리') return 'popular';
+      const header = section.querySelector(':scope > [class^="_header_"]');
+      const title = header?.querySelector(':scope > strong[class^="_title_"]');
+      const text = [...(title?.childNodes || [])].filter(child => child.nodeType === 3)
+        .map(child => child.textContent).join('').trim().replace(/\s+/g, ' ');
+      if (text === '팔로잉 채널') return null;
+      if (text === '인기 카테고리') return 'popular';
+      if (['다가오는 방송 일정', '방송일정'].includes(text)) return 'schedule';
+      if (text === '파트너 스트리머') return 'partner';
+      if (text === '서비스 바로가기') return 'shortcut';
+      if (!title || text) return null;
+      const links = root => [...(root?.querySelectorAll('a[href]') || [])].flatMap(anchor => {
+        try { return [new URL(anchor.getAttribute('href'), location.href)]; } catch { return []; }
+      });
+      if (links(header).some(url => url.origin === location.origin && url.pathname === '/partner')) return 'partner';
+      const services = links(section.querySelector(':scope > ul'))
+        .filter(url => url.origin === 'https://game.naver.com');
+      if (services.some(url => url.pathname === '/') && services.some(url => url.pathname === '/esports')) return 'shortcut';
+      return null;
+    };
+    const syncSections = () => {
+      const sections = new Set([...node.querySelectorAll('nav[class^="_section_"]')]
+        .filter(section => !section.parentElement.closest('nav')));
+      for (const section of sectionMarkers.keys()) if (!sections.has(section)) releaseSection(section);
+      for (const section of sections) {
+        const current = section.getAttribute(sectionAttribute);
+        if (sectionMarkers.has(section) && current !== sectionMarkers.get(section)) {
+          sectionMarkers.delete(section); continue; // Another writer owns this value now.
+        }
+        if (!sectionMarkers.has(section) && current !== null) continue;
+        const kind = sectionKind(section);
+        if (!kind) { if (sectionMarkers.has(section)) releaseSection(section); continue; }
+        if (current !== kind) section.setAttribute(sectionAttribute, kind);
+        sectionMarkers.set(section, kind);
+      }
+    };
+    scope.add(() => { for (const section of sectionMarkers.keys()) releaseSection(section); });
     const followingSection = () => [...node.querySelectorAll('nav')].find(section =>
       /^(팔로잉 채널|Following channels)$/i.test(section.querySelector('[class*="_title_"], [class^="navigation_bar_title__"]')?.textContent.trim() || ''));
     const refreshControl = () => followingSection()?.querySelector('button[aria-label="새로고침"], button[aria-label="Refresh"]');
@@ -226,6 +274,7 @@
     };
     record.sync = () => {
       if (scope.disposed || !node.isConnected) { stopRefresh(); return; }
+      syncSections();
       const button = refreshControl();
       if (config.updateSidebar === true && button) {
         if (record.timer == null && !record.suspended) record.timer = scope.interval(refresh, 30000);
@@ -269,7 +318,7 @@
         added.querySelectorAll('a[href]').forEach(attach);
       }
       record.sync();
-    }), node, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-expanded', 'disabled'] });
+    }), node, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['aria-expanded', 'disabled', 'aria-label', 'href', 'class'] });
     record.sync();
   };
   const channelButton = (state, scope) => {

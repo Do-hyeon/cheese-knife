@@ -6,7 +6,7 @@
 
 Branch `codex/chzzk-compatibility-recovery` contains a 2.13.2 recovery preview based on upstream v2.13.1. It adds Vue-free controls/compression, cancelable HLS previews, scoped page lifecycles, and per-tab feature readiness. It is not the upstream store release.
 
-109 automated tests, controlled real audio output and separate-browser public preview frame progression passed. See the [independent implementation review](docs/superpowers/reviews/2026-10-08-implementation-review.md), [installed-Chrome VOD hold fix review](docs/superpowers/reviews/2026-10-08-vod-hold-review.md), and [whole-branch review and follow-up](docs/superpowers/reviews/2026-10-08-whole-branch-review.md). Scoped installed-Chrome checks passed; full acceptance and release approval remain pending.
+120 automated tests passed; controlled real audio output and separate-browser public preview frame progression were also recorded. See the [independent implementation review](docs/superpowers/reviews/2026-10-08-implementation-review.md), [installed-Chrome VOD hold fix review](docs/superpowers/reviews/2026-10-08-vod-hold-review.md), and [whole-branch review and follow-up](docs/superpowers/reviews/2026-10-08-whole-branch-review.md). Scoped installed-Chrome checks passed; full acceptance and release approval remain pending.
 
 The Gain slider is now 48px with an 8px end gap, checked in installed Chrome. [Synthetic audio-quality diagnostics](docs/superpowers/validation/2026-10-08-audio-quality-and-gain-spacing.md) document defaults and transition improvement candidates, not a subjective sound-quality guarantee. DSP is unchanged. Reproduce with `node scripts/check-audio-quality.mjs --chrome`; a fresh profile captures synthetic floating output while sending zeros to speakers, without recording broadcasts.
 
@@ -33,6 +33,8 @@ The [start-time follow-up](docs/superpowers/validation/2026-10-08-start-time-sel
 [Website](https://www.chz.app/) | [Discord](https://discord.gg/9kq3UNKAkz) | [Chrome Web Store (compatible with Chromium, Edge, Whale)](https://chromewebstore.google.com/detail/nfkfgkkhgglkgnlppncolmpekidapkjh) | [Firefox Add-ons](https://addons.mozilla.org/addon/cheese-knife/) | [Korean](./README-en.md)
 
 ![Screenshot](./images/en.png)
+
+[Sidebar follow-up](docs/superpowers/validation/2026-10-08-style-baseline-and-acceptance.md) confirmed original chat/sidebar setting restoration but found that ordinal hiding rules could hide general navigation during partial loading. Four current-DOM rules now use owned section identity markers while retaining scoped legacy rules. Node120, separate-profile browser84 (including production JS/CSS integration), build and package checks passed. Installed acceptance requires a manual extension refresh; full acceptance and PR creation remain pending.
 
 ## Features
 

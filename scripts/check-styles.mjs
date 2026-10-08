@@ -51,6 +51,32 @@ try{
       assert.equal(await page.locator('#foreign-message').evaluate(n=>getComputedStyle(n).fontSize),'14px');
     }catch(error){failures.push({name:`current chat font offset ${offset}`,error:error.message});}
   }
+  const sectionStyles=[['popular','hide-recommended'],['schedule','hide-schedule'],['partner','hide-sidebar-partner'],['shortcut','hide-shortcut']];
+  const sectionFixture=names=>'<style>nav{display:block}</style><aside id="sidebar" aria-label="사이드바"><div>'+names.map(id=>`<nav id="section-${id}" class="_section_test"${['popular','schedule','partner','shortcut'].includes(id)?` data-knife-sidebar-section="${id}"`:''}>${id}</nav>`).join('')+'</div></aside>';
+  for(let mask=0;mask<16;mask++)await checkNative(`sidebar hiding preserves general/following with target subset ${mask}`,async()=>{
+    const names=['general','following',...sectionStyles.filter((_,i)=>mask&(1<<i)).map(([id])=>id)];
+    await page.setContent(sectionFixture(names.reverse()));
+    for(const [,file]of sectionStyles)await page.addStyleTag({content:await fs.readFile(`styles/${file}.css`,'utf8')});
+    for(const id of names)assert.equal(await page.locator(`#section-${id}`).evaluate(n=>getComputedStyle(n).display),['general','following'].includes(id)?'block':'none',id);
+  });
+  for(const [target,file]of sectionStyles)await checkNative(`${file} hides only its section and OFF restores native visibility`,async()=>{
+    await page.setContent(sectionFixture(['general','following','popular','schedule','partner','shortcut']));
+    const css=await page.addStyleTag({content:await fs.readFile(`styles/${file}.css`,'utf8')});
+    for(const id of ['general','following','popular','schedule','partner','shortcut'])assert.equal(await page.locator(`#section-${id}`).evaluate(n=>getComputedStyle(n).display),id===target?'none':'block',id);
+    await css.evaluate(n=>n.remove());
+    assert.equal(await page.locator(`#section-${target}`).evaluate(n=>getComputedStyle(n).display),'block');
+  });
+  await checkNative('unidentified sidebar and foreign marked navigation stay visible',async()=>{
+    await page.setContent('<style>nav{display:block}</style><aside aria-label="사이드바"><nav id="unidentified-general"></nav><nav id="unidentified-service"></nav></aside><nav id="foreign-section" data-knife-sidebar-section="partner"></nav>');
+    for(const [,file]of sectionStyles)await page.addStyleTag({content:await fs.readFile(`styles/${file}.css`,'utf8')});
+    for(const id of ['unidentified-general','unidentified-service','foreign-section'])assert.equal(await page.locator(`#${id}`).evaluate(n=>getComputedStyle(n).display),'block',id);
+  });
+  for(const [target,file]of sectionStyles)await checkNative(`${file} preserves scoped legacy section support`,async()=>{
+    await page.setContent('<style>section{display:block}</style><aside class="aside_content__old">'+['general','following','popular','schedule','partner','shortcut'].map(id=>`<section id="legacy-section-${id}" class="navigation_bar_section__old"></section>`).join('')+'</aside><section id="foreign-legacy" class="navigation_bar_section__old"></section>');
+    await page.addStyleTag({content:await fs.readFile(`styles/${file}.css`,'utf8')});
+    for(const id of ['general','following','popular','schedule','partner','shortcut'])assert.equal(await page.locator(`#legacy-section-${id}`).evaluate(n=>getComputedStyle(n).display),id===target?'none':'block',id);
+    assert.equal(await page.locator('#foreign-legacy').evaluate(n=>getComputedStyle(n).display),'block');
+  });
   const currentFixture=`<style>body{margin:0;--color-content-02:#fff}#sidebar{position:fixed;left:0;top:60px;width:78px}#sidebar._is_expanded_test{width:240px}#layout-body{box-sizing:border-box;width:100%;padding-left:78px}#layout-body._is_expanded_test{padding-left:240px}.round,img.avatar{border-radius:50%}#header{height:60px}#header img{width:85px;height:26px}</style>
     <header id="header"><div><button id="menu">Menu</button><h1><img id="logo" class="_logo_chzzk_test" alt="Logo"></h1></div><div class="_section_test"></div></header>
     <aside id="sidebar"><div id="sidebar-profile" class="_profile_test round"><img id="sidebar-avatar" class="avatar"></div></aside>
@@ -289,6 +315,33 @@ try{
     assert.equal(await page.locator('#nickname-badge').evaluate(n=>getComputedStyle(n).width),'18px');
     assert.equal(await page.locator('#body-emote').evaluate(n=>getComputedStyle(n).width),'24px');
     assert.equal(await page.locator('#badge-holder').evaluate(n=>getComputedStyle(n).width),'40px');
+  });
+  await checkNative('production sidebar marker and CSS cooperate through cold loading, collapse and retirement',async()=>{
+    const nativePage=await browser.newPage();
+    try{
+      // All requests are fulfilled locally; this is not a real service page.
+      await nativePage.route('**/*',route=>route.fulfill({contentType:'text/html; charset=utf-8',body:'<main id="layout-body"></main><aside id="sidebar" aria-label="사이드바"><div id="sections"><nav id="native-general" class="_section_test"></nav><nav id="native-shortcut" class="_section_test"><div class="_header_test"><strong class="_title_test">서비스 바로가기<span>새 창</span></strong></div><ul><li><a href="https://game.naver.com">Game</a></li><li><a href="https://game.naver.com/esports">Esports</a></li></ul></nav></div></aside>'}));
+      await nativePage.goto('https://sidebar-fixture.invalid/');
+      for(const file of ['web/runtime.js','web/site-adapter.js','web/inject.js'])await nativePage.addScriptTag({content:await fs.readFile(file,'utf8')});
+      for(const [,file]of sectionStyles)await nativePage.addStyleTag({content:await fs.readFile(`styles/${file}.css`,'utf8')});
+      assert.equal(await nativePage.locator('#native-general').evaluate(n=>getComputedStyle(n).display),'block','config-unready never guesses ordinal targets');
+      await nativePage.evaluate(()=>{const r=window[Symbol.for('cheese-knife.runtime.v1')];window.dispatchEvent(new MessageEvent('message',{source:window,origin:location.origin,data:{namespace:'cheese-knife',protocol:1,type:'config',requestId:r.requestId,revision:1,config:{}}}));});
+      assert.equal(await nativePage.locator('#native-shortcut').getAttribute('data-knife-sidebar-section'),'shortcut');
+      assert.equal(await nativePage.locator('#native-general').evaluate(n=>getComputedStyle(n).display),'block');
+      assert.equal(await nativePage.locator('#native-shortcut').evaluate(n=>getComputedStyle(n).display),'none','configured cold service section');
+      await nativePage.evaluate(()=>document.querySelector('#sections').insertAdjacentHTML('beforeend','<nav id="native-following" class="_section_test" aria-label="팔로우"></nav><nav id="native-popular" class="_section_test" aria-label="인기 카테고리"><div class="_header_test"><strong class="_title_test">인기 카테고리</strong></div></nav><nav id="native-schedule" class="_section_test"><div class="_header_test"><strong class="_title_test">다가오는 방송 일정</strong></div></nav><nav id="native-partner" class="_section_test"><div class="_header_test"><strong class="_title_test">파트너 스트리머<a href="/partner">목록</a></strong></div></nav>'));
+      await nativePage.waitForFunction(()=>document.querySelector('#native-partner').dataset.knifeSidebarSection==='partner');
+      for(const id of ['popular','schedule','partner','shortcut'])assert.equal(await nativePage.locator(`#native-${id}`).evaluate(n=>getComputedStyle(n).display),'none',id);
+      for(const id of ['general','following'])assert.equal(await nativePage.locator(`#native-${id}`).evaluate(n=>getComputedStyle(n).display),'block',id);
+      await nativePage.evaluate(()=>{for(const id of ['popular','partner','shortcut'])document.querySelector(`#native-${id} strong`).firstChild.data='';document.querySelector('#native-schedule strong').firstChild.data='방송일정';});
+      await nativePage.waitForFunction(()=>document.querySelector('#native-schedule strong').textContent==='방송일정');
+      for(const id of ['popular','schedule','partner','shortcut'])assert.equal(await nativePage.locator(`#native-${id}`).evaluate(n=>getComputedStyle(n).display),'none',id+' collapsed');
+      await nativePage.evaluate(()=>{document.querySelector('#native-schedule strong').firstChild.data='Unknown';document.querySelector('#native-partner').remove();});
+      await nativePage.waitForFunction(()=>!document.querySelector('#native-schedule').hasAttribute('data-knife-sidebar-section'));
+      assert.equal(await nativePage.locator('#native-schedule').evaluate(n=>getComputedStyle(n).display),'block','reused unknown section is visible');
+      await nativePage.evaluate(()=>window.dispatchEvent(new PageTransitionEvent('pagehide')));
+      assert.equal(await nativePage.locator('#native-popular').evaluate(n=>getComputedStyle(n).display),'block','disposal releases CSS identity');
+    }finally{await nativePage.close();}
   });
   console.log(JSON.stringify({browser:browser.version(),checks:checked,passed:checked-failures.length,failures},null,2));
   assert.equal(failures.length,0,'Native CSS behavior regressions');

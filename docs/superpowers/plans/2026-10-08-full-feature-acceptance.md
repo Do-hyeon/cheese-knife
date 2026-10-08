@@ -95,6 +95,8 @@
 - [x] 새home/live 사이드바 inverse 기본수용(offline숨김/live보존·일정숨김·다른3section표시/right240),채팅resize/time/left/ranking 기본복원/player1963 유지. 실제2560/1800메뉴-검색 분리·1200기본sidebar와native접기/확장 관찰;첫wrong-tab resize/timeout·collapsed82/pad78 경계는전체PASS로합산안함. font8잔존으로0/8 UI값 질문/사이드바6 원래값 복원 남음. 제품수정·전체스타일·PR완료 아님.
 - [x] 사용자font0재조정/sidebar원복 후 새font0/본문14/배지18/원래채팅·sidebar 기본복원 확인. 초기native nav2에서partner nth-last2가일반메뉴숨김→정착nav6정상 FAIL발견;ordinal4개와고유descriptor/접힘일정별명 조사. 기존sidebar소유표지/4CSS연결·legacy보존·동적목록/lifecycle회귀 bounded설계승인대기. 구현/전체스타일/PR완료 아님.
 
+- [x] 승인된 사이드바 식별 후보:current ordinal4개를 owned native marker로 교체/legacy보존/기존observer재사용. Node10RED→GREEN+1보호(total120),native17RED→GREEN+8보호+1코드CSS통합(total84),build/package/source-dist hash PASS. class-only section/header재사용도 stale표지 RED→GREEN으로 보호. 실제home 공개descriptor 입력 확인은 읽기전용이며 새 설치본 수용 아님. 새dist 필수 수동 확장 새로고침에서 중지;설치본/나머지 스타일/전체검증/최종검토/PR 미완료.
+
 ### Task 4: 기여 PR 완료 조건
 
 **Files:** README.md, README-en.md, docs/superpowers/validation/ 및 한글 PR 본문.
