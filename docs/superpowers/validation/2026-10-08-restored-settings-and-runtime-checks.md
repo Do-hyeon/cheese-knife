@@ -59,3 +59,17 @@ build/package v2.13.2·20 entry resources·diff check PASS,source/dist `web/main
 live주영상은1920×1080/playingready4였다. VOD초기wrapper영상은1280×720/pausedtrue/ready4였으므로재생PASS로세지않았다. 같은문서의정착을추가읽기로확인한뒤주영상1920×1080/playingready4/같은wrapper필터·native보존을확인했다. visible native일시정지버튼과duration22976초의VOD재생상태를관찰했으며버튼입력/play/pause/seek/mute/광고skip을실행하지않았다. 초기정지의원인을추측하거나모든구간무중단재생으로주장하지않는다.
 
 두own탭을닫았고user시청탭/확장저장소/viewport/미디어를변경하지않았다. source/distmainCSShash는위1BD89A...동일이다. 이번에는제품/build나suite를다시실행하지않아앞선122/91/17을fresh실행으로주장하지않는다. 사용자GPU/pixels와시각적변화확인은별도이며현재필터시험값은그대로다. 원래밝기1/대비1/채도1/감마1/선명도0을수동설정UI로복원하고새문서의bodyOFF/자식0/wrappernone/native영상filter보존을확인하는것이다음단계다. 전체기능/최종독립검토/PR은남아있다.
+
+## 원래 필터 복원 및 실제 bfcache 후속 검사
+
+사용자가필터원복완료를알렸다. 새ownlive/VOD에서body knife-filterOFF/knifeFilter자식0/임시CSS0/sourcewrapperfilter none/direct영상nativefilter보존·knifeFilter미적용을확인했다. 이읽기는video ready0/pausedtrue라서새재생PASS로합산하지않는다. own2개를닫았다. 별도home의허용MAIN읽기로설정leaf밝기1/대비1/채도1/감마1/선명도0을확인했다. 미리보기기존설정preview/livePreview/rightClicktrue/customfalse/폭400/지연0.1/음량5도유지됐다. 사용자시각변화확인답변은없어GPU/실제pixels수용을추측하지않는다.
+
+실제ownhome의scope한정pagehide/pageshow listener로persisted만계측했다. 사이드바hover에서처음panel1/visible/영상ready0·pausedtrue를관찰했다. 이후status stream-playback-unavailable/limited이고fatalHLS진단은없었다. 최초대상의stream실패원인은확정하지않아정상재생/제품결함으로합산하지않는다. 해당상태에서정상문서탐색 `/lives`→back를실행했다. 계측pagehide.persistedtrue/pageshow.persistedtrue,같은probe/runtime인실제bfcache복원을확인했다. 복귀configurationready/미리보기hidden/video0이었다.
+
+복귀후첫hoverpoint는native배치변화로stale이었다. elementFromPoint에서실제sidebar/livehit가아님을확인해제품실패로세지않았다. 현재liveanchor의center를실제hit와대조한뒤입력했고hoveredlink1을확인했다. 이후panel1/visible/영상mutedplaying/time29.982771·ready2→39.961153·ready4로재연결·시간진행을확인했다. 이탈후video0/hidden,임시listener2개와probeSymbol을제거하고ownhome을닫았다. 이것은해당홈미리보기bfcache의기본수용이지모든route/스트림/미디어교체/팝업bfcache보장이아니다. 채널·채팅본문/미디어URL을수집하지않았고user탭/확장저장소/미디어/viewport를변경하지않았다.
+
+현재후보전체Node122/122/nativeCSS91/91/필터17/17을새로실행해PASS,source·distpackage각v2.13.2·20resources/diffcheck/mainCSSsource-disthash동일을확인했다. dist를다시빌드하지않았다. ignored로그 `readiness-node.log`, `readiness-styles.log`, `readiness-filters.log`다.
+
+합성무음오디오측정도현재모듈로재실행해exit0/Chrome155.0.8059.39/source1/기본14case의fullscale초과sample0,Gain전환12개가각자의settledendpoint최대step을넘지않음을확인했다. 실제스피커에는0을출력했다. 기존toggle dip(250Hz약0.1447 대baseline0.2632,750Hz약0.1472 대0.2844)와별도stress peak1.95944/초과16000은유지되며해결/주관적음질보장으로주장하지않는다. ignored로그 `final-audio-native.log`와기존 `output/audio-quality/report.json`에기록됐다.
+
+새문맥전체readiness독립검토에서중요2건/경미1건을발견했다. [후속 검토 기록](../reviews/2026-10-08-final-readiness-review.md)에원인/재현/미검증/짧은보완설계승인게이트를남겼다. 승인전제품/회귀파일/build는변경하지않는다. 전체기능완료/PR는아직아니다.
