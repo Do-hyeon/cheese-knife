@@ -280,3 +280,30 @@ own페이지를 접힌 상태에서 reload했다. 첫 렌더nav2는expandedtrue�
 own탭을닫았고 사용자 시청 탭·확장저장소·미디어·viewport는변경하지 않았다. source/dist inject hash는위B3C204...동일이며 제품/build를새로변경하지않았다. 이전Node122/native84 기록은 유지하되 이번실제DOM검사와fresh suite를혼동하지않는다. 새 독립검토/전체수용/PR은아직남아있다.
 
 다음수동style묶음은 original과반대로 static-logo/hide-topics/hide-studio/hide-live-badge/rectangle-profile/hide-blocked ON,auto-hide-toolbar/top-explore OFF다. 적용페이지새로고침만필요하며 확장자체새로고침은불필요하다. 이묶음검사후 모두original(앞6OFF/뒤2ON)로복원해야한다. hide-blocked에실제대상이없으면 등록확인과실제숨김미검증을분리한다.
+
+## 툴바·탐색·기타 8개 반대 설정 검사와 방송 정보 프로필 누락
+
+사용자가 위8개 반대설정 적용 완료를 알렸다. 새home 초기main대상0/Studio·주제탭없음은 로딩 중 입력으로 남겼고 정착한 다음 실제 대상에서 검사했다. 임시probeCSS0이었다.
+
+| 저장 옵션 | 정착한 실제 결과 | 판정 범위 |
+| --- | --- | --- |
+| 정적 로고ON | mask있음/padding-right80px/rect80px | nativeborder-box라computedwidth80px이고image내용폭0;syntheticcontent-box의computed0 기대값을 잘못 적용하지 않음. 실제pixels캡처 수용과구분 |
+| 주제탭 숨김ON | 실제header대상1개none | 이전OFF flex와반전 기본수용 |
+| 스튜디오 숨김ON | 실제header대상1개none | 이전OFF flex와반전 기본수용 |
+| 자동 숨김OFF | hover/focus없음 headerY0 | 2560·1200·1800 실제폭에서고정 확인 |
+| topExploreOFF | 첫navstatic/사이드바x20·폭200 | 1200·1800에서도static/이전ON absolute와반전 기본수용 |
+| 생방송 배지 숨김ON | home live배지5개 모두none/다른배지31개숨김0 | 실제현재카드의기본수용;수량을향후고정기대값으로쓰지않음 |
+| 사각 프로필ON | home프로필25개·sidebar49개·계정button/image radius0 | 이범위는수용했지만아래live/VOD방송정보프로필FAIL 때문에전체옵션PASS아님 |
+| 차단방송 숨김ON | 실제legacy blocked target0 | 사용자적용완료와대상부재를구분.실제숨김미검증;Chrome확장저장소/등록API 우회조회나채널차단을하지않음 |
+
+반응형 실제viewport1200×900/headerY0/navx20w200/searchx427w307/accountx1125w40、scrollWidth=clientWidth1185,1800×900/headerY0/navx20w200/searchx709.5w342/accountx1725w40、scrollWidth=clientWidth1785를 확인했다. 검색·계정 영역 겹침과가로넘침없음. viewport reset 직후read는1800이남는중간값이었고 다음읽기에서home2560×1305 원복을확인했다. 새ownlive/VOD는default2560×1249였다. 폭설정은own검사탭에만했으며user시청탭을조작하지않았다.
+
+실제home의공개live/VOD링크로별도탭을열었다. 라이브·다시보기모두Studio/주제탭none/staticlogo mask/임시probeCSS0과mainvideo playing/readyState4/1920×1080을확인했다. 라이브player폭1963을보존했다. 미디어를mute/seek/toggle/음량변경하지않았다. 초기VOD프로필0은PASS로합산하지않았고데이터정착뒤대상을확인했다.
+
+두화면의방송정보 채널프로필은 **a._thumbnail_17x81_109 > img(emptyclass)** 였고wrapper와image 모두radius50%였다. image60×60/wrapper70×70인native프로필이며current `rectangle-profile.css`의main `_image_` 선택자와legacy 이름에해당하지않는다. 홈/계정/sidebar의사각화가이미적용되어저장실패가아니라선택자누락임을확인했다. profile옆row에direct `_inner_` > `_channel_` 메타데이터와 `_control_`이있고상위direct `_container_` 관계가두화면에서같았다. 이미지URL/alt/채널이름/ID/본문/React객체는출력·저장하지않았다.
+
+**bounded 보완안/승인 대기:** `styles/rectangle-profile.css`에 `#layout-body` 내부의direct container→row 관계이면서 sibling inner→channel 관계를가진채널정보thumbnail anchor와그direct classlessimg만radius0으로만드는선택자2개를추가한다. 기존home/sidebar/header/legacy규칙과크기·배치·JS·권한·설정키는유지한다. generic `_thumbnail_` 전체를사각화하지않는다. 읽기전용candidatequery는home0/live1/VOD1을선택했고,home의다른thumbnail anchor25개와live의다른5개는선택하지않았다. 후보CSS를쓰거나적용한결과가아니라범위입력검사다.
+
+승인후실제구조를사용한native live/VOD회귀를먼저RED로재현하고,비채널썸네일/foreign/metadata관계불일치/옵션OFF원복/legacy보존경계를검사한다. 최소CSS추가후wholeNode/native/build/package/hash와실제검사를진행한다. 새dist가생기면필수수동확장새로고침단계에서중지한다. 승인전제품/테스트/build/후보CSS를변경하지않았다.
+
+검사8개설정은현재임시반대값그대로이며 프로필보완검사후original로복원할예정이다. 모든ownhome/live/VOD탭을닫고viewport원복을확인했다. usertab/확장설정/ChromeAPI/미디어/계정차단은직접변경하지않았다. 제품변경없는조사이며전체옵션원복·나머지기능검증·최종독립검토·PR은남아있다.

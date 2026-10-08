@@ -101,6 +101,8 @@
 
 - [x] 6d333 설치본 초기nav2/정착nav6 original수용,실제serviceheader없음collapsed숨김유지/reload후늦은native접힘복원/접힘SPA home↔lives 유지확인. stale메뉴locator timeout 및중간home표지없음은정착PASS에합산안함. expanded원복/own정리/sourcehash동일;제품변경없음. 남은toolbar/explore/misc8개 opposite설정수동적용검사→원복필요. blocked실제대상0/전체variant/최종검토/PR은미완료.
 
+- [x] 저장toolbar/explore/misc8개반전:home logo mask80(borderbox)/Studio·topicsnone/headerY0nofocushover/navstatic/livebadges5none·other31보존/profilehome25·sidebar49·account0radius;1200/1800검색·계정분리/가로넘침없음/default원복. 실제live/VOD播放ready4 유지지만방송정보channelthumbnail/image radius50 FAIL. directcontainer→row+inner→channel 구조조사/candidatequeryhome0/live1/VOD1. 제한CSS2선택자/nativeRED·보호·OFF원복 설계승인대기. blocked실제target0 UNVERIFIED/임시8값미원복/전체수용·PR미완료;제품수정없음.
+
 ### Task 4: 기여 PR 완료 조건
 
 **Files:** README.md, README-en.md, docs/superpowers/validation/ 및 한글 PR 본문.
