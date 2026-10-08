@@ -236,7 +236,9 @@
       if (['다가오는 방송 일정', '방송일정'].includes(text)) return 'schedule';
       if (text === '파트너 스트리머') return 'partner';
       if (text === '서비스 바로가기') return 'shortcut';
-      if (!title || text) return null;
+      if (text) return null;
+      // Compact services remove their header entirely; the direct public
+      // service-link signature remains even on a cold compact render.
       const links = root => [...(root?.querySelectorAll('a[href]') || [])].flatMap(anchor => {
         try { return [new URL(anchor.getAttribute('href'), location.href)]; } catch { return []; }
       });

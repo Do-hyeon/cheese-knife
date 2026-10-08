@@ -8,7 +8,7 @@
 
 Vue 없이 플레이어 버튼·컴프레서·VOD 길게 눌러 2배속을 제공하고 HLS.js 미리보기, 화면 전환 수명 관리, 기능별 준비 상태를 추가했습니다. [설계](docs/superpowers/specs/2026-10-08-chzzk-compatibility-design.md), [검토](docs/superpowers/reviews/2026-10-08-chzzk-compatibility-review.md), [검증 결과와 제한](docs/superpowers/validation/2026-10-08-chzzk-compatibility.md)을 함께 확인하세요.
 
-자동 테스트 120개를 통과했으며, 별도 브라우저의 실제 오디오·공개 방송 미리보기 검증도 기록했습니다. [독립 구현 검토](docs/superpowers/reviews/2026-10-08-implementation-review.md), [실제 Chrome VOD 길게 누르기 수정 검토](docs/superpowers/reviews/2026-10-08-vod-hold-review.md), [전체 브랜치 독립 검토와 보완](docs/superpowers/reviews/2026-10-08-whole-branch-review.md)도 공개합니다. 설치된 Chrome에서 일부 기능을 검증했으나 전체 기능 검증과 출시 승인은 아직 완료되지 않았습니다.
+자동 테스트 122개를 통과했으며, 별도 브라우저의 실제 오디오·공개 방송 미리보기 검증도 기록했습니다. [독립 구현 검토](docs/superpowers/reviews/2026-10-08-implementation-review.md), [실제 Chrome VOD 길게 누르기 수정 검토](docs/superpowers/reviews/2026-10-08-vod-hold-review.md), [전체 브랜치 독립 검토와 보완](docs/superpowers/reviews/2026-10-08-whole-branch-review.md)도 공개합니다. 설치된 Chrome에서 일부 기능을 검증했으나 전체 기능 검증과 출시 승인은 아직 완료되지 않았습니다.
 
 Gain 바를 48px·끝 여백 8px로 조정해 실제 라이브에서 확인했습니다. [합성 신호 음질 검사](docs/superpowers/validation/2026-10-08-audio-quality-and-gain-spacing.md)는 기본 설정의 출력과 전환 시 개선 후보를 기록하며, 실제 음성·음악의 음질 보장은 아닙니다. 오디오 처리 방식은 이번 검사에서 변경하지 않았습니다.
 
@@ -54,6 +54,8 @@ Node 24.x에서 `npm ci`, `npm test`, `npm run check`, `npm run build`를 실행
 [사이드바 후속 검사](docs/superpowers/validation/2026-10-08-style-baseline-and-acceptance.md)에서 원래 채팅·사이드바 설정 복원을 확인했지만, 초기 로딩의 섹션 수에 따라 일반 메뉴까지 숨기는 결함을 발견했습니다. 현재 DOM의 숨김 4개를 실제 섹션 식별 표지에 연결하고 구형 DOM 규칙은 유지했습니다. Node120개·별도 프로필 브라우저84개(코드·CSS 통합 포함)와 빌드·패키지 검사를 통과했으며, 새 설치본 검증은 수동 확장 새로고침 후 진행해야 합니다. 전체 기능 수용과 PR 생성은 아직 미완료입니다.
 
 [시작 시각 보완](docs/superpowers/validation/2026-10-08-start-time-selector-recovery.md)은 현재 live/VOD 연결점을 추가하고 기존 조회·캐시·취소·URL 검증을 유지합니다. 수동 새로고침 후 실제 설치본의 기본 표시·재진입·화면 전환 정리·새 카드 캐시 재사용도 확인했습니다. VOD 캡처와 모든 모드/기타 기능의 전체 수용은 별도 경계로 남아 있습니다.
+
+사이드바 새 설치본에서 초기 일반메뉴 보존·확장 상태 숨김·기본 화면 전환을 확인했습니다. 실제 접힘에서 서비스 제목 영역 자체가 제거되는 입력을 보완해 Node122개·브라우저84개를 통과했습니다. 접힘 보완본의 설치 검증은 다시 수동 확장 새로고침 후 진행해야 합니다. 자세한 실패·보완·미검증 범위는 위 사이드바 후속 기록에 남겼습니다.
 
 [Website](https://www.chz.app/) | [Discord](https://discord.gg/9kq3UNKAkz) | [Chrome Web Store (Chromium, Edge, Whale 호환)](https://chromewebstore.google.com/detail/nfkfgkkhgglkgnlppncolmpekidapkjh) | [Firefox Add-ons](https://addons.mozilla.org/addon/cheese-knife/) | [English](./README-en.md)
 

@@ -333,7 +333,7 @@ try{
       await nativePage.waitForFunction(()=>document.querySelector('#native-partner').dataset.knifeSidebarSection==='partner');
       for(const id of ['popular','schedule','partner','shortcut'])assert.equal(await nativePage.locator(`#native-${id}`).evaluate(n=>getComputedStyle(n).display),'none',id);
       for(const id of ['general','following'])assert.equal(await nativePage.locator(`#native-${id}`).evaluate(n=>getComputedStyle(n).display),'block',id);
-      await nativePage.evaluate(()=>{for(const id of ['popular','partner','shortcut'])document.querySelector(`#native-${id} strong`).firstChild.data='';document.querySelector('#native-schedule strong').firstChild.data='방송일정';});
+      await nativePage.evaluate(()=>{for(const id of ['popular','partner'])document.querySelector(`#native-${id} strong`).firstChild.data='';document.querySelector('#native-shortcut ._header_test').remove();document.querySelector('#native-shortcut').insertAdjacentHTML('afterbegin','<span class="blind">서비스 바로가기</span>');document.querySelector('#native-schedule strong').firstChild.data='방송일정';});
       await nativePage.waitForFunction(()=>document.querySelector('#native-schedule strong').textContent==='방송일정');
       for(const id of ['popular','schedule','partner','shortcut'])assert.equal(await nativePage.locator(`#native-${id}`).evaluate(n=>getComputedStyle(n).display),'none',id+' collapsed');
       await nativePage.evaluate(()=>{document.querySelector('#native-schedule strong').firstChild.data='Unknown';document.querySelector('#native-partner').remove();});

@@ -97,6 +97,8 @@
 
 - [x] 승인된 사이드바 식별 후보:current ordinal4개를 owned native marker로 교체/legacy보존/기존observer재사용. Node10RED→GREEN+1보호(total120),native17RED→GREEN+8보호+1코드CSS통합(total84),build/package/source-dist hash PASS. class-only section/header재사용도 stale표지 RED→GREEN으로 보호. 실제home 공개descriptor 입력 확인은 읽기전용이며 새 설치본 수용 아님. 새dist 필수 수동 확장 새로고침에서 중지;설치본/나머지 스타일/전체검증/최종검토/PR 미완료.
 
+- [x] 834 설치본 초기nav2 일반표시/서비스숨김,nav6 original표시·숨김,기본SPA home→lives→home 수용. 실제collapsed서비스header전체제거로식별해제 FAIL;nativefixture의빈strong 가정누락확인. 승인된접힘범위로 조건1개보완,Node2+native통합1 RED→GREEN(total122/84)/build/package/hash PASS. ownexpanded원복/탭정리,새dist필수수동새로고침에서중지. 전체수용/PR 미완료.
+
 ### Task 4: 기여 PR 완료 조건
 
 **Files:** README.md, README-en.md, docs/superpowers/validation/ 및 한글 PR 본문.

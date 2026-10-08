@@ -52,6 +52,27 @@ test('collapsed sidebar keeps aria/link identities and the compact schedule titl
   await flush(); assert.equal(marker(dom, 'schedule'), 'schedule');
 });
 
+test('service identity survives native collapse removing the entire header', async t => {
+  const dom = setup(t, ['general','shortcut']);
+  assert.equal(marker(dom, 'shortcut'), 'shortcut');
+  const service = dom.window.document.getElementById('shortcut');
+  service.querySelector('._header_test').remove();
+  service.insertAdjacentHTML('afterbegin', '<span class="blind">서비스 바로가기</span>');
+  await flush();
+  assert.equal(marker(dom, 'shortcut'), 'shortcut'); assert.equal(marker(dom, 'general'), null);
+  service.querySelector('a[href="https://game.naver.com/esports"]').remove(); await flush();
+  assert.equal(marker(dom, 'shortcut'), null, 'one Game link is not a service signature');
+});
+
+test('cold compact sidebar identifies services without depending on a previous expanded marker', t => {
+  const dom = setup(t, ['general','shortcut'], dom => {
+    const service = dom.window.document.getElementById('shortcut');
+    service.querySelector('._header_test').remove();
+    service.insertAdjacentHTML('afterbegin', '<span class="blind">서비스 바로가기</span>');
+  });
+  assert.equal(marker(dom, 'shortcut'), 'shortcut'); assert.equal(marker(dom, 'general'), null);
+});
+
 test('reused section drops its old identity when direct header text changes', async t => {
   const dom = setup(t, ['schedule']);
   assert.equal(marker(dom, 'schedule'), 'schedule');

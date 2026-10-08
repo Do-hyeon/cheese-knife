@@ -250,3 +250,19 @@ ownhome 검색은 빈 필드에 focus만 했고 입력/전송하지 않았다. �
 로컬 ignored 로그는 `output/acceptance/sidebar-sections-baseline.log`, `sidebar-sections-node-red.log`, `sidebar-sections-class-red.log`, `sidebar-sections-css-red.log`, `sidebar-sections-node-green.log`, `sidebar-sections-css-green.log`다. 사용자 계정의 실제 섹션 개수를 회귀 기대값으로 고정하지 않는다. 현재 확인하지 않은 언어/미래 native descriptor는 보수적으로 기본 표시하며 전체 variant 지원을 보장하지 않는다.
 
 새 dist의 실제 등록/기본 설정 숨김·메뉴 보존/접힘·동적 전환 수용은 **사용자 수동 확장 새로고침이 필요한 필수 중지 단계**다. original25개 설정은 그대로 유지한다. 확인 후 나머지 툴바/탐색/프로필·전체 기능 검증 및 최종 독립 검토를 이어간다. 아직 전체 기능 수용/PR 생성 조건은 충족하지 않았으며 PR을 열지 않았다.
+
+## 834da32 설치본 수용 및 실제 접힘 보완
+
+사용자가 확장 새로고침 완료를 알렸다. 새 별도home 최초nav2에서 일반메뉴displayblock/marker없음,서비스displaynone/shortcut표지/rootfont0px/임시probeCSS0을 확인했다. 이전 초기 일반메뉴 오숨김은 이 실제 입력에서 재발하지 않았다. 다음 읽기nav6에서는 일반·팔로잉표시/인기·파트너·서비스숨김/일정표시로 original 저장 설정 적용을 확인했다.
+
+그러나 native ‘메뉴 접기’ 키보드 Enter 후 service만marker없음/displayblock이 됐다. 인기·파트너 숨김과 일정표지/기본표시는 유지됐고 일정 직접제목은‘방송일정’이었다. 추가 공개 DOM 조사 결과 **서비스의 직접 header/strong 자체가 없어져 직접 blind span+ul만 남는다**. 같은 ul에 NAVER Game root/esports/original_series/pcgame/lounge 공개링크는 남아 있었다. 기존 구현은 `!title`에서 반환하므로 링크 fallback까지 도달하지 못한다. synthetic fixture는 빈 제목 strong을 남기는 불완전한 접힘 입력이어서 이 현상을 놓쳤다. 이 실서비스 실패를 synthetic PASS로 덮거나 전체 접힘 PASS로 기록하지 않는다.
+
+검사 중 메뉴를 원래expandedtrue로 복원한 뒤 실제 일반 메뉴 링크로 홈→`/lives`→header home링크→홈의 SPA 전환을 했다. 일반·팔로잉 보존/숨김3개·일정표시, home-only 표지1→없음→1을 확인했다. 마지막expandedtrue/임시probeCSS0을 확인하고 own탭을 닫았다. 사용자 시청 탭·저장 확장 설정·미디어·viewport를 조작하지 않았고 채널 목록/채팅 내용을 기록하지 않았다. 저장 옵션OFF·전체variant·bfcache 실제 동작 등은 별도 미검증 범위다.
+
+승인된 public-link 기반 접힘/초기 로딩 설계 범위 안에서 조치했다. 서비스 fallback의 선행 `!title` 조건만 제거하고, 알 수 없는 비어 있지 않은 직접 제목은 계속 기본 표시한다. native section/direct ul의 Game root+esports 두 링크 signature는 유지하며 마지막 순서나 과거 expanded 표지에 의존하지 않는다. 새observer/타이머/권한/설정/CSS 변경은 없다.
+
+- 실제와 같은 header 전체 제거→blind span+ul을 사용하는 Node2개를 먼저 작성해 두 경우 모두 null≠shortcut으로 RED 확인했다. 일반메뉴 보존과 Game링크 하나만 남을 때 unknown으로 돌아가는 경계도 포함한다. 두 경우는 기존expanded→collapsed 및 cold compact 초기화다.
+- 기존 productionJS/CSS 통합 fixture를 header 전체 제거 입력으로 수정해 ‘shortcut collapsed’ block≠none RED 확인했다. 제품의 최소 조건 수정 후 GREEN.
+- 최종 전체 Node122/122, 별도 synthetic Chrome155.0.8059.39 native84/84 PASS. build/package v2.13.2·20 entry resources·diff check PASS. source/dist inject SHA256 모두 `B3C2045FFF367801285CC2A255F889D7232F4232EEED787B2D9DEFF3E953517C`다. 로컬 ignored 로그 `output/acceptance/sidebar-compact-node-red.log`, `sidebar-compact-css-red.log`, `sidebar-compact-node-green.log`, `sidebar-compact-css-green.log`.
+
+새 보완본의 실제 설치 검증에는 다시 수동 확장 새로고침이 필요하므로 필수 중지한다. original 설정은 그대로 유지한다. 834da32의 초기/expanded/기본SPA 관찰과 새 보완본의 synthetic 결과를 구분하며 **새 설치본 접힘 수용/나머지 전체 검사/최종 독립 검토/PR은 미완료**다.
