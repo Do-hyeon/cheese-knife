@@ -219,3 +219,11 @@ own 페이지의 DOM에서 정상 card3개는 DIV container/direct thumbnail과 
 같은 browser7에서 새 own live를 일반 read-only DOM으로만 검사했다. 첫 chat/player 없음은 로딩으로 제외했고 chat log attached 뒤 aside353, native pzp main1920×1080/ready4/playing/rate1, 삭제 marker0 및 원래 OFF 미션 display block/h141을 확인했다. 본문·작성자·메시지 identity/payload를 읽거나 이벤트를 emit/삭제/후원/차단하지 않았다. 제품·설정·미디어·viewport·사용자 탭에는 agent mutation이 없다. marker0은 실제 삭제 표시 성공이 아니며 이번 단계에는 CDP를 사용하지 않았다.
 
 own 탭을 원래 설정 복원 후 확인에 사용하도록 handoff로 보존했다. showDeleted 원래 OFF 및 팝업 ‘끔’으로 돌리는 사용자 수동 단계가 남는다. hideDonation/스타일/필터/Gain 복원 기준은 유지한다. 새 suite/build/review/PR는 이번 사용자 보고로 수행한 것으로 표기하지 않는다.
+
+### 소유권 보완 설치본 OFF 복원 및 최종 기여 준비 검증
+
+사용자가 팝업 ‘끔’을 보고했다. 원래 showDeleted OFF 복원을 사용자 확인으로 수용한다. own handoff live를 reload하고 첫 chat/video0은 로딩으로 제외했다. chat log attached 뒤 marker0, 미션 원래OFF block/h141, native pzp main1920×1080/ready4/playing/rate1/표시폭1963을 확인하고 own 탭을 닫았다. 실제 원본 callback identity·자연 삭제 이벤트 검증으로 확대하지 않는다. agent는 config/storage/사용자 탭/미디어/계정/viewport를 변경하지 않았다.
+
+제품 a994241의 변경 없이 final 전체 Node165/165/실패0/skip0,별도Chrome155.0.8059.39 CSS108/108/필터17/17,build/source 및 dist package 각v2.13.2/20resources/diffcheck PASS를 새로 확인했다. ignored로그 contribution-final-node/css/filter.log다. source/dist inject717424F10B48737ED3B82715B0ED40B15E1A3C8457AEC9960CF2947AFBECFAEB,hide-mission E139E91BCCE10E91D37626A05D6193DA32D10C86F064867E35EA36167A15289F,hide-blocked3980981F2D38DE792D524DC9D0F4D1EDF820BC349021C232A42666B074E60C38은각각일치한다. 동일 제품 파일 재빌드이지 새로운 설치 후보/새 청취·GPU 검사는 아니다.
+
+GitHub CLI의 read-only metadata로 upstream jebibot/cheese-knife default branch main, Do-hyeon/cheese-knife isFork true/parent jebibot, 해당 작업 branch의 기존 PR0을 확인했다. PR을 만들거나 원본/main/스토어를 변경하지 않았다. 원복 단계는 끝났고 known Important 보완의7RED→GREEN/전체suite와 설치본 준비/OFF 복원이 기록됐다. 그러나 자연 삭제·후원/활성 파티·차단 대상/유료 DVR 및 다른 환경별 공백은 남는다. 이를 명시한 복구 시험판 기여 PR로 진행할지 사용자에게 범위 판단을 요청한다. 전면 정상·전체 검증 완료 조건을 묵시적으로 면제하지 않는다.

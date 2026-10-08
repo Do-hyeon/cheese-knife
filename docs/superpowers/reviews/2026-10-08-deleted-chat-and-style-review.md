@@ -35,3 +35,5 @@ Critical0/Important1/Minor0. 검토 verdict는 **With fixes**였다.
 Ruling: 이 수정은 새 기능/범위가 아니라 이미 승인된 ‘외부 writer 보존·직전 이미 숨긴 메시지 비공개’ 계약의 결함 보완이므로 사용자의 개입 불필요 시 계속 진행 지시에 따라 한 패스에서 처리했다 — 잘못 판단할 비용은 변형된 native 객체에서 삭제 표시가 보수적으로 제한될 수 있는 점이며, current ownership 가드와 repeated/native callback 회귀로 범위를 제한했다.
 
 현재 원래 showDeleted/hideDonation은 OFF이고 다른 스타일·필터도 복원 기준을 유지한다. 실제 수정본 listener 연결/OFF 설치본 검사는 새 dist의 필수 수동 확장 새로고침 뒤 진행한다. 자연 이벤트와 환경 공백은 남으며 기여 PR/전체 복구/출시 완료가 아니다.
+
+후속 사용자 새로고침 뒤 소유권 수정본a994241의 팝업 준비됨→원래 OFF/끔을 사용자 확인으로 수용했고, 별도 own live의1920×1080/ready4/playing/일반 채팅/marker0·원래 미션 표시를 확인한 뒤 탭을 닫았다. 외부 writer/native 삭제를 실제 서비스에서 실행한 검증은 아니다. 최종 fresh165/108/17/build/package/source-dist 일치와 전체 제한은 [기여 준비 상태](../validation/2026-10-08-contribution-readiness.md)에 이어진다. 독립 검토 및 보완은 기록한 범위의 결과이며 전체 정상·출시 인증으로 바꾸지 않는다.
