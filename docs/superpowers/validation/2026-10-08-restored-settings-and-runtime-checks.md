@@ -175,3 +175,11 @@ own 페이지의 DOM에서 정상 card3개는 DIV container/direct thumbnail과 
 커밋 전 fresh 전체 Node158/158/실패0/skip0, Chrome155.0.8059.39 native CSS108/108/필터17/17/실패0, build 및 source/dist package 각v2.13.2/20 entry resources PASS. ignored 로그는 mission-blocked-css-red/css-green/node/filter와 mission-blocked-final-node/css/filter다. source/dist SHA256은 hide-mission.css `E139E91BCCE10E91D37626A05D6193DA32D10C86F064867E35EA36167A15289F`, hide-blocked.css `3980981F2D38DE792D524DC9D0F4D1EDF820BC349021C232A42666B074E60C38`로 각각 일치한다. DSP 변경·새 청취 검사·추가 reviewer·해결된 전체 범위 재검토는 없다.
 
 실제 미션 구조 관찰은 위의 수정 전 자료이며 새 dist의 숨김 ON/OFF 검사는 수동 확장 새로고침 이후에 진행한다. 두 저장 옵션의 원래 값은 모두 OFF이고 agent가 설정·계정·차단·후원·참여·채팅·사용자 탭·미디어를 변경하지 않았다. 실제 파티/차단 대상은 아직 없으며 삭제·후원 자연 발생 이벤트와 다른 환경별 공백도 유지한다. 필수 수동 새로고침 단계에서 중지하고 전체 기능 복구 완료 또는 기여 PR 완료를 선언하지 않는다.
+
+### 52d95d3 사용자 새로고침 이후 — 저장 스타일 ON 적용 확인 필요
+
+사용자가 요청에 ‘완료’라고 응답했다. 같은 browser7의 새 own live에서 처음 chat/mission0은 로딩으로 제외했다. mission button attached 뒤 실제 미션1이 새 선택자의 구조와 일치하지만 display block/h141/expandedtrue였다. chat log 존재/h1096, aside width353, 주영상1920×1080/ready4/playing/rate1을 관찰했다. 파티/차단 target0은 실제 기능 PASS로 합산하지 않는다.
+
+허용된 page-origin CDP DOM/CSS 읽기로 해당 미션 container의 matched styles를 확인했다. mission을 포함한 일치 규칙0, inline display0이었다. DOM/CSS domain을 비활성화했다. 이 자료는 현재 문서에 숨김 규칙이 일치하지 않는다는 관찰이지 CSS 우선순위 결함·설정 OFF·background 등록 실패 중 어느 원인인지 확정한 것은 아니다. 브라우저 제한 URL의 확장 UI나 저장값을 우회 조회하지 않는다. 두 옵션의 실제 체크 및 페이지 적용 상태를 사용자에게 확인해야 한다.
+
+제품/CSS/dist/설정/계정/미디어/viewport를 변경하지 않았고 임시 CSS를 넣지 않았다. own 검사 탭은 수동 설정 적용 후 재검사를 위해 handoff로 보존한다. 원래 두 옵션 OFF의 복원 기준은 유지한다. 이번 관찰을 이전 자동158/108/17의 fresh 재실행 또는 실제 미션 숨김 성공으로 표기하지 않으며 PR는 아직 열지 않는다.
