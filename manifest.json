@@ -2,7 +2,8 @@
   "manifest_version": 3,
   "name": "__MSG_ext_name__",
   "short_name": "__MSG_ext_shortName__",
-  "version": "2.13.1",
+  "version": "2.13.2",
+  "version_name": "2.13.2 community recovery preview",
   "description": "__MSG_ext_description__",
   "default_locale": "ko",
   "minimum_chrome_version": "121",
@@ -22,7 +23,7 @@
     "48": "icon48.png",
     "128": "icon128.png"
   },
-  "homepage_url": "https://www.chz.app/",
+  "homepage_url": "https://github.com/Do-hyeon/cheese-knife/blob/codex/community-store-preview/README.md",
   "permissions": [
     "scripting",
     "storage"
@@ -78,6 +79,12 @@
     {
       "all_frames": true,
       "js": [
+        "web/runtime.js",
+        "vendor/hls.light.private.js",
+        "web/site-adapter.js",
+        "web/audio.js",
+        "web/player.js",
+        "web/preview.js",
         "web/inject.js"
       ],
       "matches": [
