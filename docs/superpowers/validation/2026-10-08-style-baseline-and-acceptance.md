@@ -164,3 +164,15 @@ live 실제16개icon과VOD18개badge가 있는 문서에서 검사했고, viewpo
 build/package v2.13.2·20 entry resources·diff check PASS. source/dist `chat-font-size.css` SHA256은 모두 `E0D61E71845DA71AF0A0639B9E5C3AE02E47AB06C2037FCFB56D08997DD7BBF3`다. ignored 로컬 로그: `output/acceptance/chat-badge-css-red.log`, `chat-badge-css-green.log`, `chat-badge-node.log`.
 
 새 dist의 등록 수용은 사용자 확장 새로고침이 필요한 필수 중지 단계다. 현재 테스트font8/채팅OFF·랭킹·미션ON 저장값을 그대로 두고 새로고침 및 치지직 페이지 reload 후 새 live/VOD 배지를 검증한다. 이후 원래font0/resizeON/timestampON/leftON/rankingOFF/missionOFF로 복원한다. 나머지 기능/스타일·최종 독립 검토·PR은 아직 미완료다.
+
+## 79ef258 새 설치본 배지 수용
+
+사용자가 확장과 치지직 페이지 새로고침 완료를 알렸다. 기존 사용자live 탭을 정확한 URL/ID로 확인하고 읽기 전용 검사만 수행했다. 이제font8/본문22px/배지image·icon26×26px/임시CSS0이었다. 실제icon13개와한배지wrapper26×26/두배지wrapper56×26을 확인했다. 사용자 탭을 reload/클릭/탐색/미디어 조작하지 않았다.
+
+새 별도 실제 VOD도font8/본문22px/임시CSS0이었다. 실제badge25개 중3개 sample이26×26px였고, 두배지wrapper56×26/세배지wrapper86×26을 확인했다. 세배지 폭은3×26+기존gap4×2로 native flex의 자연 배치를 유지한다. 제한 metadata로 분류된 비닉네임 이모지6개 중2개 sample은32×32px였다. 주 영상은playing/readyState4/시간진행이었다. 내용/작성자/이미지 URL·alt·title 원문은 출력·저장하지 않았다. 별도 탭을 닫았고 이번 검사는 임시 CSS/음소거/viewport 조작 없이 수행했다.
+
+source/dist hash는 위E0D61E...값 그대로다. 이는 현재 저장font8의 기본 설치본 수용이며 전체−6~16/특수후원·미션·삭제 메시지/모든 모드 수용을 뜻하지 않는다. 원래font0 등 채팅 설정 복원은 다음 단계다. 기존 screenshot/미션 이벤트 부재/전체기능·최종검토·PR 경계는 유지한다.
+
+다음 수동 설정 묶음은 채팅 원복6개와 사이드바 반대설정6개다. 채팅은 크기조절ON/폰트0/시각ON/랭킹숨김OFF/미션숨김OFF/왼쪽ON으로 원복한다. 사이드바는 오프라인숨김ON/인기카테고리숨김OFF/일정숨김ON/파트너숨김OFF/바로가기숨김OFF/오른쪽ON으로 임시 반전한다. 다른 설정은 복원 기준을 유지한다. 현재 실제 sidebar native nav6개에서 팔로잉·일정은표시,인기·파트너·바로가기는숨김이었고 profile49개 중offline39/live10을 확인해 다음 OFF/ON 검사 입력 존재를 확인했다. 계정의 채널 이름/ID는 기록하지 않았다. 실제 수량은 서비스 상태에 따라 변하므로 다음 검사의 숫자 기대값으로 고정하지 않는다.
+
+새 제품/build 변경이 없으므로 다음 단계는 확장 새로고침 없이 페이지 적용만 필요하다. 사이드바 검사 뒤 original offlineOFF/popularON/scheduleOFF/partnerON/shortcutON/rightOFF로 다시 복원해야 한다. 전체25개 스타일 완료/PR 준비로 선언하지 않는다.
