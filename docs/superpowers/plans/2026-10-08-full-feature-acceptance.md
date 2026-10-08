@@ -90,6 +90,7 @@
 - [x] 사용자 승인 후VOD fit CSS1규칙/문서fullscreen·팝업 제외/legacy·live 보존. native3RED→GREEN+6보호(total49)/Node109/build/package/hash PASS. 실제 새규칙 임시A/B 일반556→640→556/넓은700 보존·임시상태 복원. 새dist 전체CSS 저장ON/OFF 설치본 수용에는 수동 확장 새로고침 필요;필수 중지 조건과 전체PR 게이트 유지.
 - [x] aa6 설치본 새로고침/화면채우기 저장ON 후 임시CSS0 일반640/넓은700/일반복귀640 수용. 자동 fullscreen 진입false는 미확인으로 분리. own media/scroll/viewport/Symbol 복원·탭정리;원래fitOFF와채팅6개 실제 설정 검사·원복은 남음. 전체기능/스타일/PR수용으로확대하지 않음.
 - [x] 화면채우기 저장OFF 원복556 확인. 새live/VOD chatfont8/본문22·오른쪽배치·handle0·시각OFF,live랭킹none 수용;미션없음UNVERIFIED. 일반image규칙이닉네임배지18→32로키우며holder18을넘는FAIL 확인. 배지 한정18+offset/holder정합·emoji규칙보존 bounded설계 승인 대기;전체폰트/채팅원복/전체스타일/PR완료 아님.
+- [x] 승인된 배지보완 CSS1규칙/legacy·emoji·텍스트 보존/복수wrapper nativeflex유지. native7RED→GREEN+2보호(total58),Node109/build/package/hash PASS. 실제live/VOD 임시규칙 badge26/icon26/single26/double56/text22/VOD분류emoji32 및 제거원복 확인. 새dist 등록/현재font8 저장설정 수용은 수동확장 새로고침 후,원래채팅값 복원·전체수용·최종독립검토·PR는 남음.
 
 ### Task 4: 기여 PR 완료 조건
 

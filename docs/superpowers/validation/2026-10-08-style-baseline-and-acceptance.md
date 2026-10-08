@@ -140,3 +140,27 @@ VOD 처음 메시지 수0은 데이터가 아직 표시되지 않은 시점이�
 이 조사에서는 exact 채팅 image query/DOM depth0/해당 image의 width·height 규칙만 사용했고 src/alt/title 문자열은 출력하지 않고 분류 boolean만 남겼다. CSS/DOM 진단을 disable하고 추가 검사 탭을 닫았다. 제품/테스트/build/저장 설정을 변경하지 않았다.
 
 **사용자 승인 대기 bounded 보완안:** `styles/chat-font-size.css`에서 실제 chat log/message/nickname/배지 icon 관계에만 배지 image와 icon·직접 외곽 wrapper 크기를18px+offset으로 맞춘다. 일반 이모지24px+offset과 문자열14px+offset, legacy 규칙은 유지한다. 임의 global `_icon_`/`_wrapper_` 요소까지 키우지 않는다. Native fixture에서 offset−6/0/8의 배지12/18/26px·이모지18/24/32px·텍스트8/14/22px 및 foreign/non-badge 경계 검사를 먼저 작성하고 실패→최소 수정→전체 회귀/실제 임시A/B를 수행한다. 승인 전에는 코드를 구현하지 않으며, 새 dist가 생기면 또 필수 수동 확장 새로고침 단계에서 중지한다. 현재 임시 저장값은 위 검사 묶음이고 최종 원래 채팅 값 복원은 보완 검증 후 남아 있다. 전체 기능/PR 조건은 미충족이다.
+
+## 승인된 닉네임 배지 보완 후보
+
+사용자가 위 설계를 승인했다. 추가 실제live 읽기 전용 관찰에서 native badge wrapper는 display:flex/gap4px이고 두 아이콘을 담은 wrapper도 있었다(18×2+4=40px). 따라서 외곽을 단일 배지26px로 고정하면 복수 배지를 깨뜨린다. 최소 보완은 실제 log/message/nickname 내부의 icon 및 그 image만18px+offset으로 맞추며, wrapper는 native flex의 자연 크기를 사용한다. 새 규칙 한 개를 `styles/chat-font-size.css`에 추가했고 legacy/이모지/문자열/JS/설정/권한/의존성은 바꾸지 않았다.
+
+Native production CSS 검사9개를 추가했다. live/VOD 각각offset−6/0/8 배지·icon·복수 wrapper·이모지·텍스트 크기6개 및 옵션 제거1개는 기존 배지가 이모지 크기가 되는 실제 이유로7 RED였다. 수정 후7 GREEN. foreign/outside-log/비닉네임 icon 보호와 legacy 배지2개는 기존 characterization PASS이고 후보에서도 PASS였다. 복수 badge fixture의 expected wrapper width는28/40/56px(두 badge+기존4px gap)으로 고정 기대값이며 후보의 계산 함수를 거울로 쓰지 않았다. Chrome155.0.8059.39 native58/58, 전체Node109/109 PASS.
+
+실제 Chrome 새 규칙 임시A/B 결과:
+
+| font8 | 원래 설치본 | 새 규칙 임시 적용 | 새 규칙 제거 |
+| --- | --- | --- | --- |
+| live/VOD badge image | 32×32px | 26×26px | 32×32px |
+| native icon | 18×18px | 26×26px | 18×18px |
+| 한 badge wrapper | 18×18px | 26×26px | native 크기 |
+| 두 badge wrapper | 40×18px | 56×26px | native 크기 |
+| 일반 문자열 | 22px | 22px | 22px |
+
+live 실제16개icon과VOD18개badge가 있는 문서에서 검사했고, viewport 안에 완전히 보인 live badge8개의 top/bottom이 message 범위 안에 있는 것도 확인했다. VOD 비닉네임 image20개 중 제한 metadata에서 실제 emojiHint=true인2개가32px를 유지했다. 나머지false hint를 이모지로 단정하지 않는다. 본문/작성자/이미지 URL·alt·title 원문은 출력/저장하지 않았다. 이 관찰은 새 추가 규칙만 임시 적용한 것이며 새 dist의 전체 CSS 등록/저장 옵션 수용은 아니다. 실제−6/0 조합은 native fixture 범위이며 현재 연결 문서의font8과 구분한다.
+
+별도 live/VOD의 runtime 주 video만 원래 muted를 기록해 임시 mute하고 종료 때 각각 원래false/true로 복원했다. 재생/readyState4/시간진행을 확인했고 임시CSS0/진단Symbol없음을 확인한 뒤 두 탭을 닫았다. 사용자 탭/저장소와 viewport는 변경하지 않았다. 기존 screenshot 제한을 우회하거나 반복 요청하지 않았으며 visual 캡처 검증 미확인 경계는 유지한다.
+
+build/package v2.13.2·20 entry resources·diff check PASS. source/dist `chat-font-size.css` SHA256은 모두 `E0D61E71845DA71AF0A0639B9E5C3AE02E47AB06C2037FCFB56D08997DD7BBF3`다. ignored 로컬 로그: `output/acceptance/chat-badge-css-red.log`, `chat-badge-css-green.log`, `chat-badge-node.log`.
+
+새 dist의 등록 수용은 사용자 확장 새로고침이 필요한 필수 중지 단계다. 현재 테스트font8/채팅OFF·랭킹·미션ON 저장값을 그대로 두고 새로고침 및 치지직 페이지 reload 후 새 live/VOD 배지를 검증한다. 이후 원래font0/resizeON/timestampON/leftON/rankingOFF/missionOFF로 복원한다. 나머지 기능/스타일·최종 독립 검토·PR은 아직 미완료다.

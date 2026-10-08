@@ -257,6 +257,39 @@ try{
     assert.equal(await page.locator('#fit-player').evaluate(n=>getComputedStyle(n).maxHeight),'calc(100% - 84px)');
     await page.evaluate(()=>document.exitFullscreen());
   });
+  // Break caught: generic message-image sizing treats 18px nickname badges
+  // as 24px emotes. Icon sizing must also carry the flex wrapper naturally,
+  // including multiple badges; never force that wrapper to one badge width.
+  const badgeFixture='<style>._chatting_message_current{font-size:14px;line-height:1.429}._nickname_current{display:inline-flex;align-items:center}._wrapper_current{display:flex;gap:4px}._icon_current{width:18px;height:18px;flex:none}img{display:block}</style><aside id="aside-chatting"><div role="log"><div id="badge-message" class="_chatting_message_current"><span class="_nickname_current"><span id="badge-holder" class="_wrapper_current"><span id="badge-icon" class="_icon_current"><img id="nickname-badge" width="18" height="18"></span><span class="_icon_current"><img width="18" height="18"></span></span><span id="badge-name">Synthetic name</span></span><img id="body-emote" width="24" height="24"><span class="_icon_current"><img id="non-nickname-icon" width="18" height="18"></span></div></div><span class="_nickname_current"><span class="_icon_current"><img id="outside-log" width="18" height="18"></span></span></aside><div id="foreign-chat"><div role="log"><div class="_chatting_message_current"><span class="_nickname_current"><span class="_wrapper_current"><span class="_icon_current"><img id="foreign-badge" width="18" height="18"></span></span></span></div></div></div><div class="badge_container__a64XB"><img id="legacy-badge" width="18" height="18"></div>';
+  for(const root of ['aside-chatting','vod-aside'])for(const [offset,badge,emote,font,holder] of [[-6,'12px','18px','8px','28px'],[0,'18px','24px','14px','40px'],[8,'26px','32px','22px','56px']])await checkNative(`nickname badges keep their own base size at ${root}, offset=${offset}`,async()=>{
+    await page.setContent(badgeFixture.replace('id="aside-chatting"',`id="${root}"`));
+    await page.evaluate(offset=>document.documentElement.style.setProperty('--knife-chat-size-1',`${offset}px`),offset);
+    await page.addStyleTag({content:await fs.readFile('styles/chat-font-size.css','utf8')});
+    for(const id of ['nickname-badge','badge-icon'])assert.deepEqual(await page.locator(`#${id}`).evaluate(n=>({w:getComputedStyle(n).width,h:getComputedStyle(n).height})),{w:badge,h:badge},id);
+    assert.deepEqual(await page.locator('#badge-holder').evaluate(n=>({w:getComputedStyle(n).width,h:getComputedStyle(n).height})),{w:holder,h:badge},'two badges flow without overflow or forced single-badge width');
+    assert.equal(await page.locator('#body-emote').evaluate(n=>getComputedStyle(n).width),emote);
+    assert.equal(await page.locator('#badge-name').evaluate(n=>getComputedStyle(n).fontSize),font);
+  });
+  await checkNative('nickname badge sizing does not resize other icons or foreign chat',async()=>{
+    await page.setContent(badgeFixture);await page.evaluate(()=>document.documentElement.style.setProperty('--knife-chat-size-1','8px'));
+    await page.addStyleTag({content:await fs.readFile('styles/chat-font-size.css','utf8')});
+    assert.equal(await page.locator('#non-nickname-icon').evaluate(n=>getComputedStyle(n).width),'32px','existing message-image rule is preserved outside nickname badges');
+    for(const id of ['foreign-badge','outside-log'])assert.equal(await page.locator(`#${id}`).evaluate(n=>getComputedStyle(n).width),'18px',id);
+  });
+  await checkNative('nickname badge fix retains legacy badge sizing',async()=>{
+    await page.setContent(badgeFixture);await page.evaluate(()=>document.documentElement.style.setProperty('--knife-chat-size-1','8px'));
+    await page.addStyleTag({content:await fs.readFile('styles/chat-font-size.css','utf8')});
+    assert.equal(await page.locator('#legacy-badge').evaluate(n=>getComputedStyle(n).width),'26px');
+  });
+  await checkNative('removing font style restores native badge and emote sizes',async()=>{
+    await page.setContent(badgeFixture);await page.evaluate(()=>document.documentElement.style.setProperty('--knife-chat-size-1','8px'));
+    const css=await page.addStyleTag({content:await fs.readFile('styles/chat-font-size.css','utf8')});
+    assert.equal(await page.locator('#nickname-badge').evaluate(n=>getComputedStyle(n).width),'26px');
+    await css.evaluate(n=>n.remove());
+    assert.equal(await page.locator('#nickname-badge').evaluate(n=>getComputedStyle(n).width),'18px');
+    assert.equal(await page.locator('#body-emote').evaluate(n=>getComputedStyle(n).width),'24px');
+    assert.equal(await page.locator('#badge-holder').evaluate(n=>getComputedStyle(n).width),'40px');
+  });
   console.log(JSON.stringify({browser:browser.version(),checks:checked,passed:checked-failures.length,failures},null,2));
   assert.equal(failures.length,0,'Native CSS behavior regressions');
 }finally{await browser.close();}
