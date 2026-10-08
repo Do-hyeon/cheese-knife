@@ -335,6 +335,12 @@
       owner?.dispose(); owner = runtime.createScope(); ownerGeneration = runtime.generation;
       chats = new WeakMap(); anchors = new WeakSet(); timestampRoots = new WeakSet(); sidebar = null;
       if (state.body) {
+        // CSS cannot identify a SPA route from the document URL. Mark only
+        // the exact home content root; never classify the native subtree as owned.
+        if (state.route.path === '/') {
+          const body = state.body; body.dataset.knifeHome = '1';
+          owner.add(() => { if (body.dataset.knifeHome === '1') delete body.dataset.knifeHome; });
+        }
         bindStartTimes(state.body, owner);
         owner.on(state.body, 'drop', event => {
           const href = event.dataTransfer?.getData('knife-data');

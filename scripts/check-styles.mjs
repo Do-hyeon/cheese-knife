@@ -174,6 +174,22 @@ try{
     assert.equal(await page.locator('#search-container').evaluate(n=>getComputedStyle(n).position),'absolute','removing option restores native search');
     assert.equal(await page.locator('#search-container').evaluate(n=>n.getBoundingClientRect().x),baseline);
   });
+  const homeFixture='<style>section{display:block}ul{height:40px}</style><main id="layout-body" data-knife-home="1"><section id="recommended"><ul class="_grid_current _is_two_columns_current"><li>Recommended</li></ul></section><section id="following"><ul class="_list_current _type_vod_current"><li>Following</li></ul></section><section id="recent-vod"><ul class="_list_current _type_vod_current"><li>Recent VOD</li></ul></section><section id="other-grid"><ul class="_grid_current"><li>Other layout</li></ul></section><section id="nested-grid"><div><ul class="_grid_current _is_two_columns_current"><li>Nested unrelated layout</li></ul></div></section></main><section id="foreign-grid"><ul class="_grid_current _is_two_columns_current"><li>Outside home content</li></ul></section><div id="legacy-recommended" class="home_recommend_live_container__old">Legacy recommendations</div>';
+  await checkNative('hide-recommended-live hides only the current home recommendation section',async()=>{
+    await page.setContent(homeFixture);await page.addStyleTag({content:await fs.readFile('styles/hide-recommended-live.css','utf8')});
+    for(const id of ['recommended','legacy-recommended'])assert.equal(await page.locator(`#${id}`).evaluate(n=>getComputedStyle(n).display),'none',id);
+    for(const id of ['following','recent-vod','other-grid','nested-grid','foreign-grid'])assert.notEqual(await page.locator(`#${id}`).evaluate(n=>getComputedStyle(n).display),'none',id);
+  });
+  await checkNative('hide-recommended-live leaves unmarked routes visible',async()=>{
+    await page.setContent(homeFixture.replace(' data-knife-home="1"',''));await page.addStyleTag({content:await fs.readFile('styles/hide-recommended-live.css','utf8')});
+    assert.notEqual(await page.locator('#recommended').evaluate(n=>getComputedStyle(n).display),'none');
+    assert.equal(await page.locator('#legacy-recommended').evaluate(n=>getComputedStyle(n).display),'none','legacy home layout remains supported');
+  });
+  await checkNative('removing recommendation style restores the current home section',async()=>{
+    await page.setContent(homeFixture);const css=await page.addStyleTag({content:await fs.readFile('styles/hide-recommended-live.css','utf8')});
+    await css.evaluate(n=>n.remove());
+    assert.notEqual(await page.locator('#recommended').evaluate(n=>getComputedStyle(n).display),'none');
+  });
   console.log(JSON.stringify({browser:browser.version(),checks:checked,passed:checked-failures.length,failures},null,2));
   assert.equal(failures.length,0,'Native CSS behavior regressions');
 }finally{await browser.close();}

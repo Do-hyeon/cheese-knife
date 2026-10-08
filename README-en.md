@@ -6,7 +6,7 @@
 
 Branch `codex/chzzk-compatibility-recovery` contains a 2.13.2 recovery preview based on upstream v2.13.1. It adds Vue-free controls/compression, cancelable HLS previews, scoped page lifecycles, and per-tab feature readiness. It is not the upstream store release.
 
-98 automated tests, controlled real audio output and separate-browser public preview frame progression passed. See the [independent implementation review](docs/superpowers/reviews/2026-10-08-implementation-review.md), [installed-Chrome VOD hold fix review](docs/superpowers/reviews/2026-10-08-vod-hold-review.md), and [whole-branch review and follow-up](docs/superpowers/reviews/2026-10-08-whole-branch-review.md). Scoped installed-Chrome checks passed; full acceptance and release approval remain pending.
+101 automated tests, controlled real audio output and separate-browser public preview frame progression passed. See the [independent implementation review](docs/superpowers/reviews/2026-10-08-implementation-review.md), [installed-Chrome VOD hold fix review](docs/superpowers/reviews/2026-10-08-vod-hold-review.md), and [whole-branch review and follow-up](docs/superpowers/reviews/2026-10-08-whole-branch-review.md). Scoped installed-Chrome checks passed; full acceptance and release approval remain pending.
 
 The Gain slider is now 48px with an 8px end gap, checked in installed Chrome. [Synthetic audio-quality diagnostics](docs/superpowers/validation/2026-10-08-audio-quality-and-gain-spacing.md) document defaults and transition improvement candidates, not a subjective sound-quality guarantee. DSP is unchanged. Reproduce with `node scripts/check-audio-quality.mjs --chrome`; a fresh profile captures synthetic floating output while sending zeros to speakers, without recording broadcasts.
 
@@ -23,6 +23,8 @@ Run explicit native CSS checks with `node scripts/check-styles.mjs --chrome`; th
 The [toolbar layout follow-up](docs/superpowers/validation/2026-10-08-installed-follow-up-and-toolbar-design.md) records 33 native CSS cases and 7 actual viewport/sidebar combinations. Top navigation uses the toolbar at 1800px or wider with search separated from menus; narrower views retain the native sidebar. Auto-hide now handles the current sticky header and keyboard focus. Installed-Chrome checks passed for both enabled options, focus recovery and five viewports; full style acceptance remains incomplete.
 
 Run synthetic video filter diagnostics with `node scripts/check-video-filters.mjs --chrome`. Eleven cases check pixels from actual CSS-filtered video, filter composition and reset, but do not guarantee the user's GPU behavior or sharpening edge quality. Results and remaining acceptance are recorded in the [whole-branch review](docs/superpowers/reviews/2026-10-08-whole-branch-review.md).
+
+The [home recommendation hiding candidate](docs/superpowers/validation/2026-10-08-home-recommendation-recovery.md) hides only the ordinary home recommendation grid, preserving editorial promotions, following and recent VODs. Route ownership cleans up its home marker. Node 101 cases and native CSS 36 cases passed; stored-option and real route acceptance of the new dist requires an extension refresh.
 
 [Website](https://www.chz.app/) | [Discord](https://discord.gg/9kq3UNKAkz) | [Chrome Web Store (compatible with Chromium, Edge, Whale)](https://chromewebstore.google.com/detail/nfkfgkkhgglkgnlppncolmpekidapkjh) | [Firefox Add-ons](https://addons.mozilla.org/addon/cheese-knife/) | [Korean](./README-en.md)
 

@@ -14,6 +14,48 @@ function setup(t, html = playerHTML, url, beforeInject = () => {}) {
   return dom;
 }
 
+const homeHTML = '<div id="root"><div id="layout-body"><section><ul class="_grid_test _is_two_columns_test"><li>Recommended</li></ul></section></div><section id="foreign-grid"><ul class="_grid_test _is_two_columns_test"></ul></section></div>';
+
+test('home recommendation CSS scope applies only to the exact home route', t => {
+  const dom = setup(t, homeHTML, 'https://chzzk.naver.com/');
+  const body = dom.window.document.getElementById('layout-body');
+  assert.equal(body.dataset.knifeHome, '1');
+  assert.equal(dom.window.document.getElementById('foreign-grid').dataset.knifeHome, undefined);
+  deliver(dom, {}, 2); runtime(dom).reconcile();
+  assert.equal(body.dataset.knifeHome, '1', 'repeated config/reconcile keeps the home scope');
+  for (const path of ['/lives', '/home/game/HOME', '/video/123', '/settings/profile']) {
+    dom.reconfigure({ url: 'https://chzzk.naver.com' + path }); runtime(dom).reconcile();
+    assert.equal(body.dataset.knifeHome, undefined, path + ' must not carry home-only CSS');
+  }
+});
+
+test('home recommendation scope follows a replaced layout and cleans the detached root', t => {
+  const dom = setup(t, homeHTML, 'https://chzzk.naver.com/');
+  const oldBody = dom.window.document.getElementById('layout-body');
+  assert.equal(oldBody.dataset.knifeHome, '1');
+  const replacement = dom.window.document.createElement('div'); replacement.id = 'layout-body';
+  replacement.innerHTML = oldBody.innerHTML;
+  oldBody.replaceWith(replacement); runtime(dom).reconcile();
+  assert.equal(oldBody.dataset.knifeHome, undefined);
+  assert.equal(replacement.dataset.knifeHome, '1');
+  dom.reconfigure({ url: 'https://chzzk.naver.com/following' }); runtime(dom).reconcile();
+  assert.equal(replacement.dataset.knifeHome, undefined);
+  dom.reconfigure({ url: 'https://chzzk.naver.com/' }); runtime(dom).reconcile();
+  assert.equal(replacement.dataset.knifeHome, '1');
+});
+
+test('home recommendation marker survives bfcache and retires on final page disposal', t => {
+  const dom = setup(t, homeHTML, 'https://chzzk.naver.com/');
+  const body = dom.window.document.getElementById('layout-body');
+  assert.equal(body.dataset.knifeHome, '1');
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide', { persisted: true }));
+  assert.equal(body.dataset.knifeHome, '1');
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow', { persisted: true }));
+  assert.equal(body.dataset.knifeHome, '1');
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
+  assert.equal(body.dataset.knifeHome, undefined);
+});
+
 test('chat resize and player controls survive missing React controller and webpack', async t => {
   const html = playerHTML.replace('</main>', '<aside class="_container_chat_1"><div role="log"></div></aside></main>');
   const dom = setup(t, html);
