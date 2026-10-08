@@ -45,7 +45,7 @@ Node 24.x에서 `npm ci`, `npm test`, `npm run check`, `npm run build`를 실행
 
 [후속 툴바 배치 검증](docs/superpowers/validation/2026-10-08-installed-follow-up-and-toolbar-design.md)에서는 native CSS 33개 사례와 실제 7개 폭·사이드바 조합을 확인했습니다. ‘사이드바 메뉴 툴바에 표시’는 1800px 이상에서 검색창과 분리해 배치하고 그보다 좁으면 기본 사이드바를 유지합니다. 자동 숨김은 현재 sticky 헤더와 키보드 포커스를 보완했습니다. 새 dist의 설치본에서도 두 옵션 적용·포커스 복원·5개 화면 폭을 확인했으며 전체 스타일 수용은 아직 미완료입니다.
 
-합성 영상의 밝기·대비·감마·채도·샤프닝 필터 검사는 `node scripts/check-video-filters.mjs --chrome`으로 실행합니다. 실제 필터가 적용된 영상의 픽셀·초기화 등 11개 사례를 확인하며, 사용자 GPU나 샤프닝의 경계 화질을 보장하지 않습니다. [전체 브랜치 검토](docs/superpowers/reviews/2026-10-08-whole-branch-review.md)에 결과와 남은 검증을 기록했습니다.
+합성 영상의 밝기·대비·감마·채도·샤프닝 필터 검사는 `node scripts/check-video-filters.mjs --chrome`으로 실행합니다. 실제 CSS 필터 영상 픽셀·초기화와 현행 PZP 기본 필터 보존·한번 적용 등 17개 사례를 확인하며, 사용자 GPU나 샤프닝의 경계 화질을 보장하지 않습니다. [설치본 필터 충돌과 보완 기록](docs/superpowers/validation/2026-10-08-restored-settings-and-runtime-checks.md)에 실패·회귀·남은 설치 검증을 구분했습니다.
 
 [홈 추천 방송 숨김 후보](docs/superpowers/validation/2026-10-08-home-recommendation-recovery.md)는 일반 홈의 상단 추천 grid만 숨기고 편집 추천 콘텐츠·팔로잉·최근 다시보기는 보존합니다. 좁은 화면 재렌더 결함을 보완해 Node 101개·native CSS 40개를 통과했고, 새 설치본에서 임시 CSS 없이 좁음↔넓음 재렌더·화면 전환·저장 옵션OFF 원복/ON 복원을 확인했습니다. [추가 설치본 검사](docs/superpowers/validation/2026-10-08-installed-remaining-function-checks.md)에서 전체 화면/Esc는 사용자 직접 정상 확인했고, 시작 시각 연결점 불일치도 후속 보완을 검증했습니다. 나머지 전체 수용은 계속 진행 중입니다.
 
@@ -57,7 +57,9 @@ Node 24.x에서 `npm ci`, `npm test`, `npm run check`, `npm run build`를 실행
 
 사이드바 새 설치본에서 초기 일반메뉴 보존·확장 상태 숨김·기본 화면 전환을 확인했습니다. 실제 접힘에서 서비스 제목 영역 자체가 제거되는 입력을 보완해 Node122개·브라우저84개를 통과했습니다. 새 보완본에서도 임시CSS 없이 실제 접힘 숨김 유지·재로딩 후native접힘 복원·접힘SPA 전환을 확인했습니다. 남은 툴바·탐색·프로필 설정 검사와 전체 수용은 계속 진행 중이며, 자세한 실패·보완·미검증 범위는 위 사이드바 후속 기록에 남겼습니다.
 
-툴바·탐색·배지 저장 옵션의 반전과 기본 반응형 배치를 확인했습니다. 라이브·다시보기 방송 정보의 사각 프로필 누락을 CSS 선택자2개로 보완해 Node122개·브라우저91개와 실제 임시 규칙 A/B를 통과했습니다. 크기·일반 영상 썸네일·기존 규칙을 보호하며, 새 설치본 수용과 원래 옵션 복원은 수동 확장 새로고침 후 진행해야 합니다. 실제 차단 방송이 없어 해당 숨김은 미검증이며 전체 정상으로 합산하지 않습니다.
+툴바·탐색·배지 저장 옵션의 반전과 기본 반응형 배치를 확인했습니다. 라이브·다시보기 방송 정보의 사각 프로필 누락을 CSS 선택자2개로 보완해 Node122개·브라우저91개와 실제 임시 규칙 A/B를 통과했습니다. 이후 새 설치본에서 크기·일반 썸네일을 유지한 사각화를 확인하고 원래8개 설정을 복원했습니다. 실제 차단 방송이 없어 해당 숨김은 미검증이며 전체 정상으로 합산하지 않습니다.
+
+필터 시험에서 현행 PZP CSS가 확장 필터를 덮는 결함을 재현해, native 영상 필터는 유지하고 영상 전용 래퍼에 확장 필터를 한번 적용하는 CSS 보완 후보를 만들었습니다. Node122·스타일91·필터17과 실제 VOD 임시 적용·제거 검사를 통과했습니다. 실제 라이브 임시 검사는 진단 제한으로 미검증이며, 새 전체 CSS 설치 수용과 중립 설정 복원에는 수동 확장 새로고침이 필요합니다. 전체 수용·최종 검토·PR은 아직 완료되지 않았습니다.
 
 [Website](https://www.chz.app/) | [Discord](https://discord.gg/9kq3UNKAkz) | [Chrome Web Store (Chromium, Edge, Whale 호환)](https://chromewebstore.google.com/detail/nfkfgkkhgglkgnlppncolmpekidapkjh) | [Firefox Add-ons](https://addons.mozilla.org/addon/cheese-knife/) | [English](./README-en.md)
 

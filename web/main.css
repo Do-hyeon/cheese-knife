@@ -1,4 +1,7 @@
-.knife-filter video {
+/* Current PZP applies its own video filter. Compose outside that pipeline,
+   and exclude the direct video from our legacy rule to avoid double filtering. */
+.knife-filter video:not(.pzp-pc__video .webplayer-internal-source-wrapper > video),
+.knife-filter .pzp-pc__video .webplayer-internal-source-wrapper:has(> video) {
   filter: url(#knifeFilter);
 }
 

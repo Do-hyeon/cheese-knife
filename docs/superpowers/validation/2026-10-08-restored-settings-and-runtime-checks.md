@@ -37,3 +37,17 @@ nativeSVG는GaussianBlur(stdDeviation1)→arithmetic Composite2개를사용하�
 bounded보완안: `web/main.css`의필터규칙만조정해current PZP의직접VIDEO를감싼영상전용sourcewrapper에knifeFilter를적용하고,그directVIDEO는기존genericvideo선택자에서제외해중복적용을막는다. native영상filter/다른legacy·preview영상의기존적용/중립OFF동작을보존한다. JS/권한/저장값/observer는바꾸지않는다. 실제wrapper+강한native규칙을사용한회귀를먼저RED로재현하고native필터보존/한번적용/중립원복/legacy보존/실제pixels와재생검사후새dist를검증한다. 구현에는사용자짧은설계승인이필요하며승인전제품/테스트/후보CSS/build를변경하지않았다.
 
 own탭2개를닫았고user탭/확장저장소/viewport/미디어를변경하지않았다. 현재필터시험값은그대로유지하며보완설치수용후1/1/1/1/0으로원복해야한다. 다음필수확장새로고침게이트와전체검증/최종검토/PR미완료조건은유지한다.
+
+## 승인된 source-wrapper 필터 보완 후보
+
+사용자가짧은CSS보완설계를승인했다. 먼저기존`check-video-filters.mjs`에현재PZP처럼더구체적인native영상filter규칙/sourcewrapper/directVIDEO와독립적인native반밝기SVG를사용한6사례를추가했다. source RGB100/80/60에native sRGB반밝기는50/40/30,확장밝기0은0/0/0인literal기대값이다. live/VOD wrapper적용2개,기본필터가없는wrapper의한번적용1개,중립복원1개가모두wrapper none으로4RED였다. native중립보존과non-PZP wrapper의기존video적용2개는수정전부터PASS인보호characterization이다. 기존11개는그대로통과했다. 계측함수의기대값을제품helper로계산하지않으며CSS적용후실제합성영상pixels를읽는다.
+
+`web/main.css`의필터규칙만변경했다. 기존genericvideo규칙에서 `.pzp-pc__video .webplayer-internal-source-wrapper > video`를제외하고,현재영상sourcewrapper에동일한knifeFilter선언을추가했다. native영상filter는건드리지않는다. currentwrapper에native필터가없어도childvideo와중복적용되지않고,non-PZP/legacy영상과preview의기존generic경로는보존한다. JS/설정/권한/의존성/observer는바꾸지않았다.
+
+최종검증:Node122/122,별도Chrome155.0.8059.39 native스타일91/91,필터17/17(4RED→GREEN+2보호+기존11) PASS. 수정후픽셀은active0/0/0,neutralnative50/40/30으로복원됐다. 현재fullCSS/MAINconfig+filter로검사하며합성profile결과를사용자GPU/실제스피커/설치수용으로합산하지않는다. ignored로그는 `filter-wrapper-red.log`, `filter-wrapper-green.log`, `filter-wrapper-node.log`, `filter-wrapper-styles.log`다.
+
+실제A/B도시도했다. 최초VOD탐색timeout뒤선택browser5가명시적으로unavailable이되어지원troubleshooting을읽고inventory를확인했다. 같은Chrome extensionInstance가browser6으로재연결되어fresh binding/documentation을사용했다. 이전own탭2개를정확한owned ID로닫고새ownlive/VOD로검사를재개했다. stale탭/빈목록만으로browser를다시선택한것이아니다.
+
+새live의rawCDP는paused document response처리중제한으로적용명령을거절했다. 다른전송경로/isolated세계/ChromeAPI로우회하거나재시도루프를만들지않았다. live임시CSS0/wrappernone을DOM으로확인했으므로 **실제live A/B는미검증**이다. VOD의해당탭origin CDP는허용돼새wrapper규칙만임시적용했다. wrapper none→knifeFilter→none/nativevideo computedfilter동일/wrapper크기동일/playingready4를확인했고finally에서style과probeSymbol을삭제했다. 임시CSS0을확인하고새own탭2개도닫았다. 이A/B는제외selector까지포함한새전체CSS설치수용이아니며영상pixels캡처수용도아니다. 사용자시청탭/확장저장소/viewport/미디어를직접변경하지않았다.
+
+build/package v2.13.2·20 entry resources·diff check PASS,source/dist `web/main.css` SHA256 모두 `1BD89AAAC3225DCCCB63BA3A0A4DC0B405A238390D2BE2FF96FC3ED60589B9C7`다. 기존build경로검증/symlink거부를유지했다. 새dist에는필수수동확장새로고침이필요하므로여기서중지한다. 필터시험값1.5/1.1/0.5/0.8/2는유지한다. 새설치본live/VOD wrapper+native보존/재생검사후original1/1/1/1/0으로원복확인이남아있다. 모든기능/최종독립검토/PR는아직완료되지않았다.
