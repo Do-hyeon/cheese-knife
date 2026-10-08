@@ -23,7 +23,7 @@
 | pressToFastForward | 실제 VOD hold·속도/정지 복원, trusted pending/active OFF·지연 release 및 후속 native click | live DVR과 모든 취소·포인터·모드 조합의 실제 입력 미검증 |
 | brightness, contrast, saturation, gamma, sharpness | 합성 영상 필터 pixels17개, 실제 live/VOD source-wrapper 한 번 적용·native 필터 보존·중립 원복 | 사용자 GPU/실제 방송 pixels·선명도 품질 미검증 |
 | compressorDefault, compressorThreshold, compressorKnee, compressorRatio, compressorAttack, compressorRelease | 실제 기본 파라미터/ON-OFF20회/Gain150%/동일 video 모드·SPA 재사용, 합성 DSP·설정 검증 | 모든 개별 파라미터의 실제 청취·보호소스·새 media·장기 GC 미검증; 아래 음질 제한 유지 |
-| hideDonation | 실제 controller 구조와 공개 앱 코드의 DONATION=10, 자동 filter/복원 계약 | 자연 발생 후원 이벤트 숨김 미검증; 후원하지 않음 |
+| hideDonation | 실제 controller 구조와 공개 앱 코드의 DONATION=10, 자동 filter/복원 계약, 후속 실제 방송의 후원 메시지 숨김 정상 사용자 확인 | 자동 raw callback/event payload 확인이나 모든 후원/구독·특수 메시지/화면 변형의 검증은 아님; agent는 후원하지 않음 |
 | showDeleted | 새 live 일반 type1 삭제용 guarded native listener/상태/표지 구현, 자동29개, 소유권 보완 설치본 팝업 준비됨→원래 OFF/끔 사용자 확인·일반1080p 재생/채팅/marker0 | 자연 발생 삭제/취소선·label 및 외부 writer 실제 이벤트 미검증; 과거 숨김·cleanbot·VOD를 복구하지 않음; unknown/readonly/once/ambiguous 연결은 limited |
 
 설정 외 기능: 통계의 실제 해상도/측정FPS/코덱 기본 수용, 비트레이트·지연시간은 알 수 없음. live/VOD 시작 시각·metadata cache/URL 재사용 기본 수용. 채널 채팅 버튼은 실제 live URL 이동을 확인했지만 당시 대상 종료 화면이므로 활성 방송 채팅 연결 전체 PASS가 아니다. 실제 PIP 기본 사례와 사용자 전체화면/Esc 정상 보고가 있으며 모든 조합은 미검증이다.
@@ -48,6 +48,8 @@
 사용자는 컴프레서 ON/OFF 뒤 소리가 정상적으로 들린다고 확인했다. 합성 기본14사례 full-scale 초과0·Gain 전환12사례의 연속성 검사를 별도로 기록했다. 다만250/750Hz toggle dip과 극단 설정 stress peak1.95944/full-scale 초과16000샘플은 해결됐다고 주장하지 않는다. 방송 음성을 녹음하거나 GPU·주관적 음질을 자동 시험 통과로 대체하지 않았다. Gain UI48px/우측8px와10ms 평활화는 확인한 범위다.
 
 유료 DVR·자연 삭제/후원·활성 파티/차단 대상·보호된 소스·실제 GPU·장기 heap/GC·모든 광고/fullscreen/PIP/bfcache/설정 조합·Firefox 전체 검증은 남는다. 제한된 CDP를 우회하거나 계정 변경·결제로 시험을 만들지 않는다.
+
+후속 배포 준비 중 사용자가 실제 후원 메시지 숨김 정상 동작을 확인했다. 위 이전 미검증 범위 중 후원 숨김 기본 사례는 사용자 확인 수용으로 갱신하며, 모든 후원/구독 메시지 변형으로 확대하지 않는다. 실제 삭제·파티/차단·DVR/환경 공백은 유지한다. 이 후속 결과는 배포 준비 브랜치에 기록하며 원본 PR #81 본문/브랜치를 변경한 것으로 표기하지 않는다.
 
 ## 현재 코드·패키지 증거
 
