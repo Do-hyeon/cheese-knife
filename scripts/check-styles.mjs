@@ -30,6 +30,74 @@ let checked=0;
 const checkNative=async(name,fn)=>{checked++;try{await fn();}catch(error){failures.push({name,error:error.message});}};
 try{
   const page=await browser.newPage();
+  // Source-derived native JSX structure, confirmed for the actual mission
+  // panel and normal card parent. No real mission, blocked account or data.
+  const panel=(kind,expanded,id)=>kind==='mission'
+    ? `<div id="${id}" class="_container_panel"><div class="_header_panel"><button class="_mission_button_panel"><svg class="_icon_mission_panel"></svg>Mission</button><button class="_folded_button_panel" aria-expanded="${expanded}">Fold</button></div>${expanded?'<div class="_item_panel">Synthetic mission</div>':''}</div>`
+    : `<div id="${id}" class="_container_panel"><button class="_header_panel" aria-controls="party-wrapper" aria-expanded="${expanded}"><em class="_highlight_panel"><svg class="_icon_party_panel"></svg>Party</em></button>${expanded?'<div class="_wrapper_panel" id="party-wrapper">Synthetic party</div>':''}</div>`;
+  const panelFrame=content=>'<style>#layout-body{display:flex}#native-player{width:800px;flex:none}aside{width:300px;flex:none}div{display:block}</style><div id="layout-body"><main id="native-player">Player</main><aside id="aside-chatting">'+content+'<div id="native-log" role="log">Ordinary chat</div></aside></div>';
+  for(const kind of ['mission','party'])for(const expanded of [true,false])await checkNative(`hide-mission hides current ${kind} panel when expanded=${expanded}`,async()=>{
+    await page.setContent(panelFrame(panel(kind,expanded,'native-panel')));
+    await page.addStyleTag({content:await fs.readFile('styles/hide-mission.css','utf8')});
+    assert.equal(await page.locator('#native-panel').evaluate(n=>getComputedStyle(n).display),'none');
+    assert.equal(await page.locator('#native-log').evaluate(n=>getComputedStyle(n).display),'block');
+    assert.equal(await page.locator('#native-player').evaluate(n=>n.getBoundingClientRect().width),800);
+    assert.equal(await page.locator('#aside-chatting').evaluate(n=>n.getBoundingClientRect().width),300);
+  });
+  await checkNative('hide-mission OFF restores both native panels without rewriting them',async()=>{
+    await page.setContent(panelFrame(panel('mission',true,'native-mission')+panel('party',false,'native-party')));
+    const css=await page.addStyleTag({content:await fs.readFile('styles/hide-mission.css','utf8')});
+    await css.evaluate(n=>n.remove());
+    for(const id of ['native-mission','native-party'])assert.equal(await page.locator('#'+id).evaluate(n=>getComputedStyle(n).display),'block');
+    assert.equal(await page.locator('#native-party button').getAttribute('aria-expanded'),'false');
+  });
+  await checkNative('hide-mission preserves sidebar, foreign, ordinary and enclosing chat containers',async()=>{
+    const normal='<div id="normal-panel" class="_container_panel"><div class="_header_panel"><button class="_mission_button_panel"><svg class="_icon_archive_panel"></svg></button></div></div>';
+    const unrelatedParty='<div id="unrelated-party" class="_container_panel"><button class="_header_panel" aria-controls="other-wrapper"><em class="_highlight_panel"><svg class="_icon_party_panel"></svg></em></button></div>';
+    await page.setContent(panelFrame('<div id="enclosing-chat" class="_container_outer">'+panel('mission',true,'inner-panel')+'</div>'+normal+unrelatedParty)+'<aside id="sidebar" aria-label="사이드바">'+panel('mission',true,'sidebar-panel')+'</aside>'+panel('party',true,'foreign-panel'));
+    await page.addStyleTag({content:await fs.readFile('styles/hide-mission.css','utf8')});
+    for(const id of ['normal-panel','unrelated-party','enclosing-chat','sidebar-panel','foreign-panel'])assert.equal(await page.locator('#'+id).evaluate(n=>getComputedStyle(n).display),'block',id);
+  });
+  await checkNative('hide-mission retains both legacy fixed-panel selectors',async()=>{
+    await page.setContent('<div id="old-mission" class="live_chatting_fixed_mission_container__old"></div><div id="old-party" class="live_chatting_fixed_party_container__old"></div>');
+    await page.addStyleTag({content:await fs.readFile('styles/hide-mission.css','utf8')});
+    for(const id of ['old-mission','old-party'])assert.equal(await page.locator('#'+id).evaluate(n=>getComputedStyle(n).display),'none');
+  });
+  const card=(id,blocked,extra='')=>`<div id="${id}" class="_container_card${blocked?' _is_block_card':''}"><div class="_thumbnail_card"></div>${extra}</div>`;
+  for(const tag of ['li','div'])await checkNative(`hide-blocked hides current card and direct ${tag} item without a grid gap`,async()=>{
+    await page.setContent('<style>div,li{display:block}#grid{display:grid;grid-template-columns:200px 200px}</style><div id="layout-body"><div id="grid"><'+tag+' id="blocked-item" class="_item_grid">'+card('blocked-card',true)+'</'+tag+'><'+tag+' id="normal-item" class="_item_grid">'+card('normal-card',false)+'</'+tag+'></div></div>');
+    await page.addStyleTag({content:await fs.readFile('styles/hide-blocked.css','utf8')});
+    for(const id of ['blocked-card','blocked-item'])assert.equal(await page.locator('#'+id).evaluate(n=>getComputedStyle(n).display),'none',id);
+    for(const id of ['grid','normal-item','normal-card'])assert.notEqual(await page.locator('#'+id).evaluate(n=>getComputedStyle(n).display),'none',id);
+    assert.equal(await page.locator('#normal-item').evaluate(n=>n.getBoundingClientRect().x),await page.locator('#grid').evaluate(n=>n.getBoundingClientRect().x),'remaining card occupies the first grid cell');
+  });
+  await checkNative('hide-blocked hides a standalone native blocked card without a wrapper',async()=>{
+    await page.setContent('<main id="layout-body">'+card('standalone-blocked',true)+'</main>');
+    await page.addStyleTag({content:await fs.readFile('styles/hide-blocked.css','utf8')});
+    assert.equal(await page.locator('#standalone-blocked').evaluate(n=>getComputedStyle(n).display),'none');
+  });
+  await checkNative('hide-blocked OFF restores the card and its grid item',async()=>{
+    await page.setContent('<style>div,li{display:block}</style><div id="layout-body"><li id="blocked-item" class="_item_grid">'+card('blocked-card',true)+'</li></div>');
+    const css=await page.addStyleTag({content:await fs.readFile('styles/hide-blocked.css','utf8')});
+    await css.evaluate(n=>n.remove());
+    for(const id of ['blocked-item','blocked-card'])assert.equal(await page.locator('#'+id).evaluate(n=>getComputedStyle(n).display),'block');
+  });
+  await checkNative('hide-blocked preserves unrelated block widgets, normal cards and outer lists',async()=>{
+    await page.setContent('<style>div,li{display:block}</style><div id="layout-body"><div id="outer-list" class="_item_outer"><li id="direct-item" class="_item_grid">'+card('inner-blocked',true)+'</li></div>'+card('normal-card',false)+'<div id="noncard-block" class="_container_widget _is_block_widget"><div class="_content_widget">Other widget</div></div><div id="false-token" class="_container_card _not_is_block_card"><div class="_thumbnail_card"></div></div></div>'+card('foreign-blocked',true));
+    await page.addStyleTag({content:await fs.readFile('styles/hide-blocked.css','utf8')});
+    for(const id of ['outer-list','normal-card','noncard-block','false-token','foreign-blocked'])assert.equal(await page.locator('#'+id).evaluate(n=>getComputedStyle(n).display),'block',id);
+  });
+  await checkNative('hide-blocked preserves the existing floating-popup exception for current and legacy cards',async()=>{
+    const popup='<div style="position: absolute; left: 0px;">Synthetic popup</div>';
+    await page.setContent('<style>div,li{display:block}</style><div id="layout-body"><li id="popup-item" class="_item_grid">'+card('popup-card',true,popup)+'</li></div><div id="legacy-popup-item" class="component_item__old"><div class="video_card_is_block__old"></div>'+popup+'</div>');
+    await page.addStyleTag({content:await fs.readFile('styles/hide-blocked.css','utf8')});
+    for(const id of ['popup-item','popup-card','legacy-popup-item'])assert.equal(await page.locator('#'+id).evaluate(n=>getComputedStyle(n).display),'block',id);
+  });
+  await checkNative('hide-blocked retains legacy item hiding',async()=>{
+    await page.setContent('<div id="legacy-blocked-item" class="component_item__old"><div class="video_card_is_block__old"></div></div>');
+    await page.addStyleTag({content:await fs.readFile('styles/hide-blocked.css','utf8')});
+    assert.equal(await page.locator('#legacy-blocked-item').evaluate(n=>getComputedStyle(n).display),'none');
+  });
   // Break caught: a marker on the native text itself must style/label it
   // without JSX children, overriding only its native inline text color.
   const deletedFixture='<style>:root{--color-content-04:rgb(120,120,120);--color-content-05:rgb(160,160,160)}span{font-size:22px}</style><aside><div role="log"><div class="_item_current"><div class="_chatting_message_current"><button class="_nickname_current">Synthetic</button><span id="deleted-current" class="_text_current" style="color:rgb(255,0,0)" data-knife-deleted="1">Synthetic<img id="deleted-emote" width="24" height="24"></span><span id="normal-current" class="_text_current" style="color:rgb(255,0,0)">Ordinary</span></div></div><span id="legacy-deleted" class="live_chatting_message_text__old"><span class="knife-deleted">Legacy</span></span></div></aside>';

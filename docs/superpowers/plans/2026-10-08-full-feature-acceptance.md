@@ -68,6 +68,7 @@
 - [ ] player: fit-player, volume-percentage, hide-ff, hide-comp.
 - [x] 현재 live/종료 화면의 studio/topics/offline/chat-font 선택자 불일치 보완 후보. native fixture6/6, 실제 DOM 임시 A/B·복원 완료. 실제 저장 옵션/등록 검사는 새 확장 새로고침을 기다림.
 - [ ] chat: chat-resize, chat-font-size, chat-timestamp, hide-ranking, hide-mission, left-chat.
+- [x] 승인된 현행 미션/파티 및 차단 방송 CSS 후보: header/icon·direct thumbnail 관계 선택자4개/legacy·popup 예외 보존/새 JS·설정·권한 없음. native 신규14개 중7RED→GREEN+7보호, 전체CSS108/Node158/filter17/build/package/source-dist 일치 확인. 실제 미션 구조는 수정 전 관찰이며 새 dist 설치본 ON/OFF는 필수 수동 확장 새로고침 이후; 실제 파티/차단 대상 및 전체 스타일 수용은 미완료.
 - [ ] sidebar: hide-offline, hide-recommended, hide-schedule, hide-sidebar-partner, hide-shortcut, right-sidebar.
 - [ ] toolbar: static-logo, hide-topics, hide-studio, auto-hide-toolbar.
 - [ ] home/explore/misc: hide-recommended-live, top-explore, hide-blocked, hide-live-badge, rectangle-profile.

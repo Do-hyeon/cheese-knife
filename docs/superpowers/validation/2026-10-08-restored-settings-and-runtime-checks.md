@@ -165,3 +165,13 @@ own 페이지의 DOM에서 정상 card3개는 DIV container/direct thumbnail과 
 **Bounded 후보(승인 전):** hide-mission.css에 현재 layout-body의 비사이드바 aside 안 고정 미션 header/button 및 파티 aria-controls/header 관계를 추가한다. hide-blocked.css는 현재 body 안의 차단 card 자체 및 직접 바깥 item을 함께 숨겨 빈 목록 칸을 남기지 않는다. 일반 카드/다른 block widget/상위 목록을 보존하고 기존 floating-popup 예외와 legacy 선택자는 유지한다. 새 JS/observer/설정키/권한은 없다. source-derived native fixture의 접힘·펼침/blocked grid·standalone/정상·foreign widget·popup·OFF·legacy를 RED→GREEN으로 검사할 계획이다. 활성 미션/파티 공개 URL을 사용자에게 요청했으며 실제 차단을 만들어 검증하지 않는다. 제품/테스트/build 수정 전 디자인 승인 단계에서 중지한다. 전체 검증/기여 PR 게이트는 유지한다.
 
 사용자가 실제 미션이 있는 공개 방송 주소를 제공했다. 새 own 탭에서 초기 target0은 로딩으로 제외했다. native mission/fold button attached 후 미션1/legacy panel0을 확인했다. current container는 layout-body의 aside-chatting(비aria-label aside) 안에 있고 direct header/div→mission button→icon_mission svg 관계가 맞았다. visible display block/h141/expandedtrue였다. native 접기 버튼으로 h32/expandedfalse에서도 같은 관계1/legacyfalse를 확인하고 펼침 h141/true로 복원했다. 주영상width1920/ready4/playing을 관찰했고 own 탭을 닫았다. CSS/설정·후원·참여·채팅·계정·미디어를 변경하지 않았다. 실제 파티는0이며 이 관찰을 파티/차단/숨김ON의 전체 수용으로 확대하지 않는다. 후보 구현·TDD·설치본 수용 전 승인을 기다린다. 사용자 제공 채널 식별자는 공개 이력에 불필요하게 남기지 않는다.
+
+### 승인된 미션·차단 방송 CSS 보완 — 설치본 새로고침 대기
+
+사용자가 bounded 후보를 승인하고 필요한 개입 외에는 계속 진행하도록 했다. hide-mission.css에 layout-body의 비사이드바 aside와 native header/button/icon 관계를 사용하는 미션·파티 선택자2개를 추가했다. 접힘에서도 남는 header를 기준으로 하고 legacy 선택자는 보존한다. hide-blocked.css에는 is_block modifier와 direct thumbnail을 함께 요구하는 card 및 direct LI/DIV item 선택자2개를 추가했다. card와 목록 칸을 함께 숨기되 상위 목록·정상 카드·다른 block widget·외부 화면·기존 floating-popup 예외는 보존한다. 해시 suffix 고정, 중첩 :has, 새 JS/observer/설정키/권한은 없다.
+
+공개 renderer 구조에 기반한 native fixture14개를 먼저 추가했다. 미션/파티 각각 접힘·펼침4개 및 차단 card LI/DIV wrapper·standalone3개는 기존 CSS에서 예상한7RED였다. OFF·legacy·일반 요소·외부 widget·popup 보호7개는 기존에도 PASS인 characterization이다. 두 CSS 파일만 보완한 뒤7RED→GREEN을 확인했다. 현재 fixture를 실제 설치본 파티/차단 계정 상태의 검증으로 바꾸지 않는다.
+
+커밋 전 fresh 전체 Node158/158/실패0/skip0, Chrome155.0.8059.39 native CSS108/108/필터17/17/실패0, build 및 source/dist package 각v2.13.2/20 entry resources PASS. ignored 로그는 mission-blocked-css-red/css-green/node/filter와 mission-blocked-final-node/css/filter다. source/dist SHA256은 hide-mission.css `E139E91BCCE10E91D37626A05D6193DA32D10C86F064867E35EA36167A15289F`, hide-blocked.css `3980981F2D38DE792D524DC9D0F4D1EDF820BC349021C232A42666B074E60C38`로 각각 일치한다. DSP 변경·새 청취 검사·추가 reviewer·해결된 전체 범위 재검토는 없다.
+
+실제 미션 구조 관찰은 위의 수정 전 자료이며 새 dist의 숨김 ON/OFF 검사는 수동 확장 새로고침 이후에 진행한다. 두 저장 옵션의 원래 값은 모두 OFF이고 agent가 설정·계정·차단·후원·참여·채팅·사용자 탭·미디어를 변경하지 않았다. 실제 파티/차단 대상은 아직 없으며 삭제·후원 자연 발생 이벤트와 다른 환경별 공백도 유지한다. 필수 수동 새로고침 단계에서 중지하고 전체 기능 복구 완료 또는 기여 PR 완료를 선언하지 않는다.
