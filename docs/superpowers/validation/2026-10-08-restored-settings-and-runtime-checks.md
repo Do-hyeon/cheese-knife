@@ -211,3 +211,11 @@ own 페이지의 DOM에서 정상 card3개는 DIV container/direct thumbnail과 
 새 회귀7개를 먼저 실행해7예상RED/기존22PASS를 확인했다. current NORMAL/type1/key/user/time/content 검증과 불일치 metadata 폐기만 보완했다. 이후focused29/29,전체Node165/165/실패0/skip0,별도Chrome155 CSS108/108/필터17/17,syntax/build/source와distpackage각v2.13.2/20resources/diffcheck PASS. source/dist inject SHA256 `717424F10B48737ED3B82715B0ED40B15E1A3C8457AEC9960CF2947AFBECFAEB` 일치다. 기존 listener/native CANCEL/repeated blind/외부 callback·표지 보호와 helper 경계는 green suite로 확인했으며 실제 자연 이벤트 검증은 아니다.
 
 추가 reviewer·수정 범위 재검토·새 API/권한/JSX/원문 조회/observer/타이머는 없다. 사용자 스타일/필터/Gain/showDeleted·hideDonation OFF 원복 기준을 유지하며 own 탭도 정리됐다. README의 예전 미구현/새로고침 대기 문구를 최신 진입점과 구분하고25개 설정·25개 스타일의 기본 수용/자동 계약/미검증을 한 표로 정리했다. 새 JS 설치본 준비 상태/OFF 복원 검사에는 필수 수동 확장 새로고침이 필요하므로 이 단계에서 중지한다. PR/전체 기능 복구 완료를 선언하지 않는다.
+
+### a994241 사용자 설치본 준비 상태 확인
+
+확장 새로고침 및 실제 ‘블라인드된 메시지 보기’ ON 적용을 요청한 뒤 사용자가 팝업 상태 ‘준비됨’을 보고했다. 새 소유권 보완 설치본의 native 계약 연결 준비는 사용자 확인으로 수용한다. 자동 raw callback identity나 외부 in-place writer/자연 삭제 이벤트를 실제 서비스에서 실행한 결과로 확대하지 않는다.
+
+같은 browser7에서 새 own live를 일반 read-only DOM으로만 검사했다. 첫 chat/player 없음은 로딩으로 제외했고 chat log attached 뒤 aside353, native pzp main1920×1080/ready4/playing/rate1, 삭제 marker0 및 원래 OFF 미션 display block/h141을 확인했다. 본문·작성자·메시지 identity/payload를 읽거나 이벤트를 emit/삭제/후원/차단하지 않았다. 제품·설정·미디어·viewport·사용자 탭에는 agent mutation이 없다. marker0은 실제 삭제 표시 성공이 아니며 이번 단계에는 CDP를 사용하지 않았다.
+
+own 탭을 원래 설정 복원 후 확인에 사용하도록 handoff로 보존했다. showDeleted 원래 OFF 및 팝업 ‘끔’으로 돌리는 사용자 수동 단계가 남는다. hideDonation/스타일/필터/Gain 복원 기준은 유지한다. 새 suite/build/review/PR는 이번 사용자 보고로 수행한 것으로 표기하지 않는다.

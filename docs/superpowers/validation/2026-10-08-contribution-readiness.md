@@ -24,7 +24,7 @@
 | brightness, contrast, saturation, gamma, sharpness | 합성 영상 필터 pixels17개, 실제 live/VOD source-wrapper 한 번 적용·native 필터 보존·중립 원복 | 사용자 GPU/실제 방송 pixels·선명도 품질 미검증 |
 | compressorDefault, compressorThreshold, compressorKnee, compressorRatio, compressorAttack, compressorRelease | 실제 기본 파라미터/ON-OFF20회/Gain150%/동일 video 모드·SPA 재사용, 합성 DSP·설정 검증 | 모든 개별 파라미터의 실제 청취·보호소스·새 media·장기 GC 미검증; 아래 음질 제한 유지 |
 | hideDonation | 실제 controller 구조와 공개 앱 코드의 DONATION=10, 자동 filter/복원 계약 | 자연 발생 후원 이벤트 숨김 미검증; 후원하지 않음 |
-| showDeleted | 새 live 일반 type1 삭제용 guarded native listener/상태/표지 구현, 자동29개, 이전 설치본 팝업 준비됨→원래 OFF/끔 복원 | 추가 소유권 보완 후보는 수동 확장 새로고침/설치본 검사 대기. 자연 발생 삭제/취소선·label 미검증; 과거 숨김·cleanbot·VOD를 복구하지 않음; unknown/readonly/once/ambiguous 연결은 limited |
+| showDeleted | 새 live 일반 type1 삭제용 guarded native listener/상태/표지 구현, 자동29개, 소유권 보완 설치본 팝업 준비됨 사용자 확인/일반1080p 재생·채팅 유지 | 소유권 보완 설치본의 원래 OFF/끔 복원 대기. 자연 발생 삭제/취소선·label 및 외부 writer 실제 이벤트 미검증; 과거 숨김·cleanbot·VOD를 복구하지 않음; unknown/readonly/once/ambiguous 연결은 limited |
 
 설정 외 기능: 통계의 실제 해상도/측정FPS/코덱 기본 수용, 비트레이트·지연시간은 알 수 없음. live/VOD 시작 시각·metadata cache/URL 재사용 기본 수용. 채널 채팅 버튼은 실제 live URL 이동을 확인했지만 당시 대상 종료 화면이므로 활성 방송 채팅 연결 전체 PASS가 아니다. 실제 PIP 기본 사례와 사용자 전체화면/Esc 정상 보고가 있으며 모든 조합은 미검증이다.
 
@@ -53,8 +53,8 @@
 
 최신 소유권 보완 후보의 fresh 실행 결과는 전체 Node165/165, 별도 Chrome 스타일108/108·영상 필터17/17, build/source 및 dist 패키지v2.13.2/20 entry resources PASS다. 실행 로그·source/dist SHA256와 RED→GREEN 근거는 [새 변경 검토와 보완](../reviews/2026-10-08-deleted-chat-and-style-review.md)에 있다. 이전158/108/17과 별도이며 문서 변경만으로 결과를 새 실행으로 표기하지 않는다.
 
-이전 전체 브랜치 독립 검토의 Important2와 사용자 선택 Minor1은 한 패스에서 수정·회귀·설치본 검증했다. 이후 새 삭제 표시·미션/차단 CSS의 별도 읽기 전용 검토에서 Important1(외부 in-place 숨김 변경 뒤 오래된 소유권 재사용)을 확인했다. 구현자는7RED→GREEN/전체165건으로 보완했고 새 설치본 검사는 대기 중이다. 이전 해결 범위의 재검토나 현재 전체 출시 인증이 아니다.
+이전 전체 브랜치 독립 검토의 Important2와 사용자 선택 Minor1은 한 패스에서 수정·회귀·설치본 검증했다. 이후 새 삭제 표시·미션/차단 CSS의 별도 읽기 전용 검토에서 Important1(외부 in-place 숨김 변경 뒤 오래된 소유권 재사용)을 확인했다. 구현자는7RED→GREEN/전체165건으로 보완했고 새 설치본 준비됨 사용자 확인·일반 재생/채팅 유지까지 기록했다. 원래 OFF 복원은 대기 중이다. 이전 해결 범위의 재검토나 현재 전체 출시 인증이 아니다.
 
 ## PR 게이트
 
-설치본 미션 OFF 복원은 완료했다. 새 Important 보완 후보의 필수 수동 확장 새로고침 및 연결 준비/OFF 복원 설치본 검사를 기다린다. 그 뒤에도 위 실제 대상/환경 공백이 남으면 ‘전체 기능 정상’ 조건이 충족됐다고 간주하지 않는다. 제한을 명시한 복구 시험판 기여 PR로 진행할지 사용자에게 범위 판단을 요청한다. PR/스토어 배포/원본 main 병합은 아직 하지 않았다.
+설치본 미션 OFF 복원은 완료했다. 새 Important 보완 설치본의 연결 준비는 사용자 확인으로 수용했고 원래 OFF/끔 복원을 기다린다. 그 뒤에도 위 실제 대상/환경 공백이 남으면 ‘전체 기능 정상’ 조건이 충족됐다고 간주하지 않는다. 제한을 명시한 복구 시험판 기여 PR로 진행할지 사용자에게 범위 판단을 요청한다. PR/스토어 배포/원본 main 병합은 아직 하지 않았다.
