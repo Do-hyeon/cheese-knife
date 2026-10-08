@@ -329,3 +329,11 @@ build/package v2.13.2·20 entry resources·diff check PASS. source/dist rectangl
 live 다른 thumbnail anchor5개의 native radius12px/child image13px, VOD 다른 thumbnail element31개 중 native DIV30개의 radius8px와 SPAN1개의 radius0px를 확인했다. 일반 썸네일을 전부 사각화하지 않았다. 두 문서 관찰 시 주영상 pausedfalse/readyState4/1920×1080이었다. 이는 관찰 시점의 상태이며 장시간 재생/음질/모든 모드의 수용을 뜻하지 않는다. 사용자 시청 탭·확장 저장소·미디어·viewport를 변경하지 않았고 own탭2개를 닫았다. 이미지URL/alt/채널ID/본문을 수집하지 않았다. 픽셀 캡처 미검증 제한은 유지한다.
 
 현재 source/dist rectangle-profile hash는 위4E5150...와 일치한다. 이번에는 제품/테스트/build를 변경하거나 suite를 다시 실행하지 않았으므로 이전122/91 결과를 fresh 실행으로 주장하지 않는다. 검사8개 임시 설정의 original 복원(앞6OFF/뒤2ON)은 수동 설정 화면 접근이 필요한 다음 단계다. 원복 확인·나머지 기능/모드 검증·최종 독립 검토·PR은 남아 있다.
+
+## 검사8개 original 설정 복원 확인
+
+사용자가 원복 완료를 알렸다. 새 ownhome 정착에서 logo85px/masknone/padding0,Studio·주제탭flex,live배지5개숨김0,homeprofile25개radius50%,header focus/hover없음 margin/y-45px와첫navabsolute를 확인했다. 새 ownlive/VOD에서도 Studio·주제탭flex/header margin-45px/첫navabsolute 및 방송정보wrapper/image50%를 확인했다. 임시CSS0이므로 사각profileOFF의 설치본 원복도 수용한다. 실제 차단방송 대상부재는 여전히 미검증이며 이를 설정원복 실패/성공으로 추측하지 않는다.
+
+세 문서 모두fontoffset0px/resize변수1/timestamp변수1,sidebar 일반·팔로잉block/일정block/인기·파트너·서비스none이었다. live/VOD의채팅row-reverse/handle1을확인했다. 원래25개 기준 중 이번에 건드린8개와기존채팅/sidebar 유지의 관찰 범위다. 전체모드·모든특수메시지 PASS로확대하지 않는다. 처음live컨트롤부재는정착후comp1/ff1로확인했고로딩중0을FAIL/PASS로사용하지않았다.
+
+이후 별도VOD의오디오 전환/SPA 검사와필터후속단계는 [원복 후 기능 검사](2026-10-08-restored-settings-and-runtime-checks.md)에기록한다. 모든own탭을닫고사용자탭/확장저장소/viewport를변경하지않았다. 제품·build변경없고전체검증/최종독립검토/PR은남아있다.
