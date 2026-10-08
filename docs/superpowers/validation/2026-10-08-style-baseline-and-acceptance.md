@@ -176,3 +176,33 @@ source/dist hash는 위E0D61E...값 그대로다. 이는 현재 저장font8의 �
 다음 수동 설정 묶음은 채팅 원복6개와 사이드바 반대설정6개다. 채팅은 크기조절ON/폰트0/시각ON/랭킹숨김OFF/미션숨김OFF/왼쪽ON으로 원복한다. 사이드바는 오프라인숨김ON/인기카테고리숨김OFF/일정숨김ON/파트너숨김OFF/바로가기숨김OFF/오른쪽ON으로 임시 반전한다. 다른 설정은 복원 기준을 유지한다. 현재 실제 sidebar native nav6개에서 팔로잉·일정은표시,인기·파트너·바로가기는숨김이었고 profile49개 중offline39/live10을 확인해 다음 OFF/ON 검사 입력 존재를 확인했다. 계정의 채널 이름/ID는 기록하지 않았다. 실제 수량은 서비스 상태에 따라 변하므로 다음 검사의 숫자 기대값으로 고정하지 않는다.
 
 새 제품/build 변경이 없으므로 다음 단계는 확장 새로고침 없이 페이지 적용만 필요하다. 사이드바 검사 뒤 original offlineOFF/popularON/scheduleOFF/partnerON/shortcutON/rightOFF로 다시 복원해야 한다. 전체25개 스타일 완료/PR 준비로 선언하지 않는다.
+
+## 사이드바 반대 설정 설치본 검사
+
+사용자가 채팅 원복/사이드바6개 반전 적용 완료를 알렸다. 기존 사용자live 문서는 이전font8/오른쪽채팅/왼쪽sidebar/기존숨김을 유지하고 있어 읽기 전용 관찰로만 남겼다. 사용자 탭을 reload/탐색/클릭하지 않았으며 저장 실패로 단정하지 않았다. 새 실제home/live에는 새 사이드바 설정과 채팅 resize/timestamp/left/ranking 복원이 적용되어 있었다.
+
+| 새 문서 항목 | 실제 결과 | 범위 |
+| --- | --- | --- |
+| 오프라인 숨김ON | home 실제offline39개 모두displaynone/live10개 모두표시 | 수량은 당시값이며 향후 고정 기대값 아님 |
+| 일정 숨김ON | 실제 제목 확인 대상nav displaynone/높이0 | native nav6개 현재 상태의 기본 수용 |
+| 인기/파트너/바로가기 숨김OFF | 각 native 제목 대상displayblock/높이존재 | 기존ON과 반대 설정 수용;동적 section 수 변경은 별도 |
+| 오른쪽sidebar ON | home2560에서x2305/폭240, live2560에서x2320/폭240 | home root scrollbar15px 차이를 구분;body padding left0/right240 |
+| 채팅 resize/timestamp/left 복원 | 새live handle1/변수1/실제시각before·attribute/채팅x0·폭353 | playerx356/폭1963 보존 |
+| 랭킹 숨김OFF 복원 | 새live 실제대상displayflex | 기본OFF 수용 |
+| 폰트0 원복 | 새home/live/reset홈 모두8px, actuallive본문22px | 원복 미완료. 설정 화면 숫자0/8을 사용자에게 확인 요청;저장/bridge 결함 원인 미확정 |
+
+미션/파티는 실제 이벤트가 없어 이전 미검증 경계를 유지한다. 위 검사에 임시CSS가 없었다. source/dist badge CSS hash는 기존E0D61E...그대로며 제품 변경은 없었다.
+
+오른쪽sidebar+top-explore+auto-hide 조합의 메뉴/검색과 폭 검사를 진행했다. 처음 여러 검사 탭 중 현재 선택된 탭이live였으므로 home에 요청한 resize가 home에 적용되지 않았고, RAF 조건 조회도5000ms timeout이었다. 선택탭ID와대상ID를 확인했으며 이 실패를 반응형 PASS/제품 결함으로 합산하지 않았다. 같은 브라우저의 전용 선택home 탭으로 이어가 실제 viewport를 확인하며 검사했다.
+
+| 실제 viewport | 첫nav | 검색·메뉴 기본 결과 |
+| --- | --- | --- |
+| 2560×1305 | absolute/header row | headerY0/nav right895.53125/search left1709, 수평 겹침없음 |
+| 1800×900 | absolute/header row | headerY약0/nav right895.53125/search left949, 간격53.46875px |
+| 1200×900 | static/right sidebar | 첫navx965/폭200,searchx410/폭365,기본sidebar 메뉴로복귀 |
+
+검색 포커스 및 메뉴 버튼으로 헤더를 표시했고, native 접기/확장 상태 변경도 확인했다. 접힌 상태의 읽기는sidebar폭82/body padding-right78이었다. 이 관찰로 모든 접힘 안정 치수/모든 클릭 영역의 무침범을 선언하지 않으며, 전체 모드 검증을 자동으로 닫지 않는다. 원래 nativeexpanded 상태로 되돌려 rawDOM에서폭240/expandedtrue를 확인했다. 1200폭에서도bodyright240/side240이었다. 계정 버튼/모든 mode조합/visual screenshot 수용으로 확대하지 않는다.
+
+ownhome 검색은 빈 필드에 focus만 했고 입력/전송하지 않았다. 최근검색/계정 내용을 기록하지 않았다. 마지막 focus를blur/포인터를헤더에서이동/viewport override reset/own탭을정리했다. 새 별도home2560×1249를 확인한 뒤 닫았다. 사용자 설정 저장과 사용자 시청 탭 조작은 하지 않았다.
+
+다음은 사이드바6개 원래값(offlineOFF/popularON/scheduleOFF/partnerON/shortcutON/rightOFF)의 수동 복원과 폰트 슬라이더0 확인·적용이다. 채팅 다른 항목은 이번 새live 기본복원 관찰을 유지한다. 제품을 바꾸지 않아 확장 자체 새로고침은 필요 없고 페이지 적용만 필요하다. 모든 스타일/전체기능/PR 완료 조건은 아직 미충족이다.

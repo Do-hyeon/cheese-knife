@@ -92,6 +92,7 @@
 - [x] 화면채우기 저장OFF 원복556 확인. 새live/VOD chatfont8/본문22·오른쪽배치·handle0·시각OFF,live랭킹none 수용;미션없음UNVERIFIED. 일반image규칙이닉네임배지18→32로키우며holder18을넘는FAIL 확인. 배지 한정18+offset/holder정합·emoji규칙보존 bounded설계 승인 대기;전체폰트/채팅원복/전체스타일/PR완료 아님.
 - [x] 승인된 배지보완 CSS1규칙/legacy·emoji·텍스트 보존/복수wrapper nativeflex유지. native7RED→GREEN+2보호(total58),Node109/build/package/hash PASS. 실제live/VOD 임시규칙 badge26/icon26/single26/double56/text22/VOD분류emoji32 및 제거원복 확인. 새dist 등록/현재font8 저장설정 수용은 수동확장 새로고침 후,원래채팅값 복원·전체수용·최종독립검토·PR는 남음.
 - [x] 79ef 새설치본 font8/live·VOD text22/badge26/single26/double56/triple86/분류VODemoji32/임시CSS0 기본수용. 사용자live 읽기전용/별도VOD 탭정리,제품변경없음. 채팅 원래6값과사이드바 반대6값의 수동적용 후 검사·사이드바원복이 다음단계;특수메시지/전체스타일/PR완료 아님.
+- [x] 새home/live 사이드바 inverse 기본수용(offline숨김/live보존·일정숨김·다른3section표시/right240),채팅resize/time/left/ranking 기본복원/player1963 유지. 실제2560/1800메뉴-검색 분리·1200기본sidebar와native접기/확장 관찰;첫wrong-tab resize/timeout·collapsed82/pad78 경계는전체PASS로합산안함. font8잔존으로0/8 UI값 질문/사이드바6 원래값 복원 남음. 제품수정·전체스타일·PR완료 아님.
 
 ### Task 4: 기여 PR 완료 조건
 
