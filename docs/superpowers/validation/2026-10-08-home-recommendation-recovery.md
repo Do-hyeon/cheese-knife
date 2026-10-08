@@ -1,4 +1,4 @@
-# 홈 추천 방송 숨김 복구 — 설치본 좁은 화면 FAIL
+# 홈 추천 방송 숨김 복구 — 반응형 보완 후보 설치본 수용 대기
 
 2026-10-08. 사용자가 홈 추천 영역만 숨기고 팔로잉·다시보기·다른 페이지는 보존하는 제한 설계를 ‘검증 승인’했다. 작업 기준은 `982bcc0`, 복구 시험판 v2.13.2다. 전체 기능 정상 판정이나 한글 PR 승인서는 아니다.
 
@@ -44,8 +44,19 @@
 
 임시 viewport는 reset하고 agent 검사 탭을 닫았다. 사용자 시청 탭/확장 저장 설정은 바꾸지 않았다. 설치본 성공/좁은 화면 실패 screenshots는 ignored `output/acceptance/home-installed-5a4a7b9.png`, `home-narrow-failure-5a4a7b9.png`에만 저장했다. 기존 저장 옵션OFF 수용도 아직 미검증이다.
 
+## 승인된 반응형 보완 후보
+
+사용자가 좁은 화면 보완 설계를 승인했다. 기존 넓은 화면 전용 선택자를 `#layout-body[data-knife-home="1"] [class*="_swap_"] > [class*="_content_"] > section:has(> ul[class*="_grid_"])`로 교체했다. 홈 추천 콘텐츠의 직접 경계 안에서만 grid를 숨기며 화면 폭에 따른 two-column modifier에 의존하지 않는다. legacy 선택자는 그대로다. JS·설정·권한·vendor 변경은 없다.
+
+- 기존 native fixture에 실제 관찰한 swap/content 경계를 반영했다. production CSS 검사4개 추가: modifier 제거/복원,경계 밖 grid 보호,표지 없는 narrow route 보호,스타일 제거 시 공간 복원. 첫 두 사례는 수정 전 각각 block≠none/none≠block의 기대한 실패(38/40)였고 최소 CSS 변경 뒤40/40 PASS. 보호/원복 두 사례는 기존 동작 characterization이다. 테스트가 native React breakpoint 자체를 구현한다고 주장하지 않으며,관찰한 DOM 변화를 fixture에서 재현해 CSS 소비 결과를 검사한다.
+- 사용자 Chrome의 별도 실제 홈에서1200px 재렌더 완료 후 기존 설치본 block/387.875px를 확인했다. 후보 source CSS를 임시 적용하면 none/0px;팔로잉303.421875px/최근 VOD369.421875px는 동일했다. 이어2560→1200→2560에서 각각 실제 modifier 유무를 기다려 추천 none/0px와 두 목록 block을 확인했다. 넓은 화면 두 목록은338.9375px/425.9375px였다.
+- 임시 CSS 제거 후1200px 추천 block/387.875px로 복원,temporary style0,원래 자동 marker=1을 확인했다. viewport reset/검사 탭 닫기를 완료했다. 저장 옵션과 사용자 시청 탭은 바꾸지 않았다. 임시 검사 캡처는 ignored `output/acceptance/home-narrow-candidate.png`다. 첫 주입 시 문자열 구문 오류는 수정해 재실행했으며,오류 실행을 PASS로 합산하지 않았다.
+- 전체 Node101/101,native CSS40/40,build/source+dist package v2.13.2/20 entry resources,diff check PASS. CSS source/dist SHA256은 `075DE712F82E4FA755FCE28A0428C6349E971E611FAF5E3F86DE126FA35E5916`으로 동일하다.
+
+새 후보 검증은 임시 source CSS 검사이며 새 dist의 실제 등록/저장 옵션 수용이 아니다. 앞선5a4a7b9 설치본 좁은 화면 FAIL을 삭제하거나 새 설치본 PASS로 바꾸지 않는다.
+
 ## 다음 게이트
 
-좁은 화면의 제한 CSS 후속 설계 승인 전 product code를 수정하지 않는다. 수정/회귀/빌드 이후에도 실제 설치본에 적용하려면 사용자의 수동 확장 새로고침이 필요하다. 현재 도구로 확장 설정 페이지를 직접 제어할 수 없으며 우회하지 않는다.
+반응형 보완 후보의 실제 설치본에 적용하려면 사용자의 수동 확장 새로고침이 필요하다. 현재 도구로 확장 설정 페이지를 직접 제어할 수 없으며 우회하지 않는다. 기존 저장 옵션OFF와 새 후보의 재렌더 수용은 아직 남아 있다.
 
 사용자의 ‘검증 승인’은 이 수정/검증 범위의 승인으로 해석했으며, 전체 화면이 정상 동작했다는 답변으로 해석하지 않았다. 전체 화면·삭제 채팅 지원 제한·허용-DVR/광고 안전성·시작 시각/후원 유형·나머지 스타일 조합/전체 수용은 계속 미완료다. 한글 기여 PR을 아직 열지 않는다.

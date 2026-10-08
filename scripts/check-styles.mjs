@@ -174,7 +174,7 @@ try{
     assert.equal(await page.locator('#search-container').evaluate(n=>getComputedStyle(n).position),'absolute','removing option restores native search');
     assert.equal(await page.locator('#search-container').evaluate(n=>n.getBoundingClientRect().x),baseline);
   });
-  const homeFixture='<style>section{display:block}ul{height:40px}</style><main id="layout-body" data-knife-home="1"><section id="recommended"><ul class="_grid_current _is_two_columns_current"><li>Recommended</li></ul></section><section id="following"><ul class="_list_current _type_vod_current"><li>Following</li></ul></section><section id="recent-vod"><ul class="_list_current _type_vod_current"><li>Recent VOD</li></ul></section><section id="other-grid"><ul class="_grid_current"><li>Other layout</li></ul></section><section id="nested-grid"><div><ul class="_grid_current _is_two_columns_current"><li>Nested unrelated layout</li></ul></div></section></main><section id="foreign-grid"><ul class="_grid_current _is_two_columns_current"><li>Outside home content</li></ul></section><div id="legacy-recommended" class="home_recommend_live_container__old">Legacy recommendations</div>';
+  const homeFixture='<style>section{display:block}ul{height:40px}</style><main id="layout-body" data-knife-home="1"><div class="_swap_current"><div class="_content_current"><section id="recommended"><ul class="_grid_current _is_two_columns_current"><li>Recommended</li></ul></section><section id="following"><ul class="_list_current _type_vod_current"><li>Following</li></ul></section><section id="recent-vod"><ul class="_list_current _type_vod_current"><li>Recent VOD</li></ul></section></div></div><section id="other-grid"><ul class="_grid_current"><li>Other layout</li></ul></section><section id="nested-grid"><div><ul class="_grid_current _is_two_columns_current"><li>Nested unrelated layout</li></ul></div></section></main><section id="foreign-grid"><ul class="_grid_current _is_two_columns_current"><li>Outside home content</li></ul></section><div id="legacy-recommended" class="home_recommend_live_container__old">Legacy recommendations</div>';
   await checkNative('hide-recommended-live hides only the current home recommendation section',async()=>{
     await page.setContent(homeFixture);await page.addStyleTag({content:await fs.readFile('styles/hide-recommended-live.css','utf8')});
     for(const id of ['recommended','legacy-recommended'])assert.equal(await page.locator(`#${id}`).evaluate(n=>getComputedStyle(n).display),'none',id);
@@ -189,6 +189,34 @@ try{
     await page.setContent(homeFixture);const css=await page.addStyleTag({content:await fs.readFile('styles/hide-recommended-live.css','utf8')});
     await css.evaluate(n=>n.remove());
     assert.notEqual(await page.locator('#recommended').evaluate(n=>getComputedStyle(n).display),'none');
+  });
+  // Break caught: depending on the two-column modifier exposes recommendations
+  // after native responsive rerender; expectations use the real CSS engine.
+  await checkNative('home recommendation stays hidden when responsive rerender removes the two-column modifier',async()=>{
+    await page.setContent(homeFixture);await page.addStyleTag({content:await fs.readFile('styles/hide-recommended-live.css','utf8')});
+    for(const [width,columns] of [[2560,true],[1200,false],[1800,false],[2560,true]]){
+      await page.setViewportSize({width,height:900});
+      await page.locator('#recommended>ul').evaluate((n,columns)=>{n.className=columns?'_grid_current _is_two_columns_current':'_grid_current';},columns);
+      assert.equal(await page.locator('#recommended').evaluate(n=>getComputedStyle(n).display),'none',`responsive width ${width}`);
+      assert.equal(await page.locator('#recommended').evaluate(n=>n.getBoundingClientRect().height),0,'hidden section leaves no space');
+      for(const id of ['following','recent-vod','other-grid','nested-grid','foreign-grid'])assert.notEqual(await page.locator(`#${id}`).evaluate(n=>getComputedStyle(n).display),'none',id);
+    }
+  });
+  // Break caught: dropping a home-content boundary hides unrelated grids.
+  await checkNative('home recommendation hiding preserves grids outside the direct swap-content section boundary',async()=>{
+    const unrelated='<div class="_content_other"><section id="no-swap"><ul class="_grid_current _is_two_columns_current"><li>Other content</li></ul></section></div><div class="_swap_other"><div class="other"><section id="no-content"><ul class="_grid_current"><li>Other content</li></ul></section></div><div><div class="_content_current"><section id="indirect-content"><ul class="_grid_current"><li>Nested content</li></ul></section></div></div><div class="_content_current"><div><section id="indirect-section"><ul class="_grid_current"><li>Nested section</li></ul></section></div><section id="indirect-grid"><div><ul class="_grid_current"><li>Nested grid</li></ul></div></section></div></div>';
+    await page.setContent(homeFixture.replace('</main>',unrelated+'</main>'));await page.addStyleTag({content:await fs.readFile('styles/hide-recommended-live.css','utf8')});
+    for(const id of ['no-swap','no-content','indirect-content','indirect-section','indirect-grid'])assert.equal(await page.locator(`#${id}`).evaluate(n=>getComputedStyle(n).display),'block',id);
+  });
+  await checkNative('unmarked responsive home content is not hidden',async()=>{
+    await page.setContent(homeFixture.replace(' data-knife-home="1"','').replace(' _is_two_columns_current',''));await page.addStyleTag({content:await fs.readFile('styles/hide-recommended-live.css','utf8')});
+    assert.equal(await page.locator('#recommended').evaluate(n=>getComputedStyle(n).display),'block');
+  });
+  await checkNative('removing recommendation style restores the responsive home section',async()=>{
+    await page.setContent(homeFixture.replace(' _is_two_columns_current',''));const css=await page.addStyleTag({content:await fs.readFile('styles/hide-recommended-live.css','utf8')});
+    await css.evaluate(n=>n.remove());
+    assert.equal(await page.locator('#recommended').evaluate(n=>getComputedStyle(n).display),'block');
+    assert.ok(await page.locator('#recommended').evaluate(n=>n.getBoundingClientRect().height>0));
   });
   console.log(JSON.stringify({browser:browser.version(),checks:checked,passed:checked-failures.length,failures},null,2));
   assert.equal(failures.length,0,'Native CSS behavior regressions');
