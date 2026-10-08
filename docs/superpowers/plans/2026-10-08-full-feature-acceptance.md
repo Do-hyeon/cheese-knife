@@ -107,6 +107,8 @@
 
 ### Task 4: 기여 PR 완료 조건
 
+- [x] 89b54c7 사용자 새로고침 후 설치본 sidebar 통제 href 재사용/tooltip 실제 API·동일 카드 cache/holdOFF trusted pending·active·정지·재생 기본 수용. 원래 설정/미디어/진단 정리·freshNode136/package/hash 확인. live 내부 연결점 추가 조회는 문서 응답 대기 제한으로 차단되어 조사 탭 페이지 새로고침만 사용자 요청. 삭제 표시 미지원/나머지 수용 공백/전체 PR 게이트는 열린 상태로 유지.
+
 - [x] 후속readiness 독립검토의Important2와사용자명시승인Minor1을한보완패스로수정:sidebar2/tooltip4/holdOFF6 RED→GREEN+2외부표지보호,Node136/nativeCSS91/filter17/build/package/hash PASS. 새JS설치본수용에는수동확장새로고침필요;전체기능/PR완료아님. 검토/보완이력은 `../reviews/2026-10-08-final-readiness-review.md`에이어짐.
 
 **Files:** README.md, README-en.md, docs/superpowers/validation/ 및 한글 PR 본문.

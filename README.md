@@ -10,7 +10,7 @@ Vue 없이 플레이어 버튼·컴프레서·VOD 길게 눌러 2배속을 제�
 
 자동 테스트 136개를 통과했으며, 별도 브라우저의 실제 오디오·공개 방송 미리보기 검증도 기록했습니다. [독립 구현 검토](docs/superpowers/reviews/2026-10-08-implementation-review.md), [실제 Chrome VOD 길게 누르기 수정 검토](docs/superpowers/reviews/2026-10-08-vod-hold-review.md), [전체 브랜치 독립 검토와 보완](docs/superpowers/reviews/2026-10-08-whole-branch-review.md)도 공개합니다. 설치된 Chrome에서 일부 기능을 검증했으나 전체 기능 검증과 출시 승인은 아직 완료되지 않았습니다.
 
-[후속 readiness 독립 검토](docs/superpowers/reviews/2026-10-08-final-readiness-review.md)의 링크·VOD 툴팁 재사용과 2배속 OFF 취소 결함을 승인된 한 번의 보완 패스로 수정했습니다. 신규14개 중12개 실패→통과와2개 보호 검사, 전체Node136·스타일91·필터17을 확인했습니다. 새JS 설치본 수용에는 수동 확장 새로고침이 필요하며, 남은 기능/환경의 미검증을 전체 정상으로 합산하거나 아직 기여 PR을 열지 않습니다.
+[후속 readiness 독립 검토](docs/superpowers/reviews/2026-10-08-final-readiness-review.md)의 링크·VOD 툴팁 재사용과 2배속 OFF 취소 결함을 승인된 한 번의 보완 패스로 수정했습니다. 신규14개 중12개 실패→통과와2개 보호 검사, 전체Node136·스타일91·필터17을 확인했습니다. 사용자 확장 새로고침 후 [통제된 설치본 재사용·실제 VOD 입력 검사](docs/superpowers/validation/2026-10-08-restored-settings-and-runtime-checks.md)도 통과했습니다. 삭제된 채팅 표시 미지원과 남은 기능/환경의 미검증을 전체 정상으로 합산하지 않으며, 기여 PR은 아직 열지 않았습니다.
 
 Gain 바를 48px·끝 여백 8px로 조정해 실제 라이브에서 확인했습니다. [합성 신호 음질 검사](docs/superpowers/validation/2026-10-08-audio-quality-and-gain-spacing.md)는 기본 설정의 출력과 전환 시 개선 후보를 기록하며, 실제 음성·음악의 음질 보장은 아닙니다. 오디오 처리 방식은 이번 검사에서 변경하지 않았습니다.
 

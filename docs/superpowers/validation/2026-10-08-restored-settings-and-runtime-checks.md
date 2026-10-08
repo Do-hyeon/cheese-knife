@@ -73,3 +73,27 @@ live주영상은1920×1080/playingready4였다. VOD초기wrapper영상은1280×7
 합성무음오디오측정도현재모듈로재실행해exit0/Chrome155.0.8059.39/source1/기본14case의fullscale초과sample0,Gain전환12개가각자의settledendpoint최대step을넘지않음을확인했다. 실제스피커에는0을출력했다. 기존toggle dip(250Hz약0.1447 대baseline0.2632,750Hz약0.1472 대0.2844)와별도stress peak1.95944/초과16000은유지되며해결/주관적음질보장으로주장하지않는다. ignored로그 `final-audio-native.log`와기존 `output/audio-quality/report.json`에기록됐다.
 
 새문맥전체readiness독립검토에서중요2건/경미1건을발견했다. [후속 검토 기록](../reviews/2026-10-08-final-readiness-review.md)에원인/재현/미검증/짧은보완설계승인게이트를남겼다. 승인전제품/회귀파일/build는변경하지않는다. 전체기능완료/PR는아직아니다.
+
+## 89b54c7 설치본: 승인된 세 수정의 수용
+
+사용자가 확장 새로고침 완료를 알린 후 새 own home/VOD 탭에서 검사했다. 원래 preview=true/pressToFastForward=true/필터1·1·1·1·0/configuration ready를 확인했다. 제품 코드나 설정 저장소를 변경하지 않고 설치된 모듈을 사용했다. 아래는 통제된 DOM 전환/실제 포인터 검사이며, 실제 채널의 방송 시작이나 사이트 카드 재사용 발생 빈도를 증명하지 않는다.
+
+| 수정 | 실제 설치본 증거 | 판정 범위 |
+| --- | --- | --- |
+| sidebar href 재사용 | 기존 sidebar 아래 owned 시험 anchor를 실제 공개 live 링크의 offline 경로로 추가. 초기 custom drag payload 없음 → 같은 노드의 href만 live로 전환 → payload 현재 URL 일치. 현재 rect와 elementFromPoint hit를 확인한 trusted hover 후 panel visible/video1/preview ready. leave hidden/video0. 이후 offline/foreign URL 모두 custom payload 없음 | 설치본 이벤트 연결·유효 주소·hover 표시 PASS. DataTransfer는 실제 DOM의 합성 dragstart 경계이고 native OS 드래그 중복 횟수/새 스트림 프레임 진행까지 측정하지 않음 |
+| VOD tooltip 재사용 | 실제 홈 VOD 카드의 동일 날짜 노드/링크 A→B→A. A annotation 성공, B 전환 즉시 old annotation 제거·조회2, B annotation 성공/서로 다른 날짜, A 복귀 첫 text 일치·조회2 유지. foreign URL old annotation 제거, 외부 writer 표지 보존 | 실제 metadata API/동일 노드 재조회·cache·owned marker 처리 PASS. mouseover는 합성 이벤트, pending 경쟁/legacy/끊기지 않은 hover 모든 변형은 이 installed 검사로 보장하지 않음 |
+| hold OFF | 광고가 아닌 settled 주 VOD 1920×1080/ready4/playing/rate1에서 trusted CDP mouse input. playing·paused 각각 pending OFF(23.4ms/16ms) 후 500ms 넘게 유지해도 rate1/indicator0, native 완료 클릭은 pause/play 유지. active에서는 rate2/indicator1 확인 후 OFF 즉시 rate1/indicator0/원래 playing 또는 paused 복원. OFF 뒤 약8.7초/32.7초 지나 matching release해도 재생 토글 없음. 다음 일반 short click은 native pause 정상 | pending/active 및 playing/paused 설치본 기본 수용 PASS. foreign pointer/새 사용자 rate/취소/기타 모드 경계는 별도 Node 회귀 증거이지 모두 실제 입력 PASS는 아님 |
+
+sidebar anchor의 draggable은 HTML anchor 기본값도 true이므로 처음 읽은 false인 `offlineInitially` 값을 연결 실패 증거로 쓰지 않았다. 초기 잘못된 hover y=160은 실제 반환 rect y=200의 중심 y=220으로 수정하고 hit를 검증했다. 최초 빈 panel은 준비 중 관찰이지 제품 FAIL이나 재생 PASS가 아니다. 첫 tooltip 준비 expression의 undefined는 정규식 문자열 escape 문제이며 상태 생성 전에 실패했다. 단순 prefix 계측으로 준비 성공을 확인한 뒤 실제 API 결과만 수용했다.
+
+owned anchor 제거, tooltip의 원래 href/속성 및 fetch 원본 identity 복원, 모든 probe Symbol/listener 제거를 확인했다. VOD의 원래 hold 옵션=true/rate1/pausedfalse/mutedfalse를 복원했다. mute/paused 변화는 own 검사 탭에만 적용했으며 사용자 시청 탭/확장 저장소/viewport는 바꾸지 않았다. own home/VOD를 닫았다. live 추가 조사 탭에는 DOM/미디어 mutation을 실행하지 않았다.
+
+최신 전체 Node136/136/실패0/skip0, source·dist package 각 v2.13.2/20 entry resources 및 diff check PASS. inject source/dist SHA256 `7B674AAA712D9B7267BE1090C56F829FBCAC6728C52277DDB9E4FA281CE9CAAF`, player `1A891BF5718011978060B288D4FBE62232964EFB09FD1FABDFB66874FF07900A`가 일치한다. 로그는 ignored `readiness-installed-node.log`. 제품/build/CSS/오디오 변경이 없으므로 이전 CSS91/filter17/audio 측정치를 이번 fresh 실행으로 재표기하지 않는다.
+
+### 여전히 열린 조건
+
+- 삭제된 채팅 표시는 production에서 `jsx-adapter-unavailable` 제한으로 처리하며 구현되지 않았다. 새 own live의 player/chat root는 읽기 전용 DOM에서 확인했으나 MAIN controller 추가 조회는 문서 응답 대기 제한으로 거부됐다. 연결점 존재/현재 deleted 옵션 상태를 이 실패한 조회로 단정하지 않는다. 다른 transport로 우회하지 않고 이 조사 탭만 사용자 페이지 새로고침을 요청했다. 확장 재빌드/새로고침은 필요 없다. 새로고침으로 제한 해소가 보장되는 것도 아니다.
+- hideDonation type10 실이벤트 의미, mission/party/blocked 대상, 광고/보호소스, 전체 모드·조합·교체/장기 GC와 실제 GPU/청취 경계는 앞선 미검증 상태를 유지한다. 채팅/후원/moderation/차단·결제 등을 실행해 시험을 제조하지 않는다.
+- 허용 DVR은 사용자 미결제로 실사용 불가이며 기존 명시적 환경 제외를 유지한다. 이번 세 수정의 수용이나 green suite를 전체 기능 복구로 합산하지 않는다. 기여 PR은 아직 열지 않는다.
+
+사용자가 조사용 live 페이지 새로고침을 완료했다. 같은 탭의 동일한 제한 진단을 한 번 재시도했지만 같은 문서 응답 대기 제한이 유지됐다. controller 조회는 실행되지 않았고 사이트 함수/채팅/계정/설정에 mutation을 하지 않았다. 공식 browser-troubleshooting 문서에도 이 상태의 별도 해제 방법은 없었다. 새 탭·다른 transport·browser 재선택으로 같은 제한을 우회하거나 사용자 새로고침을 반복 요청하지 않는다. 대기 중인 브라우저 제어 확인 요청이 사용자에게 보이는지 확인이 필요한 상태다. 제품 결함의 원인으로 이 도구 제한을 혼동하지 않는다.
