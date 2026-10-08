@@ -118,3 +118,25 @@ VOD 캡처는 이번에도 Page.captureScreenshot5000ms timeout으로 성공 이
 별도 검사 주video의 원래 muted=false를 보존해 임시true로 검사하고 끝에false로 복원했다. native 모드 전환이 변경한 검사 탭의 player/video/section scrollTop만 상단으로 돌렸다. 마지막 일반모드/비fullscreen/높이640/playing/ready4/시간진행/임시CSS0/진단Symbol없음을 확인한 뒤 닫았다. viewport override를 reset하고 새 별도 홈에서2560×1249를 확인한 뒤 닫았다. 사용자 시청 탭/저장소는 검사자가 변경하지 않았다.
 
 다음 사용자 적용 묶음은 화면 채우기OFF 원복과 채팅6개 검사다. 채팅 크기 조절OFF, 폰트 숫자8, 타임스탬프OFF, 주간 랭킹 숨김ON, 진행 중 미션/파티 숨김ON, 왼쪽 배치OFF;나머지는 복원 기준 그대로다. 폰트 항목 checkbox는 disabled이고 숫자를 움직이면 자동 선택되므로 checkbox를 직접 켜라고 요구하지 않는다. 이후 실제font/handle/시각/배치/랭킹·미션 존재를 확인하고 채팅 원래 값(크기ON/font0/시각ON/랭킹OFF/미션OFF/왼쪽ON)으로 복원한다. 미션 이벤트가 없는 경우0개를 숨김 성공으로 표시하지 않는다. 제품을 바꾸지 않아 다음 단계는 확장 자체가 아니라 설정의 페이지 적용만 필요하다. 모든 기능/스타일 및 PR는 여전히 미완료다.
+
+## 채팅 반대 설정 검사 및 배지 크기 결함
+
+사용자가 위 묶음 적용 완료를 알렸다. 기존 사용자 시청 탭을 읽기 전용으로 확인했을 때 이전 문서의font0/14px/왼쪽채팅/handle1/시각ON/랭킹표시가 남아 있었다. 사용자 탭을 reload하거나 설정 저장 실패로 단정하지 않았다. 새 실제live/VOD 문서에는 새font8/설정OFF·ON이 적용되어 있었으므로 현재 설정 검사는 새 문서를 기준으로 했다.
+
+| 항목 | 새 문서 실제 관찰 | 판정 범위 |
+| --- | --- | --- |
+| VOD 화면 채우기 OFF | 1800×700에서 인라인/계산 max-height `calc(100% - 84px)`/높이556 | 후보 저장ON640→원래OFF556 기본 원복 수용 |
+| 채팅 크기 조절 OFF | live/VOD CSS변수없음/handle0 | OFF 기본 수용. live player는 handle 제거분3px만큼 증가해1966px |
+| 타임스탬프 OFF | live/VOD 실제 message3개 `::before=none`/data-timestamp없음 | OFF 기본 수용 |
+| 왼쪽 배치 OFF | live chat x2207/player x240, VOD1800px chat x1432 | 기본 오른쪽 배치 수용 |
+| 폰트8 | live/VOD message·nickname22px | 일반 문자열 크기 수용. 아래 배지 결함으로 전체 글꼴 기능 PASS는 아님 |
+| 주간 랭킹 숨김 ON | 실제live 대상1개 displaynone/높이0 | ON 기본 수용 |
+| 미션/파티 숨김 ON | 실제live 해당 대상0개 | 이벤트가 없어 UNVERIFIED. 숨김 성공 또는 선택자 결함으로 단정하지 않음 |
+
+VOD 처음 메시지 수0은 데이터가 아직 표시되지 않은 시점이었다. 이후 동일 문서 실제 message19개/본문·nickname22px를 확인했으므로0개를 글꼴 PASS/구조 불일치로 합산하지 않았다. 두 영상은 playing/readyState4/시간진행/임시CSS0이었다. 직접 재생·음량·속도·설정 저장은 바꾸지 않았다. 임시 viewport를 reset하고 별도 홈2560×1249를 확인한 뒤 탭을 닫았다. 채팅 내용/작성자/이미지 원문 URL은 저장하지 않았다.
+
+추가 actuallive 배지 조사는 보완 필요 결함을 확인했다. 현재 일반 message 안의 실제 이미지6개는 제한적인 metadata 분류에서 badgeHint=true/emojiHint=false였다. `width`/`height` attribute는18인데, 현행 chat-font의 일반 image rule `24px+offset`가 important로 적용되어font8에서32×32px였다. 해당 이미지는 `_nickname_` 자손의 `_icon_` 안에 있고 아이콘과 바로 바깥 `_wrapper_`는 여전히18×18px였다. 따라서 닉네임 배지32px가18px 영역을 넘는다. 기존 legacy 배지 규칙의 의도는18px+offset(8일 때26px)이므로, 텍스트22px만으로 글꼴 전체 성공을 선언하지 않는다.
+
+이 조사에서는 exact 채팅 image query/DOM depth0/해당 image의 width·height 규칙만 사용했고 src/alt/title 문자열은 출력하지 않고 분류 boolean만 남겼다. CSS/DOM 진단을 disable하고 추가 검사 탭을 닫았다. 제품/테스트/build/저장 설정을 변경하지 않았다.
+
+**사용자 승인 대기 bounded 보완안:** `styles/chat-font-size.css`에서 실제 chat log/message/nickname/배지 icon 관계에만 배지 image와 icon·직접 외곽 wrapper 크기를18px+offset으로 맞춘다. 일반 이모지24px+offset과 문자열14px+offset, legacy 규칙은 유지한다. 임의 global `_icon_`/`_wrapper_` 요소까지 키우지 않는다. Native fixture에서 offset−6/0/8의 배지12/18/26px·이모지18/24/32px·텍스트8/14/22px 및 foreign/non-badge 경계 검사를 먼저 작성하고 실패→최소 수정→전체 회귀/실제 임시A/B를 수행한다. 승인 전에는 코드를 구현하지 않으며, 새 dist가 생기면 또 필수 수동 확장 새로고침 단계에서 중지한다. 현재 임시 저장값은 위 검사 묶음이고 최종 원래 채팅 값 복원은 보완 검증 후 남아 있다. 전체 기능/PR 조건은 미충족이다.
