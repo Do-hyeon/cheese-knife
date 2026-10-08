@@ -321,3 +321,11 @@ live 임시적용에서는video playing/readyState4였다. VOD최초적용읽기
 build/package v2.13.2·20 entry resources·diff check PASS. source/dist rectangle-profile SHA256 모두 `4E515030F77B12339D8D7A8A7CE48B38FD248275C7C1927AEC2FA7022A185EDC`다. local ignored로그 `output/acceptance/channel-profile-css-red.log`, `channel-profile-css-green.log`, `channel-profile-node.log`에기록했다.
 
 새dist의실제등록수용에는 **필수수동확장새로고침** 이필요해중지한다. 현재8개임시반대설정은유지하고새설치본의profile/radius·썸네일보호를확인한후original(정적로고/주제숨김/Studio숨김/live배지숨김/사각profile/차단숨김OFF,자동숨김/topExploreON)로원복해야한다. 차단방송실제대상부재·기타메시지/모드·전체기능/최종독립검토/PR조건은아직미완료다.
+
+## 5a76d95 사각 프로필 설치본 기본 수용
+
+사용자가 확장 새로고침 완료를 알렸다. 이전 실제 home에서 확인한 공개 live/VOD 경로의 새 별도 문서를 열어 읽기 전용 검사했다. live 첫 읽기의 profile0은 로딩 중 값으로 제외하고 실제 대상 attached 후 검사했다. 두 문서 모두 채널 정보 profile1개의 wrapper/image radius0px, wrapper70×70/image60×60을 확인했다. 임시 probe style은0이며 후보 CSS를 추가하지 않은 설치본 결과다.
+
+live 다른 thumbnail anchor5개의 native radius12px/child image13px, VOD 다른 thumbnail element31개 중 native DIV30개의 radius8px와 SPAN1개의 radius0px를 확인했다. 일반 썸네일을 전부 사각화하지 않았다. 두 문서 관찰 시 주영상 pausedfalse/readyState4/1920×1080이었다. 이는 관찰 시점의 상태이며 장시간 재생/음질/모든 모드의 수용을 뜻하지 않는다. 사용자 시청 탭·확장 저장소·미디어·viewport를 변경하지 않았고 own탭2개를 닫았다. 이미지URL/alt/채널ID/본문을 수집하지 않았다. 픽셀 캡처 미검증 제한은 유지한다.
+
+현재 source/dist rectangle-profile hash는 위4E5150...와 일치한다. 이번에는 제품/테스트/build를 변경하거나 suite를 다시 실행하지 않았으므로 이전122/91 결과를 fresh 실행으로 주장하지 않는다. 검사8개 임시 설정의 original 복원(앞6OFF/뒤2ON)은 수동 설정 화면 접근이 필요한 다음 단계다. 원복 확인·나머지 기능/모드 검증·최종 독립 검토·PR은 남아 있다.
