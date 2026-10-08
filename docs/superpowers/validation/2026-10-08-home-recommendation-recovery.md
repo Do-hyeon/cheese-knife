@@ -8,7 +8,7 @@
 
 - coordinator가 설정 준비 후 정확한 `/` 경로의 `#layout-body`에만 `data-knife-home="1"`을 표시한다. 다른 탐색·장르 홈·VOD·제외 경로는 표시하지 않는다.
 - route/root 소유 scope가 바뀌거나 문서를 최종 해제하면 본인이 표시한 값만 제거한다. persisted bfcache는 보존한다. native subtree를 `.knife-owned`로 표시하지 않으므로 기존 DOM 관찰을 차단하지 않는다.
-- `hide-recommended-live.css`는 표시된 홈 루트 안에서 확인한 section/direct two-column grid만 숨긴다. 옛 추천 선택자도 보존한다.
+- 현재 반응형 보완 후보의 `hide-recommended-live.css`는 표시된 홈 루트의 swap/content/direct section/direct grid만 숨긴다. 최초5a4a7b9 후보는 two-column modifier에도 의존했으나 아래 설치본 검사에서 좁은 화면 FAIL이 확인돼 교체했다. 옛 추천 선택자도 보존한다.
 - 설정 키·저장값·manifest·권한·vendor·컴프레서·미리보기는 변경하지 않는다. 화면 표지는 공개 DOM의 시각적 scope이며 인증 경계가 아니다.
 
 숨기는 것은 **상단 일반 추천 방송 grid**다. 별도의 편집/행사 ‘추천 콘텐츠’, 프로모션, 팔로잉·최근 다시보기는 보존한다. 장르별 `/home/...` 화면의 추가 추천 구성까지 복구했다고 주장하지 않는다.
@@ -40,7 +40,7 @@
 
 반응형 수용은 **FAIL**이다. 2560px에서는 직접 UL이 `_grid_… _is_two_columns_…`여서 숨겨지지만,1200px에서 native React 재렌더 후 `_is_two_columns_…`가 제거되고 `_grid_…`만 남는다. marker=1은 유지되는데 추천 section이 block/387.875px로 다시 표시된다. 팔로잉284.421875px/최근 VOD369.421875px는 보존됐다. resize 직후의 과도기 DOM이나 타깃0개를 PASS로 세지 않는다. 두 번째 별도 홈 탭에서도 넓음→좁음→넓음→좁음의 클래스/표시 변화로 원인을 확인했다.
 
-현재 공개 DOM에서 일반 추천의 경계는 `_swap_…`의 직접 자식 `_content_…` 안의 직접 section/direct `_grid_…`다. 해당 경계로 narrow 선택자를 한정하는 CSS 후속 변경을 제안하지만 아직 구현하지 않았다. 임의 첫 section/nth-child나 모든 페이지 grid를 숨기는 변경은 하지 않는다. narrow 재현과 보호 영역 회귀, 폭 변화 후 재렌더 검사가 필요하다.
+5a4a7b9 검사 당시 공개 DOM에서 일반 추천의 경계는 `_swap_…`의 직접 자식 `_content_…` 안의 직접 section/direct `_grid_…`였다. 당시에는 이 경계로 narrow 선택자를 한정하는 CSS 후속 변경을 제안하고 승인 전 구현을 중지했다. 이후 승인된 구현/검증은 다음 절에 기록한다. 임의 첫 section/nth-child나 모든 페이지 grid를 숨기는 변경은 하지 않는다.
 
 임시 viewport는 reset하고 agent 검사 탭을 닫았다. 사용자 시청 탭/확장 저장 설정은 바꾸지 않았다. 설치본 성공/좁은 화면 실패 screenshots는 ignored `output/acceptance/home-installed-5a4a7b9.png`, `home-narrow-failure-5a4a7b9.png`에만 저장했다. 기존 저장 옵션OFF 수용도 아직 미검증이다.
 
@@ -54,6 +54,12 @@
 - 전체 Node101/101,native CSS40/40,build/source+dist package v2.13.2/20 entry resources,diff check PASS. CSS source/dist SHA256은 `075DE712F82E4FA755FCE28A0428C6349E971E611FAF5E3F86DE126FA35E5916`으로 동일하다.
 
 새 후보 검증은 임시 source CSS 검사이며 새 dist의 실제 등록/저장 옵션 수용이 아니다. 앞선5a4a7b9 설치본 좁은 화면 FAIL을 삭제하거나 새 설치본 PASS로 바꾸지 않는다.
+
+## 독립 읽기 전용 검토
+
+범위 `bcea12e..08ef30d`의 독립 검토1회:Critical/Important 없음,native CSS40/40 및 immutable diff check를 별도로 재실행했다. Minor는 초반 문서의 two-column/‘미구현’ 현재형 설명이 최신 후보와 혼동된다는 점이었으며,현재 선택자와 역사적 진단 단계로 구분해 수정했다. 제품 코드 추가 보완은 요구되지 않았다. 설치본 수용으로 진행 가능하다는 판정이며 전체 수용/merge/PR 승인은 아니다.
+
+검토 경계에 대한 작성자 판단:새 설치본/저장 옵션OFF는 필수 다음 단계로 유지하고,다른 기능/전체 화면/전체 브랜치는 기존 전체 acceptance 계획에 남긴다. 같은 swap/content 경계에 향후 다른 직접 grid가 생기는 경우는 현재 재현 결함이 아닌 DOM 변경 위험으로 기록한다. 편집/프로모션 fixture 추가는 선택적 권고이며 이번 실제 페이지 보존 관찰로 대체하되,합성 fixture로 해당 콘텐츠 자체가 검사됐다고 주장하지 않는다. 첫 캡처가 재관찰 전 렌더를 보여 재캡처했고,최종 캡처에서 추천 grid 제거·편집 추천/팔로잉 보존을 직접 확인했다. 기존 검토에서 제외한 항목을 전체 PASS로 바꾸지 않는다.
 
 ## 다음 게이트
 
