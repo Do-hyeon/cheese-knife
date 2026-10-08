@@ -88,6 +88,7 @@
 - [x] 사용자 전체 스타일 캡처로 25개 복원 기준(ON10/OFF15/font0) 확보. 현재 설치본 live1963/왼쪽채팅353/시각HH:mm/볼륨표시/사이드바 숨김3과 보존2 확인. 초기 native 미니 상태는 정상 주 플레이어 PASS로 합산하지 않으며 반대 설정/전체 조합은 남음. 타임머신은 사용자 미결제로 허용-DVR 실사용 미검증 제외 조건을 기록;결제/우회 없이 PR에 제한 명시.
 - [x] 플레이어 숨김2/볼륨표시 반대 저장값·원래 값 복원 설치본 확인. 현행 VOD 화면채우기 ON/OFF 동일1800×700 h556 FAIL 확정:구형vod selector0/현행wrapper 인라인 max-height 우선. VOD한정 important CSS·legacy/화면모드 보호의 bounded보완 설계 승인 대기;제품 코드 변경/전체플레이어스타일 수용/PR는 아직 하지 않음.
 - [x] 사용자 승인 후VOD fit CSS1규칙/문서fullscreen·팝업 제외/legacy·live 보존. native3RED→GREEN+6보호(total49)/Node109/build/package/hash PASS. 실제 새규칙 임시A/B 일반556→640→556/넓은700 보존·임시상태 복원. 새dist 전체CSS 저장ON/OFF 설치본 수용에는 수동 확장 새로고침 필요;필수 중지 조건과 전체PR 게이트 유지.
+- [x] aa6 설치본 새로고침/화면채우기 저장ON 후 임시CSS0 일반640/넓은700/일반복귀640 수용. 자동 fullscreen 진입false는 미확인으로 분리. own media/scroll/viewport/Symbol 복원·탭정리;원래fitOFF와채팅6개 실제 설정 검사·원복은 남음. 전체기능/스타일/PR수용으로확대하지 않음.
 
 ### Task 4: 기여 PR 완료 조건
 

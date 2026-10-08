@@ -108,3 +108,13 @@ VOD 캡처는 이번에도 Page.captureScreenshot5000ms timeout으로 성공 이
 빌드/패키지 v2.13.2·20 entry resources·diff check PASS. source/dist `fit-player.css` SHA256은 모두 `B2A56D16DC93EDC057BB059F28BDD7DDC39FA7E69AF0F07187C9DE4AF846EE89`다. 로그는 로컬 ignored `output/acceptance/vod-fill-css-red.log`, `vod-fill-css-green.log`, `vod-fill-node.log`에 남겼고 민감 payload는 추가하지 않았다.
 
 아직 실제 저장 옵션 ON을 통한 전체 후보 CSS 등록/일반·넓은 화면/OFF 복원 수용은 남았다. 제품 변경으로 새 dist가 생겼으므로 사용자 확장 새로고침이 반드시 필요하다. 도구 정책상 이를 자율 수행할 수 없어 이 단계에서 중지한다. 기존 저장 설정은 화면 채우기OFF 등 사용자 원래 값 그대로이며, 새로고침 후 ON 테스트와 다시OFF 복원은 다음 단계다. 전체 기능/독립 최종 검토/PR 완료를 선언하지 않는다.
+
+## aa6ad54 새 설치본의 저장 옵션 ON 수용
+
+사용자가 확장을 새로고침하고 화면 채우기ON/페이지 적용 완료를 알렸다. source/dist hash는 위 값 그대로이고 제품 변경은 없었다. 별도 실제 VOD의1800×700 일반 모드에서 인라인 `calc(100% - 84px)`는 그대로이며 computed max-height100%/container와player 높이640px였다. 임시CSS는0개였다. native 넓은 화면으로 전환해700px/임시CSS0, 다시 일반 모드로 돌아와640px를 확인했다. 이는 새 설치본 저장 옵션ON의 기본 수용이다. OFF 복원/모든 화면 조건/visual screenshot 수용은 아직 남아 있다.
+
+새 fullscreen 제외 규칙의 실제 모드 검사를 위해 일반 모드에서 native 전체화면 버튼을 한 번 클릭했으나 `document.fullscreenElement`가 없었다. 따라서 해당 자동 입력은 성공이 아니며 새 설치본 전체화면의 판정은 미확인이다. 이전 사용자의 기본 fullscreen/Esc 직접 PASS와 별도 synthetic native CSS fullscreen 보호 PASS를 유지하되, 이번 실패한 자동 진입을 제품 전체화면 결함 또는 현재 모드 성공으로 단정하지 않는다. 추가 우회 입력/추측 패치를 하지 않았다.
+
+별도 검사 주video의 원래 muted=false를 보존해 임시true로 검사하고 끝에false로 복원했다. native 모드 전환이 변경한 검사 탭의 player/video/section scrollTop만 상단으로 돌렸다. 마지막 일반모드/비fullscreen/높이640/playing/ready4/시간진행/임시CSS0/진단Symbol없음을 확인한 뒤 닫았다. viewport override를 reset하고 새 별도 홈에서2560×1249를 확인한 뒤 닫았다. 사용자 시청 탭/저장소는 검사자가 변경하지 않았다.
+
+다음 사용자 적용 묶음은 화면 채우기OFF 원복과 채팅6개 검사다. 채팅 크기 조절OFF, 폰트 숫자8, 타임스탬프OFF, 주간 랭킹 숨김ON, 진행 중 미션/파티 숨김ON, 왼쪽 배치OFF;나머지는 복원 기준 그대로다. 폰트 항목 checkbox는 disabled이고 숫자를 움직이면 자동 선택되므로 checkbox를 직접 켜라고 요구하지 않는다. 이후 실제font/handle/시각/배치/랭킹·미션 존재를 확인하고 채팅 원래 값(크기ON/font0/시각ON/랭킹OFF/미션OFF/왼쪽ON)으로 복원한다. 미션 이벤트가 없는 경우0개를 숨김 성공으로 표시하지 않는다. 제품을 바꾸지 않아 다음 단계는 확장 자체가 아니라 설정의 페이지 적용만 필요하다. 모든 기능/스타일 및 PR는 여전히 미완료다.

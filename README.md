@@ -49,7 +49,7 @@ Node 24.x에서 `npm ci`, `npm test`, `npm run check`, `npm run build`를 실행
 
 [홈 추천 방송 숨김 후보](docs/superpowers/validation/2026-10-08-home-recommendation-recovery.md)는 일반 홈의 상단 추천 grid만 숨기고 편집 추천 콘텐츠·팔로잉·최근 다시보기는 보존합니다. 좁은 화면 재렌더 결함을 보완해 Node 101개·native CSS 40개를 통과했고, 새 설치본에서 임시 CSS 없이 좁음↔넓음 재렌더·화면 전환·저장 옵션OFF 원복/ON 복원을 확인했습니다. [추가 설치본 검사](docs/superpowers/validation/2026-10-08-installed-remaining-function-checks.md)에서 전체 화면/Esc는 사용자 직접 정상 확인했고, 시작 시각 연결점 불일치도 후속 보완을 검증했습니다. 나머지 전체 수용은 계속 진행 중입니다.
 
-[플레이어 스타일 검사](docs/superpowers/validation/2026-10-08-style-baseline-and-acceptance.md)에서 버튼 숨김·볼륨 표시의 설정 반전/원복을 확인했고, 현행 VOD ‘화면 채우기’의 구형 선택자·인라인 높이 제한 결함을 보완했습니다. 후보는 Node109개·native CSS49개와 실제 VOD 임시 규칙 A/B를 통과했으나, 새 dist의 저장 옵션 ON/OFF 설치본 수용은 확장 새로고침 후 남아 있습니다. 타임머신은 현재 계정 조건으로 실사용 미검증이며 전체 정상으로 합산하지 않습니다.
+[플레이어 스타일 검사](docs/superpowers/validation/2026-10-08-style-baseline-and-acceptance.md)에서 버튼 숨김·볼륨 표시의 설정 반전/원복을 확인했고, 현행 VOD ‘화면 채우기’의 구형 선택자·인라인 높이 제한 결함을 보완했습니다. 후보는 Node109개·native CSS49개와 실제 VOD 임시 규칙 A/B를 통과했고, 새 설치본의 저장 옵션ON도 임시CSS 없이 일반/넓은 화면에서 기본 수용했습니다. OFF 복원과 나머지 모드/스타일 검사는 남아 있습니다. 타임머신은 현재 계정 조건으로 실사용 미검증이며 전체 정상으로 합산하지 않습니다.
 
 [시작 시각 보완](docs/superpowers/validation/2026-10-08-start-time-selector-recovery.md)은 현재 live/VOD 연결점을 추가하고 기존 조회·캐시·취소·URL 검증을 유지합니다. 수동 새로고침 후 실제 설치본의 기본 표시·재진입·화면 전환 정리·새 카드 캐시 재사용도 확인했습니다. VOD 캡처와 모든 모드/기타 기능의 전체 수용은 별도 경계로 남아 있습니다.
 
