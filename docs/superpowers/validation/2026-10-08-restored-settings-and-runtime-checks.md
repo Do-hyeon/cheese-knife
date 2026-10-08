@@ -23,3 +23,17 @@ UI 버튼의 키보드Enter로20회 ON/OFF했다. 매번 해당상태 attached�
 실제설치본의설정변경→SVG노드5개/영상필터반영→중립원복검사는남았다. 설정화면접근불가제한을유지하고확장isolated세계/Chrome storageAPI를통해우회변경하지않는다. 사용자에게설정UI에서시험값밝기1.5/대비1.1/채도0.5/감마0.8/선명도2적용을요청하고,검사뒤원래1/1/1/1/0으로복원확인해야한다. 확장자체새로고침은필요없다. 실제pixels/GPU확인은현재캡처제한과분리해미검증으로남긴다.
 
 전체기능·특수메시지/타임머신권한/최종독립검토·PR게이트는아직완료되지않았다. 이전Node122/nativeCSS91기록을이번fresh실행으로주장하지않는다.
+
+## 설치본 필터값 적용 후 native CSS 충돌 확인
+
+사용자가시험값적용완료를알렸다. 새ownlive/VOD에서body knife-filterON/knifeFilter1개/자식5개를확인했다. RGB밝기slope1.5,대비slope1.1/intercept-0.05,감마exponent0.8,채도0.5,선명도kernel `0 -0.4 0 -0.4 2.6 -0.4 0 -0.4 0`이었다. 설정 bridge/SVG 생성은반영됐지만두문서의정착한주영상computedfilter는nativePZP URL이었다. 그러므로실제영상에확장필터적용은FAIL이며합성11PASS로덮지않는다.
+
+VOD초기에는영상4개중native필터의paused720p1개/ready0인2개/knifeFilter의playing720p1개였다. 정착뒤native필터주영상1920×1080/playingready4와ready0영상2개로바뀌었다. 로딩중영상중하나에knifeFilter가보인것을주영상성공으로합산하지않는다. live정착주영상도1920×1080/playingready4/native필터였다. 미디어를seek/mute/play/pause하지않았다.
+
+live주영상의matchedCSS에서기존 `.knife-filter video`와 native `.pzp-pc--<instance>.pzp-pc--filter .webplayer-internal-video`가둘다filter를선언하고둘다normalpriority였음을확인했다. 영상inlinefilter는없었다. native specificity가더높아확장선언을이긴다. CSS/DOM진단은허용된현재HTTP(S)탭에서depth0/document→주영상query→filter선언만반환하고끝에disable했다. 전체styleSheet/React/채팅/영상URL은수집하지않았다.
+
+nativeSVG는GaussianBlur(stdDeviation1)→arithmetic Composite2개를사용하는기존보정파이프라인이었다. 두문서의 `.pzp-pc__video .webplayer-internal-source-wrapper`는DIV1개/directVIDEO1개/자체filter none이었다. 일반important로영상filter를교체하면기존native파이프라인을제거하므로그접근은추천하지않는다.
+
+bounded보완안: `web/main.css`의필터규칙만조정해current PZP의직접VIDEO를감싼영상전용sourcewrapper에knifeFilter를적용하고,그directVIDEO는기존genericvideo선택자에서제외해중복적용을막는다. native영상filter/다른legacy·preview영상의기존적용/중립OFF동작을보존한다. JS/권한/저장값/observer는바꾸지않는다. 실제wrapper+강한native규칙을사용한회귀를먼저RED로재현하고native필터보존/한번적용/중립원복/legacy보존/실제pixels와재생검사후새dist를검증한다. 구현에는사용자짧은설계승인이필요하며승인전제품/테스트/후보CSS/build를변경하지않았다.
+
+own탭2개를닫았고user탭/확장저장소/viewport/미디어를변경하지않았다. 현재필터시험값은그대로유지하며보완설치수용후1/1/1/1/0으로원복해야한다. 다음필수확장새로고침게이트와전체검증/최종검토/PR미완료조건은유지한다.
