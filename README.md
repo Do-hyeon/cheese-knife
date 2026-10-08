@@ -47,7 +47,7 @@ Node 24.x에서 `npm ci`, `npm test`, `npm run check`, `npm run build`를 실행
 
 합성 영상의 밝기·대비·감마·채도·샤프닝 필터 검사는 `node scripts/check-video-filters.mjs --chrome`으로 실행합니다. 실제 필터가 적용된 영상의 픽셀·초기화 등 11개 사례를 확인하며, 사용자 GPU나 샤프닝의 경계 화질을 보장하지 않습니다. [전체 브랜치 검토](docs/superpowers/reviews/2026-10-08-whole-branch-review.md)에 결과와 남은 검증을 기록했습니다.
 
-[홈 추천 방송 숨김 후보](docs/superpowers/validation/2026-10-08-home-recommendation-recovery.md)는 일반 홈의 상단 추천 grid만 숨기고 편집 추천 콘텐츠·팔로잉·최근 다시보기는 보존합니다. 좁은 화면 재렌더 결함을 보완해 Node 101개·native CSS 40개를 통과했고, 새 설치본에서 임시 CSS 없이 좁음↔넓음 재렌더와 화면 전환의 정리·재적용을 확인했습니다. 실제 저장 옵션OFF 원복 검사는 남아 있습니다. [추가 설치본 검사](docs/superpowers/validation/2026-10-08-installed-remaining-function-checks.md)에서 시작 시각의 현행 live 연결점 불일치를 확인해 전체 수용은 계속 진행 중입니다.
+[홈 추천 방송 숨김 후보](docs/superpowers/validation/2026-10-08-home-recommendation-recovery.md)는 일반 홈의 상단 추천 grid만 숨기고 편집 추천 콘텐츠·팔로잉·최근 다시보기는 보존합니다. 좁은 화면 재렌더 결함을 보완해 Node 101개·native CSS 40개를 통과했고, 새 설치본에서 임시 CSS 없이 좁음↔넓음 재렌더·화면 전환·저장 옵션OFF 원복/ON 복원을 확인했습니다. [추가 설치본 검사](docs/superpowers/validation/2026-10-08-installed-remaining-function-checks.md)에서 전체 화면/Esc는 사용자 직접 정상 확인했으나 시작 시각의 현행 live/VOD 연결점 불일치가 남아 전체 수용은 계속 진행 중입니다.
 
 [Website](https://www.chz.app/) | [Discord](https://discord.gg/9kq3UNKAkz) | [Chrome Web Store (Chromium, Edge, Whale 호환)](https://chromewebstore.google.com/detail/nfkfgkkhgglkgnlppncolmpekidapkjh) | [Firefox Add-ons](https://addons.mozilla.org/addon/cheese-knife/) | [English](./README-en.md)
 
