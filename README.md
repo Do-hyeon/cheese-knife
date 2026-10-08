@@ -8,6 +8,8 @@
 
 스토어에는 아직 제출·게시하지 않았습니다. [사용 안내](https://github.com/Do-hyeon/cheese-knife/blob/codex/community-store-preview/README.md)와 [문제 신고](https://github.com/Do-hyeon/cheese-knife/issues)는 이 포크를 대상으로 합니다. 원본 PR #81의 `codex/chzzk-compatibility-recovery`와 원본/main은 이 배포 준비 변경으로 수정하지 않습니다. 새로운 스토어 항목은 기존 원본 설치와 별개이므로 중복 실행을 피하고, 설정 자동 공유·자동 이전을 전제로 하지 마세요.
 
+[개인정보처리방침 / Privacy Policy](PRIVACY.md)은 로컬 채팅·식별자·주소·조작 이벤트 처리, 치지직 API 및 미디어 연결, 저장 위치·삭제와 제한적 사용을 설명합니다. 개발자 서버로 전송하지 않는다는 사실이 데이터 처리가 없다는 뜻은 아닙니다.
+
 이 배포 준비 브랜치는 전체 Node169·native 스타일108·영상필터17 및 합성 팝업 한·영2건을 확인했습니다. [배포 준비 기록](docs/superpowers/validation/2026-10-08-community-store-preparation.md)을 참고하세요. 아래의165건·후보/대기 설명은 이전 호환성 복구 시점의 기록이며 현재 설치본·스토어 심사 승인으로 확대하지 않습니다.
 
 [한글 기여 PR #81](https://github.com/jebibot/cheese-knife/pull/81)을 원본 저장소에 제출했습니다. 검증한 범위와 미검증·음질/환경 한계를 명시한 복구 시험판 기여이며 전체 정상·출시 승인이나 스토어 배포가 아닙니다. 아래 시점별 후보 기록의 대기 상태는 당시 결과이며 최신 상태는 [기여 준비 상태](docs/superpowers/validation/2026-10-08-contribution-readiness.md)를 기준으로 확인하세요.

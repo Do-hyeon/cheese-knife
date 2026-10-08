@@ -8,6 +8,8 @@ Branch `codex/community-store-preview` adds separate publishing identity and gui
 
 No store submission or publication has taken place. [Guide](https://github.com/Do-hyeon/cheese-knife/blob/codex/community-store-preview/README.md) and [Report issue](https://github.com/Do-hyeon/cheese-knife/issues) refer to this fork. These publishing changes do not update PR #81's `codex/chzzk-compatibility-recovery`, upstream or either main. A new store item is separate from the original installation; avoid running both and do not assume automatic setting transfer.
 
+The [Privacy Policy / 개인정보처리방침](PRIVACY.md) explains local processing of chats, identifiers, addresses and interactions, CHZZK API/media connections, storage/deletion and Limited Use. Absence of transmission to a maintainer server does not mean absence of data processing.
+
 This publishing branch passed Node169/native styles108/video filters17 and two synthetic ko/en popup layout checks. See [store preparation](docs/superpowers/validation/2026-10-08-community-store-preparation.md). The165-test and candidate/pending notes below describe earlier compatibility work, not current installed acceptance or store approval.
 
 [Korean contribution PR #81](https://github.com/jebibot/cheese-knife/pull/81) is open against upstream. It discloses verified scope, unverified states and audio/environment limits, not full restoration or release approval. No store deployment or merge was performed. Historical candidate/pending notes below describe their respective stages; use the [latest readiness summary](docs/superpowers/validation/2026-10-08-contribution-readiness.md) for current status.
