@@ -1,12 +1,24 @@
 {
   "ext_name": {
-    "message": "치즈 나이프 - 치지직 CHZZK 도구 모음"
+    "message": "치즈 나이프 — 커뮤니티 복구판"
   },
   "ext_shortName": {
-    "message": "치즈 나이프"
+    "message": "치즈 나이프 복구판"
   },
   "ext_description": {
-    "message": "치지직에 유용한 기능과 도구를 추가합니다."
+    "message": "치지직 시청 편의 기능을 제공하는 치즈 나이프의 비공식 커뮤니티 복구판입니다."
+  },
+  "footer_guide": {
+    "message": "사용 안내"
+  },
+  "footer_support": {
+    "message": "문제 신고"
+  },
+  "footer_source": {
+    "message": "소스 코드"
+  },
+  "footer_original": {
+    "message": "원본 프로젝트"
   },
   "config_category_preview": {
     "message": "미리보기"

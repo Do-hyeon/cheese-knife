@@ -2,6 +2,16 @@ document.title = chrome.i18n.getMessage("ext_shortName");
 document.getElementById("stylesConfig").textContent =
   chrome.i18n.getMessage("config_styles");
 
+for (const [id, key, fallback] of [
+  ["footer-guide", "footer_guide", "Guide"],
+  ["footer-support", "footer_support", "Report issue"],
+  ["footer-source", "footer_source", "Source"],
+  ["footer-original", "footer_original", "Original project"],
+]) {
+  const link = document.getElementById(id);
+  if (link) link.textContent = chrome.i18n.getMessage(key) || fallback;
+}
+
 (async () => {
   const box = document.getElementById("capabilities");
   const message = (key, fallback) => chrome.i18n.getMessage(key) || fallback;

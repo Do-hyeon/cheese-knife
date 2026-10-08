@@ -1,10 +1,14 @@
-# ![Logo](./icon48.png) Cheese Knife
+# ![Logo](./icon48.png) Cheese Knife — Community Recovery
 
 > CHZZK Toolkit
 
-## Compatibility recovery preview
+## Community store preparation
 
-Branch `codex/chzzk-compatibility-recovery` contains a 2.13.2 recovery preview based on upstream v2.13.1. It adds Vue-free controls/compression, cancelable HLS previews, scoped page lifecycles, and per-tab feature readiness. It is not the upstream store release.
+Branch `codex/community-store-preview` adds separate publishing identity and guide/support links to the 2.13.2 compatibility recovery based on upstream v2.13.1. This is an unofficial community fork, not an original-author-approved release or successor. Original copyright and MIT/HLS.js notices are retained. The compatibility recovery adds Vue-free controls/compression, cancelable HLS previews, scoped page lifecycles, and per-tab feature readiness.
+
+No store submission or publication has taken place. [Guide](https://github.com/Do-hyeon/cheese-knife/blob/codex/community-store-preview/README.md) and [Report issue](https://github.com/Do-hyeon/cheese-knife/issues) refer to this fork. These publishing changes do not update PR #81's `codex/chzzk-compatibility-recovery`, upstream or either main. A new store item is separate from the original installation; avoid running both and do not assume automatic setting transfer.
+
+This publishing branch passed Node169/native styles108/video filters17 and two synthetic ko/en popup layout checks. See [store preparation](docs/superpowers/validation/2026-10-08-community-store-preparation.md). The165-test and candidate/pending notes below describe earlier compatibility work, not current installed acceptance or store approval.
 
 [Korean contribution PR #81](https://github.com/jebibot/cheese-knife/pull/81) is open against upstream. It discloses verified scope, unverified states and audio/environment limits, not full restoration or release approval. No store deployment or merge was performed. Historical candidate/pending notes below describe their respective stages; use the [latest readiness summary](docs/superpowers/validation/2026-10-08-contribution-readiness.md) for current status.
 
@@ -36,7 +40,7 @@ The [home recommendation hiding candidate](docs/superpowers/validation/2026-10-0
 
 The [start-time follow-up](docs/superpowers/validation/2026-10-08-start-time-selector-recovery.md) adds current live/VOD targets while preserving existing lookup, cache, cancellation and URL guards. After manual refresh, basic installed display, reentry, route cleanup and replacement-card cache reuse were confirmed. VOD screenshot capture and all-mode/full-feature acceptance remain separate boundaries.
 
-[Website](https://www.chz.app/) | [Discord](https://discord.gg/9kq3UNKAkz) | [Chrome Web Store (compatible with Chromium, Edge, Whale)](https://chromewebstore.google.com/detail/nfkfgkkhgglkgnlppncolmpekidapkjh) | [Firefox Add-ons](https://addons.mozilla.org/addon/cheese-knife/) | [Korean](./README-en.md)
+[Guide](https://github.com/Do-hyeon/cheese-knife/blob/codex/community-store-preview/README.md) | [Report issue](https://github.com/Do-hyeon/cheese-knife/issues) | [Recovery source](https://github.com/Do-hyeon/cheese-knife/tree/codex/community-store-preview) | [Original project](https://github.com/jebibot/cheese-knife) | [Original website](https://www.chz.app/) | [Original Chrome store](https://chromewebstore.google.com/detail/nfkfgkkhgglkgnlppncolmpekidapkjh) | [Korean](./README.md)
 
 ![Screenshot](./images/en.png)
 

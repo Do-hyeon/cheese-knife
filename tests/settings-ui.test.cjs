@@ -3,10 +3,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { page, load, flush } = require('./helpers.cjs');
 
-function ui(t, html, stored) {
+function ui(t, html, stored, locale = 'ko') {
   const dom = page(fs.readFileSync(html, 'utf8'));
   const data = structuredClone(stored);
-  const messages = JSON.parse(fs.readFileSync('_locales/ko/messages.json', 'utf8'));
+  const messages = JSON.parse(fs.readFileSync(`_locales/${locale}/messages.json`, 'utf8'));
   dom.window.HTMLCanvasElement.prototype.getContext = () => null;
   dom.window.chrome = {
     i18n: { getMessage: key => messages[key]?.message || '' },
@@ -53,6 +53,57 @@ test('popup reports missing deleted-chat support as limited instead of ready', a
   assert.equal(values[0].classList.contains('ready'), true);
   assert.equal(values[1].classList.contains('limited'), true);
   assert.ok(values[1].parentElement.title, 'limited capability has an explanation');
+});
+
+// Break caught: the independently published fork must identify itself and
+// route its guide/support links to the fork, not the original maintainer.
+for (const [locale, recovery, unofficial, labels] of [
+  ['ko', /복구판/, /비공식/, ['사용 안내', '문제 신고', '소스 코드', '원본 프로젝트']],
+  ['en', /Recovery/, /unofficial/i, ['Guide', 'Report issue', 'Source', 'Original project']],
+]) test('community popup identifies the fork and localizes its support destinations in ' + locale, async t => {
+  const { dom } = ui(t, 'popup.html', {}, locale); load(dom, 'config.js'); load(dom, 'popup.js'); await flush();
+  const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+  const resolve = field => {
+    const key = manifest[field].match(/^__MSG_(.+)__$/)?.[1];
+    return key ? dom.window.chrome.i18n.getMessage(key) : manifest[field];
+  };
+  assert.match(resolve('name'), recovery, 'installed/store name distinguishes the community recovery');
+  assert.match(resolve('description'), unofficial, 'short description cannot imply an official release');
+  assert.match(dom.window.document.title, recovery);
+  assert.ok(resolve('name').length <= 75);
+  assert.ok(resolve('description').length <= 132);
+  assert.ok(dom.window.document.title.length <= 12, 'short name fits the extension metadata limit');
+  const links = [...dom.window.document.querySelectorAll('footer a')];
+  assert.deepEqual(links.map(a => a.textContent.trim()), labels);
+  assert.deepEqual(links.map(a => a.href), [
+    'https://github.com/Do-hyeon/cheese-knife/blob/codex/community-store-preview/README.md',
+    'https://github.com/Do-hyeon/cheese-knife/issues',
+    'https://github.com/Do-hyeon/cheese-knife/tree/codex/community-store-preview',
+    'https://github.com/jebibot/cheese-knife',
+  ]);
+  for (const a of links) {
+    assert.equal(a.target, '_blank');
+    assert.ok(a.relList.contains('noopener'));
+    assert.ok(a.relList.contains('noreferrer'));
+  }
+});
+
+test('community homepage opens the same fork guide that the popup offers', async t => {
+  const { dom } = ui(t, 'popup.html', {}); load(dom, 'config.js'); load(dom, 'popup.js'); await flush();
+  const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+  const guide = 'https://github.com/Do-hyeon/cheese-knife/blob/codex/community-store-preview/README.md';
+  assert.equal(manifest.homepage_url, guide);
+  assert.equal(dom.window.document.querySelector('footer a')?.href, guide);
+});
+
+test('community footer remains usable when footer translations are unavailable', async t => {
+  const { dom } = ui(t, 'popup.html', {});
+  const getMessage = dom.window.chrome.i18n.getMessage;
+  dom.window.chrome.i18n.getMessage = key => key.startsWith('footer_') ? '' : getMessage(key);
+  load(dom, 'config.js'); load(dom, 'popup.js'); await flush();
+  assert.deepEqual([...dom.window.document.querySelectorAll('footer a')].map(a => a.textContent.trim()),
+    ['Guide', 'Report issue', 'Source', 'Original project']);
+  assert.ok(dom.window.document.getElementById('preview'), 'missing optional translations cannot interrupt setting controls');
 });
 
 test('all style toggles and font offsets persist selections and show reload only when needed', async t => {

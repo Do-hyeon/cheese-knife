@@ -1,10 +1,14 @@
-# ![로고](./icon48.png) 치즈 나이프
+# ![로고](./icon48.png) 치즈 나이프 — 커뮤니티 복구판
 
 > 치지직™ 도구 모음
 
-## 호환성 복구 시험판 (이 포크)
+## 커뮤니티 복구판 배포 준비
 
-현재 브랜치 `codex/chzzk-compatibility-recovery`는 원본 v2.13.1을 기반으로 한 2.13.2 복구 시험판입니다. Chrome Web Store의 원본 배포판과 다르며, 기존 저장소와 라이선스를 유지합니다.
+현재 브랜치 `codex/community-store-preview`는 원본 v2.13.1을 기반으로 한 2.13.2 호환성 복구 변경에 별도 배포용 이름·설명·안내/지원 링크를 추가한 비공식 커뮤니티 복구판입니다. 원작자가 승인한 공식 배포판이나 후속판이 아닙니다. 원본 저작권과 MIT/HLS.js 라이선스 고지를 유지합니다.
+
+스토어에는 아직 제출·게시하지 않았습니다. [사용 안내](https://github.com/Do-hyeon/cheese-knife/blob/codex/community-store-preview/README.md)와 [문제 신고](https://github.com/Do-hyeon/cheese-knife/issues)는 이 포크를 대상으로 합니다. 원본 PR #81의 `codex/chzzk-compatibility-recovery`와 원본/main은 이 배포 준비 변경으로 수정하지 않습니다. 새로운 스토어 항목은 기존 원본 설치와 별개이므로 중복 실행을 피하고, 설정 자동 공유·자동 이전을 전제로 하지 마세요.
+
+이 배포 준비 브랜치는 전체 Node169·native 스타일108·영상필터17 및 합성 팝업 한·영2건을 확인했습니다. [배포 준비 기록](docs/superpowers/validation/2026-10-08-community-store-preparation.md)을 참고하세요. 아래의165건·후보/대기 설명은 이전 호환성 복구 시점의 기록이며 현재 설치본·스토어 심사 승인으로 확대하지 않습니다.
 
 [한글 기여 PR #81](https://github.com/jebibot/cheese-knife/pull/81)을 원본 저장소에 제출했습니다. 검증한 범위와 미검증·음질/환경 한계를 명시한 복구 시험판 기여이며 전체 정상·출시 승인이나 스토어 배포가 아닙니다. 아래 시점별 후보 기록의 대기 상태는 당시 결과이며 최신 상태는 [기여 준비 상태](docs/superpowers/validation/2026-10-08-contribution-readiness.md)를 기준으로 확인하세요.
 
@@ -69,7 +73,7 @@ Node 24.x에서 `npm ci`, `npm test`, `npm run check`, `npm run build`를 실행
 
 필터 시험에서 현행 PZP CSS가 확장 필터를 덮는 결함을 재현해, native 영상 필터는 유지하고 영상 전용 래퍼에 확장 필터를 한번 적용하는 CSS 보완 후보를 만들었습니다. Node122·스타일91·필터17과 실제 VOD 임시 적용·제거 검사를 통과했습니다. 실제 라이브 임시 검사는 진단 제한으로 미검증이며, 새 전체 CSS 설치 수용과 중립 설정 복원에는 수동 확장 새로고침이 필요합니다. 전체 수용·최종 검토·PR은 아직 완료되지 않았습니다.
 
-[Website](https://www.chz.app/) | [Discord](https://discord.gg/9kq3UNKAkz) | [Chrome Web Store (Chromium, Edge, Whale 호환)](https://chromewebstore.google.com/detail/nfkfgkkhgglkgnlppncolmpekidapkjh) | [Firefox Add-ons](https://addons.mozilla.org/addon/cheese-knife/) | [English](./README-en.md)
+[사용 안내](https://github.com/Do-hyeon/cheese-knife/blob/codex/community-store-preview/README.md) | [문제 신고](https://github.com/Do-hyeon/cheese-knife/issues) | [복구판 소스](https://github.com/Do-hyeon/cheese-knife/tree/codex/community-store-preview) | [원본 프로젝트](https://github.com/jebibot/cheese-knife) | [원본 웹사이트](https://www.chz.app/) | [원본 Chrome 스토어](https://chromewebstore.google.com/detail/nfkfgkkhgglkgnlppncolmpekidapkjh) | [English](./README-en.md)
 
 ![스크린샷](./images/ko.png)
 

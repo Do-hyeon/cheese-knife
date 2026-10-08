@@ -1,12 +1,24 @@
 {
   "ext_name": {
-    "message": "Cheese Knife - CHZZK Toolkit"
+    "message": "Cheese Knife — Community Recovery"
   },
   "ext_shortName": {
-    "message": "Cheese Knife"
+    "message": "CK Recovery"
   },
   "ext_description": {
-    "message": "Adds useful features and tools to CHZZK."
+    "message": "An unofficial community recovery of Cheese Knife, providing viewing tools for CHZZK."
+  },
+  "footer_guide": {
+    "message": "Guide"
+  },
+  "footer_support": {
+    "message": "Report issue"
+  },
+  "footer_source": {
+    "message": "Source"
+  },
+  "footer_original": {
+    "message": "Original project"
   },
   "config_category_preview": {
     "message": "Preview"
