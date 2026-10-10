@@ -15,6 +15,7 @@ function fixture(t, options = {}) {
   dom.window.HTMLMediaElement.prototype.canPlayType = () => 'maybe';
   dom.window.HTMLMediaElement.prototype.play = function () {
     calls.push({ video: this, muted: this.muted, hidden: document.querySelector('.knife-preview').hidden });
+    if (options.playingBeforeResolve) state(this).paused = false;
     const result = options.play?.(this, calls.length) || Promise.resolve();
     return result.then(() => { state(this).paused = false; });
   };
@@ -95,6 +96,19 @@ test('fallback budget is spent before awaiting and survives repeated readiness/r
   assert.equal(runtime(f.dom).statuses.livePreview.state, 'limited');
 });
 
+test('successful muted recovery retains policy notice when original fallback completion is stale', async t => {
+  const fallback = deferred(), f = fixture(t, { play: (_v, n) => n === 1
+    ? Promise.reject(Object.assign(new Error(), { name: 'NotAllowedError' })) : n === 2 ? fallback.promise : Promise.resolve() });
+  await f.show(); f.ready(); await f.advance(1000);
+  f.instances[0].emit('error', { fatal: true, type: 'mediaError' }); f.ready(); await f.advance(0);
+  assert.deepEqual(f.calls.map(c => c.muted), [false, true, true]);
+  assert.equal(f.video().paused, false); assert.equal(runtime(f.dom).statuses.livePreview.state, 'ready');
+  assert.ok(f.notice() && !f.notice().hidden && f.notice().textContent.length, 'successful recovered muted playback must expose the retained policy cause');
+  fallback.reject(Object.assign(new Error(), { name: 'AbortError' })); await f.advance(0);
+  assert.equal(f.notice().hidden, false, 'obsolete recovery promise must not remove the notice');
+  assert.equal(runtime(f.dom).statuses.livePreview.state, 'ready');
+});
+
 test('a non-policy startup error does not gain a muted retry', async t => {
   const f = fixture(t, { play: () => Promise.reject(Object.assign(new Error(), { name: 'NotSupportedError' })) });
   await f.show(); f.ready(); await f.advance(1000);
@@ -102,8 +116,9 @@ test('a non-policy startup error does not gain a muted retry', async t => {
 });
 
 test('manual mute during pending startup preserves valid successful playback completion', async t => {
-  const pending = deferred(), f = fixture(t, { play: () => pending.promise }); await f.show(); f.ready(); await f.advance(1000);
-  f.toggle(); assert.equal(f.video().muted, true); pending.resolve(); await f.advance(14000);
+  const pending = deferred(), f = fixture(t, { playingBeforeResolve: true, play: () => pending.promise }); await f.show(); f.ready(); await f.advance(1000);
+  f.toggle(); assert.equal(f.video().muted, true); assert.equal(f.calls.length, 1, 'manual mute of playing media must not create a second successful request that masks original readiness');
+  pending.resolve(); await f.advance(14000);
   assert.equal(runtime(f.dom).statuses.livePreview.state, 'ready', 'stale audio intent must not lose loaded/progress');
   assert.equal(f.video().muted, true);
 });
@@ -167,4 +182,14 @@ test('start-unmuted option does not change primary or native-card audio', async 
   await f.show(); f.ready(); await f.advance(1000);
   assert.equal(primary.muted, true); assert.equal(primary.volume, 0.3); assert.equal(native.muted, true); assert.equal(native.volume, 0.7);
   assert.equal(f.calls.length, 1); assert.equal(f.calls[0].video, f.video());
+});
+
+test('live-preview OFF stops media started after an OFF-to-ON metadata race', async t => {
+  const response = deferred(), f = fixture(t, { fetch: response.promise, config: { livePreview: false } });
+  const showing = f.show(); deliver(f.dom, { ...f.config, livePreview: true }, 2);
+  response.resolve(f.info); await showing; f.ready(); await f.advance(1000);
+  const v = f.video(); assert.equal(v.paused, false); assert.equal(v.muted, false);
+  deliver(f.dom, { ...f.config, livePreview: false }, 3); await f.advance(0);
+  assert.equal(v.isConnected, false, 'disablement must retire actual media, not rely on the pre-metadata setting snapshot');
+  assert.equal(f.video(), null); assert.equal(f.instances[0].destroyed, 1);
 });

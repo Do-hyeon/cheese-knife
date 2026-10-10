@@ -63,6 +63,7 @@
     let audioRevision = 0;
     let fallbackUsed = false;
     let soundBlocked = false;
+    let policyBlockRevision = null;
     let recoveries = 0;
     let loaded = false;
     let watching = false;
@@ -116,7 +117,12 @@
         if (!currentRequest()) return;
         // A manual mute must not discard valid media readiness/progress.
         loaded = true; video.style.visibility = ''; runtime.setStatus('livePreview', 'ready');
-        if (currentAudio() && !desiredMuted && !video.muted && !video.paused) { soundBlocked = false; renderAudioNote(); }
+        if (currentAudio() && !desiredMuted && !video.muted && !video.paused) {
+          policyBlockRevision = null; soundBlocked = false; renderAudioNote();
+        } else if (currentAudio() && video.muted && policyBlockRevision === audioRevision) {
+          // The policy cause belongs to audio intent, not a media-recovery attempt.
+          soundBlocked = true; renderAudioNote();
+        }
         if (!watching) { watching = true; lastTime = video.currentTime; lastProgress = performance.now(); later(watchProgress, 1000); }
       };
       video.muted = desiredMuted;
@@ -127,10 +133,9 @@
         if (!currentAudio()) return;
         if (!manual && startUnmuted && !desiredMuted && !fallbackUsed && error?.name === 'NotAllowedError') {
           // Spend before awaiting. Readiness events/recovery never renew it.
-          fallbackUsed = true; desiredMuted = true; video.muted = true;
+          fallbackUsed = true; policyBlockRevision = audioRevision; desiredMuted = true; video.muted = true;
           try {
             await video.play();
-            if (currentAudio()) { soundBlocked = true; renderAudioNote(); }
             complete();
           } catch { if (currentAudio()) fail(); }
         } else fail();
@@ -289,7 +294,7 @@
   const checkActive = () => {
     if (current && (location.pathname !== current.route || !ownsAnchor(current.anchor) || current.anchor.href !== current.href ||
       (panel && !panel.isConnected) || runtime.config.preview !== true ||
-      (current.live && runtime.config.livePreview !== true))) cleanup();
+      ((current.live || media) && runtime.config.livePreview !== true))) cleanup();
     if (current && media) { media.volume = volume(); current.audio?.refresh(); }
   };
   // Constant-time identity check, not a document-wide card scan. Invalidation

@@ -226,3 +226,23 @@ hide·anchor 이동·owner 교체·경로 변경·미리보기OFF·문서 숨김
 추가 검사에서 차단 안내를 같은 문자열로 반복 갱신하면 문서 observer가 다시 실행되는 관찰 루프를 재현했다. 유한 회귀는9회 갱신 뒤 보호 정리하고 예상 실패했다. 문구가바뀐 때에만textContent를 수정하도록 보완한 뒤 통과했다. ON 옵션이native 카드·메인 방송의오디오를 변경하지 않는 대조도 추가했다.
 
 보완 후 새 오디오 집중21/21·전체258/258(실패0/skip0), 기존 독립 합성 Chrome 한영 팝업 렌더2/2를 확인했다. 이 렌더는 기본 생성·page error 없음·350px footer 경계 검사이며 새 차단 안내의 실제 방송 렌더나 오디오 정책 검사로 확대하지 않는다. Chrome/Firefox 로컬 빌드와package 검사 각각v2.13.3/20 entry resources도 통과했다. 제품 변경은 아직 독립 코드 검토와 사용자 새로고침 후 설치본 검증을 받지 않았다. 사용자 브라우저에 새 옵션이 설치됐다고 기록하지 않으며, 새 저장 옵션은 임의로 켜지 않았다. 원격push·PR·스토어 제출은 하지 않았다.
+
+### Astra max 공격적 코드 검토와 보완
+
+사용자의 모델 지정에 따라 진행 중이던 검토를 중단하고, 새 독립 검토자를 `gpt-6-astra`·추론max로 실행했다. 고정 구현 `c1b896c..bfc7280`에서 검토자가 집중102/102를 직접 확인했고 Critical0·Important1·Minor1을 보고했다. 미검토 대상인 설치본·실제HLS/출력 음질과 당시 미커밋 native 정책 스크립트는 명확히 분리했다.
+
+Important는음소거 대체promise가pending인 동안 HLS 복구로 재생 시도가 바뀌면, 새 음소거 재생은성공해도 원래 차단 안내가 나타나지 않는 문제였다. 별도의 대체pending과 성공하는 새복구play를 사용한 회귀에서 예상 실패를 확인했다. 정책 차단 원인을 오디오 의도 번호에 연결해 media 시도 변경과 분리하고, 해당 의도의 실제 음소거 재생 성공 때 안내를 표시하도록 보완했다. 오래된 대체 거부는 준비된 새재생·안내에 영향을 주지 않는다.
+
+Minor는수동mute 검사에서play promise가끝날 때까지 mock.paused가true여서, 추가 수동play 성공이 원래 완료 처리를 놓치는 결함을 가리는 관측 누락이었다. 허용된native play가pending 중에도paused=false인 경우를 반영하고 수동mute 뒤 요청이1개임을 확인하도록 강화했다. 제품파일 대신 메모리에서완료 guard만잘못된오디오 guard로 바꾼 변이 검사는15초뒤ready 대신limited로 예상 실패했고, 정상 구현은 통과했다.
+
+검토자가 별도 알려준 기존 baseline의설정 경합도 확인했다. livePreview OFF로metadata요청을 시작한 뒤ON으로바꾸면 영상이 준비될 수 있지만, 다시OFF일 때초기current.live=false만 보면 실제미디어를 정리하지 못했다. 새옵션의 소리도계속될 수 있으므로 같은cleanup조건에 실제 media소유를 포함하는한 줄 보완으로 한정했다. 실제재생 뒤OFF에서도video가연결된채인 실패를 먼저확인하고, 보완 후제거·backend파괴1회를 확인했다. 기존thumbnail-only 미리보기와 설정변경시작정책은 유지한다.
+
+보완 후 새 오디오 집중23/23·전체260/260(실패0/skip0), Chrome/Firefox 재빌드와package 각각v2.13.3/20 entry resources를 확인했다. source와두dist의preview.js SHA256은 `493144FB1F7D6444D52CD11C4D0D0941EB26EF24B1F052279C4027D2E1C4F135`로 같았다. 이 보완의Astra max 재검토와 실제사용자설치본 검증은 아직남아 있다.
+
+### 독립 합성 Chrome의 실제 재생 정책 검사
+
+`scripts/check-preview-autoplay.mjs`는새 합성 프로필/문서에서 모든요청을 로컬로 fulfill하거나abort하고, 생성한 무음PCM WAV를 사용한다. 사용자프로필·로그인·실방송·녹음·브라우저정책우회를 사용하지 않는다. 메타데이터와native backend 선택은 대체하지만HTMLMediaElement.play·paused·시간 진행·Chrome 정책 결과는mock하지 않는다. 실제HLS 스트리밍·실청출력·사용자계정정책 검사와는 구분한다.
+
+최초 스크립트의미활성 기대 사례는 자동화evaluate로부트스트랩한 환경에서 소리가허용돼실패했다. 사전동작이활성화를 만들지않았음을입증할 수 없으므로성공으로세지 않았다. 일반문서parser script와userGesture=false인CDP읽기로 바꾸고, 미활성 사례에서navigator.userActivation.hasBeenActive=false를 직접확인했다. 합성문서의UTF-8누락으로한글이잘못decode된 별도실패도charset을 명시해 수정했다. 이둘은제품 코드를 바꿔정책을우회한 수정이 아니다.
+
+Chrome155.0.8059.39에서한글/영문미활성2건은 실제시작이차단된 뒤volume0.05·muted=true·paused=false·ready로재생했고, 정확한차단 안내가300px패널경계 안에표시됐다. 이후일반우클릭 입력으로muted=false·paused=false가되고안내가사라졌다. 별도실제합성버튼click사례1건은활성화true에서처음부터muted=false로재생하고안내는없었다. 세 사례 모두통과했다. 한영패널 캡처는 `output/playwright/preview-audio-blocked-ko.png`와 `output/playwright/preview-audio-blocked-en.png`에저장하고 실제픽셀을 확인했다. 무음시험음원이라물리적인 소리와음질은판정하지 않는다.
