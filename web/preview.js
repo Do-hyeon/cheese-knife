@@ -201,7 +201,12 @@
           const levels = hls.levels.map((level, index) => ({ height: level.height, index }))
             .filter(item => Number.isFinite(item.height) && item.height > 0).sort((a, b) => a.height - b.height);
           const initial = levels.find(item => item.height >= target) || levels.at(-1);
-          if (initial) hls.startLevel = initial.index;
+          if (initial) {
+            hls.startLevel = initial.index;
+            // Hidden media has no size cap yet; let HLS's size controller own later updates.
+            const cap = hls.autoLevelCapping;
+            hls.autoLevelCapping = cap >= 0 ? Math.min(cap, initial.index) : initial.index;
+          }
           hls.startLoad(); // Startup preference, not a persistent manual quality lock.
         });
         hls.loadSource(path); hls.attachMedia(video);

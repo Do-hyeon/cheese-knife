@@ -16,14 +16,14 @@ function previewFixture(t, config = {}) {
     static isSupported() { return true; }
     constructor(options) {
       this.config = options; this.handlers = new Map(); this.destroyed = 0; this.recoveries = 0;
-      this.starts = []; this.manual = -1; this.startLevel = -1;
+      this.starts = []; this.startCaps = []; this.autoLevelCapping = -1; this.manual = -1; this.startLevel = -1;
       this.levels = [{ height: 720 }, { height: 240 }, { height: 480 }, { height: 360 }];
       instances.push(this);
     }
     on(event, fn) { this.handlers.set(event, fn); }
     emit(event, data) { this.handlers.get(event)?.(event, data); }
     loadSource() {} attachMedia(video) { this.video = video; }
-    startLoad() { this.starts.push(this.startLevel); }
+    startLoad() { this.starts.push(this.startLevel); this.startCaps.push(this.autoLevelCapping); }
     recoverMediaError() { this.recoveries++; }
     destroy() { this.destroyed++; }
     set currentLevel(value) { this.manual = value; }
@@ -93,6 +93,32 @@ test('startup chooses a size-appropriate level before loading without disabling 
   assert.equal(stream.autoLevelEnabled, true, 'no permanent manual rendition lock');
   assert.equal(stream.config.autoStartLoad, false, 'first fragment waits for startup selection');
   assert.deepEqual(stream.starts, [2], '480p index in deliberately unsorted levels');
+});
+
+test('hidden preview caps automatic startup before the first fragment load', async t => {
+  const fixture = previewFixture(t); await fixture.show(); const stream = fixture.instances[0];
+  assert.equal(fixture.dom.window.document.querySelector('.knife-preview').hidden, true);
+  stream.emit('manifest');
+  assert.deepEqual(stream.startCaps, [2], 'apply selected original level index before startLoad');
+  assert.equal(stream.config.capLevelToPlayerSize, true);
+  assert.equal(stream.autoLevelEnabled, true, 'startup cap must not select a permanent manual level');
+});
+
+for (const cap of [0, 1, 3]) test('startup cap preserves a stricter existing limit: ' + cap, async t => {
+  const fixture = previewFixture(t); await fixture.show(); const stream = fixture.instances[0];
+  stream.autoLevelCapping = cap; stream.emit('manifest');
+  assert.deepEqual(stream.startCaps, [Math.min(cap, 2)]);
+  assert.equal(stream.autoLevelEnabled, true);
+});
+
+test('startup cap leaves later automatic cap updates in control of recovery loads', async t => {
+  const fixture = previewFixture(t); await fixture.show(); const stream = fixture.instances[0];
+  stream.emit('manifest');
+  assert.deepEqual(stream.startCaps, [2]);
+  stream.autoLevelCapping = 3;
+  stream.emit('error', { type: 'mediaError', details: 'bufferAppendError', fatal: true });
+  assert.deepEqual(stream.startCaps, [2, 3], 'do not reapply startup cap during same-hover recovery');
+  assert.equal(stream.autoLevelEnabled, true);
 });
 
 test('a native HLS maybe response does not bypass an available bundled streaming backend', async t => {
@@ -165,10 +191,12 @@ test('leaving during delayed network recovery cancels all restart callbacks', as
   assert.deepEqual(stream.starts, [2]); assert.equal(stream.destroyed, 1);
 });
 
-test('unknown-height renditions still start and keep automatic adaptation', async t => {
+for (const cap of [-1, 0]) test('unknown-height renditions preserve automatic adaptation and cap ' + cap, async t => {
   const fixture = previewFixture(t); await fixture.show(); const stream = fixture.instances[0];
+  stream.autoLevelCapping = cap;
   stream.levels = [{ height: 0, audioCodec: 'mp4a.40.2' }, { videoCodec: 'avc1.640028' }]; stream.emit('manifest');
   assert.equal(stream.starts.length, 1); assert.equal(stream.autoLevelEnabled, true);
+  assert.deepEqual(stream.starts, [-1]); assert.deepEqual(stream.startCaps, [cap]);
 });
 
 test('late old playback rejection cannot fail a newer preview', async t => {
