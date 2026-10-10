@@ -248,3 +248,9 @@ Minor는수동mute 검사에서play promise가끝날 때까지 mock.paused가tru
 Chrome155.0.8059.39에서한글/영문미활성2건은 실제시작이차단된 뒤volume0.05·muted=true·paused=false·ready로재생했고, 정확한차단 안내가300px패널경계 안에표시됐다. 이후일반우클릭 입력으로muted=false·paused=false가되고안내가사라졌다. 별도실제합성버튼click사례1건은활성화true에서처음부터muted=false로재생하고안내는없었다. 세 사례 모두통과했다. 한영패널 캡처는 `output/playwright/preview-audio-blocked-ko.png`와 `output/playwright/preview-audio-blocked-en.png`에저장하고 실제픽셀을 확인했다. 무음시험음원이라물리적인 소리와음질은판정하지 않는다.
 
 합성 정책 검사의 스크린샷도 Astra max가 검토했다. Playwright locator.screenshot의 내부 평가가userGesture=true를 사용할 수 있어, 앞선 우클릭 검사에서는 촬영 후에도 미활성 상태였다고 입증하지 못했다. 촬영 전의 초기 차단 판정은 이 영향을 받지 않는다. 일반CDP Page.captureScreenshot과 비활성 읽기 좌표로 촬영하고 실제Input 우클릭 직전에도hasBeenActive=false를 확인하도록 좁게 보완했다. 보완 후 한영 차단·우클릭 해제와 별도 활성화 허용의3/3을 새로 통과했다. 제품 코드는 이 촬영 보완에서 변경하지 않았다.
+
+### Astra max 최종 재검토와 설치본 검사 준비
+
+동일한 `gpt-6-astra`·추론max 검토자가 고정 보완 `bfc7280..6073c18`에서 집중104/104·skip0을 직접 확인했다. thumbnail-only 보존과 성공한 수동 해제 뒤 오래된 안내가 복원되지 않는 추가 메모리 검사2/2도 통과했다. 원래 놓치던 잘못된완료 guard 변이는22pass/1expectedfail로 실제 탐지됐고, 이전 Important와Minor는 해결됐다고 판정했다. 후속 촬영전활성화 보완 `6073c18..35c83f3`도 별도 좁게 재검토해 남은 지적이 없음을 확인했다. 마지막 문서·fixture 검토에서Node를 다시 실행하지 않았으며 제품코드 검증은 앞선 결과를 유지한다.
+
+최종 판정은설치본 검사에 들어갈 정적 준비 완료다. 사용자 Chrome의 실제HLS·소리·출력 음질이나 Firefox설치·출시를 승인한 것은 아니다. 새옵션은기본OFF이고 사용자저장값을 임의로변경하지 않았다. 로컬시험판 새로고침 후 팝업의‘음소거 해제로 시작’을 검사 목적으로ON하고 완료를 알려주면, 새코드 설치와실방송 초기소리·우클릭·메인비간섭을 검사한다. 브라우저가차단하는 조건은 정상정책이며 항상자동소리를 보장하지 않는다. 검사후ON/OFF 저장상태의 최종유지 여부는 사용자선택을 따른다. 이 단계까지 원격push·PR·스토어배포는 없다.
