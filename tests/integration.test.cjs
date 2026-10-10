@@ -378,7 +378,10 @@ function sidebarFixture(t, config = {}) {
   deliver(dom, config); load(dom, 'web/inject.js');
   const counts = { refresh: 0, more: 0, foreign: 0 };
   dom.window.document.getElementById('refresh').addEventListener('click', () => counts.refresh++);
-  dom.window.document.getElementById('more').addEventListener('click', event => { counts.more++; event.currentTarget.setAttribute('aria-expanded', 'true'); });
+  dom.window.document.getElementById('more').addEventListener('click', event => {
+    counts.more++; const button = event.currentTarget;
+    button.setAttribute('aria-expanded', button.getAttribute('aria-expanded') === 'true' ? 'false' : 'true');
+  });
   for (const id of ['foreign-refresh', 'foreign-more']) dom.window.document.getElementById(id).addEventListener('click', () => counts.foreign++);
   return { dom, timers, counts, tick() { for (const fn of [...timers.values()]) fn(); } };
 }
@@ -402,15 +405,17 @@ test('following expansion handles late controls and option changes without reope
   const { dom, counts } = sidebarFixture(t, { expandFollowings: false });
   deliver(dom, { expandFollowings: true }, 2);
   assert.equal(counts.more, 1); assert.equal(counts.foreign, 0);
-  const button = dom.window.document.getElementById('more'); button.setAttribute('aria-expanded', 'false');
-  runtime(dom).reconcile(); assert.equal(counts.more, 1);
+  const button = dom.window.document.getElementById('more'); button.click();
+  assert.equal(button.getAttribute('aria-expanded'), 'false');
+  runtime(dom).reconcile(); assert.equal(counts.more, 2, 'one automatic and one user activation, no automatic reopening');
+  assert.equal(runtime(dom).statuses.expandFollowings.reason, 'user-collapsed');
   deliver(dom, { expandFollowings: false }, 3); deliver(dom, { expandFollowings: true }, 4);
-  assert.equal(counts.more, 2);
+  assert.equal(counts.more, 3);
   button.remove(); runtime(dom).reconcile();
   const replacement = button.cloneNode(true); replacement.setAttribute('aria-expanded', 'false');
   replacement.addEventListener('click', () => counts.more++);
   dom.window.document.getElementById('following').append(replacement); await flush();
-  assert.equal(counts.more, 3);
+  assert.equal(counts.more, 4);
 });
 
 test('sidebar refresh suspends for bfcache and restores one timer after pageshow', t => {
