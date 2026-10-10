@@ -1,0 +1,161 @@
+var createSettingsClient = chromeApi => {
+  const dirty = new Map(), confirmed = new Map(), subscribers = new Set(), transports = new Set();
+  let snapshot = null, css = { state: 'pending', code: null }, phase = 'loading', code = null;
+  let disposed = false, sequence = 0, generation = 0, epoch = 0, snapshotSequence = 0;
+  let mutation = null, reading = null, readWanted = false, failurePhase = null, acceptedReads = 0;
+  const key = op => `${op.type}:${op.id}`;
+  const fault = value => Object.assign(new Error(value), { code: value });
+  function view() {
+    const base = snapshot || KnifeSettingsContract.makeSnapshot({}, css);
+    const raw = { config: base.config, styles: base.styles, styleParameters: base.styleParameters, settingsRevision: base.revision };
+    const operations = [...confirmed.values(), ...dirty.values()].map(entry => entry.op);
+    // Render with the same field semantics as the writer, but never promote a partial acknowledgement to a snapshot.
+    const merged = { ...raw, ...KnifeSettingsContract.mergeOperations(raw, operations).changes };
+    return { snapshot, values: { config: merged.config, styles: merged.styles, styleParameters: merged.styleParameters },
+      phase, css: { ...css }, pendingKeys: [...dirty.keys()], code };
+  }
+  function emit() {
+    if (disposed) return;
+    const value = view(); for (const subscriber of subscribers) subscriber(value);
+  }
+  function updatePhase() {
+    if (mutation || [...dirty.values()].some(entry => entry.status === 'pending')) phase = 'saving';
+    else if ([...dirty.values()].some(entry => entry.status === 'unknown')) phase = 'unknown';
+    else if ([...dirty.values()].some(entry => entry.status === 'held')) phase = 'failed';
+    else phase = failurePhase || (snapshot ? 'ready' : 'loading');
+  }
+  function send(action, payload = {}) {
+    const requestId = `settings-${++sequence}`;
+    const requestSequence = sequence;
+    const promise = new Promise((resolve, reject) => {
+      let ended = false;
+      const finish = (error, result) => {
+        if (ended) return; ended = true; clearTimeout(timer); transports.delete(cancel);
+        if (error) reject(error); else resolve({ reply: result, requestSequence });
+      };
+      const cancel = () => finish(fault('disposed'));
+      const timer = setTimeout(() => finish(fault('response-unknown')), 10000);
+      transports.add(cancel);
+      try {
+        chromeApi.runtime.sendMessage({ namespace: 'cheese-knife-settings', protocol: 1, action, requestId, ...payload }, reply => {
+          const transportError = chromeApi.runtime.lastError;
+          if (transportError) finish(fault('response-unknown'));
+          else if (!reply || reply.requestId !== requestId || typeof reply.ok !== 'boolean') finish(fault('response-unknown'));
+          else finish(null, reply);
+        });
+      } catch { finish(fault('response-unknown')); }
+    });
+    return { promise, requestSequence };
+  }
+  function refresh() {
+    if (disposed) return Promise.resolve();
+    readWanted = true;
+    if (reading) return reading;
+    reading = (async () => {
+      while (readWanted && !disposed) {
+        readWanted = false;
+        const started = epoch;
+        try {
+          const { reply, requestSequence } = await send('get-snapshot').promise;
+          if (disposed) return;
+          if (started !== epoch) { readWanted = true; continue; }
+          if (!reply.ok) throw fault(reply.code || 'read-failed');
+          const next = reply.snapshot;
+          KnifeSettingsContract.readRevision(next?.revision);
+          if (!next || !next.config || !Array.isArray(next.styles) || !next.styleParameters || !next.css) throw fault('read-failed');
+          if (snapshot && next.revision < snapshot.revision) continue;
+          snapshot = next; snapshotSequence = requestSequence; css = { ...next.css }; acceptedReads++;
+          for (const [id, entry] of confirmed) if (entry.revision <= next.revision) confirmed.delete(id);
+          updatePhase(); emit(); flush();
+        } catch (error) {
+          if (disposed) return;
+          code = error.code || 'read-failed';
+          failurePhase = code === 'revision-invalid' || code === 'revision-exhausted' ? 'repair-required' :
+            code === 'response-unknown' ? 'unknown' : 'failed';
+          updatePhase();
+          emit();
+        }
+      }
+    })().finally(() => { reading = null; });
+    return reading;
+  }
+  function acceptAck(reply, entries, requestSequence) {
+    if (!reply.stored) return false;
+    KnifeSettingsContract.readRevision(reply.revision);
+    for (const [id, entry] of entries) {
+      if (dirty.get(id)?.generation !== entry.generation) continue;
+      dirty.delete(id);
+      if (!snapshot || snapshot.revision < reply.revision) confirmed.set(id, { op: entry.op, revision: reply.revision });
+    }
+    if ((!snapshot || snapshot.revision < reply.revision ||
+      (snapshot.revision === reply.revision && snapshotSequence < requestSequence)) && reply.css) css = { ...reply.css };
+    return true;
+  }
+  async function mutate(action, payload, entries = []) {
+    const transport = send(action, payload);
+    mutation = transport; updatePhase(); emit();
+    try {
+      const { reply, requestSequence } = await transport.promise;
+      if (disposed) throw fault('disposed');
+      const stored = action === 'patch' && acceptAck(reply, entries, requestSequence);
+      if (!reply.ok && !stored) {
+        for (const entry of dirty.values()) entry.status = 'held';
+        code = reply.code || 'write-failed'; failurePhase = 'failed';
+      } else { code = reply.ok ? null : reply.code; failurePhase = null; }
+      epoch++; void refresh();
+      return reply;
+    } catch (error) {
+      if (!disposed) {
+        for (const entry of dirty.values()) entry.status = 'unknown';
+        code = error.code || 'response-unknown'; failurePhase = 'unknown'; epoch++; void refresh();
+      }
+      throw error;
+    } finally {
+      if (!disposed) { mutation = null; updatePhase(); emit(); flush(); }
+    }
+  }
+  function flush() {
+    if (disposed || mutation || !snapshot) return;
+    const entries = [...dirty].filter(([, entry]) => entry.status === 'pending').slice(0, 64);
+    if (!entries.length) return;
+    for (const [, entry] of entries) entry.status = 'sent';
+    void mutate('patch', { operations: entries.map(([, entry]) => entry.op) }, entries).catch(() => {});
+  }
+  function edit(operation) {
+    if (disposed) return;
+    const validation = KnifeSettingsContract.validateOperations([operation]);
+    if (!validation.ok) { code = validation.code; phase = 'failed'; emit(); return; }
+    const op = validation.operations[0];
+    dirty.set(key(op), { op, generation: ++generation, status: 'pending' });
+    epoch++; code = null; failurePhase = null; updatePhase(); emit(); flush();
+  }
+  function available() {
+    if (disposed || !snapshot || mutation || dirty.size || phase === 'unknown' || phase === 'repair-required') throw fault('settings-not-ready');
+  }
+  async function retryStyles() {
+    available(); return mutate('patch', { operations: [] });
+  }
+  async function reloadTarget({ tabId, windowId }) {
+    available();
+    if (phase !== 'ready' || css.state !== 'ready' || ![tabId, windowId].every(id => Number.isSafeInteger(id) && id >= 0)) throw fault('settings-not-ready');
+    return mutate('reload-target', { targetTabId: tabId, targetWindowId: windowId });
+  }
+  async function discardPending() {
+    if (disposed) return;
+    // Discard display intent only. An already sent request may still commit; this is not rollback.
+    const before = acceptedReads;
+    dirty.clear(); confirmed.clear(); epoch++; updatePhase(); emit(); await refresh();
+    if (!disposed && acceptedReads > before) { failurePhase = null; code = null; updatePhase(); emit(); }
+  }
+  const onChanged = (changes, area) => {
+    if (area !== 'local' || !['config', 'styles', 'styleParameters', 'settingsRevision'].some(id => Object.hasOwn(changes, id))) return;
+    epoch++; void refresh();
+  };
+  chromeApi.storage.onChanged.addListener(onChanged);
+  void refresh();
+  return { subscribe(fn) { if (disposed) return () => {}; subscribers.add(fn); fn(view()); return () => subscribers.delete(fn); },
+    edit, refresh, retryStyles, reloadTarget, discardPending,
+    dispose() { if (disposed) return; disposed = true; chromeApi.storage.onChanged.removeListener(onChanged);
+      subscribers.clear(); for (const cancel of [...transports]) cancel(); },
+  };
+};

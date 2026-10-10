@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { page, load, flush } = require('./helpers.cjs');
+const { page, load, flush, clock } = require('./helpers.cjs');
 const extensionId = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const getURL = p => `chrome-extension://${extensionId}/${p}`;
 const config = (id, value) => ({ type: 'config', id, value });
@@ -14,7 +14,7 @@ function event() {
 function settingsHarness(t, stored = {}) {
   const saved = structuredClone(stored), gates = new Map(), allGates = [], changes = event();
   const calls = [], registrations = new Map(), tabs = new Map([[7, { id: 7, windowId: 9, url: 'https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }]]);
-  const windows = []; let counter = 0, activeWrites = 0, maxWrites = 0, worker, broker, stopInvalidation;
+  const windows = [], clients = [], messages = [], metrics = new WeakMap(); let counter = 0, activeWrites = 0, maxWrites = 0, worker, broker, stopInvalidation;
   function holdNext(kind) {
     let resolve, reject, entered;
     const wait = new Promise((a, b) => { resolve = a; reject = b; });
@@ -25,7 +25,8 @@ function settingsHarness(t, stored = {}) {
   async function boundary(kind, args) { calls.push({ kind, args: structuredClone(args) }); const g = gates.get(kind)?.shift(); if (g) { g.entered(args); await g.wait; } }
   const announce = delta => { void boundary('event', delta).then(() => changes.emit(delta, 'local')).catch(() => {}); };
   function apiFor(name = 'background') {
-    return {
+    const metric = { current: 0, max: 0 };
+    const api = {
       runtime: { id: extensionId, getURL, onMessage: event(), onInstalled: event(), onStartup: event() },
       i18n: { getMessage: key => key },
       storage: { onChanged: changes, local: { onChanged: changes,
@@ -60,6 +61,21 @@ function settingsHarness(t, stored = {}) {
       },
       permissions: { contains: async () => true, onRemoved: event() },
     };
+    api.runtime.sendMessage = (message, callback) => {
+      messages.push({ api, message: structuredClone(message), subscribers: changes.listeners.size });
+      const mutation = message.action !== 'get-snapshot';
+      if (mutation) { metric.current++; metric.max = Math.max(metric.max, metric.current); }
+      const sender = { id: extensionId, url: getURL(`${name}.html`), frameId: 0 };
+      broker.listener(structuredClone(message), sender, reply => {
+        void boundary('callback:' + message.action, reply).then(() => {
+          if (mutation) metric.current--; callback(structuredClone(reply));
+        }).catch(() => {
+          if (mutation) metric.current--;
+          api.runtime.lastError = { message: 'channel-unavailable' }; callback(undefined); delete api.runtime.lastError;
+        });
+      });
+    };
+    metrics.set(api, metric); return api;
   }
   function startWorker() {
     stopInvalidation?.(); worker = page('', getURL('background.html')); windows.push(worker);
@@ -71,7 +87,7 @@ function settingsHarness(t, stored = {}) {
     changes.addListener(signal); stopInvalidation = () => changes.removeListener(signal);
   }
   startWorker();
-  t.after(() => { stopInvalidation?.(); for (const g of allGates) g.release(); for (const dom of windows) dom.window.close(); });
+  t.after(() => { for (const c of clients) c.dispose(); stopInvalidation?.(); for (const g of allGates) g.release(); for (const dom of windows) dom.window.close(); });
   function send(name, message, override) {
     const sender = override || { id: extensionId, url: getURL(`${name}.html`), frameId: 0 };
     return new Promise(resolve => {
@@ -80,7 +96,17 @@ function settingsHarness(t, stored = {}) {
     });
   }
   function request(name, action, payload = {}) { return send(name, { namespace: 'cheese-knife-settings', protocol: 1, action, requestId: `fixture-${++counter}`, ...payload }); }
-  return { saved, calls, registrations, tabs, changes, holdNext, apiFor, send, request,
+  function client(name = 'popup', { fakeTime = false } = {}) {
+    const dom = page('', getURL(`${name}.html`)); windows.push(dom); const time = fakeTime ? clock(dom) : undefined;
+    const api = apiFor(name); dom.window.chrome = api;
+    for (const f of ['config.js', 'style-schema.js', 'settings-contract.js']) load(dom, f);
+    if (fs.existsSync('settings-client.js')) load(dom, 'settings-client.js');
+    assert.equal(typeof dom.window.createSettingsClient, 'function', 'settings client must exist');
+    const instance = dom.window.createSettingsClient(api); clients.push(instance); let view;
+    instance.subscribe(v => { view = v; });
+    return { ...instance, dom, api, time, view: () => view, maxInflight: () => metrics.get(api).max };
+  }
+  return { saved, calls, messages, client, registrations, tabs, changes, holdNext, apiFor, send, request,
     get worker() { return worker; }, get broker() { return broker; }, get maxConcurrentWrites() { return maxWrites; },
     initialize: () => broker.initialize(), snapshot: (name = 'popup') => request(name, 'get-snapshot'),
     patch: (name, operations) => request(name, 'patch', { operations }),
