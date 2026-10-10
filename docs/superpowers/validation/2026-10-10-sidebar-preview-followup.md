@@ -246,3 +246,5 @@ Minor는수동mute 검사에서play promise가끝날 때까지 mock.paused가tru
 최초 스크립트의미활성 기대 사례는 자동화evaluate로부트스트랩한 환경에서 소리가허용돼실패했다. 사전동작이활성화를 만들지않았음을입증할 수 없으므로성공으로세지 않았다. 일반문서parser script와userGesture=false인CDP읽기로 바꾸고, 미활성 사례에서navigator.userActivation.hasBeenActive=false를 직접확인했다. 합성문서의UTF-8누락으로한글이잘못decode된 별도실패도charset을 명시해 수정했다. 이둘은제품 코드를 바꿔정책을우회한 수정이 아니다.
 
 Chrome155.0.8059.39에서한글/영문미활성2건은 실제시작이차단된 뒤volume0.05·muted=true·paused=false·ready로재생했고, 정확한차단 안내가300px패널경계 안에표시됐다. 이후일반우클릭 입력으로muted=false·paused=false가되고안내가사라졌다. 별도실제합성버튼click사례1건은활성화true에서처음부터muted=false로재생하고안내는없었다. 세 사례 모두통과했다. 한영패널 캡처는 `output/playwright/preview-audio-blocked-ko.png`와 `output/playwright/preview-audio-blocked-en.png`에저장하고 실제픽셀을 확인했다. 무음시험음원이라물리적인 소리와음질은판정하지 않는다.
+
+합성 정책 검사의 스크린샷도 Astra max가 검토했다. Playwright locator.screenshot의 내부 평가가userGesture=true를 사용할 수 있어, 앞선 우클릭 검사에서는 촬영 후에도 미활성 상태였다고 입증하지 못했다. 촬영 전의 초기 차단 판정은 이 영향을 받지 않는다. 일반CDP Page.captureScreenshot과 비활성 읽기 좌표로 촬영하고 실제Input 우클릭 직전에도hasBeenActive=false를 확인하도록 좁게 보완했다. 보완 후 한영 차단·우클릭 해제와 별도 활성화 허용의3/3을 새로 통과했다. 제품 코드는 이 촬영 보완에서 변경하지 않았다.

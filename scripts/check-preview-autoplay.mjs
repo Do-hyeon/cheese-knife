@@ -68,7 +68,10 @@ try {
       assert.equal(result.status.state, 'ready');
       if (!interact) {
         assert.equal(result.text, messages.content_previewAudioBlocked.message + ' ' + messages.content_previewAudioRightClick.message);
-        await page.locator('.knife-preview').screenshot({ path: `output/playwright/preview-audio-blocked-${locale}.png` });
+        const clip = await read("(() => {const r=document.querySelector('.knife-preview').getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,scale:1};})()");
+        const screenshot = await session.send('Page.captureScreenshot', { format: 'png', clip });
+        await fs.writeFile(`output/playwright/preview-audio-blocked-${locale}.png`, Buffer.from(screenshot.data, 'base64'));
+        assert.equal(await read('navigator.userActivation.hasBeenActive'), false, 'capturing proof must not activate manual-unmute fixture');
         const target = await read("(() => {const r=document.querySelector('#target').getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2};})()");
         // Real right-button input, not evaluate/userGesture=true injection.
         await session.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...target });
