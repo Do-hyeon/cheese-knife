@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { page, load, runtime, deliver, playerHTML, flush } = require('./helpers.cjs');
+const { page, load, runtime, deliver, playerHTML, flush, clock } = require('./helpers.cjs');
 
 function previewFixture(t, config = {}) {
   const dom = page(playerHTML + '<aside id="sidebar"><a id="side" href="/live/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb">Live</a></aside>');
@@ -261,32 +261,33 @@ for (const progressing of [false, true]) test('post-start watchdog distinguishes
   assert.equal(runtime(fixture.dom).statuses.livePreview.state, progressing ? 'ready' : 'limited');
 });
 
-function followingFixture(t, { compact = false, noEffect = false, wrapped = false } = {}) {
+async function followingFixture(t, { compact = false, noEffect = false, wrapped = false } = {}) {
   const html = playerHTML.replace('<div class="pzp-pc__volume-control"></div>', '<div class="pzp-pc__volume-control"></div><button class="pzp-pc__viewmode-button" aria-label="넓은 화면"></button>') +
     '<aside id="sidebar"><nav aria-label="팔로우">' + (compact ? '' : '<strong class="_title_test">팔로잉 채널</strong>') +
     (wrapped ? '<div class="_box_qz74s_149">' : '') +
     '<button class="_more_button_test" aria-expanded="false" id="more">더보기</button>' + (wrapped ? '</div>' : '') + '</nav></aside>';
-  const dom = page(html); const more = dom.window.document.getElementById('more'); let clicks = 0;
+  const dom = page(html), time = clock(dom); const more = dom.window.document.getElementById('more'); let clicks = 0;
   more.addEventListener('click', () => { clicks++; if (!noEffect) more.setAttribute('aria-expanded', more.getAttribute('aria-expanded') === 'true' ? 'false' : 'true'); });
   load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
   deliver(dom, { expandFollowings: true, updateSidebar: false }); load(dom, 'web/inject.js');
   t.after(() => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); dom.window.close(); });
-  return { dom, more, clicks: () => clicks, mode: dom.window.document.querySelector('.pzp-pc__viewmode-button'),
+  await time.advance(500);
+  return { dom, more, advance: ms => time.advance(ms), clicks: () => clicks, mode: dom.window.document.querySelector('.pzp-pc__viewmode-button'),
     async wideThenNarrow() {
-      this.mode.setAttribute('aria-label', '좁은 화면'); await flush();
-      more.setAttribute('aria-expanded', 'false'); await flush();
-      this.mode.setAttribute('aria-label', '넓은 화면'); await flush();
+      this.mode.setAttribute('aria-label', '좁은 화면'); await time.advance(0);
+      this.more.setAttribute('aria-expanded', 'false'); await time.advance(0);
+      this.mode.setAttribute('aria-label', '넓은 화면'); await time.advance(500);
     } };
 }
 
 test('wide-player ON to OFF reopens a native collapsed following list using the same control', async t => {
-  const fixture = followingFixture(t); assert.equal(fixture.clicks(), 1);
+  const fixture = await followingFixture(t); assert.equal(fixture.clicks(), 1);
   await fixture.wideThenNarrow();
   assert.equal(fixture.more.getAttribute('aria-expanded'), 'true'); assert.equal(fixture.clicks(), 2);
 });
 
 test('the installed native More wrapper supports initial expansion and wide-mode restoration', async t => {
-  const fixture = followingFixture(t, { wrapped: true });
+  const fixture = await followingFixture(t, { wrapped: true });
   assert.equal(fixture.more.getAttribute('aria-expanded'), 'true');
   assert.equal(fixture.clicks(), 1);
   await fixture.wideThenNarrow();
@@ -294,19 +295,19 @@ test('the installed native More wrapper supports initial expansion and wide-mode
   assert.equal(fixture.clicks(), 2);
 });
 
-test('confirmed expansion can restore one later native collapse without an unbounded retry loop', async t => {
-  const fixture = followingFixture(t, { wrapped: true });
+test('confirmed expansion observes a later native reset without retrying in the same restoration', async t => {
+  const fixture = await followingFixture(t, { wrapped: true });
   assert.equal(fixture.more.getAttribute('aria-expanded'), 'true'); assert.equal(fixture.clicks(), 1);
-  fixture.more.setAttribute('aria-expanded', 'false'); await flush();
-  assert.equal(fixture.more.getAttribute('aria-expanded'), 'true', 'confirmed success allows a later native reset to be restored');
-  assert.equal(fixture.clicks(), 2);
-  fixture.more.setAttribute('aria-expanded', 'false'); await flush(); runtime(fixture.dom).reconcile();
+  fixture.more.setAttribute('aria-expanded', 'false'); await fixture.advance(1000);
+  assert.equal(fixture.more.getAttribute('aria-expanded'), 'false', 'native reset is not fought by another click');
+  assert.equal(fixture.clicks(), 1);
+  runtime(fixture.dom).reconcile(); await fixture.advance(1000);
   assert.equal(fixture.more.getAttribute('aria-expanded'), 'false');
-  assert.equal(fixture.clicks(), 2, 'the same epoch budget still limits automatic clicks');
+  assert.equal(fixture.clicks(), 1, 'one activation covers the entire restoration');
 });
 
 test('manual collapse of wrapped native More remains respected on wide-mode restoration', async t => {
-  const fixture = followingFixture(t, { wrapped: true });
+  const fixture = await followingFixture(t, { wrapped: true });
   fixture.more.click(); await flush(); await fixture.wideThenNarrow();
   assert.equal(fixture.more.getAttribute('aria-expanded'), 'false');
   assert.equal(fixture.clicks(), 2);
@@ -314,7 +315,7 @@ test('manual collapse of wrapped native More remains respected on wide-mode rest
 });
 
 test('an unrelated nested More control cannot be used as following expansion', async t => {
-  const fixture = followingFixture(t); const unrelated = fixture.dom.window.document.createElement('div');
+  const fixture = await followingFixture(t); const unrelated = fixture.dom.window.document.createElement('div');
   unrelated.className = '_unrelated_menu';
   unrelated.innerHTML = '<button class="_more_button_test" aria-expanded="false">Other menu</button>';
   fixture.more.replaceWith(unrelated); let clicks = 0;
@@ -325,7 +326,7 @@ test('an unrelated nested More control cannot be used as following expansion', a
 });
 
 test('manual following collapse survives wide-mode changes and owner-generation replacement', async t => {
-  const fixture = followingFixture(t); fixture.more.click(); assert.equal(fixture.clicks(), 2);
+  const fixture = await followingFixture(t); fixture.more.click(); assert.equal(fixture.clicks(), 2);
   const body = fixture.dom.window.document.getElementById('layout-body'); body.replaceWith(body.cloneNode(true));
   runtime(fixture.dom).reconcile(); await flush();
   fixture.mode = fixture.dom.window.document.querySelector('.pzp-pc__viewmode-button');
@@ -333,13 +334,13 @@ test('manual following collapse survives wide-mode changes and owner-generation 
   assert.equal(fixture.more.getAttribute('aria-expanded'), 'false'); assert.equal(fixture.clicks(), 2);
 });
 
-test('compact following identity uses its public aria-label without requiring a title', t => {
-  const fixture = followingFixture(t, { compact: true });
+test('compact following identity uses its public aria-label without requiring a title', async t => {
+  const fixture = await followingFixture(t, { compact: true });
   assert.equal(fixture.more.getAttribute('aria-expanded'), 'true'); assert.equal(fixture.clicks(), 1);
 });
 
 test('a rejected expansion click is not reported ready or retried on unrelated mutations', async t => {
-  const fixture = followingFixture(t, { noEffect: true });
+  const fixture = await followingFixture(t, { noEffect: true });
   fixture.dom.window.document.getElementById('sidebar').setAttribute('class', 'unrelated-change'); await flush();
   runtime(fixture.dom).reconcile();
   assert.equal(fixture.clicks(), 1); assert.equal(fixture.more.getAttribute('aria-expanded'), 'false');
@@ -347,7 +348,7 @@ test('a rejected expansion click is not reported ready or retried on unrelated m
 });
 
 test('a different expandable menu cannot disable following restoration', async t => {
-  const fixture = followingFixture(t); const menu = fixture.dom.window.document.createElement('button');
+  const fixture = await followingFixture(t); const menu = fixture.dom.window.document.createElement('button');
   menu.setAttribute('aria-expanded', 'true'); menu.setAttribute('aria-label', '다른 메뉴');
   fixture.more.parentElement.append(menu); menu.click(); await flush();
   await fixture.wideThenNarrow();
@@ -355,27 +356,27 @@ test('a different expandable menu cannot disable following restoration', async t
 });
 
 test('rejected More clicks cannot gain unlimited retries by replacing the control', async t => {
-  const fixture = followingFixture(t, { noEffect: true }); let attempts = 0;
+  const fixture = await followingFixture(t, { noEffect: true }); let attempts = 0;
   const hook = button => button.addEventListener('click', () => {
     attempts++; if (attempts >= 8) return; // Keep the broken implementation finite.
     const replacement = button.cloneNode(true); hook(replacement); button.replaceWith(replacement);
   });
   hook(fixture.more);
-  deliver(fixture.dom, { expandFollowings: false }, 2); deliver(fixture.dom, { expandFollowings: true }, 3); await flush();
-  assert.equal(attempts, 2, 'aggregate epoch budget applies across DOM replacements');
+  deliver(fixture.dom, { expandFollowings: false }, 2); deliver(fixture.dom, { expandFollowings: true }, 3); await fixture.advance(1000);
+  assert.equal(attempts, 1, 'one restoration activation covers DOM replacements');
   assert.equal(fixture.dom.window.document.querySelector('#more').getAttribute('aria-expanded'), 'false');
 });
 
 test('a no-op collapse request does not become user intent without native state change', async t => {
-  const fixture = followingFixture(t);
+  const fixture = await followingFixture(t);
   const more = fixture.more.cloneNode(true); fixture.more.replaceWith(more); fixture.more = more;
   await flush(); more.click(); await flush(); // No native click handler; still expanded.
   await fixture.wideThenNarrow();
   assert.notEqual(runtime(fixture.dom).statuses.expandFollowings.reason, 'user-collapsed');
 });
 
-test('pending following confirmation expires without another mutation after owner replacement', async t => {
-  const fixture = followingFixture(t, { noEffect: true });
+test('manual no-op cancellation survives owner replacement after its confirmation window expires', async t => {
+  const fixture = await followingFixture(t, { noEffect: true });
   fixture.more.click(); // Unconfirmed user activation while still collapsed.
   const body = fixture.dom.window.document.getElementById('layout-body'); body.replaceWith(body.cloneNode(true));
   const more = fixture.more.cloneNode(true); fixture.more.replaceWith(more);
@@ -383,13 +384,13 @@ test('pending following confirmation expires without another mutation after owne
   more.addEventListener('click', () => { replacementClicks++; more.setAttribute('aria-expanded', 'true'); });
   runtime(fixture.dom).reconcile(); await flush();
   assert.equal(replacementClicks, 0, 'active confirmation gates replacement expansion');
-  await new Promise(resolve => setTimeout(resolve, 350));
-  assert.equal(replacementClicks, 1, 'remaining deadline survives owner replacement without external reconciliation');
-  assert.equal(more.getAttribute('aria-expanded'), 'true');
+  await fixture.advance(1000);
+  assert.equal(replacementClicks, 0, 'manual activation cancels this restoration regardless of confirmation');
+  assert.equal(more.getAttribute('aria-expanded'), 'false');
 });
 
 test('a delayed native collapse on the clicked control survives wide-mode changes', async t => {
-  const fixture = followingFixture(t);
+  const fixture = await followingFixture(t);
   const more = fixture.more.cloneNode(true); fixture.more.replaceWith(more); fixture.more = more;
   let clicks = 0;
   more.addEventListener('click', () => {
@@ -398,7 +399,7 @@ test('a delayed native collapse on the clicked control survives wide-mode change
     else more.setAttribute('aria-expanded', 'true');
   });
   await flush(); more.click();
-  await new Promise(resolve => setTimeout(resolve, 350));
+  await fixture.advance(350);
   assert.equal(more.getAttribute('aria-expanded'), 'false');
   await fixture.wideThenNarrow();
   assert.equal(more.getAttribute('aria-expanded'), 'false', 'late native confirmation still represents manual collapse');
@@ -407,7 +408,7 @@ test('a delayed native collapse on the clicked control survives wide-mode change
 });
 
 test('native whole-section folding is respected without classifying other header menus as folding', async t => {
-  const fixture = followingFixture(t); const header = fixture.dom.window.document.createElement('div'); header.className = '_header_test';
+  const fixture = await followingFixture(t); const header = fixture.dom.window.document.createElement('div'); header.className = '_header_test';
   header.innerHTML = '<button id="fold" aria-expanded="true" aria-label="펼쳐짐, 접기"></button><button aria-expanded="true" aria-label="다른 메뉴"></button>';
   fixture.more.parentElement.prepend(header); const fold = header.querySelector('#fold');
   fold.addEventListener('click', () => { fold.setAttribute('aria-expanded', 'false'); fixture.more.setAttribute('aria-expanded', 'false'); });
@@ -416,7 +417,7 @@ test('native whole-section folding is respected without classifying other header
 });
 
 test('installed whole-section collapse label changes still confirm user intent', async t => {
-  const fixture = followingFixture(t, { wrapped: true });
+  const fixture = await followingFixture(t, { wrapped: true });
   const header = fixture.dom.window.document.createElement('div'); header.className = '_header_qz74s_46';
   header.innerHTML = '<button aria-expanded="true" aria-label="펼쳐짐, 접기"></button>';
   fixture.more.parentElement.parentElement.prepend(header); const fold = header.firstChild;
@@ -431,7 +432,7 @@ test('installed whole-section collapse label changes still confirm user intent',
 });
 
 test('keyboard-generated activation of the native More button preserves manual collapse', async t => {
-  const fixture = followingFixture(t);
+  const fixture = await followingFixture(t);
   fixture.more.dispatchEvent(new fixture.dom.window.MouseEvent('click', { bubbles: true, detail: 0 }));
   await fixture.wideThenNarrow();
   assert.equal(fixture.more.getAttribute('aria-expanded'), 'false'); assert.equal(fixture.clicks(), 2);

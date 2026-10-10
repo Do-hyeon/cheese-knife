@@ -15,9 +15,10 @@
   let followingUserCollapsed = false;
   let followingEnabled = false;
   let followingWide = null;
+  let followingModeKnown = false;
+  let followingRoute;
   let followingEpoch = 0;
-  const followingAttempts = new WeakMap();
-  const followingBudget = { epoch: -1, attempts: 0 };
+  let followingSettlement;
   let followingIntent;
   let followingGesture;
   let timestampRoots;
@@ -25,9 +26,17 @@
   const videoMetadata = new Map();
   const pad = value => String(value).padStart(2, '0');
   const syncFollowingMode = () => {
-    const label = runtime.state.player?.pzp.querySelector('.pzp-pc__viewmode-button')?.getAttribute('aria-label') || '';
-    const wide = /^(좁은 화면|Narrow screen|Normal view)$/i.test(label) ||
-      (!label && /(?:^|\s)(?:_is_large_|live_information_is_large__)/.test(runtime.state.body?.className || ''));
+    const route = runtime.state.route;
+    if (route?.path !== followingRoute) { followingRoute = route?.path; followingEpoch++; }
+    const pzp = runtime.state.player?.pzp;
+    const label = pzp?.isConnected ? pzp.querySelector('.pzp-pc__viewmode-button')?.getAttribute('aria-label') || '' : '';
+    let wide;
+    if (/^(좁은 화면|Narrow screen|Normal view)$/i.test(label)) wide = true;
+    else if (/^(넓은 화면|Wide screen|Wide view)$/i.test(label)) wide = false;
+    else if (!['live', 'vod'].includes(route?.kind)) wide = false;
+    else if (/(?:^|\s)(?:_is_large_|live_information_is_large__)/.test(runtime.state.body?.className || '')) wide = true;
+    else { followingModeKnown = false; return; } // Missing controls are not a normal-mode transition.
+    followingModeKnown = true;
     if (wide !== followingWide) { followingWide = wide; followingEpoch++; }
   };
   const formatTime = value => {
@@ -349,7 +358,9 @@
     if (!node) return;
     if (sidebar === node) { sidebarRecord.sync(); return; }
     sidebar = node;
-    const record = sidebarRecord = { timer: null, expanding: false, suspended: false };
+    const record = sidebarRecord = { timer: null, settleTimer: null, settleAt: null, expanding: false, suspended: false };
+    // A new owner invalidates its old reservation, not the original deadline.
+    if (followingSettlement?.epoch === followingEpoch && !followingSettlement.attempted) followingSettlement.quietAt = performance.now();
     // Native sections arrive independently. Never identify a hiding target by
     // its position: cold loading may contain only the general menu and services.
     const sectionAttribute = 'data-knife-sidebar-section';
@@ -434,17 +445,24 @@
     };
     const refreshControl = () => followingSection()?.querySelector('button[aria-label="새로고침"], button[aria-label="Refresh"]');
     const stopRefresh = () => { clearInterval(record.timer); record.timer = null; };
+    const stopSettlement = () => { clearTimeout(record.settleTimer); record.settleTimer = record.settleAt = null; };
+    const scheduleSettlement = at => {
+      if (record.settleTimer !== null && record.settleAt === at) return;
+      stopSettlement(); record.settleAt = at;
+      record.settleTimer = setTimeout(() => { record.settleTimer = record.settleAt = null; record.sync(); }, Math.max(0, at - performance.now()));
+    };
+    scope.add(stopSettlement); // One disposer, even when native updates re-arm the timer.
     const refresh = () => {
       if (scope.disposed || record.suspended || document.hidden || !node.isConnected || config.updateSidebar !== true) return;
       const button = refreshControl();
       if (button && !button.disabled) button.click();
     };
     record.sync = () => {
-      if (scope.disposed || !node.isConnected) { stopRefresh(); return; }
+      if (scope.disposed || !node.isConnected) { stopRefresh(); stopSettlement(); return; }
+      if (runtime.route().path !== runtime.state.route?.path) { stopSettlement(); runtime.reconcile(); return; }
       syncFollowingMode();
       confirmIntent();
       armIntentExpiry(); // New owners inherit only the remaining confirmation deadline.
-      if (followingBudget.epoch !== followingEpoch) { followingBudget.epoch = followingEpoch; followingBudget.attempts = 0; }
       syncSections();
       const button = refreshControl();
       if (config.updateSidebar === true && button) {
@@ -455,25 +473,48 @@
         runtime.setStatus('sidebarRefresh', config.updateSidebar ? 'limited' : 'disabled', config.updateSidebar ? 'following-control-unavailable' : '');
       }
       if (config.expandFollowings !== true) {
+        stopSettlement();
         runtime.setStatus('expandFollowings', 'disabled'); return;
       }
+      if (followingUserCollapsed) { stopSettlement(); runtime.setStatus('expandFollowings', 'disabled', 'user-collapsed'); return; }
+      if (!followingModeKnown || followingWide || record.suspended || document.hidden) {
+        stopSettlement();
+        if (followingSettlement) followingSettlement.quietAt = performance.now();
+        runtime.setStatus('expandFollowings', followingModeKnown ? 'pending' : 'limited',
+          !followingModeKnown ? 'native-mode-unavailable' : followingWide ? 'native-wide-mode' : 'page-suspended'); return;
+      }
+      const now = performance.now();
+      if (followingSettlement?.epoch !== followingEpoch) {
+        followingSettlement = { epoch: followingEpoch, deadline: now + 5000, quietAt: now, attempted: false, cancelled: false, confirmed: false };
+      }
+      const settlement = followingSettlement;
       const more = followingMore(followingSection());
+      if (settlement.control?.deref() !== more) { settlement.control = more ? new WeakRef(more) : null; settlement.quietAt = now; }
       if (!more || !['true', 'false'].includes(more.getAttribute('aria-expanded'))) {
+        if (!settlement.cancelled && !settlement.attempted && now < settlement.deadline) scheduleSettlement(settlement.deadline);
+        else stopSettlement();
         runtime.setStatus('expandFollowings', 'limited', 'following-control-unavailable'); return;
       }
-      if (followingUserCollapsed) { runtime.setStatus('expandFollowings', 'disabled', 'user-collapsed'); return; }
-      if (followingWide) { runtime.setStatus('expandFollowings', 'pending', 'native-wide-mode'); return; }
-      if (more.getAttribute('aria-expanded') === 'false' && !more.disabled && !followingIntent &&
-        followingBudget.attempts < 2 && followingAttempts.get(more) !== followingEpoch) {
-        followingBudget.attempts++;
-        followingAttempts.set(more, followingEpoch); record.expanding = true;
-        try { more.click(); } finally { record.expanding = false; }
+      if (more.getAttribute('aria-expanded') === 'true') {
+        settlement.confirmed = true; stopSettlement(); runtime.setStatus('expandFollowings', 'ready'); return;
       }
-      // Confirmed success releases only this control's no-op guard. A later
-      // native reset can use the remaining aggregate budget, never a new one.
-      if (more.getAttribute('aria-expanded') === 'true') followingAttempts.delete(more);
-      runtime.setStatus('expandFollowings', more.getAttribute('aria-expanded') === 'true' ? 'ready' : 'pending',
-        more.getAttribute('aria-expanded') === 'true' ? '' : 'following-expand-unconfirmed');
+      if (settlement.cancelled) { stopSettlement(); runtime.setStatus('expandFollowings', 'pending', 'user-activation'); return; }
+      if (settlement.attempted) {
+        if (!settlement.confirmed && now < settlement.deadline) scheduleSettlement(settlement.deadline);
+        else stopSettlement();
+        runtime.setStatus('expandFollowings', settlement.confirmed || now >= settlement.deadline ? 'limited' : 'pending',
+          settlement.confirmed ? 'following-native-reset' : 'following-expand-unconfirmed'); return;
+      }
+      if (now >= settlement.deadline) { stopSettlement(); runtime.setStatus('expandFollowings', 'limited', 'following-settlement-timeout'); return; }
+      if (more.disabled || followingIntent || now - settlement.quietAt < 500) {
+        scheduleSettlement(more.disabled || followingIntent ? settlement.deadline : Math.min(settlement.deadline, settlement.quietAt + 500));
+        runtime.setStatus('expandFollowings', 'pending', 'following-native-settling'); return;
+      }
+      // One activation per restoration. Native updates after it are observed,
+      // never fought with repeated clicks, even when controls are replaced.
+      stopSettlement(); settlement.attempted = true; record.expanding = true;
+      try { more.click(); } finally { record.expanding = false; }
+      record.sync();
     };
     scope.on(node, 'click', event => {
       if (record.expanding || config.expandFollowings !== true) return;
@@ -485,14 +526,19 @@
       if (!kind) return;
       const expanded = button.getAttribute('aria-expanded');
       if (!['true', 'false'].includes(expanded)) return;
+      if (followingSettlement?.epoch === followingEpoch) followingSettlement.cancelled = true;
+      stopSettlement();
       followingIntent = followingGesture = { kind, before: expanded, control: new WeakRef(button), epoch: followingEpoch, expires: performance.now() + 200 };
-      if (more) followingAttempts.set(more, followingEpoch);
       armIntentExpiry();
     }, { capture: true });
     scope.on(node, 'click', confirmIntent);
     scope.add(stopRefresh);
-    scope.on(window, 'pagehide', () => { record.suspended = true; stopRefresh(); });
-    scope.on(window, 'pageshow', () => { record.suspended = false; record.sync(); });
+    scope.on(window, 'pagehide', () => { record.suspended = true; stopRefresh(); stopSettlement(); });
+    scope.on(window, 'pageshow', () => {
+      record.suspended = false;
+      if (followingSettlement) followingSettlement.quietAt = performance.now();
+      record.sync();
+    });
     const attach = anchor => {
       const url = liveURL(anchor.href);
       if (!url || anchors.has(anchor)) return;
@@ -507,6 +553,11 @@
     };
     node.querySelectorAll('a[href]').forEach(attach);
     scope.observe(new MutationObserver(mutations => {
+      const section = followingSection();
+      const more = followingMore(section), fold = followingFold(section);
+      const nativeUpdate = mutations.some(mutation => section?.contains(mutation.target) && !mutation.target.closest?.('.knife-owned') &&
+        (mutation.type !== 'attributes' || (mutation.target === more || mutation.target === fold) && mutation.attributeName !== 'class' && mutation.attributeName !== 'href'));
+      if (nativeUpdate && followingSettlement?.epoch === followingEpoch && !followingSettlement.attempted) followingSettlement.quietAt = performance.now();
       for (const mutation of mutations) {
         if (mutation.type === 'attributes' && mutation.attributeName === 'href' && mutation.target.matches('a[href]')) attach(mutation.target);
         for (const added of mutation.addedNodes) {
