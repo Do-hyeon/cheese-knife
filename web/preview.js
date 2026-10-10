@@ -31,7 +31,7 @@
       try { media.pause(); media.removeAttribute('src'); media.srcObject = null; media.load(); } catch {}
       media.remove(); media = null;
     }
-    if (panel) { panel.hidden = true; panel.querySelector('img').removeAttribute('src'); }
+    if (panel) { panel.hidden = true; panel.querySelector('img').removeAttribute('src'); panel.querySelector('.knife-preview-audio-note').hidden = true; }
   };
   const ensurePanel = () => {
     if (panel?.isConnected) return;
@@ -39,7 +39,8 @@
     const image = document.createElement('img'); image.alt = '';
     const player = document.createElement('div'); player.className = 'knife-preview-player';
     const uptime = document.createElement('div'); uptime.className = 'knife-preview-uptime';
-    panel.append(image, player, uptime); document.body.append(panel);
+    const audioNote = document.createElement('div'); audioNote.className = 'knife-preview-audio-note'; audioNote.hidden = true;
+    panel.append(image, player, uptime, audioNote); document.body.append(panel);
   };
   const valid = (token, anchor, href) => token === generation && !!current && ownsAnchor(anchor) && anchor.href === href &&
     location.pathname === current.route && runtime.config.preview === true && !document.hidden && runtime.configReady;
@@ -55,7 +56,13 @@
     panel.querySelector('.knife-preview-player').append(video); media = video;
     let failed = false;
     let attempt = 0;
-    let playingAttempt = null;
+    let playingRequest = null;
+    let dataReady = false;
+    const startUnmuted = current.startUnmuted;
+    let desiredMuted = !startUnmuted;
+    let audioRevision = 0;
+    let fallbackUsed = false;
+    let soundBlocked = false;
     let recoveries = 0;
     let loaded = false;
     let watching = false;
@@ -76,6 +83,7 @@
       failed = true; cache.delete(current.id);
       try { backend?.destroy?.(); video.pause(); video.removeAttribute('src'); video.load(); } catch {}
       backend = null; video.style.visibility = 'hidden';
+      panel.querySelector('.knife-preview-audio-note').hidden = true;
       runtime.setStatus('livePreview', 'limited', 'stream-playback-unavailable');
     };
     const watchProgress = () => {
@@ -89,20 +97,56 @@
       lastTime = video.currentTime;
       later(watchProgress, 1000);
     };
-    const play = async () => {
-      if (!active() || playingAttempt === attempt) return;
-      const startedAttempt = attempt;
-      playingAttempt = startedAttempt;
+    const renderAudioNote = () => {
+      if (!active()) return;
+      const element = panel.querySelector('.knife-preview-audio-note');
+      element.hidden = !soundBlocked;
+      const text = soundBlocked ? (runtime.i18n.previewAudioBlocked || 'The browser blocked automatic sound. Playing muted.') +
+        (runtime.config.rightClickToUnmute === true ? ' ' + (runtime.i18n.previewAudioRightClick || 'Right-click the sidebar target to unmute.') : '') : '';
+      if (element.textContent !== text) element.textContent = text;
+    };
+    const play = async (manual = false) => {
+      if (!active() || !dataReady || (startUnmuted && panel.hidden) ||
+        (!manual && (playingRequest?.attempt === attempt || (loaded && !video.paused)))) return;
+      const request = { attempt, audioRevision };
+      playingRequest = request;
+      const currentRequest = () => active() && request.attempt === attempt;
+      const currentAudio = () => currentRequest() && request.audioRevision === audioRevision;
+      const complete = () => {
+        if (!currentRequest()) return;
+        // A manual mute must not discard valid media readiness/progress.
+        loaded = true; video.style.visibility = ''; runtime.setStatus('livePreview', 'ready');
+        if (currentAudio() && !desiredMuted && !video.muted && !video.paused) { soundBlocked = false; renderAudioNote(); }
+        if (!watching) { watching = true; lastTime = video.currentTime; lastProgress = performance.now(); later(watchProgress, 1000); }
+      };
+      video.muted = desiredMuted;
       try {
         await video.play();
-        if (!active() || startedAttempt !== attempt) return;
-        loaded = true;
-        video.style.visibility = ''; runtime.setStatus('livePreview', 'ready');
-        if (!watching) { watching = true; lastTime = video.currentTime; lastProgress = performance.now(); later(watchProgress, 1000); }
-      } catch { if (active() && startedAttempt === attempt) fail(); }
-      finally { if (playingAttempt === startedAttempt) playingAttempt = null; }
+        complete();
+      } catch (error) {
+        if (!currentAudio()) return;
+        if (!manual && startUnmuted && !desiredMuted && !fallbackUsed && error?.name === 'NotAllowedError') {
+          // Spend before awaiting. Readiness events/recovery never renew it.
+          fallbackUsed = true; desiredMuted = true; video.muted = true;
+          try {
+            await video.play();
+            if (currentAudio()) { soundBlocked = true; renderAudioNote(); }
+            complete();
+          } catch { if (currentAudio()) fail(); }
+        } else fail();
+      } finally { if (playingRequest === request) playingRequest = null; }
     };
-    video.addEventListener('loadeddata', play);
+    current.audio = {
+      play: () => play(),
+      refresh: renderAudioNote,
+      toggle() {
+        if (!active()) return;
+        audioRevision++; desiredMuted = !desiredMuted;
+        video.volume = volume(); video.muted = startUnmuted && panel.hidden ? true : desiredMuted;
+        if (!desiredMuted || video.paused) play(true);
+      },
+    };
+    video.addEventListener('loadeddata', () => { dataReady = true; play(); });
     video.addEventListener('error', () => {
       sample('media-error');
       // The HLS backend reports/classifies this same error and owns recovery.
@@ -174,7 +218,8 @@
       const hoverStarted = Date.now();
       const id = url.pathname.split('/')[2];
       const request = controller = new AbortController();
-      current = { id, href, anchor, route: location.pathname, live: runtime.config.livePreview === true };
+      current = { id, href, anchor, route: location.pathname, live: runtime.config.livePreview === true,
+        startUnmuted: runtime.config.previewStartUnmuted === true };
       const timeout = later(() => request.abort(), 5000);
       let info;
       try {
@@ -224,6 +269,7 @@
       later(() => {
         if (!valid(token, anchor, href)) return;
         panel.hidden = false; updateUptime(); runtime.setStatus('preview', 'ready');
+        if (current.startUnmuted) current.audio?.play();
       }, Math.max(0, hoverStarted + delay - Date.now()));
     },
     hide(href) { if (!href || current?.href === href) cleanup(); },
@@ -237,14 +283,14 @@
     if (runtime.config.rightClickToUnmute !== true) return;
     if (!current || !media || event.target.closest?.('a[href]') !== current.anchor ||
       !valid(generation, current.anchor, current.href)) return;
-    event.preventDefault(); media.volume = volume(); media.muted = !media.muted;
+    event.preventDefault(); current.audio?.toggle();
   });
   scope.on(window, 'pagehide', event => { cleanup(); if (!event.persisted) scope.dispose(); });
   const checkActive = () => {
     if (current && (location.pathname !== current.route || !ownsAnchor(current.anchor) || current.anchor.href !== current.href ||
       (panel && !panel.isConnected) || runtime.config.preview !== true ||
       (current.live && runtime.config.livePreview !== true))) cleanup();
-    if (current && media) media.volume = volume();
+    if (current && media) { media.volume = volume(); current.audio?.refresh(); }
   };
   // Constant-time identity check, not a document-wide card scan. Invalidation
   // must stop an existing stream as well as reject future async completions.

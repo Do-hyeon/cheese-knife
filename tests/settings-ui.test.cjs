@@ -25,7 +25,7 @@ test('every popup option saves its own field without dropping unrelated settings
   load(dom, 'config.js'); load(dom, 'popup.js'); await flush();
   const values = {
     preview: true, livePreview: false, previewWidth: 650, previewDelay: 0.1, previewVolume: 10,
-    rightClickToUnmute: false, updateSidebar: false, expandFollowings: true, popupPlayer: false,
+    rightClickToUnmute: false, previewStartUnmuted: true, updateSidebar: false, expandFollowings: true, popupPlayer: false,
     arrowSeek: false, pressToFastForward: false, brightness: 1.2, contrast: 1.1, saturation: 0.8, gamma: 1.2, sharpness: 2,
     compressorDefault: true, compressorThreshold: -40, compressorKnee: 30, compressorRatio: 8, compressorAttack: 0.1, compressorRelease: 0.3,
     hideDonation: true, showDeleted: true,
@@ -38,7 +38,7 @@ test('every popup option saves its own field without dropping unrelated settings
     input.dispatchEvent(new dom.window.Event(typeof value === 'boolean' ? 'change' : 'input', { bubbles: true }));
     await flush();
     assert.equal(data.config[id], value, `${id} persists`);
-    assert.equal(Object.keys(data.config).length, 24, `${id} preserves the other settings`);
+    assert.equal(Object.keys(data.config).length, 25, `${id} preserves the other settings`);
   }
   assert.deepEqual(data.config, values);
   const delay = dom.window.document.getElementById('previewDelay');

@@ -29,6 +29,18 @@
   "config_livePreview": {
     "message": "Sidebar video playback"
   },
+  "config_previewStartUnmuted": {
+    "message": "Start unmuted"
+  },
+  "config_previewStartUnmuted_desc": {
+    "message": "Start the next sidebar preview at the configured volume when it appears. If the browser blocks automatic sound, play muted instead. Does not affect the main broadcast."
+  },
+  "content_previewAudioBlocked": {
+    "message": "The browser blocked automatic sound. Playing muted."
+  },
+  "content_previewAudioRightClick": {
+    "message": "Right-click the sidebar target to unmute."
+  },
   "config_rightClickToUnmute": {
     "message": "Right-click to unmute"
   },

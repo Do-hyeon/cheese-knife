@@ -29,6 +29,18 @@
   "config_livePreview": {
     "message": "사이드바 영상 재생"
   },
+  "config_previewStartUnmuted": {
+    "message": "음소거 해제로 시작"
+  },
+  "config_previewStartUnmuted_desc": {
+    "message": "다음 사이드바 미리보기를 표시할 때 설정 볼륨으로 시작합니다. 브라우저가 자동 소리를 차단하면 음소거로 재생합니다. 메인 방송에는 적용하지 않습니다."
+  },
+  "content_previewAudioBlocked": {
+    "message": "브라우저가 자동 소리를 차단해 음소거로 재생 중입니다."
+  },
+  "content_previewAudioRightClick": {
+    "message": "사이드바 대상에서 우클릭하면 음소거를 해제할 수 있습니다."
+  },
   "config_rightClickToUnmute": {
     "message": "우클릭으로 음소거 해제"
   },

@@ -39,6 +39,8 @@ for (const mainFirst of [true, false]) test(`settings handshake works with ISOLA
   assert.equal(runtime(dom).config.arrowSeek, false);
   assert.equal(runtime(dom).config.previewWidth, 400);
   assert.equal(runtime(dom).i18n.fastForward, 'content_fastForward');
+  assert.equal(runtime(dom).i18n.previewAudioBlocked, 'content_previewAudioBlocked');
+  assert.equal(runtime(dom).i18n.previewAudioRightClick, 'content_previewAudioRightClick');
 });
 
 for (const latest of [{ 'chat-font-size': 8 }, {}]) test(`initial style snapshot does not overwrite a newer parameter event: ${Object.keys(latest).length ? 'offset' : 'reset'}`, async t => {

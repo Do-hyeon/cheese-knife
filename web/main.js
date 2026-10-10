@@ -87,6 +87,8 @@ for (const m of [
   "disableCompressor",
   "liveStart",
   "speed2x",
+  "previewAudioBlocked",
+  "previewAudioRightClick",
   "measured"
 ]) {
   i18n[m] = chrome.i18n.getMessage(`content_${m}`);

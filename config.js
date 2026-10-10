@@ -11,6 +11,10 @@ var CONFIGS = [
         defaultValue: true,
       },
       {
+        id: "previewStartUnmuted",
+        defaultValue: false,
+      },
+      {
         id: "previewWidth",
         type: "range",
         min: 300,

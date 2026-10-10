@@ -18,6 +18,13 @@ test('partial stored settings keep explicit false and fill missing defaults', as
   assert.equal(config.compressorRatio, 12);
 });
 
+test('start-unmuted preference defaults safely and preserves only boolean choices', async () => {
+  for (const [stored, want] of [[undefined, false], ['true', false], [1, false], [true, true], [false, false]]) {
+    const { config } = await settings({ config: { previewStartUnmuted: stored } });
+    assert.equal(config.previewStartUnmuted, want);
+  }
+});
+
 test('invalid types and nonfinite/out-of-range numbers use schema defaults', async () => {
   const { config } = await settings({ config: {
     compressorRatio: Infinity, compressorThreshold: -200,
