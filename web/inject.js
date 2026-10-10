@@ -469,6 +469,9 @@
         followingAttempts.set(more, followingEpoch); record.expanding = true;
         try { more.click(); } finally { record.expanding = false; }
       }
+      // Confirmed success releases only this control's no-op guard. A later
+      // native reset can use the remaining aggregate budget, never a new one.
+      if (more.getAttribute('aria-expanded') === 'true') followingAttempts.delete(more);
       runtime.setStatus('expandFollowings', more.getAttribute('aria-expanded') === 'true' ? 'ready' : 'pending',
         more.getAttribute('aria-expanded') === 'true' ? '' : 'following-expand-unconfirmed');
     };

@@ -294,6 +294,17 @@ test('the installed native More wrapper supports initial expansion and wide-mode
   assert.equal(fixture.clicks(), 2);
 });
 
+test('confirmed expansion can restore one later native collapse without an unbounded retry loop', async t => {
+  const fixture = followingFixture(t, { wrapped: true });
+  assert.equal(fixture.more.getAttribute('aria-expanded'), 'true'); assert.equal(fixture.clicks(), 1);
+  fixture.more.setAttribute('aria-expanded', 'false'); await flush();
+  assert.equal(fixture.more.getAttribute('aria-expanded'), 'true', 'confirmed success allows a later native reset to be restored');
+  assert.equal(fixture.clicks(), 2);
+  fixture.more.setAttribute('aria-expanded', 'false'); await flush(); runtime(fixture.dom).reconcile();
+  assert.equal(fixture.more.getAttribute('aria-expanded'), 'false');
+  assert.equal(fixture.clicks(), 2, 'the same epoch budget still limits automatic clicks');
+});
+
 test('manual collapse of wrapped native More remains respected on wide-mode restoration', async t => {
   const fixture = followingFixture(t, { wrapped: true });
   fixture.more.click(); await flush(); await fixture.wideThenNarrow();
