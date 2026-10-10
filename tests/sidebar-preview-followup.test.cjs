@@ -261,10 +261,11 @@ for (const progressing of [false, true]) test('post-start watchdog distinguishes
   assert.equal(runtime(fixture.dom).statuses.livePreview.state, progressing ? 'ready' : 'limited');
 });
 
-function followingFixture(t, { compact = false, noEffect = false } = {}) {
+function followingFixture(t, { compact = false, noEffect = false, wrapped = false } = {}) {
   const html = playerHTML.replace('<div class="pzp-pc__volume-control"></div>', '<div class="pzp-pc__volume-control"></div><button class="pzp-pc__viewmode-button" aria-label="넓은 화면"></button>') +
     '<aside id="sidebar"><nav aria-label="팔로우">' + (compact ? '' : '<strong class="_title_test">팔로잉 채널</strong>') +
-    '<button class="_more_button_test" aria-expanded="false" id="more">더보기</button></nav></aside>';
+    (wrapped ? '<div class="_box_qz74s_149">' : '') +
+    '<button class="_more_button_test" aria-expanded="false" id="more">더보기</button>' + (wrapped ? '</div>' : '') + '</nav></aside>';
   const dom = page(html); const more = dom.window.document.getElementById('more'); let clicks = 0;
   more.addEventListener('click', () => { clicks++; if (!noEffect) more.setAttribute('aria-expanded', more.getAttribute('aria-expanded') === 'true' ? 'false' : 'true'); });
   load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
@@ -282,6 +283,34 @@ test('wide-player ON to OFF reopens a native collapsed following list using the 
   const fixture = followingFixture(t); assert.equal(fixture.clicks(), 1);
   await fixture.wideThenNarrow();
   assert.equal(fixture.more.getAttribute('aria-expanded'), 'true'); assert.equal(fixture.clicks(), 2);
+});
+
+test('the installed native More wrapper supports initial expansion and wide-mode restoration', async t => {
+  const fixture = followingFixture(t, { wrapped: true });
+  assert.equal(fixture.more.getAttribute('aria-expanded'), 'true');
+  assert.equal(fixture.clicks(), 1);
+  await fixture.wideThenNarrow();
+  assert.equal(fixture.more.getAttribute('aria-expanded'), 'true');
+  assert.equal(fixture.clicks(), 2);
+});
+
+test('manual collapse of wrapped native More remains respected on wide-mode restoration', async t => {
+  const fixture = followingFixture(t, { wrapped: true });
+  fixture.more.click(); await flush(); await fixture.wideThenNarrow();
+  assert.equal(fixture.more.getAttribute('aria-expanded'), 'false');
+  assert.equal(fixture.clicks(), 2);
+  assert.equal(runtime(fixture.dom).statuses.expandFollowings.reason, 'user-collapsed');
+});
+
+test('an unrelated nested More control cannot be used as following expansion', async t => {
+  const fixture = followingFixture(t); const unrelated = fixture.dom.window.document.createElement('div');
+  unrelated.className = '_unrelated_menu';
+  unrelated.innerHTML = '<button class="_more_button_test" aria-expanded="false">Other menu</button>';
+  fixture.more.replaceWith(unrelated); let clicks = 0;
+  unrelated.firstChild.addEventListener('click', () => { clicks++; unrelated.firstChild.setAttribute('aria-expanded', 'true'); });
+  deliver(fixture.dom, { expandFollowings: false }, 2); deliver(fixture.dom, { expandFollowings: true }, 3); await flush();
+  assert.equal(clicks, 0); assert.equal(unrelated.firstChild.getAttribute('aria-expanded'), 'false');
+  assert.equal(runtime(fixture.dom).statuses.expandFollowings.reason, 'following-control-unavailable');
 });
 
 test('manual following collapse survives wide-mode changes and owner-generation replacement', async t => {

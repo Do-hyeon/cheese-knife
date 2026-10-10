@@ -402,7 +402,7 @@
     scope.add(() => { for (const section of sectionMarkers.keys()) releaseSection(section); });
     const followingSection = () => node.querySelector('nav[aria-label="팔로우"], nav[aria-label="Following channels"]') || [...node.querySelectorAll('nav')].find(section =>
       /^(팔로잉 채널|Following channels)$/i.test(section.querySelector('[class*="_title_"], [class^="navigation_bar_title__"]')?.textContent.trim() || ''));
-    const followingMore = section => section?.querySelector(':scope > button[class*="_more_button_"], :scope > button[class^="navigation_bar_more_button__"]');
+    const followingMore = section => section?.querySelector(':scope > button[class*="_more_button_"], :scope > div[class^="_box_"] > button[class*="_more_button_"], :scope > button[class^="navigation_bar_more_button__"]');
     const followingFold = section => [...(section?.querySelectorAll(':scope > [class^="_header_"] > button[aria-expanded], :scope > [class^="navigation_bar_header__"] > button[aria-expanded]') || [])]
       .find(button => /^(펼쳐짐, 접기|접혀짐, 펼치기|Expanded, collapse|Collapsed, expand)$/i.test(button.getAttribute('aria-label') || ''));
     const confirmIntent = () => {
