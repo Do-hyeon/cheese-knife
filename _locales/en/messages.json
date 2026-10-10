@@ -27,19 +27,13 @@
     "message": "Sidebar preview"
   },
   "config_livePreview": {
-    "message": "Video preview"
-  },
-  "config_category_thumbnailPreview": {
-    "message": "Thumbnail preview"
+    "message": "Sidebar video playback"
   },
   "config_rightClickToUnmute": {
     "message": "Right-click to unmute"
   },
   "config_rightClickToUnmute_desc": {
-    "message": "Only works with the built-in preview."
-  },
-  "config_customPreview": {
-    "message": "Use custom preview"
+    "message": "Right-click the active sidebar preview target to toggle mute. Does not modify CHZZK's native previews."
   },
   "config_previewWidth": {
     "message": "Size"
@@ -232,6 +226,9 @@
   },
   "styles_fit_player": {
     "message": "Fill screen"
+  },
+  "styles_fit_player_desc": {
+    "message": "Relaxes player-container height limits. VOD uses space reserved for the information row. Does not enter fullscreen, crop or zoom video, or change quality."
   },
   "styles_volume_percentage": {
     "message": "Show volume percentage"

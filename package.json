@@ -1,16 +1,17 @@
 {
   "name": "cheese-knife",
-  "version": "2.13.2",
+  "version": "2.13.3",
   "description": "A CHZZK toolkit",
   "private": true,
   "scripts": {
     "build": "node scripts/build.mjs",
+    "build:firefox": "node scripts/build.mjs --firefox",
     "test": "node --test tests/*.test.cjs",
     "check": "node scripts/check-package.mjs",
     "inspect:site": "node scripts/inspect-site.mjs",
     "postversion": "manifest=\"$(jq \".version = `jq '.version' package.json`\" manifest.json)\" && echo \"$manifest\" > manifest.json",
     "publish:chrome": "google-chrome --headless --no-sandbox --disable-crash-reporter --no-crashpad --pack-extension=./dist --pack-extension-key=key.pem && chrome-webstore-upload --source=dist.crx",
-    "publish:firefox": "cd dist && web-ext sign --channel listed --approval-timeout 60000"
+    "publish:firefox": "node scripts/build.mjs --firefox && cd dist-firefox && web-ext sign --channel listed --approval-timeout 60000"
   },
   "devDependencies": {
     "chrome-webstore-upload-cli": "4.0.0-0",

@@ -106,6 +106,8 @@ reload.addEventListener("click", () => {
         `styles_${style.id.replaceAll("-", "_")}`
       );
       label.htmlFor = style.id;
+      const description = chrome.i18n.getMessage(`styles_${style.id.replaceAll("-", "_")}_desc`);
+      if (description) label.title = description;
       item.appendChild(label);
 
       if (style.type == null) {

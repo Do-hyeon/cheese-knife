@@ -11,10 +11,22 @@
   let anchors;
   let sidebar;
   let sidebarRecord;
+  // User intent outlives DOM roots and runtime owner generations.
+  let followingUserCollapsed = false;
+  let followingEnabled = false;
+  let followingWide = null;
+  let followingEpoch = 0;
+  const followingAttempts = new WeakMap();
   let timestampRoots;
   const popups = new Map();
   const videoMetadata = new Map();
   const pad = value => String(value).padStart(2, '0');
+  const syncFollowingMode = () => {
+    const label = runtime.state.player?.pzp.querySelector('.pzp-pc__viewmode-button')?.getAttribute('aria-label') || '';
+    const wide = /^(좁은 화면|Narrow screen|Normal view)$/i.test(label) ||
+      (!label && /(?:^|\s)(?:_is_large_|live_information_is_large__)/.test(runtime.state.body?.className || ''));
+    if (wide !== followingWide) { followingWide = wide; followingEpoch++; }
+  };
   const formatTime = value => {
     const total = Math.max(0, Math.floor(value / 1000));
     const hours = Math.floor(total / 3600), minutes = Math.floor(total / 60) % 60, seconds = total % 60;
@@ -334,7 +346,7 @@
     if (!node) return;
     if (sidebar === node) { sidebarRecord.sync(); return; }
     sidebar = node;
-    const record = sidebarRecord = { timer: null, expanded: new WeakSet(), suspended: false };
+    const record = sidebarRecord = { timer: null, expanding: false, suspended: false };
     // Native sections arrive independently. Never identify a hiding target by
     // its position: cold loading may contain only the general menu and services.
     const sectionAttribute = 'data-knife-sidebar-section';
@@ -385,7 +397,7 @@
       }
     };
     scope.add(() => { for (const section of sectionMarkers.keys()) releaseSection(section); });
-    const followingSection = () => [...node.querySelectorAll('nav')].find(section =>
+    const followingSection = () => node.querySelector('nav[aria-label="팔로우"], nav[aria-label="Following channels"]') || [...node.querySelectorAll('nav')].find(section =>
       /^(팔로잉 채널|Following channels)$/i.test(section.querySelector('[class*="_title_"], [class^="navigation_bar_title__"]')?.textContent.trim() || ''));
     const refreshControl = () => followingSection()?.querySelector('button[aria-label="새로고침"], button[aria-label="Refresh"]');
     const stopRefresh = () => { clearInterval(record.timer); record.timer = null; };
@@ -396,6 +408,7 @@
     };
     record.sync = () => {
       if (scope.disposed || !node.isConnected) { stopRefresh(); return; }
+      syncFollowingMode();
       syncSections();
       const button = refreshControl();
       if (config.updateSidebar === true && button) {
@@ -406,17 +419,32 @@
         runtime.setStatus('sidebarRefresh', config.updateSidebar ? 'limited' : 'disabled', config.updateSidebar ? 'following-control-unavailable' : '');
       }
       if (config.expandFollowings !== true) {
-        record.expanded = new WeakSet(); runtime.setStatus('expandFollowings', 'disabled'); return;
+        runtime.setStatus('expandFollowings', 'disabled'); return;
       }
       const more = followingSection()?.querySelector('button[class*="_more_button_"], button[class^="navigation_bar_more_button__"]');
       if (!more || !['true', 'false'].includes(more.getAttribute('aria-expanded'))) {
         runtime.setStatus('expandFollowings', 'limited', 'following-control-unavailable'); return;
       }
-      if (more.getAttribute('aria-expanded') === 'false' && !more.disabled && !record.expanded.has(more)) {
-        record.expanded.add(more); more.click();
+      if (followingUserCollapsed) { runtime.setStatus('expandFollowings', 'disabled', 'user-collapsed'); return; }
+      if (followingWide) { runtime.setStatus('expandFollowings', 'pending', 'native-wide-mode'); return; }
+      if (more.getAttribute('aria-expanded') === 'false' && !more.disabled && followingAttempts.get(more) !== followingEpoch) {
+        followingAttempts.set(more, followingEpoch); record.expanding = true;
+        try { more.click(); } finally { record.expanding = false; }
       }
-      runtime.setStatus('expandFollowings', record.expanded.has(more) || more.getAttribute('aria-expanded') === 'true' ? 'ready' : 'pending');
+      runtime.setStatus('expandFollowings', more.getAttribute('aria-expanded') === 'true' ? 'ready' : 'pending',
+        more.getAttribute('aria-expanded') === 'true' ? '' : 'following-expand-unconfirmed');
     };
+    scope.on(node, 'click', event => {
+      if (record.expanding || config.expandFollowings !== true) return;
+      const button = event.target.closest?.('button[aria-expanded]');
+      const section = followingSection();
+      if (!button || !section?.contains(button)) return;
+      const expanded = button.getAttribute('aria-expanded');
+      if (!['true', 'false'].includes(expanded)) return;
+      followingUserCollapsed = expanded === 'true';
+      const more = section.querySelector('button[class*="_more_button_"], button[class^="navigation_bar_more_button__"]');
+      if (more) followingAttempts.set(more, followingEpoch);
+    }, { capture: true });
     scope.add(stopRefresh);
     scope.on(window, 'pagehide', () => { record.suspended = true; stopRefresh(); });
     scope.on(window, 'pageshow', () => { record.suspended = false; record.sync(); });
@@ -518,6 +546,9 @@
   };
   runtime.subscribe(state => {
     config = runtime.config; i18n = runtime.i18n;
+    const enabled = config.expandFollowings === true;
+    if (enabled !== followingEnabled) { followingEnabled = enabled; followingUserCollapsed = false; followingEpoch++; }
+    syncFollowingMode();
     for (const [node, scope] of popups) if (!node.isConnected) scope.dispose();
     if (!runtime.configReady || state.route.kind === 'excluded') {
       owner?.dispose(); owner = null; sidebar = null;
@@ -528,6 +559,10 @@
       owner?.dispose(); owner = runtime.createScope(); ownerGeneration = runtime.generation;
       chats = new WeakMap(); anchors = new WeakSet(); timestampRoots = new WeakSet(); sidebar = null;
       if (state.body) {
+        const modeChanged = () => { syncFollowingMode(); if (sidebar?.isConnected) sidebarRecord?.sync(); };
+        owner.observe(new MutationObserver(modeChanged), state.body, { attributes: true, attributeFilter: ['class'] });
+        if (state.player?.pzp) owner.observe(new MutationObserver(modeChanged), state.player.pzp,
+          { attributes: true, subtree: true, attributeFilter: ['class', 'aria-label', 'aria-pressed'] });
         // CSS cannot identify a SPA route from the document URL. Mark only
         // the exact home content root; never classify the native subtree as owned.
         if (state.route.path === '/') {

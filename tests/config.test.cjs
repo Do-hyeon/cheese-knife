@@ -46,3 +46,10 @@ test('zero compressor attack and supported style parameters are preserved', asyn
   assert.equal(result.config.compressorAttack, 0);
   assert.equal(result.styleParameters['chat-font-size'], 3);
 });
+
+test('retired main-card preview cannot remain enabled through legacy stored configuration', async () => {
+  const result = await settings({ config: { customPreview: true, rightClickToUnmute: false, previewVolume: 0 } });
+  assert.equal(Object.hasOwn(result.config, 'customPreview'), false);
+  assert.equal(result.config.rightClickToUnmute, false);
+  assert.equal(result.config.previewVolume, 0);
+});

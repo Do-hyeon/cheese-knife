@@ -25,7 +25,7 @@ test('every popup option saves its own field without dropping unrelated settings
   load(dom, 'config.js'); load(dom, 'popup.js'); await flush();
   const values = {
     preview: true, livePreview: false, previewWidth: 650, previewDelay: 0.1, previewVolume: 10,
-    rightClickToUnmute: false, customPreview: true, updateSidebar: false, expandFollowings: true, popupPlayer: false,
+    rightClickToUnmute: false, updateSidebar: false, expandFollowings: true, popupPlayer: false,
     arrowSeek: false, pressToFastForward: false, brightness: 1.2, contrast: 1.1, saturation: 0.8, gamma: 1.2, sharpness: 2,
     compressorDefault: true, compressorThreshold: -40, compressorKnee: 30, compressorRatio: 8, compressorAttack: 0.1, compressorRelease: 0.3,
     hideDonation: true, showDeleted: true,
@@ -38,7 +38,7 @@ test('every popup option saves its own field without dropping unrelated settings
     input.dispatchEvent(new dom.window.Event(typeof value === 'boolean' ? 'change' : 'input', { bubbles: true }));
     await flush();
     assert.equal(data.config[id], value, `${id} persists`);
-    assert.equal(Object.keys(data.config).length, 25, `${id} preserves the other settings`);
+    assert.equal(Object.keys(data.config).length, 24, `${id} preserves the other settings`);
   }
   assert.deepEqual(data.config, values);
   const delay = dom.window.document.getElementById('previewDelay');
@@ -53,6 +53,15 @@ test('popup reports missing deleted-chat support as limited instead of ready', a
   assert.equal(values[0].classList.contains('ready'), true);
   assert.equal(values[1].classList.contains('limited'), true);
   assert.ok(values[1].parentElement.title, 'limited capability has an explanation');
+});
+
+test('popup exposes only sidebar preview audio controls, not retired native-card overrides', async t => {
+  const { dom } = ui(t, 'popup.html', { config: { customPreview: true } });
+  load(dom, 'config.js'); load(dom, 'popup.js'); await flush();
+  assert.equal(dom.window.document.getElementById('customPreview'), null);
+  const unmute = dom.window.document.getElementById('rightClickToUnmute');
+  assert.ok(unmute);
+  assert.equal(unmute.closest('details'), null, 'sidebar unmute is not inside a native-thumbnail section');
 });
 
 // Break caught: the independently published fork must identify itself and
@@ -122,4 +131,12 @@ test('all style toggles and font offsets persist selections and show reload only
   assert.equal(dom.window.document.getElementById('reload').classList.contains('hidden'), false);
   font.value = 0; font.dispatchEvent(new dom.window.Event('input')); await flush();
   assert.deepEqual(Array.from(data.styles), []); assert.equal(data.styleParameters['chat-font-size'], 0);
+});
+
+for (const locale of ['ko', 'en']) test('fit-player control exposes its localized explanation without enabling the style in ' + locale, async t => {
+  const { dom, data } = ui(t, 'styles.html', { styles: [], styleParameters: {} }, locale);
+  load(dom, 'styles.js'); await flush();
+  assert.ok(dom.window.document.querySelector('label[for="fit-player"]').title.length > 0);
+  assert.equal(dom.window.document.getElementById('fit-player').checked, false);
+  assert.deepEqual(data.styles, []);
 });

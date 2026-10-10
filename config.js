@@ -39,18 +39,8 @@ var CONFIGS = [
         defaultValue: 5,
       },
       {
-        id: "thumbnailPreview",
-        type: "details",
-        configs: [
-          {
-            id: "rightClickToUnmute",
-            defaultValue: true,
-          },
-          {
-            id: "customPreview",
-            defaultValue: false,
-          },
-        ],
+        id: "rightClickToUnmute",
+        defaultValue: true,
       },
     ],
   },

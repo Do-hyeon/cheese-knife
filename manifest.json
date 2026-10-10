@@ -2,22 +2,11 @@
   "manifest_version": 3,
   "name": "__MSG_ext_name__",
   "short_name": "__MSG_ext_shortName__",
-  "version": "2.13.2",
-  "version_name": "2.13.2 community recovery preview",
+  "version": "2.13.3",
+  "version_name": "2.13.3 sidebar follow-up preview",
   "description": "__MSG_ext_description__",
   "default_locale": "ko",
   "minimum_chrome_version": "121",
-  "browser_specific_settings": {
-    "gecko": {
-      "strict_min_version": "128.0",
-      "id": "cheese-knife@chatlink.app",
-      "data_collection_permissions": {
-        "required": [
-          "websiteContent"
-        ]
-      }
-    }
-  },
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",
@@ -35,9 +24,6 @@
     "default_popup": "popup.html"
   },
   "background": {
-    "scripts": [
-      "background.js"
-    ],
     "service_worker": "background.js"
   },
   "content_scripts": [

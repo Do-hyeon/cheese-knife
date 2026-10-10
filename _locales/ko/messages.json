@@ -27,19 +27,13 @@
     "message": "사이드바 미리보기"
   },
   "config_livePreview": {
-    "message": "방송 미리보기"
-  },
-  "config_category_thumbnailPreview": {
-    "message": "썸네일 미리보기"
+    "message": "사이드바 영상 재생"
   },
   "config_rightClickToUnmute": {
     "message": "우클릭으로 음소거 해제"
   },
   "config_rightClickToUnmute_desc": {
-    "message": "기본 미리보기에서만 작동합니다."
-  },
-  "config_customPreview": {
-    "message": "확장 미리보기 사용"
+    "message": "사이드바의 미리보기 대상에서 우클릭하면 음소거를 전환합니다. 치지직 기본 미리보기에는 적용하지 않습니다."
   },
   "config_previewWidth": {
     "message": "크기"
@@ -235,6 +229,9 @@
   },
   "styles_fit_player": {
     "message": "화면 채우기"
+  },
+  "styles_fit_player_desc": {
+    "message": "플레이어 영역의 높이 제한을 완화합니다. VOD는 정보 행 때문에 예약된 여백을 줄입니다. 전체화면 전환이나 영상 확대·잘라내기, 화질 변경 기능이 아닙니다."
   },
   "styles_volume_percentage": {
     "message": "볼륨 퍼센트 표시"

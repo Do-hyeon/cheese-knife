@@ -23,10 +23,19 @@ export function resolveFile(root, file) {
   return resolved;
 }
 
-export async function checkPackage(directory, expectedVersion) {
+export async function checkPackage(directory, expectedVersion, browser = 'chrome') {
   const root = path.resolve(directory);
   const manifest = JSON.parse(await fs.readFile(path.join(root, 'manifest.json'), 'utf8'));
   if (manifest.manifest_version !== 3) throw new Error('Expected Manifest V3');
+  if (!['chrome', 'firefox'].includes(browser)) throw new Error('Unsupported browser package');
+  if (browser === 'chrome') {
+    if (manifest.background && ['scripts', 'page', 'persistent'].some(key => Object.hasOwn(manifest.background, key))) {
+      throw new Error('Chrome MV3 must not declare background.scripts, page or persistent');
+    }
+    if (manifest.browser_specific_settings) throw new Error('Chrome package must not declare browser_specific_settings');
+  } else if (manifest.background && (manifest.background.service_worker || !Array.isArray(manifest.background.scripts) || !manifest.background.scripts.length)) {
+    throw new Error('Firefox package requires background.scripts instead of service_worker');
+  }
   let project;
   try { project = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8')); }
   catch (error) { if (error.code !== 'ENOENT') throw error; }
@@ -53,6 +62,7 @@ export async function checkPackage(directory, expectedVersion) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const result = await checkPackage(process.argv[2] || process.cwd());
+  const result = await checkPackage(process.argv.slice(2).find(arg => !arg.startsWith('--')) || process.cwd(), undefined,
+    process.argv.includes('--firefox') ? 'firefox' : 'chrome');
   console.log(`Package OK: v${result.version}, ${result.resources} entry resources`);
 }
