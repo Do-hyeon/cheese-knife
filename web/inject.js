@@ -19,6 +19,7 @@
   const followingAttempts = new WeakMap();
   const followingBudget = { epoch: -1, attempts: 0 };
   let followingIntent;
+  let followingGesture;
   let timestampRoots;
   const popups = new Map();
   const videoMetadata = new Map();
@@ -405,14 +406,31 @@
     const followingFold = section => [...(section?.querySelectorAll(':scope > [class^="_header_"] > button[aria-expanded], :scope > [class^="navigation_bar_header__"] > button[aria-expanded]') || [])]
       .find(button => /^(펼쳐짐, 접기|접혀짐, 펼치기|Expanded, collapse|Collapsed, expand)$/i.test(button.getAttribute('aria-label') || ''));
     const confirmIntent = () => {
-      if (!followingIntent) return;
-      if (followingIntent.epoch !== followingEpoch || performance.now() > followingIntent.expires) { followingIntent = null; return; }
+      const gesture = followingGesture;
+      if (!gesture) return;
+      if (gesture.epoch !== followingEpoch) { followingIntent = followingGesture = null; return; }
+      if (performance.now() >= gesture.expires) followingIntent = null;
       const section = followingSection();
-      const control = followingIntent.kind === 'more' ? followingMore(section) : followingFold(section);
+      const control = gesture.kind === 'more' ? followingMore(section) : followingFold(section);
+      // After bounded active waiting, only the exact clicked control can confirm
+      // a delayed native update. Weak ownership must not retain a removed tree.
+      if (!followingIntent && control !== gesture.control.deref()) { followingGesture = null; return; }
       const expanded = control?.getAttribute('aria-expanded');
-      if (['true', 'false'].includes(expanded) && expanded !== followingIntent.before) {
-        followingUserCollapsed = expanded === 'false'; followingIntent = null;
+      if (['true', 'false'].includes(expanded) && expanded !== gesture.before) {
+        followingUserCollapsed = expanded === 'false'; followingIntent = followingGesture = null;
       }
+    };
+    let expiryIntent;
+    let expiryTimer;
+    const armIntentExpiry = () => {
+      if (expiryIntent === followingIntent) return;
+      clearTimeout(expiryTimer); expiryIntent = followingIntent;
+      if (!expiryIntent) return;
+      const intent = expiryIntent;
+      expiryTimer = scope.timeout(() => {
+        expiryIntent = null;
+        if (followingIntent === intent) { confirmIntent(); if (followingIntent === intent) followingIntent = null; record.sync(); }
+      }, Math.max(0, intent.expires - performance.now()));
     };
     const refreshControl = () => followingSection()?.querySelector('button[aria-label="새로고침"], button[aria-label="Refresh"]');
     const stopRefresh = () => { clearInterval(record.timer); record.timer = null; };
@@ -425,6 +443,7 @@
       if (scope.disposed || !node.isConnected) { stopRefresh(); return; }
       syncFollowingMode();
       confirmIntent();
+      armIntentExpiry(); // New owners inherit only the remaining confirmation deadline.
       if (followingBudget.epoch !== followingEpoch) { followingBudget.epoch = followingEpoch; followingBudget.attempts = 0; }
       syncSections();
       const button = refreshControl();
@@ -463,11 +482,9 @@
       if (!kind) return;
       const expanded = button.getAttribute('aria-expanded');
       if (!['true', 'false'].includes(expanded)) return;
-      const intent = followingIntent = { kind, before: expanded, epoch: followingEpoch, expires: performance.now() + 200 };
+      followingIntent = followingGesture = { kind, before: expanded, control: new WeakRef(button), epoch: followingEpoch, expires: performance.now() + 200 };
       if (more) followingAttempts.set(more, followingEpoch);
-      scope.timeout(() => {
-        if (followingIntent === intent) { confirmIntent(); if (followingIntent === intent) followingIntent = null; record.sync(); }
-      }, 200);
+      armIntentExpiry();
     }, { capture: true });
     scope.on(node, 'click', confirmIntent);
     scope.add(stopRefresh);
@@ -572,7 +589,7 @@
   runtime.subscribe(state => {
     config = runtime.config; i18n = runtime.i18n;
     const enabled = config.expandFollowings === true;
-    if (enabled !== followingEnabled) { followingEnabled = enabled; followingUserCollapsed = false; followingIntent = null; followingEpoch++; }
+    if (enabled !== followingEnabled) { followingEnabled = enabled; followingUserCollapsed = false; followingIntent = followingGesture = null; followingEpoch++; }
     syncFollowingMode();
     for (const [node, scope] of popups) if (!node.isConnected) scope.dispose();
     if (!runtime.configReady || state.route.kind === 'excluded') {

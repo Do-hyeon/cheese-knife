@@ -334,6 +334,38 @@ test('a no-op collapse request does not become user intent without native state 
   assert.notEqual(runtime(fixture.dom).statuses.expandFollowings.reason, 'user-collapsed');
 });
 
+test('pending following confirmation expires without another mutation after owner replacement', async t => {
+  const fixture = followingFixture(t, { noEffect: true });
+  fixture.more.click(); // Unconfirmed user activation while still collapsed.
+  const body = fixture.dom.window.document.getElementById('layout-body'); body.replaceWith(body.cloneNode(true));
+  const more = fixture.more.cloneNode(true); fixture.more.replaceWith(more);
+  let replacementClicks = 0;
+  more.addEventListener('click', () => { replacementClicks++; more.setAttribute('aria-expanded', 'true'); });
+  runtime(fixture.dom).reconcile(); await flush();
+  assert.equal(replacementClicks, 0, 'active confirmation gates replacement expansion');
+  await new Promise(resolve => setTimeout(resolve, 350));
+  assert.equal(replacementClicks, 1, 'remaining deadline survives owner replacement without external reconciliation');
+  assert.equal(more.getAttribute('aria-expanded'), 'true');
+});
+
+test('a delayed native collapse on the clicked control survives wide-mode changes', async t => {
+  const fixture = followingFixture(t);
+  const more = fixture.more.cloneNode(true); fixture.more.replaceWith(more); fixture.more = more;
+  let clicks = 0;
+  more.addEventListener('click', () => {
+    clicks++;
+    if (more.getAttribute('aria-expanded') === 'true') fixture.dom.window.setTimeout(() => more.setAttribute('aria-expanded', 'false'), 250);
+    else more.setAttribute('aria-expanded', 'true');
+  });
+  await flush(); more.click();
+  await new Promise(resolve => setTimeout(resolve, 350));
+  assert.equal(more.getAttribute('aria-expanded'), 'false');
+  await fixture.wideThenNarrow();
+  assert.equal(more.getAttribute('aria-expanded'), 'false', 'late native confirmation still represents manual collapse');
+  assert.equal(clicks, 1);
+  assert.equal(runtime(fixture.dom).statuses.expandFollowings.reason, 'user-collapsed');
+});
+
 test('native whole-section folding is respected without classifying other header menus as folding', async t => {
   const fixture = followingFixture(t); const header = fixture.dom.window.document.createElement('div'); header.className = '_header_test';
   header.innerHTML = '<button id="fold" aria-expanded="true" aria-label="펼쳐짐, 접기"></button><button aria-expanded="true" aria-label="다른 메뉴"></button>';
