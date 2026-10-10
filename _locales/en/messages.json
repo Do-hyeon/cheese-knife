@@ -395,6 +395,19 @@
   "capability_reason_age_restricted_stream": {
     "message": "Age-restricted streams are not played in previews."
   },
+  "settings_loading": { "message": "Loading current settings." },
+  "settings_ready": { "message": "Current saved values confirmed." },
+  "settings_saving": { "message": "Saving settings. Apply to the page after saving finishes." },
+  "settings_failed": { "message": "The settings operation failed. Held input is not automatically resent." },
+  "settings_unknown": { "message": "The save result is unknown. Input is not automatically resent; a sent save cannot be cancelled." },
+  "settings_repair_required": { "message": "The stored revision needs repair. Settings will not be overwritten." },
+  "settings_css_failed": { "message": "Settings are saved, but CSS registration failed. Reapply CSS before applying to the page." },
+  "settings_discard": { "message": "Discard held display values · Check saved state" },
+  "settings_retry": { "message": "Reapply saved CSS" },
+  "settings_global": { "message": "Settings are shared across CHZZK tabs. Reload other open pages manually to apply styles; other tabs are never automatically reloaded." },
+  "settings_target": { "message": "Apply reloads only the original CHZZK tab captured when these settings were opened." },
+  "settings_no_target": { "message": "No target tab. Global settings can still be saved; reload the CHZZK page manually." },
+  "settings_target_changed": { "message": "The target tab is missing or its site/window has changed. Reopen settings from the CHZZK tab." },
   "content_measured": {
     "message": "measured"
   }

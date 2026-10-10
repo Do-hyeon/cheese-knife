@@ -1,6 +1,6 @@
 {
   "background": {
-    "scripts": ["background.js"]
+    "scripts": ["config.js", "style-schema.js", "settings-contract.js", "settings-broker.js", "background.js"]
   },
   "browser_specific_settings": {
     "gecko": {

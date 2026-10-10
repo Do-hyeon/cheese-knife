@@ -37,6 +37,24 @@ test('package check rejects a missing manifest-referenced script', async t => {
   const { checkPackage } = await import(pathToFileURL(path.resolve('scripts/check-package.mjs')));
   await assert.rejects(checkPackage(root), /web\/inject.js/);
 });
+test('classic worker literal importScripts dependencies must exist in the package', async t => {
+  const root = await fixture(t);
+  const manifest = JSON.parse(await fs.readFile(path.join(root, 'manifest.json'), 'utf8'));
+  manifest.background = { service_worker: 'background.js' };
+  await fs.writeFile(path.join(root, 'manifest.json'), JSON.stringify(manifest));
+  await fs.writeFile(path.join(root, 'background.js'), "importScripts('settings-broker.js');");
+  const { checkPackage } = await import(pathToFileURL(path.resolve('scripts/check-package.mjs')));
+  await assert.rejects(checkPackage(root), /settings-broker.js/);
+  await fs.writeFile(path.join(root, 'settings-broker.js'), '// local dependency'); await checkPackage(root);
+});
+test('package checker does not execute or guess computed worker imports', async t => {
+  const root = await fixture(t);
+  const manifest = JSON.parse(await fs.readFile(path.join(root, 'manifest.json'), 'utf8'));
+  manifest.background = { service_worker: 'background.js' };
+  await fs.writeFile(path.join(root, 'manifest.json'), JSON.stringify(manifest));
+  await fs.writeFile(path.join(root, 'background.js'), "throw new Error('must-not-execute'); importScripts(computedPath);");
+  const { checkPackage } = await import(pathToFileURL(path.resolve('scripts/check-package.mjs'))); await checkPackage(root);
+});
 
 test('build refuses a target outside its repository dist directory', async t => {
   const root = await fixture(t);

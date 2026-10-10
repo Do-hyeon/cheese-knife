@@ -7,9 +7,13 @@
   </head>
   <body>
     <div id="capabilities" class="box" aria-live="polite"></div>
+    <div class="box settings-state">
+      <div id="settings-status" role="status" aria-live="polite"></div>
+      <button id="settings-discard" type="button" hidden></button>
+    </div>
     <div id="list"></div>
     <div class="box">
-      <a href="/styles.html">
+      <a href="/styles.html" aria-disabled="true">
         <span id="stylesConfig"></span>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
           <path
@@ -25,6 +29,9 @@
       · <a id="footer-original" href="https://github.com/jebibot/cheese-knife" target="_blank" rel="noopener noreferrer">Original project</a>
     </footer>
     <script src="config.js"></script>
+    <script src="style-schema.js"></script>
+    <script src="settings-contract.js"></script>
+    <script src="settings-client.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

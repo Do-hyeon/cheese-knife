@@ -398,6 +398,19 @@
   "capability_reason_age_restricted_stream": {
     "message": "연령 제한 방송은 미리보기로 재생하지 않습니다."
   },
+  "settings_loading": { "message": "최신 설정을 불러오는 중입니다." },
+  "settings_ready": { "message": "최신 저장값을 확인했습니다." },
+  "settings_saving": { "message": "설정을 저장하는 중입니다. 페이지 적용은 저장 완료 후 가능합니다." },
+  "settings_failed": { "message": "설정 작업에 실패했습니다. 보류한 입력은 자동 재전송하지 않습니다." },
+  "settings_unknown": { "message": "저장 여부를 확인할 수 없습니다. 자동 재전송하지 않으며, 전송된 저장은 취소할 수 없습니다." },
+  "settings_repair_required": { "message": "저장 순번에 문제가 있어 복구가 필요합니다. 설정을 덮어쓰지 않습니다." },
+  "settings_css_failed": { "message": "설정은 저장됐지만 CSS 등록에 실패했습니다. CSS를 재적용한 뒤 페이지에 적용하세요." },
+  "settings_discard": { "message": "보류한 표시값 버리기 · 저장 상태 다시 확인" },
+  "settings_retry": { "message": "저장된 CSS 재적용" },
+  "settings_global": { "message": "설정은 모든 치지직 탭에 공유됩니다. 이미 열린 다른 탭의 스타일은 각 페이지를 새로고침해야 적용되며, 자동으로 새로고침하지 않습니다." },
+  "settings_target": { "message": "적용 버튼은 이 설정을 연 원래 치지직 탭만 새로고침합니다." },
+  "settings_no_target": { "message": "적용 대상 탭이 없습니다. 전역 설정 저장은 가능하며 치지직 탭을 직접 새로고침하세요." },
+  "settings_target_changed": { "message": "적용 대상 탭이 없어졌거나 사이트·창이 변경됐습니다. 치지직 탭에서 설정을 다시 여세요." },
   "content_measured": {
     "message": "측정"
   }

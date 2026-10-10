@@ -104,3 +104,8 @@ header a:hover {
   height: 0;
   padding: 0;
 }
+.settings-state { font-size: 13px; line-height: 1.5; }
+.settings-state button { margin-top: 6px; height: auto; white-space: normal; }
+button:disabled { opacity: 0.5; cursor: default; }
+button[hidden] { display: none; }
+#settings-status[data-phase="failed"], #settings-status[data-phase="unknown"], #settings-status[data-phase="repair-required"] { color: #9a3412; }

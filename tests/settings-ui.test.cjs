@@ -1,28 +1,18 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { page, load, flush } = require('./helpers.cjs');
+const { flush } = require('./helpers.cjs');
+const { settingsHarness } = require('./settings-fixture.cjs');
 
-function ui(t, html, stored, locale = 'ko') {
-  const dom = page(fs.readFileSync(html, 'utf8'));
-  const data = structuredClone(stored);
-  const messages = JSON.parse(fs.readFileSync(`_locales/${locale}/messages.json`, 'utf8'));
-  dom.window.HTMLCanvasElement.prototype.getContext = () => null;
-  dom.window.chrome = {
-    i18n: { getMessage: key => messages[key]?.message || '' },
-    storage: { local: { get: async defaults => ({ ...defaults, ...structuredClone(data) }), set: async value => Object.assign(data, structuredClone(value)) } },
-    tabs: { query: async () => [{ id: 7 }], sendMessage: async (_id, request, options) => {
-      assert.equal(request.type, 'cheese-knife-status'); assert.equal(options.frameId, 0);
-      return { statuses: { player: { state: 'ready' }, deletedChat: { state: 'limited', reason: 'jsx-adapter-unavailable' } } };
-    }, reload() {} },
-  };
-  t.after(() => dom.window.close());
-  return { dom, data };
+async function ui(t, html, stored, locale = 'ko', setup) {
+  const h = settingsHarness(t, stored); await h.initialize();
+  const result = await h.openUi(html.replace('.html', ''), { locale, setup, target: { tabId: 7, windowId: 9 } });
+  return { ...result, data: h.saved };
 }
 
 test('every popup option saves its own field without dropping unrelated settings', async t => {
-  const { dom, data } = ui(t, 'popup.html', { config: { preview: false, compressorAttack: 0 } });
-  load(dom, 'config.js'); load(dom, 'popup.js'); await flush();
+  const { dom, data } = await ui(t, 'popup.html', { config: { preview: false, compressorAttack: 0 } });
+  await flush();
   const values = {
     preview: true, livePreview: false, previewWidth: 650, previewDelay: 0.1, previewVolume: 10,
     rightClickToUnmute: false, previewStartUnmuted: true, updateSidebar: false, expandFollowings: true, popupPlayer: false,
@@ -38,7 +28,9 @@ test('every popup option saves its own field without dropping unrelated settings
     input.dispatchEvent(new dom.window.Event(typeof value === 'boolean' ? 'change' : 'input', { bubbles: true }));
     await flush();
     assert.equal(data.config[id], value, `${id} persists`);
-    assert.equal(Object.keys(data.config).length, 25, `${id} preserves the other settings`);
+    for (const [priorId, priorValue] of Object.entries(values).slice(0, Object.keys(values).indexOf(id))) {
+      assert.equal(data.config[priorId], priorValue, `${id} preserves ${priorId}`);
+    }
   }
   assert.deepEqual(data.config, values);
   const delay = dom.window.document.getElementById('previewDelay');
@@ -47,7 +39,7 @@ test('every popup option saves its own field without dropping unrelated settings
 });
 
 test('popup reports missing deleted-chat support as limited instead of ready', async t => {
-  const { dom } = ui(t, 'popup.html', {}); load(dom, 'config.js'); load(dom, 'popup.js'); await flush();
+  const { dom } = await ui(t, 'popup.html', {}); await flush();
   const values = [...dom.window.document.querySelectorAll('.capability-state')];
   assert.equal(values.length, 2);
   assert.equal(values[0].classList.contains('ready'), true);
@@ -56,8 +48,8 @@ test('popup reports missing deleted-chat support as limited instead of ready', a
 });
 
 test('popup exposes only sidebar preview audio controls, not retired native-card overrides', async t => {
-  const { dom } = ui(t, 'popup.html', { config: { customPreview: true } });
-  load(dom, 'config.js'); load(dom, 'popup.js'); await flush();
+  const { dom } = await ui(t, 'popup.html', { config: { customPreview: true } });
+  await flush();
   assert.equal(dom.window.document.getElementById('customPreview'), null);
   const unmute = dom.window.document.getElementById('rightClickToUnmute');
   assert.ok(unmute);
@@ -70,7 +62,7 @@ for (const [locale, recovery, unofficial, labels] of [
   ['ko', /복구판/, /비공식/, ['사용 안내', '문제 신고', '소스 코드', '원본 프로젝트']],
   ['en', /Recovery/, /unofficial/i, ['Guide', 'Report issue', 'Source', 'Original project']],
 ]) test('community popup identifies the fork and localizes its support destinations in ' + locale, async t => {
-  const { dom } = ui(t, 'popup.html', {}, locale); load(dom, 'config.js'); load(dom, 'popup.js'); await flush();
+  const { dom } = await ui(t, 'popup.html', {}, locale); await flush();
   const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
   const resolve = field => {
     const key = manifest[field].match(/^__MSG_(.+)__$/)?.[1];
@@ -98,7 +90,7 @@ for (const [locale, recovery, unofficial, labels] of [
 });
 
 test('community homepage opens the same fork guide that the popup offers', async t => {
-  const { dom } = ui(t, 'popup.html', {}); load(dom, 'config.js'); load(dom, 'popup.js'); await flush();
+  const { dom } = await ui(t, 'popup.html', {}); await flush();
   const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
   const guide = 'https://github.com/Do-hyeon/cheese-knife/blob/codex/community-store-preview/README.md';
   assert.equal(manifest.homepage_url, guide);
@@ -106,17 +98,18 @@ test('community homepage opens the same fork guide that the popup offers', async
 });
 
 test('community footer remains usable when footer translations are unavailable', async t => {
-  const { dom } = ui(t, 'popup.html', {});
-  const getMessage = dom.window.chrome.i18n.getMessage;
-  dom.window.chrome.i18n.getMessage = key => key.startsWith('footer_') ? '' : getMessage(key);
-  load(dom, 'config.js'); load(dom, 'popup.js'); await flush();
+  const { dom } = await ui(t, 'popup.html', {}, 'ko', api => {
+    const getMessage = api.i18n.getMessage;
+    api.i18n.getMessage = key => key.startsWith('footer_') ? '' : getMessage(key);
+  });
+  await flush();
   assert.deepEqual([...dom.window.document.querySelectorAll('footer a')].map(a => a.textContent.trim()),
     ['Guide', 'Report issue', 'Source', 'Original project']);
   assert.ok(dom.window.document.getElementById('preview'), 'missing optional translations cannot interrupt setting controls');
 });
 
 test('all style toggles and font offsets persist selections and show reload only when needed', async t => {
-  const { dom, data } = ui(t, 'styles.html', { styles: [], styleParameters: {} }); load(dom, 'styles.js'); await flush();
+  const { dom, data } = await ui(t, 'styles.html', { styles: [], styleParameters: {} }); await flush();
   const ids = ['fit-player','volume-percentage','hide-ff','hide-comp','chat-resize','chat-timestamp','hide-ranking','hide-mission','left-chat','hide-offline','hide-recommended','hide-schedule','hide-sidebar-partner','hide-shortcut','right-sidebar','static-logo','hide-topics','hide-studio','auto-hide-toolbar','hide-recommended-live','top-explore','hide-blocked','hide-live-badge','rectangle-profile'];
   for (const id of ids) {
     const input = dom.window.document.getElementById(id); assert.ok(input, id);
@@ -134,8 +127,8 @@ test('all style toggles and font offsets persist selections and show reload only
 });
 
 for (const locale of ['ko', 'en']) test('fit-player control exposes its localized explanation without enabling the style in ' + locale, async t => {
-  const { dom, data } = ui(t, 'styles.html', { styles: [], styleParameters: {} }, locale);
-  load(dom, 'styles.js'); await flush();
+  const { dom, data } = await ui(t, 'styles.html', { styles: [], styleParameters: {} }, locale);
+  await flush();
   assert.ok(dom.window.document.querySelector('label[for="fit-player"]').title.length > 0);
   assert.equal(dom.window.document.getElementById('fit-player').checked, false);
   assert.deepEqual(data.styles, []);

@@ -57,6 +57,17 @@ export async function checkPackage(directory, expectedVersion, browser = 'chrome
         await fs.access(resolveFile(root, asset)).catch(() => { throw new Error(`Missing HTML resource: ${asset}`); });
       }
     }
+    if (file === manifest.background?.service_worker) {
+      const worker = await fs.readFile(resolveFile(root, file), 'utf8');
+      // Only inspect our literal classic-worker imports: never execute or guess computed paths.
+      for (const call of worker.matchAll(/\bimportScripts\s*\(([^)]*)\)/g)) {
+        if (!/^\s*(?:['"][^'"\\]+['"]\s*,\s*)*['"][^'"\\]+['"]\s*$/.test(call[1])) continue;
+        for (const match of call[1].matchAll(/['"]([^'"]+)['"]/g)) {
+          const dependency = path.posix.join(path.posix.dirname(file), match[1]);
+          await fs.access(resolveFile(root, dependency)).catch(() => { throw new Error(`Missing worker resource: ${dependency}`); });
+        }
+      }
+    }
   }
   return { version: manifest.version, resources: files.size };
 }

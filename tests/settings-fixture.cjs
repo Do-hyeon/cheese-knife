@@ -57,7 +57,7 @@ function settingsHarness(t, stored = {}) {
         get: async id => { await boundary('tab-get', { id }); if (!tabs.has(id)) throw new Error('missing-tab'); return structuredClone(tabs.get(id)); },
         reload: async id => { await boundary('tab-reload', { id }); },
         query: async options => { await boundary('tab-query', options); return [structuredClone(tabs.get(7))]; },
-        sendMessage: async () => ({ statuses: {} }), create: async options => { await boundary('tab-create', options); },
+        sendMessage: async () => ({ statuses: { player: { state: 'ready' }, deletedChat: { state: 'limited', reason: 'jsx-adapter-unavailable' } } }), create: async options => { await boundary('tab-create', options); },
       },
       permissions: { contains: async () => true, onRemoved: event() },
     };
@@ -106,7 +106,19 @@ function settingsHarness(t, stored = {}) {
     instance.subscribe(v => { view = v; });
     return { ...instance, dom, api, time, view: () => view, maxInflight: () => metrics.get(api).max };
   }
-  return { saved, calls, messages, client, registrations, tabs, changes, holdNext, apiFor, send, request,
+  async function openUi(name, { locale = 'ko', target, query, fakeTime = false, setup } = {}) {
+    const search = query ?? (target ? `?targetTabId=${target.tabId}&targetWindowId=${target.windowId}` : '');
+    const dom = page(fs.readFileSync(`${name}.html`, 'utf8'), getURL(`${name}.html`) + search); windows.push(dom);
+    const time = fakeTime ? clock(dom) : undefined, api = apiFor(name);
+    const translated = JSON.parse(fs.readFileSync(`_locales/${locale}/messages.json`, 'utf8'));
+    api.i18n.getMessage = key => translated[key]?.message || '';
+    dom.window.chrome = api; dom.window.HTMLCanvasElement.prototype.getContext = () => null;
+    setup?.(api, dom);
+    for (const script of dom.window.document.querySelectorAll('script[src]')) load(dom, script.getAttribute('src'));
+    t.after(() => dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')));
+    await flush(); return { dom, api, time };
+  }
+  return { saved, calls, messages, client, openUi, registrations, tabs, changes, holdNext, apiFor, send, request,
     get worker() { return worker; }, get broker() { return broker; }, get maxConcurrentWrites() { return maxWrites; },
     initialize: () => broker.initialize(), snapshot: (name = 'popup') => request(name, 'get-snapshot'),
     patch: (name, operations) => request(name, 'patch', { operations }),
