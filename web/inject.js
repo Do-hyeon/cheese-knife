@@ -17,6 +17,8 @@
   let followingWide = null;
   let followingEpoch = 0;
   const followingAttempts = new WeakMap();
+  const followingBudget = { epoch: -1, attempts: 0 };
+  let followingIntent;
   let timestampRoots;
   const popups = new Map();
   const videoMetadata = new Map();
@@ -399,6 +401,19 @@
     scope.add(() => { for (const section of sectionMarkers.keys()) releaseSection(section); });
     const followingSection = () => node.querySelector('nav[aria-label="팔로우"], nav[aria-label="Following channels"]') || [...node.querySelectorAll('nav')].find(section =>
       /^(팔로잉 채널|Following channels)$/i.test(section.querySelector('[class*="_title_"], [class^="navigation_bar_title__"]')?.textContent.trim() || ''));
+    const followingMore = section => section?.querySelector(':scope > button[class*="_more_button_"], :scope > button[class^="navigation_bar_more_button__"]');
+    const followingFold = section => [...(section?.querySelectorAll(':scope > [class^="_header_"] > button[aria-expanded], :scope > [class^="navigation_bar_header__"] > button[aria-expanded]') || [])]
+      .find(button => /^(펼쳐짐, 접기|접혀짐, 펼치기|Expanded, collapse|Collapsed, expand)$/i.test(button.getAttribute('aria-label') || ''));
+    const confirmIntent = () => {
+      if (!followingIntent) return;
+      if (followingIntent.epoch !== followingEpoch || performance.now() > followingIntent.expires) { followingIntent = null; return; }
+      const section = followingSection();
+      const control = followingIntent.kind === 'more' ? followingMore(section) : followingFold(section);
+      const expanded = control?.getAttribute('aria-expanded');
+      if (['true', 'false'].includes(expanded) && expanded !== followingIntent.before) {
+        followingUserCollapsed = expanded === 'false'; followingIntent = null;
+      }
+    };
     const refreshControl = () => followingSection()?.querySelector('button[aria-label="새로고침"], button[aria-label="Refresh"]');
     const stopRefresh = () => { clearInterval(record.timer); record.timer = null; };
     const refresh = () => {
@@ -409,6 +424,8 @@
     record.sync = () => {
       if (scope.disposed || !node.isConnected) { stopRefresh(); return; }
       syncFollowingMode();
+      confirmIntent();
+      if (followingBudget.epoch !== followingEpoch) { followingBudget.epoch = followingEpoch; followingBudget.attempts = 0; }
       syncSections();
       const button = refreshControl();
       if (config.updateSidebar === true && button) {
@@ -421,13 +438,15 @@
       if (config.expandFollowings !== true) {
         runtime.setStatus('expandFollowings', 'disabled'); return;
       }
-      const more = followingSection()?.querySelector('button[class*="_more_button_"], button[class^="navigation_bar_more_button__"]');
+      const more = followingMore(followingSection());
       if (!more || !['true', 'false'].includes(more.getAttribute('aria-expanded'))) {
         runtime.setStatus('expandFollowings', 'limited', 'following-control-unavailable'); return;
       }
       if (followingUserCollapsed) { runtime.setStatus('expandFollowings', 'disabled', 'user-collapsed'); return; }
       if (followingWide) { runtime.setStatus('expandFollowings', 'pending', 'native-wide-mode'); return; }
-      if (more.getAttribute('aria-expanded') === 'false' && !more.disabled && followingAttempts.get(more) !== followingEpoch) {
+      if (more.getAttribute('aria-expanded') === 'false' && !more.disabled && !followingIntent &&
+        followingBudget.attempts < 2 && followingAttempts.get(more) !== followingEpoch) {
+        followingBudget.attempts++;
         followingAttempts.set(more, followingEpoch); record.expanding = true;
         try { more.click(); } finally { record.expanding = false; }
       }
@@ -438,13 +457,19 @@
       if (record.expanding || config.expandFollowings !== true) return;
       const button = event.target.closest?.('button[aria-expanded]');
       const section = followingSection();
-      if (!button || !section?.contains(button)) return;
+      if (!button || button.disabled || !section?.contains(button)) return;
+      const more = followingMore(section);
+      const kind = button === more ? 'more' : button === followingFold(section) ? 'fold' : null;
+      if (!kind) return;
       const expanded = button.getAttribute('aria-expanded');
       if (!['true', 'false'].includes(expanded)) return;
-      followingUserCollapsed = expanded === 'true';
-      const more = section.querySelector('button[class*="_more_button_"], button[class^="navigation_bar_more_button__"]');
+      const intent = followingIntent = { kind, before: expanded, epoch: followingEpoch, expires: performance.now() + 200 };
       if (more) followingAttempts.set(more, followingEpoch);
+      scope.timeout(() => {
+        if (followingIntent === intent) { confirmIntent(); if (followingIntent === intent) followingIntent = null; record.sync(); }
+      }, 200);
     }, { capture: true });
+    scope.on(node, 'click', confirmIntent);
     scope.add(stopRefresh);
     scope.on(window, 'pagehide', () => { record.suspended = true; stopRefresh(); });
     scope.on(window, 'pageshow', () => { record.suspended = false; record.sync(); });
@@ -547,7 +572,7 @@
   runtime.subscribe(state => {
     config = runtime.config; i18n = runtime.i18n;
     const enabled = config.expandFollowings === true;
-    if (enabled !== followingEnabled) { followingEnabled = enabled; followingUserCollapsed = false; followingEpoch++; }
+    if (enabled !== followingEnabled) { followingEnabled = enabled; followingUserCollapsed = false; followingIntent = null; followingEpoch++; }
     syncFollowingMode();
     for (const [node, scope] of popups) if (!node.isConnected) scope.dispose();
     if (!runtime.configReady || state.route.kind === 'excluded') {

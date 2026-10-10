@@ -137,10 +137,38 @@ test('the DOM media error does not destroy HLS before its bounded media recovery
   assert.equal(stream.recoveries, 1); assert.equal(stream.destroyed, 0);
 });
 
-test('permission denial is not retried as a transient media failure', async t => {
+for (const status of [401, 403]) test('permission denial ' + status + ' is not retried as a transient media failure', async t => {
   const fixture = previewFixture(t); await fixture.show(); const stream = fixture.instances[0]; stream.emit('manifest');
-  stream.emit('error', { type: 'networkError', details: 'fragLoadError', fatal: true, response: { code: 403 } });
+  stream.emit('error', { type: 'networkError', details: 'fragLoadError', fatal: true, response: { code: status } });
   assert.equal(stream.destroyed, 1); assert.equal(stream.recoveries, 0); assert.deepEqual(stream.starts, [2]);
+});
+
+test('pending play rejection from before same-hover recovery cannot overwrite successful playback', async t => {
+  const fixture = previewFixture(t); const video = await fixture.show(); let rejectOld;
+  fixture.dom.window.HTMLMediaElement.prototype.play = () => new Promise((resolve, reject) => { rejectOld = reject; });
+  video.dispatchEvent(new fixture.dom.window.Event('loadeddata'));
+  fixture.instances[0].emit('error', { type: 'mediaError', details: 'bufferAppendError', fatal: true });
+  fixture.dom.window.HTMLMediaElement.prototype.play = async () => {};
+  video.dispatchEvent(new fixture.dom.window.Event('loadeddata')); await flush();
+  rejectOld(new Error('stale failure')); await flush();
+  assert.equal(fixture.instances[0].destroyed, 0); assert.equal(runtime(fixture.dom).statuses.livePreview.state, 'ready');
+});
+
+test('leaving during delayed network recovery cancels all restart callbacks', async t => {
+  const fixture = previewFixture(t); let sequence = 0; const timers = new Map();
+  fixture.dom.window.setTimeout = (fn, delay = 0) => { const id = ++sequence; timers.set(id, { delay, fn }); return id; };
+  fixture.dom.window.clearTimeout = id => timers.delete(id);
+  await fixture.show(); const stream = fixture.instances[0]; stream.emit('manifest');
+  stream.emit('error', { type: 'networkError', details: 'fragLoadError', fatal: true, response: { code: 503 } });
+  const delayed = [...timers.values()].filter(item => item.delay === 500); assert.equal(delayed.length, 1);
+  fixture.preview.hide(); for (const item of delayed) item.fn();
+  assert.deepEqual(stream.starts, [2]); assert.equal(stream.destroyed, 1);
+});
+
+test('unknown-height renditions still start and keep automatic adaptation', async t => {
+  const fixture = previewFixture(t); await fixture.show(); const stream = fixture.instances[0];
+  stream.levels = [{ height: 0, audioCodec: 'mp4a.40.2' }, { videoCodec: 'avc1.640028' }]; stream.emit('manifest');
+  assert.equal(stream.starts.length, 1); assert.equal(stream.autoLevelEnabled, true);
 });
 
 test('late old playback rejection cannot fail a newer preview', async t => {
@@ -174,6 +202,44 @@ test('a slow initial media load is not destroyed after only five seconds', async
   await fixture.show(); tick(5000);
   assert.equal(fixture.instances[0].destroyed, 0);
   tick(15000);
+  assert.equal(fixture.instances[0].destroyed, 1); assert.equal(runtime(fixture.dom).statuses.livePreview.state, 'limited');
+});
+
+test('startup deadline also cancels an unresolved play promise after a decoded frame', async t => {
+  const fixture = previewFixture(t); let now = 0, sequence = 0; const timers = new Map();
+  fixture.dom.window.setTimeout = (fn, delay = 0) => { const id = ++sequence; timers.set(id, { at: now + delay, fn }); return id; };
+  fixture.dom.window.clearTimeout = id => timers.delete(id);
+  fixture.dom.window.HTMLMediaElement.prototype.play = () => new Promise(() => {});
+  const video = await fixture.show(); Object.defineProperty(video, 'readyState', { get: () => 2 });
+  video.dispatchEvent(new fixture.dom.window.Event('loadeddata'));
+  now = 15000; for (const [id, item] of [...timers]) if (item.at <= now) { timers.delete(id); item.fn(); }
+  assert.equal(fixture.instances[0].destroyed, 1); assert.equal(runtime(fixture.dom).statuses.livePreview.state, 'limited');
+});
+
+for (const time of [0, 10]) test('media recovery resumes loading using the actual bundled HLS recovery method at time ' + time, async t => {
+  const vendorDom = page(); load(vendorDom, 'web/runtime.js'); load(vendorDom, 'vendor/hls.light.private.js');
+  const method = runtime(vendorDom).Hls.prototype.recoverMediaError;
+  t.after(() => { vendorDom.window.dispatchEvent(new vendorDom.window.PageTransitionEvent('pagehide')); vendorDom.window.close(); });
+  const fixture = previewFixture(t); const video = await fixture.show(); const stream = fixture.instances[0];
+  video.currentTime = time; stream._media = video; stream.logger = { log() {} };
+  stream.detachMedia = () => { stream._media = null; video.currentTime = 0; };
+  stream.attachMedia = value => { stream._media = value; };
+  stream.recoverMediaError = method; stream.emit('manifest');
+  stream.emit('error', { type: 'mediaError', details: 'bufferAppendError', fatal: true });
+  assert.equal(stream.starts.length, 2, 'one initial load plus exactly one recovery load');
+  assert.equal(stream.destroyed, 0);
+});
+
+test('unexpected paused playback cannot stay ready indefinitely without progress', async t => {
+  const fixture = previewFixture(t); let now = 0, sequence = 0; const timers = new Map();
+  Object.defineProperty(fixture.dom.window.performance, 'now', { value: () => now });
+  fixture.dom.window.setTimeout = (fn, delay = 0) => { const id = ++sequence; timers.set(id, { at: now + delay, fn }); return id; };
+  fixture.dom.window.clearTimeout = id => timers.delete(id);
+  const video = await fixture.show(); Object.defineProperty(video, 'paused', { get: () => true });
+  video.dispatchEvent(new fixture.dom.window.Event('loadeddata')); await flush();
+  for (let second = 1; second <= 12; second++) { now = second * 1000;
+    for (const [id, item] of [...timers]) if (item.at <= now) { timers.delete(id); item.fn(); }
+  }
   assert.equal(fixture.instances[0].destroyed, 1); assert.equal(runtime(fixture.dom).statuses.livePreview.state, 'limited');
 });
 
@@ -238,4 +304,48 @@ test('a rejected expansion click is not reported ready or retried on unrelated m
   runtime(fixture.dom).reconcile();
   assert.equal(fixture.clicks(), 1); assert.equal(fixture.more.getAttribute('aria-expanded'), 'false');
   assert.notEqual(runtime(fixture.dom).statuses.expandFollowings.state, 'ready');
+});
+
+test('a different expandable menu cannot disable following restoration', async t => {
+  const fixture = followingFixture(t); const menu = fixture.dom.window.document.createElement('button');
+  menu.setAttribute('aria-expanded', 'true'); menu.setAttribute('aria-label', '다른 메뉴');
+  fixture.more.parentElement.append(menu); menu.click(); await flush();
+  await fixture.wideThenNarrow();
+  assert.equal(fixture.more.getAttribute('aria-expanded'), 'true'); assert.equal(fixture.clicks(), 2);
+});
+
+test('rejected More clicks cannot gain unlimited retries by replacing the control', async t => {
+  const fixture = followingFixture(t, { noEffect: true }); let attempts = 0;
+  const hook = button => button.addEventListener('click', () => {
+    attempts++; if (attempts >= 8) return; // Keep the broken implementation finite.
+    const replacement = button.cloneNode(true); hook(replacement); button.replaceWith(replacement);
+  });
+  hook(fixture.more);
+  deliver(fixture.dom, { expandFollowings: false }, 2); deliver(fixture.dom, { expandFollowings: true }, 3); await flush();
+  assert.equal(attempts, 2, 'aggregate epoch budget applies across DOM replacements');
+  assert.equal(fixture.dom.window.document.querySelector('#more').getAttribute('aria-expanded'), 'false');
+});
+
+test('a no-op collapse request does not become user intent without native state change', async t => {
+  const fixture = followingFixture(t);
+  const more = fixture.more.cloneNode(true); fixture.more.replaceWith(more); fixture.more = more;
+  await flush(); more.click(); await flush(); // No native click handler; still expanded.
+  await fixture.wideThenNarrow();
+  assert.notEqual(runtime(fixture.dom).statuses.expandFollowings.reason, 'user-collapsed');
+});
+
+test('native whole-section folding is respected without classifying other header menus as folding', async t => {
+  const fixture = followingFixture(t); const header = fixture.dom.window.document.createElement('div'); header.className = '_header_test';
+  header.innerHTML = '<button id="fold" aria-expanded="true" aria-label="펼쳐짐, 접기"></button><button aria-expanded="true" aria-label="다른 메뉴"></button>';
+  fixture.more.parentElement.prepend(header); const fold = header.querySelector('#fold');
+  fold.addEventListener('click', () => { fold.setAttribute('aria-expanded', 'false'); fixture.more.setAttribute('aria-expanded', 'false'); });
+  fold.click(); await fixture.wideThenNarrow();
+  assert.equal(fixture.more.getAttribute('aria-expanded'), 'false'); assert.equal(fixture.clicks(), 1);
+});
+
+test('keyboard-generated activation of the native More button preserves manual collapse', async t => {
+  const fixture = followingFixture(t);
+  fixture.more.dispatchEvent(new fixture.dom.window.MouseEvent('click', { bubbles: true, detail: 0 }));
+  await fixture.wideThenNarrow();
+  assert.equal(fixture.more.getAttribute('aria-expanded'), 'false'); assert.equal(fixture.clicks(), 2);
 });

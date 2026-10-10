@@ -81,7 +81,7 @@
     const watchProgress = () => {
       if (!active()) return;
       const now = performance.now();
-      if (video.paused || video.currentTime > lastTime + 0.01) lastProgress = now;
+      if (Math.abs(video.currentTime - lastTime) > 0.01) lastProgress = now;
       else if (now - lastProgress >= 10000) {
         sample('stalled-timeout'); fail();
         runtime.setStatus('livePreview', 'limited', 'stream-stalled'); return;
@@ -133,7 +133,14 @@
           note({ type: 'recovery', attempt: recoveries, reason: mediaFailure ? 'media' : 'network' });
           const recover = () => {
             if (!active() || backend !== hls || recoveryAttempt !== attempt) return;
-            try { if (mediaFailure) hls.recoverMediaError(); else hls.startLoad(); }
+            try {
+              if (mediaFailure) {
+                const position = video.currentTime;
+                hls.recoverMediaError();
+                // With autoStartLoad:false, bundled HLS does not restart time 0.
+                if (position === 0) hls.startLoad();
+              } else hls.startLoad();
+            }
             catch { fail(); }
           };
           if (mediaFailure) recover(); else later(recover, 500);
@@ -152,7 +159,7 @@
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) video.src = path;
       else { fail(); return; }
       runtime.setStatus('livePreview', 'pending', 'stream-loading');
-      later(() => { if (active() && !loaded && video.readyState < 2) fail(); }, 15000);
+      later(() => { if (active() && !loaded) fail(); }, 15000);
     } catch { fail(); }
   };
   runtime.preview = {
