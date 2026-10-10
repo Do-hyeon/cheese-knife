@@ -404,6 +404,21 @@ test('native whole-section folding is respected without classifying other header
   assert.equal(fixture.more.getAttribute('aria-expanded'), 'false'); assert.equal(fixture.clicks(), 1);
 });
 
+test('installed whole-section collapse label changes still confirm user intent', async t => {
+  const fixture = followingFixture(t, { wrapped: true });
+  const header = fixture.dom.window.document.createElement('div'); header.className = '_header_qz74s_46';
+  header.innerHTML = '<button aria-expanded="true" aria-label="펼쳐짐, 접기"></button>';
+  fixture.more.parentElement.parentElement.prepend(header); const fold = header.firstChild;
+  fold.addEventListener('click', () => {
+    fold.setAttribute('aria-expanded', 'false'); fold.setAttribute('aria-label', '접힘, 펼치기');
+    fixture.more.setAttribute('aria-expanded', 'false');
+  });
+  fold.click(); await fixture.wideThenNarrow();
+  assert.equal(fixture.more.getAttribute('aria-expanded'), 'false');
+  assert.equal(fixture.clicks(), 1, 'native label transition must not lose the confirmed collapse');
+  assert.equal(runtime(fixture.dom).statuses.expandFollowings.reason, 'user-collapsed');
+});
+
 test('keyboard-generated activation of the native More button preserves manual collapse', async t => {
   const fixture = followingFixture(t);
   fixture.more.dispatchEvent(new fixture.dom.window.MouseEvent('click', { bubbles: true, detail: 0 }));
