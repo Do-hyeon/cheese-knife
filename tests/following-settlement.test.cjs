@@ -2,16 +2,17 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { page, load, runtime, deliver, playerHTML, clock } = require('./helpers.cjs');
 
-function fixture(t) {
+function fixture(t, { modeKnown = true, noEffect = false } = {}) {
   const dom = page(playerHTML.replace('<div class="pzp-pc__volume-control"></div>',
     '<div class="pzp-pc__volume-control"></div><button class="pzp-pc__viewmode-button" aria-label="넓은 화면"></button>') +
     '<aside id="sidebar"><nav aria-label="팔로우"><div class="_header_test"><button id="fold" aria-expanded="true" aria-label="펼쳐짐, 접기"></button></div>' +
     '<ul><li>Live</li></ul><div class="_box_test"><button id="more" class="_more_button_test" aria-expanded="false">더보기</button></div></nav></aside>');
   const time = clock(dom), document = dom.window.document;
   const more = document.querySelector('#more'), fold = document.querySelector('#fold');
+  if (!modeKnown) document.querySelector('.pzp-pc__viewmode-button').removeAttribute('aria-label');
   let clicks = 0;
   const hook = button => button.addEventListener('click', () => {
-    clicks++; button.setAttribute('aria-expanded', button.getAttribute('aria-expanded') === 'true' ? 'false' : 'true');
+    clicks++; if (!noEffect) button.setAttribute('aria-expanded', button.getAttribute('aria-expanded') === 'true' ? 'false' : 'true');
   });
   hook(more);
   fold.addEventListener('click', () => {
@@ -61,9 +62,25 @@ test('manual section folding cancels scheduled automatic expansion', async t => 
 test('manual More activation cancels the restoration even before native confirmation', async t => {
   const f = fixture(t); await f.advance(300);
   const replacement = f.more.cloneNode(true); f.more.replaceWith(replacement); // Native no-op click.
+  let activations = 0; replacement.addEventListener('click', () => activations++);
   await f.advance(50); replacement.click(); await f.advance(1000);
+  assert.equal(activations, 1, 'only the manual no-op activation, never an automatic second one');
   assert.equal(f.clicks(), 0, 'a manual no-op must not be followed by a queued automatic click');
   assert.equal(replacement.getAttribute('aria-expanded'), 'false');
+});
+
+for (const replaced of [false, true]) test('manual activation before mode discovery cancels first restoration, replacement=' + replaced, async t => {
+  const f = fixture(t, { modeKnown: false, noEffect: true }); f.more.click();
+  if (replaced) {
+    const next = f.more.cloneNode(true); f.hook(next); f.more.replaceWith(next);
+    const body = f.document.querySelector('#layout-body'); body.replaceWith(body.cloneNode(true)); runtime(f.dom).reconcile();
+    f.mode = f.document.querySelector('.pzp-pc__viewmode-button');
+  }
+  await f.advance(100); f.mode.setAttribute('aria-label', '넓은 화면'); await f.advance(1000);
+  assert.equal(f.clicks(), 1, 'only manual activation despite first mode confirmation');
+  f.mode.setAttribute('aria-label', '좁은 화면'); await f.advance(20);
+  f.mode.setAttribute('aria-label', '넓은 화면'); await f.advance(500);
+  assert.equal(f.clicks(), 2, 'a subsequent confirmed screen restoration may activate once');
 });
 
 test('wide reversal cancels pending activation and a missing player is not normal mode', async t => {
