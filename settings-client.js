@@ -19,7 +19,8 @@ var createSettingsClient = chromeApi => {
     const value = view(); for (const subscriber of subscribers) subscriber(value);
   }
   function updatePhase() {
-    if (mutation || [...dirty.values()].some(entry => entry.status === 'pending')) phase = 'saving';
+    if (failurePhase === 'repair-required') phase = 'repair-required';
+    else if (mutation || [...dirty.values()].some(entry => entry.status === 'pending')) phase = 'saving';
     else if ([...dirty.values()].some(entry => entry.status === 'unknown')) phase = 'unknown';
     else if ([...dirty.values()].some(entry => entry.status === 'held')) phase = 'failed';
     else phase = failurePhase || (snapshot ? 'ready' : 'loading');
@@ -81,7 +82,7 @@ var createSettingsClient = chromeApi => {
   }
   function acceptAck(reply, entries, requestSequence) {
     if (!reply.stored) return false;
-    KnifeSettingsContract.readRevision(reply.revision);
+    if (!Number.isSafeInteger(reply.revision) || reply.revision < 0) throw fault('response-unknown');
     for (const [id, entry] of entries) {
       if (dirty.get(id)?.generation !== entry.generation) continue;
       dirty.delete(id);
@@ -101,7 +102,10 @@ var createSettingsClient = chromeApi => {
       if (!reply.ok && !stored) {
         for (const entry of dirty.values()) entry.status = 'held';
         code = reply.code || 'write-failed'; failurePhase = 'failed';
-      } else { code = reply.ok ? null : reply.code; failurePhase = null; }
+      } else {
+        code = reply.revision === Number.MAX_SAFE_INTEGER ? 'revision-exhausted' : reply.ok ? null : reply.code;
+        failurePhase = reply.revision === Number.MAX_SAFE_INTEGER ? 'repair-required' : null;
+      }
       epoch++; void refresh();
       return reply;
     } catch (error) {
@@ -122,7 +126,7 @@ var createSettingsClient = chromeApi => {
     void mutate('patch', { operations: entries.map(([, entry]) => entry.op) }, entries).catch(() => {});
   }
   function edit(operation) {
-    if (disposed) return;
+    if (disposed || phase === 'repair-required') return;
     const validation = KnifeSettingsContract.validateOperations([operation]);
     if (!validation.ok) { code = validation.code; phase = 'failed'; emit(); return; }
     const op = validation.operations[0];

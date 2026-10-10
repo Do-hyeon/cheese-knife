@@ -114,3 +114,10 @@ test('failed refresh while discarding intent cannot claim ready or allow reload'
   h.failNext('callback:get-snapshot'); await a.discardPending();
   assert.notEqual(a.view().phase, 'ready'); await assert.rejects(a.reloadTarget({ tabId: 7, windowId: 9 }));
 });
+test('revision exhaustion after a confirmed commit remains repair-required instead of editable unknown', async t => {
+  const { h, a } = await clientFixture(t, { settingsRevision: Number.MAX_SAFE_INTEGER - 1 });
+  a.edit(config('previewVolume', 10)); await h.settle();
+  assert.equal(h.saved.settingsRevision, Number.MAX_SAFE_INTEGER);
+  assert.equal(a.view().phase, 'repair-required');
+  await assert.rejects(a.reloadTarget({ tabId: 7, windowId: 9 }));
+});
