@@ -93,6 +93,33 @@ test('wide reversal cancels pending activation and a missing player is not norma
   await f.advance(1); assert.equal(f.clicks(), 1);
 });
 
+test('known wide to normal restoration rearms after an unknown gap without fresh manual input', async t => {
+  const f = fixture(t, { modeKnown: false, noEffect: true }); f.more.click();
+  f.mode.setAttribute('aria-label', '좁은 화면'); await f.advance(100);
+  assert.equal(f.clicks(), 1);
+  f.mode.removeAttribute('aria-label'); await f.advance(100);
+  f.mode.setAttribute('aria-label', '넓은 화면'); await f.advance(500);
+  assert.equal(f.clicks(), 2, 'known endpoints earn one restoration despite the intervening unknown sample');
+});
+
+for (const flushed of [false, true]) test('fresh manual input during unknown gap cancels rediscovered restoration, flushed=' + flushed, async t => {
+  const f = fixture(t, { noEffect: true });
+  f.mode.setAttribute('aria-label', '좁은 화면'); await f.advance(100);
+  f.mode.removeAttribute('aria-label'); if (flushed) await f.advance(100);
+  f.more.click(); f.mode.setAttribute('aria-label', '넓은 화면'); await f.advance(1000);
+  assert.equal(f.clicks(), 1, 'only fresh manual no-op activation; rediscovery must not erase it');
+  f.mode.setAttribute('aria-label', '좁은 화면'); await f.advance(20);
+  f.mode.setAttribute('aria-label', '넓은 화면'); await f.advance(500);
+  assert.equal(f.clicks(), 2, 'a later genuine reversal can rearm');
+});
+
+test('same known endpoint after an unknown gap does not rearm manual cancellation', async t => {
+  const f = fixture(t, { noEffect: true }); f.more.click(); await f.advance(100);
+  f.mode.removeAttribute('aria-label'); await f.advance(100);
+  f.mode.setAttribute('aria-label', '넓은 화면'); await f.advance(1000);
+  assert.equal(f.clicks(), 1, 'rediscovery alone must not replenish automatic activation');
+});
+
 test('control replacement restarts quiet observation but never extends its deadline', async t => {
   const f = fixture(t); let more = f.more;
   for (let i = 0; i < 12; i++) {

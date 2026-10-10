@@ -17,6 +17,7 @@
   let followingWide = null;
   let followingModeKnown = false;
   let followingManualCancelled = false;
+  let followingManualUncertain = false;
   let followingRoute;
   let followingEpoch = 0;
   let followingSettlement;
@@ -28,8 +29,7 @@
   const pad = value => String(value).padStart(2, '0');
   const syncFollowingMode = () => {
     const route = runtime.state.route;
-    if (route?.path !== followingRoute) { followingRoute = route?.path; followingManualCancelled = false; followingEpoch++; }
-    const previousModeKnown = followingModeKnown;
+    if (route?.path !== followingRoute) { followingRoute = route?.path; followingManualCancelled = followingManualUncertain = false; followingEpoch++; }
     const pzp = runtime.state.player?.pzp;
     const label = pzp?.isConnected ? pzp.querySelector('.pzp-pc__viewmode-button')?.getAttribute('aria-label') || '' : '';
     let wide;
@@ -40,11 +40,12 @@
     else { followingModeKnown = false; return; } // Missing controls are not a normal-mode transition.
     followingModeKnown = true;
     if (wide !== followingWide) {
-      // First mode discovery is not a new user action. Keep cancellation
-      // recorded before a reservation/control owner existed.
-      if (previousModeKnown && followingWide !== null) followingManualCancelled = false;
+      // First discovery and fresh input during uncertainty retain cancellation.
+      // Otherwise compare the last known endpoints, not an unknown sample.
+      if (followingWide !== null && !followingManualUncertain) followingManualCancelled = false;
       followingWide = wide; followingEpoch++;
     }
+    followingManualUncertain = false;
   };
   const formatTime = value => {
     const total = Math.max(0, Math.floor(value / 1000));
@@ -533,7 +534,9 @@
       if (!kind) return;
       const expanded = button.getAttribute('aria-expanded');
       if (!['true', 'false'].includes(expanded)) return;
+      syncFollowingMode(); // Read current controls even before mutation delivery.
       followingManualCancelled = true;
+      followingManualUncertain = !followingModeKnown;
       if (followingSettlement?.epoch === followingEpoch) followingSettlement.cancelled = true;
       stopSettlement();
       followingIntent = followingGesture = { kind, before: expanded, control: new WeakRef(button), epoch: followingEpoch, expires: performance.now() + 200 };
@@ -651,7 +654,7 @@
   runtime.subscribe(state => {
     config = runtime.config; i18n = runtime.i18n;
     const enabled = config.expandFollowings === true;
-    if (enabled !== followingEnabled) { followingEnabled = enabled; followingUserCollapsed = followingManualCancelled = false; followingIntent = followingGesture = null; followingEpoch++; }
+    if (enabled !== followingEnabled) { followingEnabled = enabled; followingUserCollapsed = followingManualCancelled = followingManualUncertain = false; followingIntent = followingGesture = null; followingEpoch++; }
     syncFollowingMode();
     for (const [node, scope] of popups) if (!node.isConnected) scope.dispose();
     if (!runtime.configReady || state.route.kind === 'excluded') {
