@@ -14,11 +14,11 @@ AF00의 로컬 수용 조건을 충족했다. 격리된 Chrome MV3 후보를 fre
 
 | 게이트 | 결과 |
 | --- | --- |
-| 전체 Node 테스트 | 629 passed, 0 failed, 0 skipped |
+| 전체 Node 테스트 | 630 passed, 0 failed, 0 skipped |
 | 빌드·패키지 검사 | `dist` 빌드, v2.13.3, manifest 참조 20개 통과 |
 | 객관 오디오 검사 | Chromium 151, full-scale 초과 0, 극단 설정 peak 0.980000019, 250/750Hz 전환 기준선 일치 |
-| positive 설치 E2E | `Task8ReviewFix`, 62,487ms, 모든 보고 section passed |
-| negative 설치 E2E | `Task8FinalNegative`, 예상 오류 `main-runtime-missing`만 관측 |
+| positive 설치 E2E | `AF00Final20261012`, 62,373ms, 모든 보고 section passed |
+| negative 설치 E2E | `AF00FinalNegative20261012`, 예상 오류 `main-runtime-missing`만 관측 |
 | 도구 감사 | npm 0, Gitleaks 현재/Git 0, ESLint guarded-boundary 7, open/new 0, 입력 전후 해시 일치 |
 | whitespace | `git -c core.safecrlf=false diff --check` 통과 |
 
