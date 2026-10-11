@@ -34,6 +34,12 @@ test('artifact negative table fails with distinct codes', async () => {
   }
   const dependency = cleanRun(); dependency.metafile.inputs['node_modules/unapproved/index.js'] = { bytes: 1, imports: [] };
   assert.throws(() => mod.inspectProofRun(dependency), error => error?.code === 'proof-unexpected-dependency');
+
+  const posixPath = cleanRun(); posixPath.outputs['main.js'] = 'const leaked = "/home/runner/work/repository/main.js";';
+  assert.throws(() => mod.inspectProofRun(posixPath), error => error?.code === 'proof-posix-path');
+
+  const identity = cleanRun(); identity.outputs['main.js'] = 'const leaked = "runner-host";';
+  assert.throws(() => mod.inspectProofRun(identity, ['runner-host']), error => error?.code === 'proof-environment-identity');
 });
 
 test('different proof runs are rejected', async () => {

@@ -4,7 +4,7 @@
 
 **Goal:** 기존 Chrome MV3 제품 산출물을 바꾸지 않고 엄격한 타입 검사, 네 실행 문맥 build proof, 결정적 출력과 신규 런타임 JavaScript 차단 게이트를 추가한다.
 
-**Architecture:** 현재 classic-script 전역 ABI와 copy-based production build는 그대로 유지한다. TypeScript는 다섯 설정 계약 JavaScript와 proof 전용 TypeScript만 검사하고, esbuild는 `build-proof/`의 합성 entry를 `write: false`로 번들해 출력 계약만 검증한다. JSDoc으로 달라지는 주석 byte는 허용하되 고정 transform으로 계산한 실행 코드 hash, source→dist byte 동일성과 제품 파일 집합은 기준선에서 바뀌지 않아야 한다.
+**Architecture:** 현재 classic-script 전역 ABI와 copy-based production build는 그대로 유지한다. TypeScript는 다섯 설정 계약 JavaScript와 proof 전용 TypeScript만 검사하고, esbuild는 `build-proof/`의 합성 entry를 `write: false`로 번들해 출력 계약만 검증한다. JSDoc으로 달라지는 주석 byte는 허용하되 고정 transform으로 계산한 실행 코드 hash, source→dist byte 동일성과 제품 파일 집합은 기준선에서 바뀌지 않아야 한다. 단, pre-merge 검토에서 확인된 외부 reply 타입 과신은 malformed-response validator와 회귀 테스트를 함께 추가하고 `settings-client.js` 실행 hash만 명시적으로 전진시키는 승인 범위 내 보안 보완으로 처리한다.
 
 **Tech Stack:** Node.js 24.19.0, TypeScript 7.0.2, `@types/chrome` 0.2.8, esbuild 0.28.2, Node test runner, Chrome MV3, GitHub Actions Windows/Ubuntu.
 
@@ -16,7 +16,7 @@
 - Node.js는 로컬·CI 모두 `24.19.0`, esbuild target은 `chrome121`로 고정한다.
 - `manifest.json`, permissions, host permissions, content script의 순서와 world, HTML script 순서, background `importScripts` 순서를 변경하지 않는다.
 - production `npm run build`는 기존 copy-based 산출물을 유지하며 build proof 결과를 소비하지 않는다.
-- JSDoc 대상 runtime은 esbuild `transform`의 고정된 comment/whitespace 제거 결과 hash가 AF01 시작 baseline과 같아야 한다.
+- JSDoc 대상 runtime은 esbuild `transform`의 고정된 comment/whitespace 제거 결과 hash가 AF01 시작 baseline과 같아야 한다. 유일한 예외는 action별 malformed reply 거부를 추가한 `settings-client.js`이며, 독립 검토·회귀 뒤 새 hash를 고정한다.
 - `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `useUnknownInCatchVariables`, `allowJs`, `checkJs`, `noEmit`을 켜고 `skipLibCheck`는 켜지 않는다.
 - `any`, `@ts-ignore`, `@ts-nocheck`, 무검증 이중 단언과 runtime validator 제거로 타입 오류를 숨기지 않는다.
 - proof output은 IIFE, browser, unminified, no source map, no tree shaking, `write: false`이며 원격 코드·동적 원격 import·`eval`·`new Function`을 허용하지 않는다.

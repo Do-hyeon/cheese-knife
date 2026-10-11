@@ -8,6 +8,43 @@ var createSettingsClient = chromeApi => {
   const key = op => `${op.type}:${op.id}`;
   /** @param {string} value @returns {KnifeCodedError} */
   const fault = value => Object.assign(new Error(value), { code: value });
+  /** @param {unknown} value @returns {value is KnifeUnknownRecord} */
+  const isRecord = value => typeof value === 'object' && value !== null && !Array.isArray(value);
+  /** @param {unknown} value @returns {value is KnifeCssState} */
+  const isCssState = value => isRecord(value) && ['pending', 'ready', 'failed'].includes(/** @type {string} */ (value.state)) &&
+    (value.code === null || typeof value.code === 'string');
+  /** @param {unknown} value @param {(entry: unknown) => boolean} accept */
+  const isValueRecord = (value, accept) => isRecord(value) && Object.values(value).every(accept);
+  /** @param {unknown} value @returns {value is KnifeSettingsSnapshot} */
+  const isSnapshot = value => isRecord(value) && Number.isSafeInteger(value.revision) && /** @type {number} */ (value.revision) >= 0 &&
+    isValueRecord(value.config, entry => typeof entry === 'boolean' || typeof entry === 'number' && Number.isFinite(entry)) &&
+    Array.isArray(value.styles) && value.styles.every(entry => typeof entry === 'string') &&
+    isValueRecord(value.styleParameters, entry => typeof entry === 'number' && Number.isFinite(entry)) && isCssState(value.css);
+  /**
+   * @param {KnifeSettingsAction} action
+   * @param {unknown} value
+   * @param {string} requestId
+   * @returns {KnifeSettingsReply | null}
+   */
+  const validateReply = (action, value, requestId) => {
+    if (!isRecord(value) || value.requestId !== requestId || typeof value.ok !== 'boolean') return null;
+    if (value.code !== undefined && value.code !== null && typeof value.code !== 'string') return null;
+    if (value.stage !== undefined && value.stage !== null && typeof value.stage !== 'string') return null;
+    if (value.stored !== undefined && typeof value.stored !== 'boolean') return null;
+    if (value.reloaded !== undefined && typeof value.reloaded !== 'boolean') return null;
+    if (value.revision !== undefined && (!Number.isSafeInteger(value.revision) || /** @type {number} */ (value.revision) < 0)) return null;
+    if (value.snapshot !== undefined && !isSnapshot(value.snapshot)) return null;
+    if (value.css !== undefined && !isCssState(value.css)) return null;
+    if (value.appliedStyles !== undefined && (!Array.isArray(value.appliedStyles) || !value.appliedStyles.every(entry => typeof entry === 'string'))) return null;
+    if (!value.ok && typeof value.code !== 'string') return null;
+    if (action === 'get-snapshot' && value.ok && !isSnapshot(value.snapshot)) return null;
+    if (action === 'patch' && (value.ok || value.stored === true) &&
+      (value.stored !== true || !Number.isSafeInteger(value.revision) || !isCssState(value.css))) return null;
+    if (action === 'reload-target' && value.ok &&
+      (value.reloaded !== true || !Number.isSafeInteger(value.revision) || !isCssState(value.css) ||
+        !Array.isArray(value.appliedStyles) || !value.appliedStyles.every(entry => typeof entry === 'string'))) return null;
+    return /** @type {KnifeSettingsReply} */ (value);
+  };
   /** @returns {KnifeSettingsView} */
   function view() {
     const base = snapshot || KnifeSettingsContract.makeSnapshot({}, css);
@@ -45,11 +82,13 @@ var createSettingsClient = chromeApi => {
       const timer = setTimeout(() => finish(fault('response-unknown')), 10000);
       transports.add(cancel);
       try {
-        chromeApi.runtime.sendMessage({ namespace: 'cheese-knife-settings', protocol: 1, action, requestId, ...payload }, (/** @type {KnifeSettingsReply | undefined} */ reply) => {
+        chromeApi.runtime.sendMessage({ namespace: 'cheese-knife-settings', protocol: 1, action, requestId, ...payload }, (/** @type {unknown} */ reply) => {
           const transportError = chromeApi.runtime.lastError;
           if (transportError) finish(fault('response-unknown'));
-          else if (!reply || reply.requestId !== requestId || typeof reply.ok !== 'boolean') finish(fault('response-unknown'));
-          else finish(null, reply);
+          else {
+            const validated = validateReply(action, reply, requestId);
+            if (!validated) finish(fault('response-unknown')); else finish(null, validated);
+          }
         });
       } catch { finish(fault('response-unknown')); }
     });
@@ -87,10 +126,10 @@ var createSettingsClient = chromeApi => {
     })().finally(() => { reading = null; });
     return reading;
   }
-  /** @param {KnifePatchReply} reply @param {[string, KnifePendingEntry][]} entries @param {number} requestSequence */
+  /** @param {KnifeSettingsReply} reply @param {[string, KnifePendingEntry][]} entries @param {number} requestSequence */
   function acceptAck(reply, entries, requestSequence) {
     if (!reply.stored) return false;
-    if (!Number.isSafeInteger(reply.revision) || reply.revision < 0) throw fault('response-unknown');
+    if (typeof reply.revision !== 'number' || !Number.isSafeInteger(reply.revision) || reply.revision < 0) throw fault('response-unknown');
     for (const [id, entry] of entries) {
       if (dirty.get(id)?.generation !== entry.generation) continue;
       dirty.delete(id);
@@ -107,7 +146,7 @@ var createSettingsClient = chromeApi => {
     try {
       const { reply, requestSequence } = await transport.promise;
       if (disposed) throw fault('disposed');
-      const stored = action === 'patch' && acceptAck(/** @type {KnifePatchReply} */ (reply), entries, requestSequence);
+      const stored = action === 'patch' && acceptAck(reply, entries, requestSequence);
       if (!reply.ok && !stored) {
         for (const entry of dirty.values()) entry.status = 'held';
         code = reply.code || 'write-failed'; failurePhase = 'failed';

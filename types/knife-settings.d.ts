@@ -85,8 +85,9 @@ type KnifeSettingsReply = KnifeUnknownRecord & {
   revision?: number;
   snapshot?: KnifeSettingsSnapshot;
   css?: KnifeCssState;
+  reloaded?: boolean;
+  appliedStyles?: string[];
 };
-type KnifePatchReply = KnifeSettingsReply & { revision: number; stored?: boolean; css?: KnifeCssState };
 type KnifeTransportResult = { reply: KnifeSettingsReply; requestSequence: number };
 type KnifeTransport = { promise: Promise<KnifeTransportResult>; requestSequence: number };
 type KnifePendingEntry = { op: KnifeSettingsOperation; generation: number; status: 'pending' | 'sent' | 'unknown' | 'held' };

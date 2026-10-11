@@ -312,6 +312,12 @@ copy-based build에서는 타입 전용 JSDoc도 그대로 `dist`에 복사되�
 
 **보완:** 파일 집합과 source→dist byte 동일성은 계속 요구한다. 별도로 AF01 시작 시 기존 16개 runtime JavaScript를 esbuild의 고정된 comment/whitespace 제거 transform으로 정규화해 실행 코드 hash baseline을 만든다. JSDoc 추가 뒤에도 이 hash가 같아야 하며, literal·연산자·분기 등 실행 코드가 바뀌면 실패한다. 이 transform은 production emit에 사용하지 않는다.
 
+### 14.9 pre-merge 검토에서 외부 응답 타입 과신이 발견됨
+
+Chrome `runtime.sendMessage` callback 값은 프로세스 경계를 지난 `unknown`인데, JSDoc만으로 전체 reply를 신뢰하면 snapshot·CSS·ack 필드가 실제 validator보다 먼저 typed 상태가 된다. 주석만 고쳐서는 이 불일치를 숨길 뿐이며 14.7의 외부 입력 원칙을 충족하지 못한다.
+
+**보완:** AF01의 유일한 실행 코드 예외로 `settings-client.js`에 action별 reply validator를 둔다. 정상 broker 응답과 공개 동작은 바꾸지 않고 잘못된 snapshot·patch CSS·reload reply만 `response-unknown`으로 격리한다. 이 변경은 별도 malformed-response 회귀가 있어야 하며, 해당 파일의 실행 hash만 검토 뒤 새 기준선으로 명시적으로 전진시킨다. 나머지 15개 runtime 실행 hash, source→dist byte 동일성, manifest·권한·데이터·네트워크 계약은 그대로 유지한다.
+
 ## 15. 중단 조건
 
 다음 중 하나가 발생하면 검사를 약화하지 않고 AF01을 중지해 설계를 다시 승인받는다.

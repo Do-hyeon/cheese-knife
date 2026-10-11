@@ -7,7 +7,7 @@
 
 ## 결론
 
-AF01의 로컬 구현·수용 조건을 충족했다. TypeScript와 esbuild는 제품 런타임 전환이 아닌 strict 계약 및 Chrome 실행 문맥 proof에만 도입했다. 기존 16개 첫 번째 당사자 런타임 JavaScript는 그대로 배포되며, 주석을 제외한 실행 토큰의 기준 해시와 source→`dist` byte 동일성으로 제품 동작 불변을 보호한다.
+AF01의 로컬 구현·수용 조건을 충족했다. TypeScript와 esbuild는 제품 런타임 전환이 아닌 strict 계약 및 Chrome 실행 문맥 proof에만 도입했다. 기존 16개 첫 번째 당사자 런타임 JavaScript는 그대로 배포되며, source→`dist` byte 동일성을 보호한다. pre-merge 검토에서 발견된 외부 reply 타입 과신을 닫기 위해 `settings-client.js`만 malformed-response validator를 추가하고 실행 hash를 명시적으로 전진시켰다. 나머지 15개 실행 hash와 정상 broker 응답 동작은 유지된다.
 
 manifest, HTML, background 등록, 권한, host permission, 외부 통신과 사용자 데이터 계약은 변경하지 않았다. 공개 CI의 Windows·Ubuntu 결과는 pull request에서 별도로 확인해야 하며, 이 문서는 아직 GitHub-hosted 결과를 통과로 간주하지 않는다.
 
@@ -30,7 +30,7 @@ manifest, HTML, background 등록, 권한, host permission, 외부 통신과 사
 | private 감사 증거 검사 | 공개 checkout에 없는 비공개 원장 때문에 1 skipped; 공개 CI와 동일한 의도된 동작 |
 | TypeScript strict proof | passed, `any`/`@ts-ignore`/emit 없음 |
 | esbuild 실행 문맥 proof | 네 entry hash와 논리 graph hash 기준선 일치 |
-| runtime JavaScript inventory | 16개 파일의 파일 목록과 실행 토큰 hash 기준선 일치 |
+| runtime JavaScript inventory | root·`web`·`styles`·`_locales`의 16개 파일 목록과 실행 토큰 hash 기준선 일치 |
 | AF01 집중 계약 회귀 | 일반 로컬 권한에서 52 passed, 0 failed |
 | 빌드·패키지 검사 | `dist` 빌드, v2.13.3, manifest 참조 20개 통과 |
 | source→`dist` runtime JavaScript | 모든 제품 JavaScript byte 동일 |
@@ -52,12 +52,14 @@ manifest, HTML, background 등록, 권한, host permission, 외부 통신과 사
 - 논리 import graph: `aff9f9d5ef5dbc47b47c0d2b25ddee7b6ebc4197275b225d300347e91a56cedf`
 - 논리 graph는 OS별 경로 구분자와 esbuild의 비계약 byte count를 제외한다.
 - runtime executable 기준선은 `tests/fixtures/runtime-executable-baseline.json`에 파일별로 고정한다.
+- `settings-client.js`는 malformed snapshot·patch CSS·reload reply를 거부하도록 `25ae1391e38782dcff2c58e75e5910df69591ea91b29a7426c07f0e772c23bc8`로 전진했다. 이전 baseline은 `ba9469653ace0fb7ee874c24933ce830d68f0efb65150ccb4a68dc4f8cc0f983`다.
 
 ## 제품·정책 불변성
 
 - `manifest.json`, `popup.html`, `styles.html`, `permission.html`, `background.js`는 기준점과 동일하다.
 - manifest 권한은 `scripting`, `storage`, host permission은 `https://chzzk.naver.com/*`로 유지된다.
 - 새 네트워크 endpoint, telemetry, remote code, 저장 필드와 사용자 데이터 수집은 없다.
+- Chrome callback은 `unknown`으로 받고 action별 snapshot·patch·reload shape를 검증한다. malformed 응답은 pending intent를 승인한 것으로 처리하지 않는다.
 - `scripts/build.mjs`의 제품 영향은 금지 파일·source map·proof/types 누출 검사를 복사 뒤 추가한 것뿐이다.
 - proof 결과와 TypeScript 선언은 `dist`에 들어가지 않는다.
 - vendor HLS 원본은 `.gitattributes`에서 LF로 고정해 Windows checkout의 byte provenance 차이를 제거했다. vendor 코드는 수정하지 않았다.

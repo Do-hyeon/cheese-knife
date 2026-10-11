@@ -26,7 +26,7 @@ export async function listRuntimeJavaScript(root = process.cwd()) {
       } else throw fail('owned-path-type');
     }
   }
-  await visit('web');
+  for (const folder of ['web', 'styles', '_locales']) await visit(folder);
   return result.sort();
 }
 

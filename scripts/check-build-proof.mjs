@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
@@ -32,7 +33,13 @@ function normalizedMetafile(metafile) {
   return { inputs, outputs };
 }
 
-export function inspectProofRun(run) {
+function environmentIdentities() {
+  const values = [os.hostname(), process.env.USERNAME, process.env.USER];
+  try { values.push(os.userInfo().username); } catch {}
+  return [...new Set(values.filter(value => typeof value === 'string' && value.length >= 4))];
+}
+
+export function inspectProofRun(run, identities = environmentIdentities()) {
   const names = Object.keys(run.outputs).sort();
   const expected = PROOF_CONTEXTS.map(name => `${name}.js`).sort();
   if (JSON.stringify(names) !== JSON.stringify(expected)) throw fail(names.some(name => name.endsWith('.map')) ? 'proof-source-map' : 'proof-output-set');
@@ -43,6 +50,8 @@ export function inspectProofRun(run) {
     if (/https?:\/\//.test(source)) throw fail('proof-remote-url');
     if (/[A-Za-z]:\\[^\s"']+/.test(source)) throw fail('proof-windows-path');
     if (/\/(?:tmp|var\/tmp)\//.test(source)) throw fail('proof-temp-path');
+    if (/\/(?:home|Users|root|workspace|workspaces|mnt|private|opt|srv)\//.test(source)) throw fail('proof-posix-path');
+    if (identities.some(identity => source.includes(identity))) throw fail('proof-environment-identity');
     if (source.split(/[\s"'`]+/).some(token => token.length >= 20 && token.length <= 30 && token.at(4) === '-' && token.at(7) === '-' && token.at(10) === 'T' && token.endsWith('Z') && Number.isFinite(Date.parse(token)))) throw fail('proof-timestamp');
   }
   if (Object.keys(run.metafile.inputs || {}).some(name => name.split('\\').join('/').includes('node_modules/'))) throw fail('proof-unexpected-dependency');

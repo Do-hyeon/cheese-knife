@@ -7,6 +7,10 @@ export const TOOLCHAIN_CONTRACT = {
   '@types/chrome': { version: '0.2.8', license: 'MIT' },
   esbuild: { version: '0.28.2', license: 'MIT' },
 };
+const TOOLCHAIN_EXECUTABLES = [
+  { command: 'esbuild', packageName: 'esbuild', declared: 'bin/esbuild', target: 'bin/esbuild' },
+  { command: 'tsc', packageName: 'typescript', declared: './bin/tsc', target: 'bin/tsc' },
+];
 
 const fail = (code, message) => Object.assign(new Error(message), { code });
 const ownValue = (record, key) => Object.getOwnPropertyDescriptor(record || {}, key)?.value;
@@ -35,11 +39,10 @@ export async function inspectToolchain(root = process.cwd()) {
     name,
     lock: ownValue(lock.packages, `node_modules/${name}`),
   }));
-  const suffix = process.platform === 'win32' ? '.cmd' : '';
   const executables = [];
-  for (const name of ['esbuild', 'tsc']) {
+  for (const { command, packageName, target } of TOOLCHAIN_EXECUTABLES) {
     try {
-      if (await owned.resolve(`node_modules/.bin/${name}${suffix}`, { type: 'file', optional: true })) executables.push(name);
+      if (await owned.resolve(`node_modules/${packageName}/${target}`, { type: 'file', optional: true })) executables.push(command);
     } catch {}
   }
   return { packageJson, lock, packages, companions, executables };
@@ -59,6 +62,10 @@ export async function checkToolchain(root = process.cwd()) {
     }
     if (installed.version !== contract.version || installed.license !== contract.license) {
       invalid.push(`${name} installed metadata does not match the contract`);
+    }
+    const executable = TOOLCHAIN_EXECUTABLES.find(entry => entry.packageName === name);
+    if (executable && ownValue(installed.bin, executable.command) !== executable.declared) {
+      invalid.push(`${name} bin metadata does not match the contract`);
     }
   }
 

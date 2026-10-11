@@ -14,7 +14,7 @@ async function inventoryModule() {
 async function fixture(t, source = 'const answer = 42;\n') {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'cheese-runtime-'));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  await fs.mkdir(path.join(root, 'web'));
+  for (const folder of ['web', 'styles', '_locales']) await fs.mkdir(path.join(root, folder));
   await fs.writeFile(path.join(root, 'background.js'), source);
   await fs.writeFile(path.join(root, 'web/main.js'), source);
   return root;
@@ -41,6 +41,17 @@ test('a new nested web script changes the inventory', async t => {
   await fs.writeFile(path.join(root, 'web/nested/new-feature.js'), 'void 0;');
   await assert.rejects(mod.checkRuntimeInventory(root, 'inventory.json', 'executable.json'), error => error?.code === 'runtime-js-inventory-changed');
 });
+
+for (const relative of ['styles/new-feature.js', '_locales/ko/new-feature.js']) {
+  test(`a new shipped ${relative} changes the inventory`, async t => {
+    const mod = await inventoryModule();
+    const root = await fixture(t);
+    await writeBaselines(root, mod);
+    await fs.mkdir(path.dirname(path.join(root, relative)), { recursive: true });
+    await fs.writeFile(path.join(root, relative), 'void 0;');
+    await assert.rejects(mod.checkRuntimeInventory(root, 'inventory.json', 'executable.json'), error => error?.code === 'runtime-js-inventory-changed');
+  });
+}
 
 test('non-runtime trees are excluded', async t => {
   const mod = await inventoryModule();

@@ -10,6 +10,10 @@ const expected = {
   '@types/chrome': { version: '0.2.8', license: 'MIT' },
   esbuild: { version: '0.28.2', license: 'MIT' },
 };
+const packageBins = {
+  typescript: { tsc: './bin/tsc' },
+  esbuild: { esbuild: 'bin/esbuild' },
+};
 
 function companionNames() {
   const platform = process.platform === 'win32' ? 'win32' : process.platform;
@@ -62,7 +66,14 @@ async function fixture(t, mutate = () => {}) {
     if (!name) continue;
     const folder = path.join(root, ...name.split('/'));
     await fs.mkdir(folder, { recursive: true });
-    await fs.writeFile(path.join(folder, 'package.json'), JSON.stringify({ name: name.slice('node_modules/'.length), version: entry.version, license: entry.license }));
+    const packageName = name.slice('node_modules/'.length);
+    await fs.writeFile(path.join(folder, 'package.json'), JSON.stringify({ name: packageName, version: entry.version, license: entry.license, ...(packageBins[packageName] ? { bin: packageBins[packageName] } : {}) }));
+    for (const [command, relative] of Object.entries(packageBins[packageName] || {})) {
+      if (state.missingExecutables.has(command)) continue;
+      const target = path.join(folder, ...relative.replace(/^\.\//, '').split('/'));
+      await fs.mkdir(path.dirname(target), { recursive: true });
+      await fs.writeFile(target, 'fixture');
+    }
   }
   const bin = path.join(root, 'node_modules', '.bin');
   await fs.mkdir(bin, { recursive: true });
@@ -98,6 +109,28 @@ test('missing native executable is a distinct incomplete installation', async t 
   const { checkToolchain } = await toolchainModule();
   const state = await fixture(t, value => value.missingExecutables.add('esbuild'));
   await assert.rejects(checkToolchain(state.root), error => error?.code === 'toolchain-executable-missing');
+});
+
+test('package executable targets do not depend on npm shim file type', async t => {
+  const { checkToolchain } = await toolchainModule();
+  const state = await fixture(t);
+  await fs.rm(path.join(state.root, 'node_modules', '.bin'), { recursive: true });
+  const report = await checkToolchain(state.root);
+  assert.deepEqual(report.executables, ['esbuild', 'tsc']);
+});
+
+test('missing or redirected package bin targets are rejected', async t => {
+  const { checkToolchain } = await toolchainModule();
+  const missing = await fixture(t);
+  await fs.rm(path.join(missing.root, 'node_modules', 'esbuild', 'bin', 'esbuild'));
+  await assert.rejects(checkToolchain(missing.root), error => error?.code === 'toolchain-executable-missing');
+
+  const redirected = await fixture(t);
+  const metadataPath = path.join(redirected.root, 'node_modules', 'typescript', 'package.json');
+  const metadata = JSON.parse(await fs.readFile(metadataPath, 'utf8'));
+  metadata.bin.tsc = '../outside';
+  await fs.writeFile(metadataPath, JSON.stringify(metadata));
+  await assert.rejects(checkToolchain(redirected.root), error => error?.code === 'toolchain-contract-invalid');
 });
 
 test('platform companion version, integrity, and license must match its parent', async t => {
