@@ -1,7 +1,7 @@
 # AF00 설치형 MV3 E2E 검증 기록
 
 - 검증일: 2026-10-12 / Asia-Seoul
-- 검증 대상: `c330155cbba6c23dda5fbdee7fbb59680087bff7` (`codex/ai-foundation-design`)
+- 검증 대상: `498456e25bfd386c64360fdb39311a5956702dc3` (`codex/ai-foundation-design`)
 - 환경: Windows, Node 24.19.0, Playwright 1.62.1, bundled Chromium 151.0.7922.34
 
 ## 결론
@@ -14,7 +14,7 @@ AF00의 로컬 수용 조건을 충족했다. 격리된 Chrome MV3 후보를 fre
 
 | 게이트 | 결과 |
 | --- | --- |
-| 전체 Node 테스트 | 630 passed, 0 failed, 0 skipped |
+| 전체 Node 테스트 | 631 passed, 0 failed, 0 skipped |
 | 빌드·패키지 검사 | `dist` 빌드, v2.13.3, manifest 참조 20개 통과 |
 | 객관 오디오 검사 | Chromium 151, full-scale 초과 0, 극단 설정 peak 0.980000019, 250/750Hz 전환 기준선 일치 |
 | positive 설치 E2E | `AF00Final20261012`, 62,373ms, 모든 보고 section passed |
