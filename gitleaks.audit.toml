@@ -1,0 +1,8 @@
+title = "Cheese Knife local secret checks"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Generated dependencies, local reports/browser profiles and private task artifacts"
+paths = ['''(^|[/\\])(node_modules|dist|dist-firefox|output|\.git|\.superpowers|\.playwright-cli)([/\\]|$)''']

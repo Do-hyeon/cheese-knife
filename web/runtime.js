@@ -1,6 +1,6 @@
 (() => {
   const key = Symbol.for('cheese-knife.runtime.v1');
-  if (window[key]) return;
+  if (Object.getOwnPropertyDescriptor(window, key)?.value) return;
   const subscribers = new Set();
   const statuses = {};
   const transitions = [];
@@ -12,7 +12,10 @@
   let attempts = 0;
   let suspended = false;
 
-  const runtime = window[key] = {
+  const validStatusKey = feature => typeof feature === 'string' &&
+    /^[a-zA-Z][a-zA-Z0-9-]{0,39}$/.test(feature) &&
+    !['__proto__', 'prototype', 'constructor'].includes(feature);
+  const runtime = {
     requestId, config: {}, i18n: {}, configReady: false, state: {}, statuses,
     features: {}, generation: 0,
     route() {
@@ -40,10 +43,13 @@
       return { layout: layout || pzp.parentElement, pzp, video };
     },
     setStatus(feature, state, reason = '') {
-      if (!['pending', 'ready', 'limited', 'failed', 'disabled'].includes(state)) return;
-      if (statuses[feature]?.state === state && statuses[feature]?.reason === reason) return;
-      statuses[feature] = { state, reason };
-      transitions.push({ feature, state, reason });
+      if (!validStatusKey(feature) || !['pending', 'ready', 'limited', 'failed', 'disabled'].includes(state)) return;
+      const normalizedReason = typeof reason === 'string' ? reason.slice(0, 80) : '';
+      const current = Object.getOwnPropertyDescriptor(statuses, feature)?.value;
+      if (current?.state === state && current?.reason === normalizedReason) return;
+      Object.defineProperty(statuses, feature, { configurable: true, enumerable: true, writable: true,
+        value: { state, reason: normalizedReason } });
+      transitions.push({ feature, state, reason: normalizedReason });
       if (transitions.length > 20) transitions.shift();
       window.postMessage({ namespace: 'cheese-knife', protocol: 1, type: 'status',
         statuses: { ...statuses }, diagnostics: this.diagnostics() }, location.origin);
@@ -114,6 +120,7 @@
       return scope;
     },
   };
+  Object.defineProperty(window, key, { configurable: true, value: runtime });
 
   window.addEventListener('message', event => {
     const data = event.data;

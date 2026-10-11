@@ -1,0 +1,24 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const { page, load } = require('./helpers.cjs');
+
+const expectedOrigins = ['https://chzzk.naver.com/*'];
+const baseline = JSON.parse(fs.readFileSync('tests/fixtures/host-permissions-baseline.json', 'utf8'));
+
+test('host policy and manifest use HTTPS main only without changing static script boundaries', t => {
+  const dom = page(); t.after(() => dom.window.close()); load(dom, 'config.js');
+  const policy = dom.window.KnifeHostPolicy;
+  assert.ok(policy, 'config must expose the shared host policy');
+  assert.equal(Object.isFrozen(policy), true);
+  assert.equal(Object.isFrozen(policy.origins), true);
+  assert.deepEqual(Array.from(policy.origins), expectedOrigins);
+
+  const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+  assert.deepEqual(manifest.host_permissions, expectedOrigins);
+  assert.deepEqual(manifest.permissions, baseline.permissions);
+  assert.equal(manifest.minimum_chrome_version, baseline.minimum_chrome_version);
+  assert.equal(manifest.manifest_version, 3);
+  assert.deepEqual(manifest.content_scripts.map(item => item.matches), [expectedOrigins, expectedOrigins]);
+  assert.deepEqual(manifest.content_scripts.map(({ matches, ...item }) => item), baseline.content_scripts);
+});

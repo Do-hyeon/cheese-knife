@@ -4,7 +4,13 @@
   let current;
   const defaultRequested = new WeakSet();
   const manuallyToggled = new WeakSet();
-  const label = (key, fallback) => runtime.i18n[key] || fallback;
+  const labelKeys = new Set(['fastForward', 'stats', 'close', 'unknown', 'resolution', 'bitrate', 'fps',
+    'measured', 'latency', 'codec', 'enableCompressor', 'disableCompressor', 'speed2x']);
+  const label = (key, fallback) => {
+    if (!labelKeys.has(key)) return fallback;
+    const value = Object.getOwnPropertyDescriptor(runtime.i18n || {}, key)?.value;
+    return typeof value === 'string' && value ? value : fallback;
+  };
   const ranges = video => {
     const list = video?.seekable?.length ? video.seekable : video?.buffered;
     const result = [];
@@ -41,11 +47,23 @@
     const available = ranges(video);
     if (available.length) video.currentTime = bounded(Infinity, available, true);
   };
-  const ownedButton = (className, text, icon) => {
+  const ownedButton = (className, text, iconKind) => {
     const button = document.createElement('button');
     button.type = 'button'; button.className = `pzp-button knife-owned ${className}`;
     button.title = text; button.setAttribute('aria-label', text);
-    button.innerHTML = icon;
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '22'); svg.setAttribute('height', '22');
+    svg.setAttribute('aria-hidden', 'true');
+    const shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    if (iconKind === 'compressor') {
+      shape.setAttribute('stroke', 'currentColor'); shape.setAttribute('stroke-width', '2');
+      shape.setAttribute('d', 'M3 7v10m4-13v16m5-18v20m5-18v16m4-13v10');
+    } else {
+      shape.setAttribute('fill', 'currentColor');
+      shape.setAttribute('d', 'M4 6v12l8-6zm9 0v12l8-6z');
+    }
+    svg.append(shape); button.append(svg);
     return button;
   };
   const mount = player => {
@@ -115,7 +133,7 @@
       const play = pzp.querySelector('.pzp-pc__playback-switch');
       if (play && !pzp.querySelector('.knife-ff')) {
         const button = track(ownedButton('pzp-pc__playback-switch knife-ff', label('fastForward', 'Live edge'),
-          '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 6v12l8-6zm9 0v12l8-6z"/></svg>'));
+          'live-edge'));
         scope.on(button, 'click', event => { event.stopPropagation(); liveEdge(); });
         play.after(button);
       }
@@ -165,7 +183,7 @@
       if (volume && !pzp.querySelector('.knife-comp')) {
         const box = track(document.createElement('div')); box.className = 'pzp-pc__volume-control knife-comp knife-owned';
         const button = ownedButton('pzp-pc__volume-button', label('enableCompressor', 'Enable compressor'),
-          '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path stroke="currentColor" stroke-width="2" d="M3 7v10m4-13v16m5-18v20m5-18v16m4-13v10"/></svg>');
+          'compressor');
         const slider = document.createElement('input'); slider.type = 'range'; slider.min = '0'; slider.max = '2'; slider.step = '0.05';
         slider.className = 'knife-gain-slider'; slider.setAttribute('aria-label', 'Gain');
         box.append(button, slider); volume.after(box);

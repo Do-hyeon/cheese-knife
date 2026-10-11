@@ -5,8 +5,30 @@
   const connected = new Set();
   const scope = runtime.createScope();
   let context;
-  const limits = { threshold: [-100, 0, -50], knee: [0, 40, 40], ratio: [1, 20, 12], attack: [0, 1, 0], release: [0, 1, 0.25] };
+  let sharedLimiterCurve;
   const number = (value, min, max, fallback) => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max ? value : fallback;
+  const compressorDelay = sampleRate => Math.min(
+    Math.floor(Math.fround(Math.fround(0.006) * Math.fround(sampleRate))),
+    1023,
+  ) / sampleRate;
+  const limiterCurve = () => {
+    if (sharedLimiterCurve) return sharedLimiterCurve;
+    sharedLimiterCurve = Float32Array.from({ length: 4097 }, (_, index) => {
+      const input = 2 * index / 4096 - 1;
+      const magnitude = Math.abs(input);
+      let output = magnitude;
+      if (magnitude > 0.9) {
+        const position = (magnitude - 0.9) / 0.1;
+        const squared = position * position;
+        const cubed = squared * position;
+        output = (2 * cubed - 3 * squared + 1) * 0.9
+          + (cubed - 2 * squared + position) * 0.1
+          + (-2 * cubed + 3 * squared) * 0.98;
+      }
+      return input < 0 ? -output : output;
+    });
+    return sharedLimiterCurve;
+  };
   const storedGain = () => {
     try { const value = localStorage.getItem('knifeGain'); return value == null || !value.trim() ? 1 : number(Number(value), 0, 2, 1); }
     catch { return 1; }
@@ -49,17 +71,24 @@
   };
   const apply = entry => {
     if (!entry.compressor) return;
-    for (const [key, [min, max, fallback]] of Object.entries(limits)) {
-      entry.compressor[key].value = number(runtime.config[`compressor${key[0].toUpperCase()}${key.slice(1)}`], min, max, fallback);
-    }
+    const parameters = [
+      { parameter: entry.compressor.threshold, configured: runtime.config.compressorThreshold, min: -100, max: 0, fallback: -50 },
+      { parameter: entry.compressor.knee, configured: runtime.config.compressorKnee, min: 0, max: 40, fallback: 40 },
+      { parameter: entry.compressor.ratio, configured: runtime.config.compressorRatio, min: 1, max: 20, fallback: 12 },
+      { parameter: entry.compressor.attack, configured: runtime.config.compressorAttack, min: 0, max: 1, fallback: 0 },
+      { parameter: entry.compressor.release, configured: runtime.config.compressorRelease, min: 0, max: 1, fallback: 0.25 },
+    ];
+    for (const { parameter, configured, min, max, fallback } of parameters) parameter.value = number(configured, min, max, fallback);
     applyGain(entry);
   };
   const connect = entry => {
     if (entry.connected) return;
-    entry.source.connect(entry.dry);
+    entry.source.connect(entry.dryDelay);
+    entry.dryDelay.connect(entry.dry);
     entry.source.connect(entry.compressor);
     entry.compressor.connect(entry.gainNode);
-    entry.gainNode.connect(entry.wet);
+    entry.gainNode.connect(entry.limiter);
+    entry.limiter.connect(entry.wet);
     entry.dry.connect(context.destination); entry.wet.connect(context.destination);
     entry.connected = true; connected.add(entry);
   };
@@ -97,8 +126,11 @@
           // Prepare all outputs before the irreversible source interception.
           entry.dry = context.createGain(); entry.dry.gain.value = 1;
           entry.wet = context.createGain(); entry.wet.gain.value = 0;
+          entry.dryDelay = context.createDelay(0.02); entry.dryDelay.delayTime.value = compressorDelay(context.sampleRate);
           entry.compressor = context.createDynamicsCompressor();
           entry.gainNode = context.createGain(); entry.gainTransition = null; apply(entry);
+          entry.limiter = context.createWaveShaper();
+          entry.limiter.curve = limiterCurve(); entry.limiter.oversample = 'none';
           entry.source = context.createMediaElementSource(video);
         }
         connect(entry); apply(entry);
@@ -133,8 +165,8 @@
         // MediaElementSource interception is irreversible. Retire the expensive
         // wet graph and our strong reference, never the video's audible path.
         runtime.audio.bypass(entry.video);
-        for (const node of [entry.source, entry.compressor, entry.gainNode, entry.wet]) node.disconnect();
-        entry.source.connect(entry.dry);
+        for (const node of [entry.source, entry.compressor, entry.gainNode, entry.limiter, entry.wet]) node.disconnect();
+        entry.source.connect(entry.dryDelay);
         entry.connected = false; connected.delete(entry);
       }
     }

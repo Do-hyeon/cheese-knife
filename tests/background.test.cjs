@@ -1,99 +1,97 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { page, load, flush } = require('./helpers.cjs');
-
-function background(t, stored = {}) {
-  const dom = page();
-  const event = () => {
-    const listeners = new Set();
-    return { addListener(fn) { listeners.add(fn); }, removeListener(fn) { listeners.delete(fn); },
-      emit(value) { for (const fn of [...listeners]) fn(value); } };
-  };
-  const data = structuredClone(stored);
-  dom.window.chrome = {
-    storage: { local: { get: async () => structuredClone(data), set: async value => Object.assign(data, structuredClone(value)), remove: async key => { delete data[key]; }, onChanged: event() } },
-    scripting: { unregisterContentScripts: async () => {}, registerContentScripts: async () => {} },
-    permissions: { contains: async () => true, onRemoved: event() },
-    runtime: { onInstalled: event(), onStartup: event() }, tabs: { create() { throw new Error('unexpected permission tab'); } },
-  };
+const { page, load } = require('./helpers.cjs');
+const { settingsHarness, config, style } = require('./settings-fixture.cjs');
+function background(t, stored = {}, hold) {
+  const h = settingsHarness(t, stored), gate = hold ? h.holdNext(hold) : null;
+  const dom = page(); t.after(() => dom.window.close()); const api = h.apiFor(); dom.window.chrome = api;
+  dom.window.importScripts = (...files) => { for (const file of files) load(dom, file); };
   load(dom, 'background.js');
-  t.after(() => dom.window.close());
-  return { dom, data };
+  let sequence = 0;
+  const request = (action, payload = {}) => new Promise(resolve => {
+    const listener = [...api.runtime.onMessage.listeners][0]; assert.ok(listener);
+    listener({ namespace: 'cheese-knife-settings', protocol: 1, requestId: 'bg-' + ++sequence, action, ...payload },
+      { id: api.runtime.id, url: api.runtime.getURL('popup.html'), frameId: 0 }, resolve);
+  });
+  return { h, api, gate, patch: operations => request('patch', { operations }), snapshot: () => request('get-snapshot') };
 }
-
 test('rapid style updates serialize registration so the latest selection wins', async t => {
-  const { dom } = background(t);
-  let registered = null, release;
-  const blocked = new Promise(resolve => { release = resolve; });
-  dom.window.chrome.scripting.unregisterContentScripts = async () => { registered = null; };
-  dom.window.chrome.scripting.registerContentScripts = async scripts => {
-    if (scripts[0].css[0] === 'styles/left-chat.css') await blocked;
-    if (registered) throw new Error('duplicate-style-registration');
-    registered = structuredClone(scripts[0]);
-  };
-  const first = dom.window.registerStyles(['left-chat']).then(() => 'ok', error => error.message);
-  await flush();
-  const last = dom.window.registerStyles(['hide-studio']).then(() => 'ok', error => error.message);
-  await flush(); release();
-  assert.equal(await first, 'ok'); assert.equal(await last, 'ok');
-  assert.deepEqual(Array.from(registered.css), ['styles/hide-studio.css']);
+  const { h, patch, snapshot } = background(t); await snapshot();
+  const gate = h.holdNext('css-register'); const first = patch([style('left-chat', true)]); await gate.reached;
+  const last = patch([style('left-chat', false), style('hide-studio', true)]); gate.release();
+  assert.equal((await first).ok, true); assert.equal((await last).ok, true);
+  assert.deepEqual(h.registrations.get('styles').css, ['styles/hide-studio.css']);
 });
-
 test('legacy sharpness migration works when the old config object is missing', async t => {
-  const { dom, data } = background(t, { t: 0 });
-  await dom.window.initConfig();
-  assert.equal(data.config.sharpness, 0);
-  assert.equal(Object.hasOwn(data, 't'), false);
+  const { h, snapshot } = background(t, { t: 0 }); await snapshot();
+  assert.equal(h.saved.config.sharpness, 0); assert.equal(Object.hasOwn(h.saved, 't'), false);
 });
-
 test('a delayed startup style snapshot cannot overwrite a newer selection', async t => {
-  const { dom, data } = background(t, { styles: ['left-chat'] });
-  const old = structuredClone(data); let resolveRead, registered;
-  dom.window.chrome.storage.local.get = () => new Promise(resolve => { resolveRead = resolve; });
-  dom.window.chrome.scripting.registerContentScripts = async scripts => { registered = structuredClone(scripts[0]); };
-  const starting = dom.window.init();
-  data.styles = ['hide-studio'];
-  dom.window.chrome.storage.local.onChanged.emit({ styles: { newValue: ['hide-studio'] } }); await flush();
-  resolveRead(old); await starting; await flush();
-  assert.deepEqual(Array.from(registered.css), ['styles/hide-studio.css']);
+  const { h, gate, snapshot } = background(t, { styles: ['left-chat'] }, 'read'); await gate.reached;
+  h.saved.styles = ['hide-studio']; h.changes.emit({ styles: { newValue: ['hide-studio'] } }, 'local'); gate.release();
+  await snapshot(); await h.settle(); assert.deepEqual(h.registrations.get('styles').css, ['styles/hide-studio.css']);
+});
+test('style changes during a pending migration write are observed after that commit', async t => {
+  const { h, gate, snapshot } = background(t, { config: { resizeChat: true }, styles: [] }, 'write-result'); await gate.reached;
+  h.saved.styles = ['hide-studio']; h.changes.emit({ styles: { newValue: ['hide-studio'] } }, 'local'); gate.release();
+  await snapshot(); await h.settle(); assert.deepEqual(h.registrations.get('styles').css, ['styles/hide-studio.css']);
+});
+test('legacy resize migration precedes queued newer style selections', async t => {
+  const { h, gate, patch } = background(t, { config: { resizeChat: true }, styles: [] }, 'read'); await gate.reached;
+  const changing = patch([style('chat-resize', false), style('hide-studio', true)]); gate.release(); await changing;
+  assert.deepEqual(h.saved.styles, ['hide-studio']); assert.equal(Object.hasOwn(h.saved.config, 'resizeChat'), false);
+});
+test('legacy sharpness migration cannot overwrite a queued newer config value', async t => {
+  const { h, gate, patch } = background(t, { config: { sharpness: 0 }, t: 2 }, 'read'); await gate.reached;
+  const changing = patch([config('sharpness', 4), config('arrowSeek', false)]); gate.release(); await changing;
+  assert.deepEqual(h.saved.config, { sharpness: 4, arrowSeek: false }); assert.equal(Object.hasOwn(h.saved, 't'), false);
+});
+test('install/startup reconcile only owned CSS and permission removal still opens the permission page', async t => {
+  const { h, api, snapshot } = background(t, { styles: ['left-chat'] }); await snapshot();
+  h.registrations.set('foreign', { id: 'foreign', js: ['foreign.js'] });
+  api.runtime.onInstalled.emit(); api.runtime.onStartup.emit(); await h.settle(); assert.ok(h.registrations.has('foreign'));
+  api.permissions.contains = async () => false; api.permissions.onRemoved.emit(); await h.settle();
+  assert.equal(h.calls.filter(c => c.kind === 'tab-create').at(-1).args.url, api.runtime.getURL('permission.html'));
 });
 
-test('style changes during a pending migration write are still observed', async t => {
-  const { dom, data } = background(t, { config: { resizeChat: true }, styles: [] });
-  let releaseWrite, registered;
-  dom.window.chrome.scripting.registerContentScripts = async scripts => { registered = structuredClone(scripts[0]); };
-  dom.window.chrome.storage.local.set = async value => {
-    Object.assign(data, structuredClone(value));
-    if (value.styles) dom.window.chrome.storage.local.onChanged.emit({ styles: { newValue: value.styles } });
-    await new Promise(resolve => { releaseWrite = resolve; });
-  };
-  const starting = dom.window.init(); await flush();
-  data.styles = ['hide-studio'];
-  dom.window.chrome.storage.local.onChanged.emit({ styles: { newValue: ['hide-studio'] } }); await flush();
-  releaseWrite(); await starting; await flush();
-  assert.deepEqual(Array.from(registered.css), ['styles/hide-studio.css']);
+test('every worker permission check uses the exact shared host policy', async t => {
+  const { h, api, snapshot } = background(t); await snapshot();
+  api.runtime.onInstalled.emit(); await h.settle();
+  api.runtime.onStartup.emit(); await h.settle();
+  api.permissions.onRemoved.emit({ origins: ['https://chzzk.naver.com/*'] }); await h.settle();
+  api.permissions.onAdded.emit({ origins: ['https://chzzk.naver.com/*'] }); await h.settle();
+  const checks = h.calls.filter(call => call.kind === 'permission-contains');
+  assert.equal(checks.length, 4);
+  for (const check of checks) assert.deepEqual(check.args.origins, ['https://chzzk.naver.com/*']);
 });
 
-test('legacy resize migration does not overwrite a newer style selection made during its read', async t => {
-  const { dom, data } = background(t, { config: { resizeChat: true }, styles: [] });
-  const old = structuredClone(data); let resolveRead;
-  dom.window.chrome.storage.local.get = () => new Promise(resolve => { resolveRead = resolve; });
-  const migration = dom.window.initConfig();
-  data.styles = ['hide-studio'];
-  dom.window.chrome.storage.local.onChanged.emit({ styles: { newValue: ['hide-studio'] } });
-  resolveRead(old); await migration;
-  assert.deepEqual(Array.from(data.styles), ['hide-studio']);
-  assert.equal(Object.hasOwn(data.config, 'resizeChat'), false);
+test('permission grant retries identical failed CSS without storage writes or tab reloads', async t => {
+  const { h, api, snapshot, patch } = background(t, { styles: ['left-chat'], settingsRevision: 4 }); await snapshot();
+  h.failNext('css-update');
+  const failed = await patch([style('left-chat', false), style('hide-studio', true)]);
+  assert.equal(failed.css.state, 'failed');
+  assert.deepEqual(h.registrations.get('styles').css, ['styles/left-chat.css']);
+  const writes = h.calls.filter(call => call.kind === 'commit').length;
+  const reloads = h.calls.filter(call => call.kind === 'tab-reload').length;
+  api.permissions.onAdded.emit({ origins: ['https://chzzk.naver.com/*'] }); await h.settle();
+  assert.deepEqual(h.registrations.get('styles').matches, ['https://chzzk.naver.com/*']);
+  assert.deepEqual(h.registrations.get('styles').css, ['styles/hide-studio.css']);
+  assert.equal(h.calls.filter(call => call.kind === 'commit').length, writes);
+  assert.equal(h.calls.filter(call => call.kind === 'tab-reload').length, reloads);
 });
 
-test('legacy migration preserves a newer config value received before the startup read finishes', async t => {
-  const { dom, data } = background(t, { config: { sharpness: 0 }, t: 2 });
-  const old = structuredClone(data); let resolveRead;
-  dom.window.chrome.storage.local.get = () => new Promise(resolve => { resolveRead = resolve; });
-  const migration = dom.window.initConfig();
-  data.config = { sharpness: 4, arrowSeek: false };
-  dom.window.chrome.storage.local.onChanged.emit({ config: { newValue: data.config } });
-  resolveRead(old); await migration;
-  assert.deepEqual(data.config, { sharpness: 4, arrowSeek: false });
-  assert.equal(Object.hasOwn(data, 't'), false);
+test('ungranted permission event rechecks required origins without forcing CSS retry', async t => {
+  const { h, api, snapshot } = background(t, { styles: ['left-chat'] }); await snapshot();
+  h.registrations.delete('styles'); h.failNext('css-register'); h.invalidate(); await h.settle();
+  const attempts = h.calls.filter(call => call.kind === 'css-register').length;
+  h.setPermission(false); api.permissions.onAdded.emit({ origins: ['https://chzzk.naver.com/*'] }); await h.settle();
+  assert.equal(h.calls.filter(call => call.kind === 'permission-contains').length, 1);
+  assert.equal(h.calls.filter(call => call.kind === 'css-register').length, attempts);
+});
+
+test('permission grant recheck failure is contained and later worker requests still work', async t => {
+  const { h, api, snapshot, patch } = background(t); await snapshot();
+  h.failNext('permission-contains'); api.permissions.onAdded.emit({ origins: ['https://chzzk.naver.com/*'] }); await h.settle();
+  assert.equal(h.calls.filter(call => call.kind === 'permission-contains').length, 1);
+  assert.equal((await patch([config('arrowSeek', false)])).stored, true);
 });

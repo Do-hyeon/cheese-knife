@@ -33,7 +33,7 @@
         const chunk = Object.getOwnPropertyDescriptor(window, 'webpackChunkglive_fe_pc')?.value;
         if (Array.isArray(chunk) && typeof chunk.push === 'function' && attempted.get(chunk) !== chunk.push) {
           attempted.set(chunk, chunk.push);
-          try { chunk.push([[id], { [id]: (_module, _exports, require) => done(require) }, require => require(id)]); } catch {}
+          try { chunk.push([[id], { [id]: (_module, _exports, webpackRequire) => done(webpackRequire) }, webpackRequire => webpackRequire(id)]); } catch {}
         }
         if (settled) return;
         if (Date.now() - started >= 2000) { done(null); return; }

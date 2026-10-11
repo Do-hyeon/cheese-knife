@@ -1,153 +1,73 @@
-const STYLES = [
-  {
-    id: "player",
-    styles: [
-      { id: "fit-player" },
-      { id: "volume-percentage" },
-      { id: "hide-ff" },
-      { id: "hide-comp" },
-    ],
-  },
-  {
-    id: "chat",
-    styles: [
-      { id: "chat-resize" },
-      { id: "chat-font-size", type: "range", min: -6, max: 16, step: 1 },
-      { id: "chat-timestamp" },
-      { id: "hide-ranking" },
-      { id: "hide-mission" },
-      { id: "left-chat" },
-    ],
-  },
-  {
-    id: "sidebar",
-    styles: [
-      { id: "hide-offline" },
-      { id: "hide-recommended" },
-      { id: "hide-schedule" },
-      { id: "hide-sidebar-partner" },
-      { id: "hide-shortcut" },
-      { id: "right-sidebar" },
-    ],
-  },
-  {
-    id: "toolbar",
-    styles: [
-      { id: "static-logo" },
-      { id: "hide-topics" },
-      { id: "hide-studio" },
-      { id: "auto-hide-toolbar" },
-    ],
-  },
-  {
-    id: "home",
-    styles: [{ id: "hide-recommended-live" }],
-  },
-  {
-    id: "explore",
-    styles: [{ id: "top-explore" }, { id: "hide-blocked" }],
-  },
-  {
-    id: "misc",
-    styles: [{ id: "hide-live-badge" }, { id: "rectangle-profile" }],
-  },
-];
-
-document.title = chrome.i18n.getMessage("ext_shortName");
-document.getElementById("stylesConfig").textContent =
-  chrome.i18n.getMessage("config_styles");
-
-const list = document.getElementById("list");
-const reload = document.getElementById("reload");
-reload.appendChild(
-  document.createTextNode(chrome.i18n.getMessage("config_reload"))
-);
-reload.addEventListener("click", () => {
-  reload.classList.add("hidden");
-  chrome.tabs.reload();
+document.title = chrome.i18n.getMessage('ext_shortName');
+document.getElementById('stylesConfig').textContent = chrome.i18n.getMessage('config_styles');
+const message = key => chrome.i18n.getMessage(key);
+const settingsClient = createSettingsClient(chrome), fields = new Map();
+const status = document.getElementById('settings-status'), reload = document.getElementById('reload');
+const retry = document.getElementById('settings-retry'), discard = document.getElementById('settings-discard');
+const search = new URLSearchParams(location.search);
+function targetId(key) {
+  const values = search.getAll(key);
+  if (values.length !== 1 || !/^\d+$/.test(values[0])) return null;
+  const value = Number(values[0]); return Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+const tabId = targetId('targetTabId'), windowId = targetId('targetWindowId');
+const target = tabId !== null && windowId !== null ? { tabId, windowId } : null;
+document.getElementById('settings-guide').textContent = message('settings_global');
+document.getElementById('settings-target').textContent = message(target ? 'settings_target' : 'settings_no_target');
+retry.textContent = message('settings_retry'); discard.textContent = message('settings_discard');
+reload.append(document.createTextNode(message('config_reload')));
+let currentView, appliedStyles;
+reload.disabled = true;
+reload.addEventListener('click', async () => {
+  if (reload.disabled || !target) return;
+  try {
+    const result = await settingsClient.reloadTarget(target);
+    if (result.reloaded && Array.isArray(result.appliedStyles)) {
+      appliedStyles = [...result.appliedStyles]; render(currentView);
+    }
+  } catch { /* Client publishes the controlled failure state. */ }
 });
-
-(async () => {
-  const { styles, styleParameters } = await chrome.storage.local.get({
-    styles: [],
-    styleParameters: {},
-  });
-  const stylesSet = new Set(styles);
-  for (const c of STYLES) {
-    const category = document.createElement("div");
-    category.classList.add("box");
-    list.appendChild(category);
-
-    const title = document.createElement("div");
-    title.classList.add("title");
-    title.textContent = chrome.i18n.getMessage(`styles_category_${c.id}`);
-    category.appendChild(title);
-
-    for (const style of c.styles) {
-      const item = document.createElement("div");
-      category.appendChild(item);
-
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.checked = stylesSet.has(style.id);
-      checkbox.addEventListener("change", async (e) => {
-        if (e.target.checked) {
-          stylesSet.add(style.id);
-        } else {
-          stylesSet.delete(style.id);
-        }
-        await chrome.storage.local.set({ styles: [...stylesSet] });
-        reload.classList.remove("hidden");
+retry.addEventListener('click', () => { void settingsClient.retryStyles().catch(() => {}); });
+discard.addEventListener('click', () => { void settingsClient.discardPending(); });
+for (const category of STYLES) {
+  const box = document.createElement('div'); box.className = 'box';
+  const title = document.createElement('div'); title.className = 'title'; title.textContent = message('styles_category_' + category.id);
+  box.append(title); document.getElementById('list').append(box);
+  for (const style of category.styles) {
+    const item = document.createElement('div'), checkbox = document.createElement('input'), label = document.createElement('label');
+    checkbox.type = 'checkbox'; checkbox.disabled = true;
+    label.htmlFor = style.id; label.textContent = message('styles_' + style.id.replaceAll('-', '_'));
+    const description = message('styles_' + style.id.replaceAll('-', '_') + '_desc'); if (description) label.title = description;
+    item.append(checkbox, label); box.append(item);
+    if (!style.type) {
+      checkbox.id = style.id;
+      checkbox.addEventListener('change', () => settingsClient.edit({ type: 'style', id: style.id, enabled: checkbox.checked }));
+      fields.set(style.id, view => { checkbox.checked = view.values.styles.includes(style.id); checkbox.disabled = !view.snapshot || view.phase === 'repair-required'; });
+    } else {
+      const input = document.createElement('input'), current = document.createElement('span');
+      input.id = style.id; input.type = 'range'; input.min = style.min; input.max = style.max; input.step = style.step; input.disabled = true;
+      input.addEventListener('input', () => settingsClient.edit({ type: 'parameter', id: style.id, value: Number(input.value) }));
+      item.append(input, current);
+      fields.set(style.id, view => {
+        input.value = view.values.styleParameters[style.id] ?? 0; current.textContent = input.value;
+        checkbox.checked = view.values.styles.includes(style.id); input.disabled = !view.snapshot || view.phase === 'repair-required';
       });
-      item.appendChild(checkbox);
-
-      const label = document.createElement("label");
-      label.textContent = chrome.i18n.getMessage(
-        `styles_${style.id.replaceAll("-", "_")}`
-      );
-      label.htmlFor = style.id;
-      item.appendChild(label);
-
-      if (style.type == null) {
-        checkbox.id = style.id;
-      } else {
-        checkbox.disabled = true;
-
-        const input = document.createElement("input");
-        input.id = style.id;
-        if (style.type === "range") {
-          input.type = "range";
-          input.min = style.min;
-          input.max = style.max;
-          input.step = style.step;
-        }
-        input.value = styleParameters[style.id] ?? 0;
-        input.addEventListener("input", async (e) => {
-          const wasChecked = checkbox.checked;
-          styleParameters[style.id] = Number(e.target.value);
-          if (styleParameters[style.id]) {
-            checkbox.checked = true;
-            stylesSet.add(style.id);
-          } else {
-            checkbox.checked = false;
-            stylesSet.delete(style.id);
-          }
-          current.textContent = e.target.value;
-
-          await chrome.storage.local.set({
-            styles: [...stylesSet],
-            styleParameters,
-          });
-          if (checkbox.checked !== wasChecked) {
-            reload.classList.remove("hidden");
-          }
-        });
-        item.appendChild(input);
-
-        const current = document.createElement("span");
-        current.textContent = input.value;
-        item.appendChild(current);
-      }
     }
   }
-})();
+}
+function render(view) {
+  currentView = view;
+  for (const update of fields.values()) update(view);
+  if (!appliedStyles && view.snapshot) appliedStyles = [...view.snapshot.styles];
+  const changed = appliedStyles && JSON.stringify(appliedStyles) !== JSON.stringify(view.values.styles);
+  reload.classList.toggle('hidden', !changed);
+  reload.disabled = !target || view.phase !== 'ready' || view.pendingKeys.length > 0 || view.css.state !== 'ready';
+  retry.hidden = view.css.state !== 'failed'; retry.disabled = view.phase !== 'ready' || view.pendingKeys.length > 0;
+  discard.hidden = !['failed', 'unknown'].includes(view.phase);
+  status.dataset.phase = view.phase;
+  const stateKey = view.code?.startsWith('target-') ? 'settings_target_changed' :
+    view.css.state === 'failed' && view.phase === 'ready' ? 'settings_css_failed' : 'settings_' + view.phase.replace('-', '_');
+  status.textContent = message(stateKey);
+}
+settingsClient.subscribe(render);
+window.addEventListener('pagehide', () => settingsClient.dispose(), { once: true });

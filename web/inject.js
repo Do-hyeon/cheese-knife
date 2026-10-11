@@ -11,10 +11,42 @@
   let anchors;
   let sidebar;
   let sidebarRecord;
+  // User intent outlives DOM roots and runtime owner generations.
+  let followingUserCollapsed = false;
+  let followingEnabled = false;
+  let followingWide = null;
+  let followingModeKnown = false;
+  let followingManualCancelled = false;
+  let followingManualUncertain = false;
+  let followingRoute;
+  let followingEpoch = 0;
+  let followingSettlement;
+  let followingIntent;
+  let followingGesture;
   let timestampRoots;
   const popups = new Map();
   const videoMetadata = new Map();
   const pad = value => String(value).padStart(2, '0');
+  const syncFollowingMode = () => {
+    const route = runtime.state.route;
+    if (route?.path !== followingRoute) { followingRoute = route?.path; followingManualCancelled = followingManualUncertain = false; followingEpoch++; }
+    const pzp = runtime.state.player?.pzp;
+    const label = pzp?.isConnected ? pzp.querySelector('.pzp-pc__viewmode-button')?.getAttribute('aria-label') || '' : '';
+    let wide;
+    if (/^(좁은 화면|Narrow screen|Normal view)$/i.test(label)) wide = true;
+    else if (/^(넓은 화면|Wide screen|Wide view)$/i.test(label)) wide = false;
+    else if (!['live', 'vod'].includes(route?.kind)) wide = false;
+    else if (/(?:^|\s)(?:_is_large_|live_information_is_large__)/.test(runtime.state.body?.className || '')) wide = true;
+    else { followingModeKnown = false; return; } // Missing controls are not a normal-mode transition.
+    followingModeKnown = true;
+    if (wide !== followingWide) {
+      // First discovery and fresh input during uncertainty retain cancellation.
+      // Otherwise compare the last known endpoints, not an unknown sample.
+      if (followingWide !== null && !followingManualUncertain) followingManualCancelled = false;
+      followingWide = wide; followingEpoch++;
+    }
+    followingManualUncertain = false;
+  };
   const formatTime = value => {
     const total = Math.max(0, Math.floor(value / 1000));
     const hours = Math.floor(total / 3600), minutes = Math.floor(total / 60) % 60, seconds = total % 60;
@@ -205,13 +237,21 @@
     };
     const rehide = () => {
       let changed = false;
-      if (Array.isArray(controller.messageList)) for (let i = 0; i < controller.messageList.length; i++) {
-        const message = controller.messageList[i], saved = message && retained.get(message);
+      const list = controller.messageList;
+      if (Array.isArray(list)) for (let index = 0; index < list.length; index++) {
+        const message = list.at(index), saved = message && retained.get(message);
         if (!saved) continue;
         retained.delete(message);
         if (message.status !== 'NORMAL' || message.content !== saved.content || message.key !== saved.key ||
           message.user !== saved.user || message.time !== saved.time || message.type !== 1) continue;
-        controller.messageList[i] = { ...message, status: saved.status }; changed = true;
+        if (index < 0 || index >= list.length || controller.messageList !== list || list.at(index) !== message) continue;
+        const hidden = { ...message, status: saved.status };
+        const stillOwned = message.status === 'NORMAL' && message.content === saved.content && message.key === saved.key &&
+          message.user === saved.user && message.time === saved.time && message.type === 1;
+        if (!stillOwned || index >= list.length ||
+          Object.getOwnPropertyDescriptor(controller, 'messageList')?.value !== list ||
+          Object.getOwnPropertyDescriptor(list, String(index))?.value !== message) continue;
+        list.splice(index, 1, hidden); changed = true;
       }
       if (changed) controller.notiUpdateMessageList();
       for (const node of markers) releaseMarker(node);
@@ -255,24 +295,43 @@
       const next = { client, entry: matches[0], original };
       const replacement = next.replacement = function (event, ...args) {
         const enabled = binding === next && !scope.disposed && config.showDeleted === true;
-        const before = enabled && Array.isArray(controller.messageList) && event &&
-          controller.messageList.find(message => message.time === event.messageTime && message.user === event.userId);
+        const list = enabled && Array.isArray(controller.messageList) ? controller.messageList : null;
+        const before = list && event && list.find(message => message.time === event.messageTime && message.user === event.userId);
         const previous = before && retained.get(before);
         const unchanged = !previous || ownsMessage(before, previous);
+        const beforeState = before && {
+          key: before.key, user: before.user, time: before.time, type: before.type,
+          status: before.status, content: before.content,
+        };
         if (previous && !unchanged) retained.delete(before);
-        const eligible = before && before.type === 1 && before.status === 'NORMAL' && unchanged &&
+        const eligible = before && beforeState.type === 1 && beforeState.status === 'NORMAL' && unchanged &&
           typeof event.blindType === 'string' && event.blindType.length > 0 && event.blindType.length <= 80 &&
           !['CANCEL', 'NORMAL', 'CBOTBLIND'].includes(event.blindType);
         const result = original.call(this, event, ...args);
         if (!eligible || binding !== next || scope.disposed || config.showDeleted !== true || result?.then) { paint(); return result; }
-        const index = controller.messageList.findIndex(message => message.time === before.time && message.user === before.user);
-        const after = controller.messageList[index];
-        if (after && after !== before && after.key === before.key && after.type === 1 &&
-          after.status === event.blindType && after.content === before.content) {
+        if (Object.getOwnPropertyDescriptor(controller, 'messageList')?.value !== list) { paint(); return result; }
+        const index = list.findIndex(message => message.time === beforeState.time && message.user === beforeState.user);
+        if (index < 0 || index >= list.length) { paint(); return result; }
+        const after = list.at(index);
+        const afterState = after && { key: after.key, type: after.type, status: after.status, content: after.content };
+        if (after && after !== before && afterState.key === beforeState.key && afterState.type === 1 &&
+          afterState.status === event.blindType && afterState.content === beforeState.content) {
           const visible = { ...after, status: 'NORMAL' };
-          retained.delete(before);
-          retained.set(visible, { status: after.status, content: before.content, key: before.key, user: before.user, time: before.time });
-          controller.messageList[index] = visible; controller.notiUpdateMessageList();
+          const finalState = { key: after.key, type: after.type, status: after.status, content: after.content };
+          const stillEligible = after !== before && finalState.key === beforeState.key && finalState.type === 1 &&
+            finalState.status === event.blindType && finalState.content === beforeState.content;
+          const retainedState = {
+            status: finalState.status, content: beforeState.content, key: beforeState.key,
+            user: beforeState.user, time: beforeState.time,
+          };
+          if (stillEligible && index < list.length &&
+            Object.getOwnPropertyDescriptor(controller, 'messageList')?.value === list &&
+            Object.getOwnPropertyDescriptor(list, String(index))?.value === after) {
+            list.splice(index, 1, visible);
+            retained.delete(before);
+            retained.set(visible, retainedState);
+            controller.notiUpdateMessageList();
+          }
         }
         paint(); return result;
       };
@@ -334,7 +393,9 @@
     if (!node) return;
     if (sidebar === node) { sidebarRecord.sync(); return; }
     sidebar = node;
-    const record = sidebarRecord = { timer: null, expanded: new WeakSet(), suspended: false };
+    const record = sidebarRecord = { timer: null, settleTimer: null, settleAt: null, expanding: false, suspended: false };
+    // A new owner invalidates its old reservation, not the original deadline.
+    if (followingSettlement?.epoch === followingEpoch && !followingSettlement.attempted) followingSettlement.quietAt = performance.now();
     // Native sections arrive independently. Never identify a hiding target by
     // its position: cold loading may contain only the general menu and services.
     const sectionAttribute = 'data-knife-sidebar-section';
@@ -385,17 +446,58 @@
       }
     };
     scope.add(() => { for (const section of sectionMarkers.keys()) releaseSection(section); });
-    const followingSection = () => [...node.querySelectorAll('nav')].find(section =>
+    const followingSection = () => node.querySelector('nav[aria-label="팔로우"], nav[aria-label="Following channels"]') || [...node.querySelectorAll('nav')].find(section =>
       /^(팔로잉 채널|Following channels)$/i.test(section.querySelector('[class*="_title_"], [class^="navigation_bar_title__"]')?.textContent.trim() || ''));
+    const followingMore = section => section?.querySelector(':scope > button[class*="_more_button_"], :scope > div[class^="_box_"] > button[class*="_more_button_"], :scope > button[class^="navigation_bar_more_button__"]');
+    const followingFold = section => [...(section?.querySelectorAll(':scope > [class^="_header_"] > button[aria-expanded], :scope > [class^="navigation_bar_header__"] > button[aria-expanded]') || [])]
+      .find(button => /^(펼쳐짐, 접기|접혀짐, 펼치기|접힘, 펼치기|Expanded, collapse|Collapsed, expand)$/i.test(button.getAttribute('aria-label') || ''));
+    const confirmIntent = () => {
+      const gesture = followingGesture;
+      if (!gesture) return;
+      if (gesture.epoch !== followingEpoch) { followingIntent = followingGesture = null; return; }
+      if (performance.now() >= gesture.expires) followingIntent = null;
+      const section = followingSection();
+      const control = gesture.kind === 'more' ? followingMore(section) : followingFold(section);
+      // After bounded active waiting, only the exact clicked control can confirm
+      // a delayed native update. Weak ownership must not retain a removed tree.
+      if (!followingIntent && control !== gesture.control.deref()) { followingGesture = null; return; }
+      const expanded = control?.getAttribute('aria-expanded');
+      if (['true', 'false'].includes(expanded) && expanded !== gesture.before) {
+        followingUserCollapsed = expanded === 'false'; followingIntent = followingGesture = null;
+      }
+    };
+    let expiryIntent;
+    let expiryTimer;
+    const armIntentExpiry = () => {
+      if (expiryIntent === followingIntent) return;
+      clearTimeout(expiryTimer); expiryIntent = followingIntent;
+      if (!expiryIntent) return;
+      const intent = expiryIntent;
+      expiryTimer = scope.timeout(() => {
+        expiryIntent = null;
+        if (followingIntent === intent) { confirmIntent(); if (followingIntent === intent) followingIntent = null; record.sync(); }
+      }, Math.max(0, intent.expires - performance.now()));
+    };
     const refreshControl = () => followingSection()?.querySelector('button[aria-label="새로고침"], button[aria-label="Refresh"]');
     const stopRefresh = () => { clearInterval(record.timer); record.timer = null; };
+    const stopSettlement = () => { clearTimeout(record.settleTimer); record.settleTimer = record.settleAt = null; };
+    const scheduleSettlement = at => {
+      if (record.settleTimer !== null && record.settleAt === at) return;
+      stopSettlement(); record.settleAt = at;
+      record.settleTimer = setTimeout(() => { record.settleTimer = record.settleAt = null; record.sync(); }, Math.max(0, at - performance.now()));
+    };
+    scope.add(stopSettlement); // One disposer, even when native updates re-arm the timer.
     const refresh = () => {
       if (scope.disposed || record.suspended || document.hidden || !node.isConnected || config.updateSidebar !== true) return;
       const button = refreshControl();
       if (button && !button.disabled) button.click();
     };
     record.sync = () => {
-      if (scope.disposed || !node.isConnected) { stopRefresh(); return; }
+      if (scope.disposed || !node.isConnected) { stopRefresh(); stopSettlement(); return; }
+      if (runtime.route().path !== runtime.state.route?.path) { stopSettlement(); runtime.reconcile(); return; }
+      syncFollowingMode();
+      confirmIntent();
+      armIntentExpiry(); // New owners inherit only the remaining confirmation deadline.
       syncSections();
       const button = refreshControl();
       if (config.updateSidebar === true && button) {
@@ -406,20 +508,75 @@
         runtime.setStatus('sidebarRefresh', config.updateSidebar ? 'limited' : 'disabled', config.updateSidebar ? 'following-control-unavailable' : '');
       }
       if (config.expandFollowings !== true) {
-        record.expanded = new WeakSet(); runtime.setStatus('expandFollowings', 'disabled'); return;
+        stopSettlement();
+        runtime.setStatus('expandFollowings', 'disabled'); return;
       }
-      const more = followingSection()?.querySelector('button[class*="_more_button_"], button[class^="navigation_bar_more_button__"]');
+      if (followingUserCollapsed) { stopSettlement(); runtime.setStatus('expandFollowings', 'disabled', 'user-collapsed'); return; }
+      if (!followingModeKnown || followingWide || record.suspended || document.hidden) {
+        stopSettlement();
+        if (followingSettlement) followingSettlement.quietAt = performance.now();
+        runtime.setStatus('expandFollowings', followingModeKnown ? 'pending' : 'limited',
+          !followingModeKnown ? 'native-mode-unavailable' : followingWide ? 'native-wide-mode' : 'page-suspended'); return;
+      }
+      const now = performance.now();
+      if (followingSettlement?.epoch !== followingEpoch) {
+        followingSettlement = { epoch: followingEpoch, deadline: now + 5000, quietAt: now, attempted: false, cancelled: followingManualCancelled, confirmed: false };
+      }
+      const settlement = followingSettlement;
+      const more = followingMore(followingSection());
+      if (settlement.control?.deref() !== more) { settlement.control = more ? new WeakRef(more) : null; settlement.quietAt = now; }
       if (!more || !['true', 'false'].includes(more.getAttribute('aria-expanded'))) {
+        if (!settlement.cancelled && !settlement.attempted && now < settlement.deadline) scheduleSettlement(settlement.deadline);
+        else stopSettlement();
         runtime.setStatus('expandFollowings', 'limited', 'following-control-unavailable'); return;
       }
-      if (more.getAttribute('aria-expanded') === 'false' && !more.disabled && !record.expanded.has(more)) {
-        record.expanded.add(more); more.click();
+      if (more.getAttribute('aria-expanded') === 'true') {
+        settlement.confirmed = true; stopSettlement(); runtime.setStatus('expandFollowings', 'ready'); return;
       }
-      runtime.setStatus('expandFollowings', record.expanded.has(more) || more.getAttribute('aria-expanded') === 'true' ? 'ready' : 'pending');
+      if (settlement.cancelled) { stopSettlement(); runtime.setStatus('expandFollowings', 'pending', 'user-activation'); return; }
+      if (settlement.attempted) {
+        if (!settlement.confirmed && now < settlement.deadline) scheduleSettlement(settlement.deadline);
+        else stopSettlement();
+        runtime.setStatus('expandFollowings', settlement.confirmed || now >= settlement.deadline ? 'limited' : 'pending',
+          settlement.confirmed ? 'following-native-reset' : 'following-expand-unconfirmed'); return;
+      }
+      if (now >= settlement.deadline) { stopSettlement(); runtime.setStatus('expandFollowings', 'limited', 'following-settlement-timeout'); return; }
+      if (more.disabled || followingIntent || now - settlement.quietAt < 500) {
+        scheduleSettlement(more.disabled || followingIntent ? settlement.deadline : Math.min(settlement.deadline, settlement.quietAt + 500));
+        runtime.setStatus('expandFollowings', 'pending', 'following-native-settling'); return;
+      }
+      // One activation per restoration. Native updates after it are observed,
+      // never fought with repeated clicks, even when controls are replaced.
+      stopSettlement(); settlement.attempted = true; record.expanding = true;
+      try { more.click(); } finally { record.expanding = false; }
+      record.sync();
     };
+    scope.on(node, 'click', event => {
+      if (record.expanding || config.expandFollowings !== true) return;
+      const button = event.target.closest?.('button[aria-expanded]');
+      const section = followingSection();
+      if (!button || button.disabled || !section?.contains(button)) return;
+      const more = followingMore(section);
+      const kind = button === more ? 'more' : button === followingFold(section) ? 'fold' : null;
+      if (!kind) return;
+      const expanded = button.getAttribute('aria-expanded');
+      if (!['true', 'false'].includes(expanded)) return;
+      syncFollowingMode(); // Read current controls even before mutation delivery.
+      followingManualCancelled = true;
+      followingManualUncertain = !followingModeKnown;
+      if (followingSettlement?.epoch === followingEpoch) followingSettlement.cancelled = true;
+      stopSettlement();
+      followingIntent = followingGesture = { kind, before: expanded, control: new WeakRef(button), epoch: followingEpoch, expires: performance.now() + 200 };
+      armIntentExpiry();
+    }, { capture: true });
+    scope.on(node, 'click', confirmIntent);
     scope.add(stopRefresh);
-    scope.on(window, 'pagehide', () => { record.suspended = true; stopRefresh(); });
-    scope.on(window, 'pageshow', () => { record.suspended = false; record.sync(); });
+    scope.on(window, 'pagehide', () => { record.suspended = true; stopRefresh(); stopSettlement(); });
+    scope.on(window, 'pageshow', () => {
+      record.suspended = false;
+      if (followingSettlement) followingSettlement.quietAt = performance.now();
+      record.sync();
+    });
     const attach = anchor => {
       const url = liveURL(anchor.href);
       if (!url || anchors.has(anchor)) return;
@@ -434,6 +591,11 @@
     };
     node.querySelectorAll('a[href]').forEach(attach);
     scope.observe(new MutationObserver(mutations => {
+      const section = followingSection();
+      const more = followingMore(section), fold = followingFold(section);
+      const nativeUpdate = mutations.some(mutation => section?.contains(mutation.target) && !mutation.target.closest?.('.knife-owned') &&
+        (mutation.type !== 'attributes' || (mutation.target === more || mutation.target === fold) && mutation.attributeName !== 'class' && mutation.attributeName !== 'href'));
+      if (nativeUpdate && followingSettlement?.epoch === followingEpoch && !followingSettlement.attempted) followingSettlement.quietAt = performance.now();
       for (const mutation of mutations) {
         if (mutation.type === 'attributes' && mutation.attributeName === 'href' && mutation.target.matches('a[href]')) attach(mutation.target);
         for (const added of mutation.addedNodes) {
@@ -518,6 +680,9 @@
   };
   runtime.subscribe(state => {
     config = runtime.config; i18n = runtime.i18n;
+    const enabled = config.expandFollowings === true;
+    if (enabled !== followingEnabled) { followingEnabled = enabled; followingUserCollapsed = followingManualCancelled = followingManualUncertain = false; followingIntent = followingGesture = null; followingEpoch++; }
+    syncFollowingMode();
     for (const [node, scope] of popups) if (!node.isConnected) scope.dispose();
     if (!runtime.configReady || state.route.kind === 'excluded') {
       owner?.dispose(); owner = null; sidebar = null;
@@ -528,6 +693,10 @@
       owner?.dispose(); owner = runtime.createScope(); ownerGeneration = runtime.generation;
       chats = new WeakMap(); anchors = new WeakSet(); timestampRoots = new WeakSet(); sidebar = null;
       if (state.body) {
+        const modeChanged = () => { syncFollowingMode(); if (sidebar?.isConnected) sidebarRecord?.sync(); };
+        owner.observe(new MutationObserver(modeChanged), state.body, { attributes: true, attributeFilter: ['class'] });
+        if (state.player?.pzp) owner.observe(new MutationObserver(modeChanged), state.player.pzp,
+          { attributes: true, subtree: true, attributeFilter: ['class', 'aria-label', 'aria-pressed'] });
         // CSS cannot identify a SPA route from the document URL. Mark only
         // the exact home content root; never classify the native subtree as owned.
         if (state.route.path === '/') {

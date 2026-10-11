@@ -60,10 +60,3 @@ jobs:
           CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
           EXTENSION_ID: ${{ secrets.CHROME_APP_ID }}
-
-      - name: Publish to Firefox add-on
-        continue-on-error: true
-        run: npm run publish:firefox
-        env:
-          WEB_EXT_API_KEY: ${{ secrets.WEB_EXT_API_KEY }}
-          WEB_EXT_API_SECRET: ${{ secrets.WEB_EXT_API_SECRET }}

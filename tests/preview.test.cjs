@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const { page, load, runtime, deliver, playerHTML, flush } = require('./helpers.cjs');
 
 function setup(t) {
-  const dom = page(playerHTML + '<a id="one" href="/live/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb">One</a><a id="two" href="/live/cccccccccccccccccccccccccccccccc">Two</a>');
+  const dom = page(playerHTML + '<aside id="sidebar"><a id="one" href="/live/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb">One</a><a id="two" href="/live/cccccccccccccccccccccccccccccccc">Two</a></aside>');
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
   const pending = [];
   dom.window.fetch = (_url, options) => new Promise(resolve => pending.push({ resolve, options }));
@@ -45,8 +45,8 @@ test('untrusted hrefs do not request an API or create media', async t => {
   assert.equal(pending.length, 0);
 });
 
-for (const sidebar of [true, false]) for (const phase of ['fetch', 'preload', 'displayed']) {
-  test(`disabling ${sidebar ? 'sidebar' : 'custom-card'} preview cancels its ${phase} while the other surface stays enabled`, async t => {
+for (const phase of ['fetch', 'preload', 'displayed']) {
+  test(`disabling sidebar preview cancels its ${phase} even with a legacy custom-preview flag`, async t => {
     const { dom, preview, pending, one } = setup(t);
     dom.window.HTMLMediaElement.prototype.pause = () => {};
     dom.window.HTMLMediaElement.prototype.load = () => {};
@@ -58,11 +58,11 @@ for (const sidebar of [true, false]) for (const phase of ['fetch', 'preload', 'd
     };
     const config = { preview: true, customPreview: true, livePreview: true, previewDelay: 0.1 };
     deliver(dom, config, 2);
-    const showing = preview.show(one.href, one, sidebar);
+    const showing = preview.show(one.href, one, true);
     const response = { ok: true, json: async () => ({ code: 200, content: { status: 'OPEN', livePlaybackJson: JSON.stringify({ media: [{ mediaId: 'HLS', path: 'https://media.invalid/master.m3u8' }] }) } }) };
     if (phase !== 'fetch') { pending[0].resolve(response); await showing; }
     if (phase === 'displayed') { await new Promise(resolve => setTimeout(resolve, 150)); assert.equal(dom.window.document.querySelector('.knife-preview').hidden, false); }
-    deliver(dom, { ...config, [sidebar ? 'preview' : 'customPreview']: false }, 3);
+    deliver(dom, { ...config, preview: false }, 3);
     assert.equal(pending[0].options.signal.aborted, true);
     if (phase === 'fetch') { pending[0].resolve(response); await showing; }
     await flush();
@@ -98,15 +98,15 @@ for (const invalidation of ['removed', 'changed-href', 'disabled-live-preview'])
   });
 }
 
-test('default native thumbnail right-click unmutes only the card video', t => {
+test('native thumbnail right-click is not intercepted or modified by the extension', t => {
   const { dom } = setup(t);
   deliver(dom, { customPreview: false, rightClickToUnmute: true, previewVolume: 5 }, 2);
   const body = dom.window.document.getElementById('layout-body');
   body.insertAdjacentHTML('beforeend', '<a href="/live/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" id="native-card"><video muted></video></a>');
-  const video = dom.window.document.querySelector('#native-card video'); video.muted = true;
+  const video = dom.window.document.querySelector('#native-card video'); video.muted = true; video.volume = 0.7;
   const event = new dom.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true });
   video.dispatchEvent(event);
-  assert.equal(video.muted, false); assert.equal(video.volume, 0.05); assert.equal(event.defaultPrevented, true);
+  assert.equal(video.muted, true); assert.equal(video.volume, 0.7); assert.equal(event.defaultPrevented, false);
   const primary = dom.window.document.querySelector('.pzp-pc video'); primary.muted = true;
   primary.dispatchEvent(new dom.window.MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
   assert.equal(primary.muted, true);
@@ -178,11 +178,28 @@ test('cached re-entry still waits its own hover delay without another API reques
   tick(300);assert.equal(dom.window.document.querySelector('.knife-preview').hidden,false);
 });
 
-test('preloading never constructs media for an age-restricted stream', async t => {
+test('an authenticated age-restricted stream prepares media when the API returns HLS playback', async t => {
   const {dom,preview,one,pending}=setup(t);
+  dom.window.HTMLMediaElement.prototype.pause=()=>{};
+  dom.window.HTMLMediaElement.prototype.load=()=>{};
+  let attached=0;
+  runtime(dom).Hls=class{static isSupported(){return true;}static Events={ERROR:'error',MANIFEST_PARSED:'manifest'};
+    on(){}loadSource(){}attachMedia(){attached++;}destroy(){}};
   deliver(dom,{preview:true,livePreview:true,previewDelay:0.1},2);
   const tick=clockPreview(dom),showing=preview.show(one.href,one,true);
   pending[0].resolve({ok:true,json:async()=>({code:200,content:{status:'OPEN',adult:true,livePlaybackJson:JSON.stringify({media:[{mediaId:'HLS',path:'https://media.invalid/master.m3u8'}]})}})});
+  await showing;tick(100);
+  assert.equal(dom.window.document.querySelector('.knife-preview').hidden,false);
+  assert.equal(attached,1);
+  assert.ok(dom.window.document.querySelector('.knife-preview-video'));
+  assert.notEqual(runtime(dom).statuses.livePreview.reason,'age-restricted-stream');
+});
+
+test('an age-restricted stream without returned playback stays thumbnail-only and limited', async t => {
+  const {dom,preview,one,pending}=setup(t);
+  deliver(dom,{preview:true,livePreview:true,previewDelay:0.1},2);
+  const tick=clockPreview(dom),showing=preview.show(one.href,one,true);
+  pending[0].resolve({ok:true,json:async()=>({code:200,content:{status:'OPEN',adult:true,livePlaybackJson:'{}'}})});
   await showing;tick(100);
   assert.equal(dom.window.document.querySelector('.knife-preview').hidden,false);
   assert.equal(dom.window.document.querySelector('.knife-preview-video'),null);

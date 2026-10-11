@@ -27,19 +27,25 @@
     "message": "Sidebar preview"
   },
   "config_livePreview": {
-    "message": "Video preview"
+    "message": "Sidebar video playback"
   },
-  "config_category_thumbnailPreview": {
-    "message": "Thumbnail preview"
+  "config_previewStartUnmuted": {
+    "message": "Start unmuted"
+  },
+  "config_previewStartUnmuted_desc": {
+    "message": "Start the next sidebar preview at the configured volume when it appears. If the browser blocks automatic sound, play muted instead. Does not affect the main broadcast."
+  },
+  "content_previewAudioBlocked": {
+    "message": "The browser blocked automatic sound. Playing muted."
+  },
+  "content_previewAudioRightClick": {
+    "message": "Right-click the sidebar target to unmute."
   },
   "config_rightClickToUnmute": {
     "message": "Right-click to unmute"
   },
   "config_rightClickToUnmute_desc": {
-    "message": "Only works with the built-in preview."
-  },
-  "config_customPreview": {
-    "message": "Use custom preview"
+    "message": "Right-click the active sidebar preview target to toggle mute. Does not modify CHZZK's native previews."
   },
   "config_previewWidth": {
     "message": "Size"
@@ -216,22 +222,34 @@
     "message": "Thank you for installing Cheese Knife! This extension requires the following permissions:"
   },
   "permission_host": {
-    "message": "Access to $HOST$",
+    "message": "Access $HOST$ (features and styles on HTTPS CHZZK pages)",
     "placeholders": {
       "HOST": {
         "content": "$1",
-        "example": "chzzk.naver.com"
+        "example": "https://chzzk.naver.com/*"
       }
     }
   },
   "permission_grant": {
     "message": "Allow"
   },
+  "permission_pending": {
+    "message": "Waiting for your permission decision."
+  },
+  "permission_denied": {
+    "message": "Permission was not granted. Select Allow to try again."
+  },
+  "permission_failed": {
+    "message": "Could not complete the permission request. Please try again."
+  },
   "styles_category_player": {
     "message": "Player"
   },
   "styles_fit_player": {
-    "message": "Fill screen"
+    "message": "Fill player area"
+  },
+  "styles_fit_player_desc": {
+    "message": "Relaxes player-container height limits. VOD uses space reserved for the information row. Does not enter fullscreen, crop or zoom video, or change quality."
   },
   "styles_volume_percentage": {
     "message": "Show volume percentage"
@@ -386,6 +404,19 @@
   "capability_reason_age_restricted_stream": {
     "message": "Age-restricted streams are not played in previews."
   },
+  "settings_loading": { "message": "Loading current settings." },
+  "settings_ready": { "message": "Current saved values confirmed." },
+  "settings_saving": { "message": "Saving settings. Apply to the page after saving finishes." },
+  "settings_failed": { "message": "The settings operation failed. Held input is not automatically resent." },
+  "settings_unknown": { "message": "The save result is unknown. Input is not automatically resent; a sent save cannot be cancelled." },
+  "settings_repair_required": { "message": "The stored revision needs repair. Settings will not be overwritten." },
+  "settings_css_failed": { "message": "Settings are saved, but CSS registration failed. Reapply CSS before applying to the page." },
+  "settings_discard": { "message": "Discard held display values · Check saved state" },
+  "settings_retry": { "message": "Reapply saved CSS" },
+  "settings_global": { "message": "Settings are shared across CHZZK tabs. Reload other open pages manually to apply styles; other tabs are never automatically reloaded." },
+  "settings_target": { "message": "Apply reloads only the original CHZZK tab captured when these settings were opened." },
+  "settings_no_target": { "message": "No target tab. Global settings can still be saved; reload the CHZZK page manually." },
+  "settings_target_changed": { "message": "The target tab is missing or its site/window has changed. Reopen settings from the CHZZK tab." },
   "content_measured": {
     "message": "measured"
   }

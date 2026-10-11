@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { page, load, runtime, deliver, playerHTML, flush } = require('./helpers.cjs');
 
-function setup(t, suspended = false, manualClock = false) {
+function setup(t, suspended = false, manualClock = false, suppliedConfig = { compressorAttack: 0 }, failures = {}) {
   const dom = page(playerHTML);
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
   const video = dom.window.document.querySelector('video');
@@ -14,18 +14,54 @@ function setup(t, suspended = false, manualClock = false) {
   let context;
   let sources = 0;
   dom.window.AudioContext = class {
-    constructor() { this.state = suspended ? 'suspended' : 'running'; this.destination = node('destination'); this.currentTime = 0; context = this; }
+    constructor() { this.state = suspended ? 'suspended' : 'running'; this.destination = node('destination'); this.currentTime = 0; this.sampleRate = failures.sampleRate || 48000; context = this; }
     resume() { return new Promise(resolve => { resolveResume = () => { this.state = 'running'; resolve(); }; }); }
     createMediaElementSource(element) { assert.equal(element, video); sources++; return node('source'); }
     createGain() { return Object.assign(node('gain'), { gain: parameter(1) }); }
-    createDynamicsCompressor() { return Object.assign(node('compressor'), Object.fromEntries(['threshold','knee','ratio','attack','release'].map(key => [key, parameter(0)]))); }
+    createDelay(maxDelayTime) {
+      if (failures.delay) throw new Error('delay unavailable');
+      return Object.assign(node('delay'), { maxDelayTime, delayTime: parameter(0) });
+    }
+    createWaveShaper() {
+      if (failures.limiter) throw new Error('limiter unavailable');
+      return Object.assign(node('limiter'), { curve: null, oversample: 'none' });
+    }
+    createDynamicsCompressor() {
+      const compressor = Object.assign(node('compressor'), Object.fromEntries(['threshold','knee','ratio','attack','release'].map(key => [key, parameter(0)])));
+      Object.defineProperty(compressor, 'foreignParameter', { enumerable: true, value: parameter(77) });
+      return compressor;
+    }
   };
-  load(dom, 'web/runtime.js'); deliver(dom, { compressorAttack: 0 });
+  load(dom, 'web/runtime.js'); deliver(dom, suppliedConfig);
   let tick;
   if (manualClock) dom.window.setInterval = callback => { tick = callback; return 9001; };
   load(dom, 'web/audio.js');
   return { dom, video, audio: runtime(dom).audio, nodes, tick: () => tick(), sources: () => sources, resume: () => resolveResume(), context: () => context };
 }
+
+test('compressor applies only five explicit parameters with zero, bounds, and fallbacks', async t => {
+  const cases = [
+    {
+      name: 'zero and boundary values',
+      config: { compressorThreshold: 0, compressorKnee: 0, compressorRatio: 1, compressorAttack: 0, compressorRelease: 1 },
+      expected: { threshold: 0, knee: 0, ratio: 1, attack: 0, release: 1 },
+    },
+    {
+      name: 'out-of-range, nonfinite, and missing values',
+      config: { compressorThreshold: -101, compressorKnee: 41, compressorRatio: NaN, compressorRelease: 2 },
+      expected: { threshold: -50, knee: 40, ratio: 12, attack: 0, release: 0.25 },
+    },
+  ];
+  for (const fixture of cases) {
+    await t.test(fixture.name, async child => {
+      const { audio, video, nodes } = setup(child, false, false, fixture.config);
+      await audio.setEnabled(video, true);
+      const compressor = nodes.find(value => value.type === 'compressor');
+      assert.deepEqual(Object.fromEntries(['threshold', 'knee', 'ratio', 'attack', 'release'].map(key => [key, compressor[key].value])), fixture.expected);
+      assert.equal(compressor.foreignParameter.value, 77);
+    });
+  }
+});
 
 test('suspended context creates no media source before running and off cancels late resume', async t => {
   const { audio, video, sources, resume } = setup(t, true);
@@ -44,11 +80,72 @@ test('repeated toggles and UI reuse share one media source and have one bypass r
   assert.equal(sources(), 1);
   assert.equal(audio.getState(video), 'off');
   const source = nodes.find(value => value.type === 'source');
-  const [dry] = [...source.outputs];
+  const [delay] = [...source.outputs];
+  const [dry] = [...delay.outputs];
   assert.equal(dry.gain.value, 1);
   const compressor = nodes.find(value => value.type === 'compressor');
   assert.equal(compressor.attack.value, 0);
   assert.equal(compressor.threshold.value, -50);
+});
+
+test('dry bypass matches the Chromium compressor pre-delay at 48kHz', async t => {
+  const { audio, video, nodes } = setup(t);
+  await audio.setEnabled(video, true);
+  const source = nodes.find(value => value.type === 'source');
+  const delay = nodes.find(value => value.type === 'delay');
+  assert.ok(delay, 'the dry branch must own a delay node');
+  assert.equal(delay.maxDelayTime, 0.02);
+  assert.equal(delay.delayTime.value, 0.006);
+  assert.deepEqual([...source.outputs].map(value => value.type).sort(), ['compressor', 'delay']);
+  const [dry] = [...delay.outputs];
+  assert.equal(dry.type, 'gain');
+  assert.equal([...dry.outputs][0].type, 'destination');
+});
+
+test('dry delay follows Chromium compressor integer frames at fractional and capped rates', async t => {
+  for (const [sampleRate, expectedFrames] of [[44100, 264], [48000, 288], [192000, 1023]]) {
+    await t.test(String(sampleRate), async child => {
+      const { audio, video, nodes } = setup(child, false, false, { compressorAttack: 0 }, { sampleRate });
+      await audio.setEnabled(video, true);
+      const delay = nodes.find(value => value.type === 'delay');
+      assert.equal(delay.delayTime.value, expectedFrames / sampleRate);
+    });
+  }
+});
+
+test('delay construction failure leaves native media unintercepted', async t => {
+  const { audio, video, sources } = setup(t, false, false, { compressorAttack: 0 }, { delay: true });
+  assert.equal(await audio.setEnabled(video, true), 'unavailable');
+  assert.equal(sources(), 0);
+});
+
+test('wet limiter is identity below point nine and bounded by point nine eight', async t => {
+  const { audio, video, nodes } = setup(t);
+  await audio.setEnabled(video, true);
+  const compressor = nodes.find(value => value.type === 'compressor');
+  const [userGain] = [...compressor.outputs];
+  const [limiter] = [...userGain.outputs];
+  assert.equal(limiter.type, 'limiter');
+  assert.equal(limiter.oversample, 'none');
+  assert.equal(limiter.curve.length, 4097);
+  assert.equal([...limiter.outputs][0].type, 'gain');
+  const curve = limiter.curve;
+  assert.ok(Math.abs(curve[0] + 0.98) < 1e-6);
+  assert.ok(Math.abs(curve.at(-1) - 0.98) < 1e-6);
+  for (let index = 0; index < curve.length; index++) {
+    const x = 2 * index / (curve.length - 1) - 1;
+    assert.equal(Number.isFinite(curve[index]), true);
+    if (index) assert.ok(curve[index] >= curve[index - 1]);
+    assert.ok(Math.abs(curve[index] + curve.at(-1 - index)) < 1e-6);
+    if (Math.abs(x) <= 0.9) assert.ok(Math.abs(curve[index] - x) < 1e-6);
+    assert.ok(Math.abs(curve[index]) <= 0.980001);
+  }
+});
+
+test('limiter construction failure leaves native media unintercepted', async t => {
+  const { audio, video, sources } = setup(t, false, false, { compressorAttack: 0 }, { limiter: true });
+  assert.equal(await audio.setEnabled(video, true), 'unavailable');
+  assert.equal(sources(), 0);
 });
 
 test('invalid stored gain is normalized before being applied to an audio graph', async t => {
@@ -75,7 +172,8 @@ test('retired paused media retains audible bypass when reused with compression o
   let now = 10000; dom.window.Date.now = () => now;
   tick(); now += 6000; tick(); container.append(video); runtime(dom).reconcile();
   const source = nodes.find(node => node.type === 'source');
-  const dry = [...source.outputs].find(node => node.type === 'gain' && node.gain.value === 1);
+  const delay = [...source.outputs].find(node => node.type === 'delay');
+  const dry = delay && [...delay.outputs].find(node => node.type === 'gain' && node.gain.value === 1);
   assert.ok(dry, 'intercepted video must retain an audible dry path without enabling compression');
   assert.equal(dry.outputs.has(nodes.find(node => node.type === 'destination')), true);
   assert.equal(audio.getState(video), 'off'); assert.equal(sources(), 1);

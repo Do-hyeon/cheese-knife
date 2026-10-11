@@ -1,9 +1,11 @@
-import fs from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { createRequire } from 'node:module';
+import { openOwnedRoot } from './owned-files.mjs';
 const require = createRequire(import.meta.url);
 const { playerHTML } = require('../tests/helpers.cjs');
+const fs = await openOwnedRoot(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
 const manifest = JSON.parse(await fs.readFile('manifest.json', 'utf8'));
 const scripts = manifest.content_scripts.find(script => script.world === 'MAIN').js;
 const browser = await chromium.launch({ headless: true, ...(process.argv.includes('--chrome') ? { channel: 'chrome' } : {}) });

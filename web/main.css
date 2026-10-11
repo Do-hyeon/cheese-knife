@@ -37,6 +37,22 @@
   color: white;
 }
 
+.knife-preview-audio-note {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  max-width: calc(100% - 0.5rem);
+  box-sizing: border-box;
+  background: #18181bcc;
+  color: white;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.knife-preview-audio-note[hidden] { display: none; }
+
 .knife-preview-progress {
   position: absolute;
   top: 0;

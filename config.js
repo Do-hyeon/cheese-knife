@@ -1,3 +1,7 @@
+var KnifeHostPolicy = Object.freeze({
+  origins: Object.freeze(["https://chzzk.naver.com/*"]),
+});
+
 var CONFIGS = [
   {
     id: "preview",
@@ -9,6 +13,10 @@ var CONFIGS = [
       {
         id: "livePreview",
         defaultValue: true,
+      },
+      {
+        id: "previewStartUnmuted",
+        defaultValue: false,
       },
       {
         id: "previewWidth",
@@ -39,18 +47,8 @@ var CONFIGS = [
         defaultValue: 5,
       },
       {
-        id: "thumbnailPreview",
-        type: "details",
-        configs: [
-          {
-            id: "rightClickToUnmute",
-            defaultValue: true,
-          },
-          {
-            id: "customPreview",
-            defaultValue: false,
-          },
-        ],
+        id: "rightClickToUnmute",
+        defaultValue: true,
       },
     ],
   },

@@ -13,6 +13,11 @@
   const note = event => { diagnostic.events.push(event); if (diagnostic.events.length > 20) diagnostic.events.shift(); };
   const scope = runtime.createScope();
   const later = (fn, delay) => { const timer = setTimeout(() => { timers.delete(timer); fn(); }, delay); timers.add(timer); return timer; };
+  const ownsAnchor = anchor => !!runtime.state.sidebar?.isConnected && !!anchor?.isConnected && runtime.state.sidebar.contains(anchor);
+  const volume = () => {
+    const value = runtime.config.previewVolume;
+    return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(1, value / 100)) : 0.05;
+  };
   const parseURL = href => {
     try { const url = new URL(href); return url.origin === location.origin && /^\/live\/[a-f0-9]{32}\/?$/i.test(url.pathname) ? url : null; }
     catch { return null; }
@@ -26,7 +31,7 @@
       try { media.pause(); media.removeAttribute('src'); media.srcObject = null; media.load(); } catch {}
       media.remove(); media = null;
     }
-    if (panel) { panel.hidden = true; panel.querySelector('img').removeAttribute('src'); }
+    if (panel) { panel.hidden = true; panel.querySelector('img').removeAttribute('src'); panel.querySelector('.knife-preview-audio-note').hidden = true; }
   };
   const ensurePanel = () => {
     if (panel?.isConnected) return;
@@ -34,67 +39,189 @@
     const image = document.createElement('img'); image.alt = '';
     const player = document.createElement('div'); player.className = 'knife-preview-player';
     const uptime = document.createElement('div'); uptime.className = 'knife-preview-uptime';
-    panel.append(image, player, uptime); document.body.append(panel);
+    const audioNote = document.createElement('div'); audioNote.className = 'knife-preview-audio-note'; audioNote.hidden = true;
+    panel.append(image, player, uptime, audioNote); document.body.append(panel);
   };
-  const valid = (token, anchor, href) => token === generation && !!current && anchor.isConnected && anchor.href === href && !document.hidden && runtime.configReady;
+  const valid = (token, anchor, href) => token === generation && !!current && ownsAnchor(anchor) && anchor.href === href &&
+    location.pathname === current.route && runtime.config.preview === true && !document.hidden && runtime.configReady;
   const prepare = async (info, anchor, href, token) => {
-    if (!valid(token, anchor, href) || runtime.config.livePreview !== true || info.adult) return;
+    if (!valid(token, anchor, href) || runtime.config.livePreview !== true) return;
     const Hls = runtime.Hls;
     diagnostic.hlsSupported = !!Hls?.isSupported();
     const path = info.playback?.media?.find(item => item.mediaId === 'HLS' && typeof item.path === 'string' && item.path.startsWith('https://'))?.path;
-    if (!path) { runtime.setStatus('livePreview', 'limited', 'stream-unavailable'); return; }
-    const video = document.createElement('video'); video.playsInline = true; video.muted = true;
+    if (!path) { runtime.setStatus('livePreview', 'limited', info.adult ? 'age-restricted-stream' : 'stream-unavailable'); return; }
+    const video = document.createElement('video'); video.playsInline = true; video.muted = true; video.volume = volume();
     video.className = 'knife-preview-video'; video.style.visibility = 'hidden';
     video.style.cssText += ';width:100%;height:100%;object-fit:contain;background:#000;';
     panel.querySelector('.knife-preview-player').append(video); media = video;
     let failed = false;
+    let attempt = 0;
+    let playingRequest = null;
+    let dataReady = false;
+    const startUnmuted = current.startUnmuted;
+    let desiredMuted = !startUnmuted;
+    let audioRevision = 0;
+    let fallbackUsed = false;
+    let soundBlocked = false;
+    let policyBlockRevision = null;
+    let recoveries = 0;
+    let loaded = false;
+    let watching = false;
+    let lastTime = 0;
+    let lastProgress = 0;
+    const active = () => !failed && media === video && valid(token, anchor, href);
+    const sample = type => {
+      if (!active()) return;
+      let ahead = 0;
+      for (let index = 0; index < video.buffered.length; index++) {
+        if (video.buffered.start(index) <= video.currentTime && video.buffered.end(index) >= video.currentTime) ahead = video.buffered.end(index) - video.currentTime;
+      }
+      note({ type, currentTime: video.currentTime, readyState: video.readyState, bufferedAhead: ahead,
+        width: video.videoWidth, height: video.videoHeight, paused: video.paused });
+    };
     const fail = () => {
-      if (!valid(token, anchor, href) || failed) return;
+      if (!active()) return;
       failed = true; cache.delete(current.id);
       try { backend?.destroy?.(); video.pause(); video.removeAttribute('src'); video.load(); } catch {}
       backend = null; video.style.visibility = 'hidden';
+      panel.querySelector('.knife-preview-audio-note').hidden = true;
       runtime.setStatus('livePreview', 'limited', 'stream-playback-unavailable');
     };
-    const play = async () => {
-      if (!valid(token, anchor, href) || failed) return;
+    const watchProgress = () => {
+      if (!active()) return;
+      const now = performance.now();
+      if (Math.abs(video.currentTime - lastTime) > 0.01) lastProgress = now;
+      else if (now - lastProgress >= 10000) {
+        sample('stalled-timeout'); fail();
+        runtime.setStatus('livePreview', 'limited', 'stream-stalled'); return;
+      }
+      lastTime = video.currentTime;
+      later(watchProgress, 1000);
+    };
+    const renderAudioNote = () => {
+      if (!active()) return;
+      const element = panel.querySelector('.knife-preview-audio-note');
+      element.hidden = !soundBlocked;
+      const text = soundBlocked ? (runtime.i18n.previewAudioBlocked || 'The browser blocked automatic sound. Playing muted.') +
+        (runtime.config.rightClickToUnmute === true ? ' ' + (runtime.i18n.previewAudioRightClick || 'Right-click the sidebar target to unmute.') : '') : '';
+      if (element.textContent !== text) element.textContent = text;
+    };
+    const play = async (manual = false) => {
+      if (!active() || !dataReady || (startUnmuted && panel.hidden) ||
+        (!manual && (playingRequest?.attempt === attempt || (loaded && !video.paused)))) return;
+      const request = { attempt, audioRevision };
+      playingRequest = request;
+      const currentRequest = () => active() && request.attempt === attempt;
+      const currentAudio = () => currentRequest() && request.audioRevision === audioRevision;
+      const complete = () => {
+        if (!currentRequest()) return;
+        // A manual mute must not discard valid media readiness/progress.
+        loaded = true; video.style.visibility = ''; runtime.setStatus('livePreview', 'ready');
+        if (currentAudio() && !desiredMuted && !video.muted && !video.paused) {
+          policyBlockRevision = null; soundBlocked = false; renderAudioNote();
+        } else if (currentAudio() && video.muted && policyBlockRevision === audioRevision) {
+          // The policy cause belongs to audio intent, not a media-recovery attempt.
+          soundBlocked = true; renderAudioNote();
+        }
+        if (!watching) { watching = true; lastTime = video.currentTime; lastProgress = performance.now(); later(watchProgress, 1000); }
+      };
+      video.muted = desiredMuted;
       try {
         await video.play();
-        if (!valid(token, anchor, href)) { video.pause(); return; }
-        video.style.visibility = ''; runtime.setStatus('livePreview', 'ready');
-      } catch { fail(); }
+        complete();
+      } catch (error) {
+        if (!currentAudio()) return;
+        if (!manual && startUnmuted && !desiredMuted && !fallbackUsed && error?.name === 'NotAllowedError') {
+          // Spend before awaiting. Readiness events/recovery never renew it.
+          fallbackUsed = true; policyBlockRevision = audioRevision; desiredMuted = true; video.muted = true;
+          try {
+            await video.play();
+            complete();
+          } catch { if (currentAudio()) fail(); }
+        } else fail();
+      } finally { if (playingRequest === request) playingRequest = null; }
     };
-    video.addEventListener('loadeddata', play, { once: true });
-    video.addEventListener('error', fail, { once: true });
-    video.addEventListener('contextmenu', event => {
-      if (runtime.config.rightClickToUnmute !== true || !valid(token, anchor, href)) return;
-      event.preventDefault(); video.volume = Math.max(0, Math.min(1, Number(runtime.config.previewVolume || 0) / 100)); video.muted = !video.muted;
+    current.audio = {
+      play: () => play(),
+      refresh: renderAudioNote,
+      toggle() {
+        if (!active()) return;
+        audioRevision++; desiredMuted = !desiredMuted;
+        video.volume = volume(); video.muted = startUnmuted && panel.hidden ? true : desiredMuted;
+        if (!desiredMuted || video.paused) play(true);
+      },
+    };
+    video.addEventListener('loadeddata', () => { dataReady = true; play(); });
+    video.addEventListener('error', () => {
+      sample('media-error');
+      // The HLS backend reports/classifies this same error and owns recovery.
+      if (!backend) fail();
+    });
+    for (const event of ['waiting', 'stalled', 'playing', 'loadedmetadata']) video.addEventListener(event, () => {
+      sample(event);
+      if (!active()) return;
+      if (event === 'playing') runtime.setStatus('livePreview', 'ready');
+      else if (event === 'waiting' || event === 'stalled') runtime.setStatus('livePreview', 'pending', 'stream-buffering');
     });
     try {
-      if (video.canPlayType('application/vnd.apple.mpegurl')) video.src = path;
-      else if (Hls?.isSupported()) {
-        const hls = backend = new Hls({ enableWorker: false, maxBufferLength: 8, maxMaxBufferLength: 16, backBufferLength: 0 });
+      if (Hls?.isSupported()) {
+        const hls = backend = new Hls({ enableWorker: false, autoStartLoad: false, capLevelToPlayerSize: true,
+          maxBufferLength: 8, maxMaxBufferLength: 16, backBufferLength: 0 });
         hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (!active() || backend !== hls) return;
           note({ type: data.type, details: data.details, fatal: data.fatal === true,
             status: typeof data.response?.code === 'number' ? data.response.code : null });
-          if (data.fatal) fail();
+          if (!data.fatal) return; // Let hls.js own its ordinary retry policy.
+          const denied = [401, 403].includes(data.response?.code);
+          const mediaFailure = data.type === 'mediaError';
+          const networkFailure = data.type === 'networkError' && hls.levels.length > 0;
+          if (denied || recoveries >= 2 || (!mediaFailure && !networkFailure)) { fail(); return; }
+          recoveries++; attempt++;
+          const recoveryAttempt = attempt;
+          runtime.setStatus('livePreview', 'pending', 'stream-recovering');
+          note({ type: 'recovery', attempt: recoveries, reason: mediaFailure ? 'media' : 'network' });
+          const recover = () => {
+            if (!active() || backend !== hls || recoveryAttempt !== attempt) return;
+            try {
+              if (mediaFailure) {
+                const position = video.currentTime;
+                hls.recoverMediaError();
+                // With autoStartLoad:false, bundled HLS does not restart time 0.
+                if (position === 0) hls.startLoad();
+              } else hls.startLoad();
+            }
+            catch { fail(); }
+          };
+          if (mediaFailure) recover(); else later(recover, 500);
         });
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          if (!active() || backend !== hls) return;
           note({ type: 'manifestParsed', levels: hls.levels.map(level => ({ height: level.height, videoCodec: level.videoCodec, audioCodec: level.audioCodec })) });
-          const below = hls.levels.map((level, index) => ({ level, index })).filter(item => item.level.height <= 480 && item.level.height > 0);
-          if (below.length) hls.currentLevel = below.at(-1).index;
+          const target = Math.max(480, (parseFloat(panel.style.width) || 400) * 9 / 16 * Math.min(window.devicePixelRatio || 1, 2));
+          const levels = hls.levels.map((level, index) => ({ height: level.height, index }))
+            .filter(item => Number.isFinite(item.height) && item.height > 0).sort((a, b) => a.height - b.height);
+          const initial = levels.find(item => item.height >= target) || levels.at(-1);
+          if (initial) {
+            hls.startLevel = initial.index;
+            // Hidden media has no size cap yet; let HLS's size controller own later updates.
+            const cap = hls.autoLevelCapping;
+            hls.autoLevelCapping = cap >= 0 ? Math.min(cap, initial.index) : initial.index;
+          }
+          hls.startLoad(); // Startup preference, not a persistent manual quality lock.
         });
         hls.loadSource(path); hls.attachMedia(video);
-      } else { fail(); return; }
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) video.src = path;
+      else { fail(); return; }
       runtime.setStatus('livePreview', 'pending', 'stream-loading');
-      later(() => { if (video.readyState < 2) fail(); }, 5000);
+      later(() => { if (active() && !loaded) fail(); }, 15000);
     } catch { fail(); }
   };
   runtime.preview = {
     diagnostics: diagnostic,
     async show(href, anchor, tooltip = false) {
       const url = parseURL(href);
-      if (!url || !anchor?.isConnected || href !== anchor.href ||
-        (tooltip ? runtime.config.preview !== true : runtime.config.preview !== true && runtime.config.customPreview !== true) || !runtime.configReady) return;
+      if (!url || !ownsAnchor(anchor) || href !== anchor.href || runtime.config.preview !== true || !runtime.configReady ||
+        runtime.state.route.kind === 'excluded') return;
       if (current?.href === href && current.anchor === anchor) return;
       cleanup();
       const token = generation;
@@ -102,7 +229,7 @@
       const id = url.pathname.split('/')[2];
       const request = controller = new AbortController();
       current = { id, href, anchor, route: location.pathname, live: runtime.config.livePreview === true,
-        permission: tooltip || runtime.config.customPreview !== true ? 'preview' : 'customPreview' };
+        startUnmuted: runtime.config.previewStartUnmuted === true };
       const timeout = later(() => request.abort(), 5000);
       let info;
       try {
@@ -146,43 +273,33 @@
       };
       // Metadata/network time is part of the user's hover delay. Start muted
       // loading in parallel with the remaining wait, not after another full wait.
-      if (runtime.config.livePreview === true && info.status === 'OPEN' && !info.adult) prepare(info, anchor, href, token);
-      else if (info.adult) runtime.setStatus('livePreview', 'limited', 'age-restricted-stream');
+      if (runtime.config.livePreview === true && info.status === 'OPEN') prepare(info, anchor, href, token);
       const delay = Math.max(100, Math.min(3000, Number(runtime.config.previewDelay) * 1000 || 1000));
       later(() => {
         if (!valid(token, anchor, href)) return;
         panel.hidden = false; updateUptime(); runtime.setStatus('preview', 'ready');
+        if (current.startUnmuted) current.audio?.play();
       }, Math.max(0, hoverStarted + delay - Date.now()));
     },
     hide(href) { if (!href || current?.href === href) cleanup(); },
   };
-  scope.on(document, 'mouseover', event => {
-    const anchor = event.target.closest?.('a[href]');
-    if (anchor?.closest('#sidebar') || !anchor?.closest('#layout-body') || anchor.contains(event.relatedTarget)) return;
-    if (runtime.config.customPreview === true && parseURL(anchor.href)) runtime.preview.show(anchor.href, anchor, false);
-  });
   scope.on(document, 'mouseout', event => {
     const anchor = event.target.closest?.('a[href]');
-    if (anchor && !anchor.contains(event.relatedTarget)) runtime.preview.hide(anchor.href);
+    if (anchor === current?.anchor && !anchor.contains(event.relatedTarget)) runtime.preview.hide(anchor.href);
   });
   scope.on(document, 'visibilitychange', () => { if (document.hidden) cleanup(); });
   scope.on(document, 'contextmenu', event => {
     if (runtime.config.rightClickToUnmute !== true) return;
-    let video = current?.anchor.contains(event.target) ? media : null;
-    if (!video && runtime.config.customPreview !== true) {
-      const anchor = event.target.closest?.('a[href]');
-      if (!anchor?.closest('#layout-body') || anchor.closest('#sidebar, .pzp-pc, .knife-popup') || !parseURL(anchor.href)) return;
-      const candidates = anchor.querySelectorAll('video');
-      if (candidates.length === 1) video = candidates[0];
-    }
-    if (!video) return;
-    event.preventDefault(); video.volume = Math.max(0, Math.min(1, Number(runtime.config.previewVolume || 0) / 100)); video.muted = !video.muted;
+    if (!current || !media || event.target.closest?.('a[href]') !== current.anchor ||
+      !valid(generation, current.anchor, current.href)) return;
+    event.preventDefault(); current.audio?.toggle();
   });
   scope.on(window, 'pagehide', event => { cleanup(); if (!event.persisted) scope.dispose(); });
   const checkActive = () => {
-    if (current && (location.pathname !== current.route || !current.anchor.isConnected || current.anchor.href !== current.href ||
-      (panel && !panel.isConnected) || runtime.config[current.permission] !== true ||
-      (current.live && runtime.config.livePreview !== true))) cleanup();
+    if (current && (location.pathname !== current.route || !ownsAnchor(current.anchor) || current.anchor.href !== current.href ||
+      (panel && !panel.isConnected) || runtime.config.preview !== true ||
+      ((current.live || media) && runtime.config.livePreview !== true))) cleanup();
+    if (current && media) { media.volume = volume(); current.audio?.refresh(); }
   };
   // Constant-time identity check, not a document-wide card scan. Invalidation
   // must stop an existing stream as well as reject future async completions.

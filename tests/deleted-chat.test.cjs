@@ -162,6 +162,201 @@ test('deleted chat restoration never overwrites another writer changing message 
   assert.equal(f.text.dataset.knifeDeleted, 'external');
 });
 
+test('deleted chat ignores a native blind result when the target no longer exists', async t => {
+  let nativeList;
+  const foreign = { key: 'foreign', user: 'other', time: 456, type: 1, status: 'NORMAL', content: 'Foreign' };
+  const f = setup(t, {}, fixture => {
+    const original = fixture.controller.notiBlindListener;
+    const replacement = event => {
+      const result = original(event);
+      nativeList = fixture.controller.messageList;
+      fixture.controller.messageList = [foreign];
+      return result;
+    };
+    fixture.controller.notiBlindListener = replacement;
+    fixture.native.listener = replacement;
+  });
+  f.emit(); await flush();
+  assert.equal(nativeList[0].status, 'BLIND');
+  assert.equal(f.controller.messageList[0], foreign);
+  assert.equal(foreign.status, 'NORMAL');
+});
+
+test('deleted chat does not disclose into a replacement message array', async t => {
+  let nativeList, replacementList;
+  const f = setup(t, {}, fixture => {
+    const original = fixture.controller.notiBlindListener;
+    const replacement = event => {
+      const result = original(event);
+      nativeList = fixture.controller.messageList;
+      replacementList = nativeList.map(message => ({ ...message }));
+      fixture.controller.messageList = replacementList;
+      return result;
+    };
+    fixture.controller.notiBlindListener = replacement;
+    fixture.native.listener = replacement;
+  });
+  let updates = 0;
+  const notify = f.controller.notiUpdateMessageList;
+  f.controller.notiUpdateMessageList = function () { updates++; return notify.call(this); };
+  f.emit(); await flush();
+  assert.equal(nativeList[0].status, 'BLIND');
+  assert.equal(replacementList[0].status, 'BLIND');
+  assert.equal(updates, 1, 'only the native update is published');
+});
+
+test('deleted chat preserves a same-index foreign replacement during post-native validation', async t => {
+  let foreign;
+  const f = setup(t, {}, fixture => {
+    const original = fixture.controller.notiBlindListener;
+    const replacement = event => {
+      const result = original(event);
+      const list = fixture.controller.messageList;
+      const nativeFindIndex = list.findIndex.bind(list);
+      list.findIndex = predicate => {
+        const index = nativeFindIndex(predicate);
+        if (index < 0) return index;
+        const expected = list[index];
+        foreign = { ...expected };
+        let firstRead = true;
+        Object.defineProperty(list, String(index), {
+          configurable: true, enumerable: true,
+          get() {
+            if (firstRead) {
+              firstRead = false;
+              Object.defineProperty(list, String(index), { configurable: true, enumerable: true, writable: true, value: foreign });
+              return expected;
+            }
+            return foreign;
+          },
+          set(value) { Object.defineProperty(list, String(index), { configurable: true, enumerable: true, writable: true, value }); },
+        });
+        return index;
+      };
+      return result;
+    };
+    fixture.controller.notiBlindListener = replacement;
+    fixture.native.listener = replacement;
+  });
+  f.emit(); await flush();
+  assert.equal(f.controller.messageList[0], foreign);
+  assert.equal(foreign.status, 'BLIND');
+});
+
+test('deleted chat preserves a same-index foreign replacement triggered during visible message construction', async t => {
+  let foreign;
+  const f = setup(t, {}, fixture => {
+    const original = fixture.controller.notiBlindListener;
+    const replacement = event => {
+      const result = original(event);
+      const list = fixture.controller.messageList;
+      const expected = list[0];
+      foreign = { ...expected };
+      Object.defineProperty(expected, 'lateRace', {
+        configurable: true, enumerable: true,
+        get() { list[0] = foreign; return 'external'; },
+      });
+      return result;
+    };
+    fixture.controller.notiBlindListener = replacement;
+    fixture.native.listener = replacement;
+  });
+  f.emit(); await flush();
+  assert.equal(f.controller.messageList[0], foreign);
+  assert.equal(foreign.status, 'BLIND');
+  assert.equal(f.text.dataset.knifeDeleted, undefined);
+});
+
+test('deleted chat preserves a same-index foreign replacement triggered during final visible validation', async t => {
+  let foreign;
+  const f = setup(t, {}, fixture => {
+    const original = fixture.controller.notiBlindListener;
+    const replacement = event => {
+      const result = original(event);
+      const list = fixture.controller.messageList;
+      const expected = list[0];
+      foreign = { ...expected };
+      let reads = 0;
+      Object.defineProperty(expected, 'content', {
+        configurable: true, enumerable: true,
+        get() {
+          reads++;
+          if (reads === 3) list[0] = foreign;
+          return 'Synthetic content';
+        },
+      });
+      return result;
+    };
+    fixture.controller.notiBlindListener = replacement;
+    fixture.native.listener = replacement;
+  });
+  f.emit(); await flush();
+  assert.equal(f.controller.messageList[0], foreign);
+  assert.equal(foreign.status, 'BLIND');
+  assert.equal(f.text.dataset.knifeDeleted, undefined);
+});
+
+test('deleted chat restoration stops when a message read replaces the active array', async t => {
+  const f = setup(t); f.emit(); await flush();
+  const oldList = f.controller.messageList;
+  const visible = oldList[0];
+  const foreign = { key: 'foreign', user: 'other', time: 456, type: 1, status: 'NORMAL', content: 'Foreign' };
+  let swapped = false;
+  Object.defineProperty(visible, 'status', {
+    configurable: true, enumerable: true,
+    get() {
+      if (!swapped) { swapped = true; f.controller.messageList = [foreign]; }
+      return 'NORMAL';
+    },
+  });
+  let updates = 0;
+  f.controller.notiUpdateMessageList = () => { updates++; };
+  deliver(f.dom, { showDeleted: false }, 2); await flush();
+  assert.equal(f.controller.messageList[0], foreign);
+  assert.equal(foreign.status, 'NORMAL');
+  assert.equal(oldList[0], visible);
+  assert.equal(updates, 0);
+});
+
+test('deleted chat restoration preserves a same-index foreign replacement triggered during hidden message construction', async t => {
+  const f = setup(t); f.emit(); await flush();
+  const list = f.controller.messageList;
+  const visible = list[0];
+  const foreign = { key: 'foreign', user: 'other', time: 456, type: 1, status: 'NORMAL', content: 'Foreign' };
+  Object.defineProperty(visible, 'lateRace', {
+    configurable: true, enumerable: true,
+    get() { list[0] = foreign; return 'external'; },
+  });
+  let updates = 0;
+  f.controller.notiUpdateMessageList = () => { updates++; };
+  deliver(f.dom, { showDeleted: false }, 2); await flush();
+  assert.equal(f.controller.messageList[0], foreign);
+  assert.equal(foreign.status, 'NORMAL');
+  assert.equal(updates, 0);
+});
+
+test('deleted chat restoration preserves a same-index foreign replacement triggered during final hidden validation', async t => {
+  const f = setup(t); f.emit(); await flush();
+  const list = f.controller.messageList;
+  const visible = list[0];
+  const foreign = { key: 'foreign', user: 'other', time: 456, type: 1, status: 'NORMAL', content: 'Foreign' };
+  let reads = 0;
+  Object.defineProperty(visible, 'status', {
+    configurable: true, enumerable: true,
+    get() {
+      reads++;
+      if (reads === 3) list[0] = foreign;
+      return 'NORMAL';
+    },
+  });
+  let updates = 0;
+  f.controller.notiUpdateMessageList = () => { updates++; };
+  deliver(f.dom, { showDeleted: false }, 2); await flush();
+  assert.equal(f.controller.messageList[0], foreign);
+  assert.equal(foreign.status, 'NORMAL');
+  assert.equal(updates, 0);
+});
+
 // Break caught: stale retention must not authorize a message that another
 // writer hid or rewrote in place; replacing the list object is not required.
 for (const reconcile of [true, false]) test('deleted chat never re-discloses an in-place cleanbot change with reconciliation=' + reconcile, async t => {

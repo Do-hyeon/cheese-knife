@@ -1,10 +1,14 @@
 # 개인정보처리방침 / Privacy Policy
 
-- 적용 대상: **치즈 나이프 — 커뮤니티 복구판 (Cheese Knife — Community Recovery), 2.13.2**
-- 시행일 및 최종 수정일: **2026-10-08**
-- 관리 주체: GitHub 계정 **Do-hyeon**이 관리하는 [커뮤니티 포크](https://github.com/Do-hyeon/cheese-knife/tree/codex/community-store-preview)
+- 적용 대상: **치즈 나이프 — 커뮤니티 복구판 (Cheese Knife — Community Recovery), 2.13.2 및 2.13.3 후속 시험판**
+- 시행일: **2026-10-08** / 문서 링크·적용 버전 최종 수정일: **2026-10-11**
+- 관리 주체: GitHub 계정 **Do-hyeon**이 관리하는 [커뮤니티 포크](https://github.com/Do-hyeon/cheese-knife/tree/main)
+
+공식 문서 위치는 [main/PRIVACY.md](https://github.com/Do-hyeon/cheese-knife/blob/main/PRIVACY.md)입니다. 기존 `codex/community-store-preview`의 문서 URL은 구버전 안내를 위해 유지하며, 새 위치의 공개 내용 확인 후 스토어 개인정보처리방침 URL을 별도로 변경합니다. 이번 수정은 문서 링크·적용 버전 표기를 정리한 것으로, 아래 데이터 처리 방침을 변경하거나 보안 검증 완료를 선언하지 않습니다.
 
 이 방침은 비공식 커뮤니티 복구판에 적용됩니다. 원작자의 배포판이나 네이버·치지직의 개인정보처리방침을 대신하지 않습니다.
+
+복구판은 Google Chrome만 지원하며 Firefox를 지원·배포하지 않습니다.
 
 ## 1. 목적과 처리 범위
 
@@ -24,6 +28,7 @@
 ## 2. 외부 연결과 로그인 세션
 
 - 미리보기와 방송 시작 시각 표시를 위해 브라우저에서 치지직 API(`api.chzzk.naver.com`)에 방송·VOD 식별자가 포함된 HTTPS 요청을 보냅니다.
+- 확장이 요청하는 호스트 권한과 페이지 주입 대상은 `https://chzzk.naver.com/*`입니다. API 요청은 해당 치지직 페이지의 MAIN 코드에서 실행되며 별도의 `api.chzzk.naver.com` 확장 호스트 권한을 요청하지 않습니다. 이는 API 통신이나 아래 세션 동반 가능성이 없어졌다는 뜻이 아닙니다.
 - 이미지와 미리보기 영상은 치지직이 제공하는 HTTPS 미디어 주소에서 불러옵니다. 팝업 플레이어는 치지직 방송 페이지를 엽니다. 해당 서비스 및 미디어 제공자는 통신 과정에서 IP 주소 등 일반적인 요청 정보를 받을 수 있습니다.
 - API 요청에는 브라우저가 관리하는 기존 치지직 로그인 세션이 자동으로 동반될 수 있습니다. 확장 프로그램이 비밀번호를 입력받거나 쿠키·인증 토큰을 직접 추출해 따로 저장하지는 않습니다.
 - 확장 프로그램에는 개발자 서버로 데이터를 전송하는 기능, 외부 분석 도구 또는 광고 추적 기능이 없습니다. 네이버·치지직 및 미디어 제공자의 자체 데이터 처리는 해당 서비스의 방침을 따릅니다.
@@ -60,9 +65,13 @@
 
 ## English
 
-- **Scope:** Cheese Knife — Community Recovery, version 2.13.2.
-- **Effective / last updated:** October 8, 2026.
+- **Scope:** Cheese Knife — Community Recovery, version 2.13.2 and the 2.13.3 follow-up preview.
+- **Effective:** October 8, 2026. **Document link / version metadata updated:** October 11, 2026.
 - **Maintainer:** the community fork maintained by GitHub account **Do-hyeon**.
+
+The community recovery supports Google Chrome only; Firefox is not supported or distributed.
+
+The canonical document URL is [main/PRIVACY.md](https://github.com/Do-hyeon/cheese-knife/blob/main/PRIVACY.md). Existing document URLs on `codex/community-store-preview` are retained for older versions. Update the store's policy URL separately after checking the published document. This revision changes document links and version metadata, not the data-processing policy below, and does not declare completed security verification.
 
 This policy applies to the unofficial community recovery, not the original author's release or NAVER/CHZZK services.
 
@@ -82,6 +91,8 @@ The extension does not separately extract or retain health data, payment instrum
 ### Connections and existing sessions
 
 The browser makes HTTPS requests to `api.chzzk.naver.com` using stream/VOD identifiers for previews and stream-start metadata. Images and previews load from HTTPS media addresses supplied by CHZZK; popup players open CHZZK stream pages. These providers may receive IP addresses and ordinary request information.
+
+The extension requests host access and injects page features only at `https://chzzk.naver.com/*`. API requests run from MAIN code on that CHZZK page, and the extension does not request a separate `api.chzzk.naver.com` host permission. This does not mean that API communication or the possible existing-session behavior described below has stopped.
 
 The browser may automatically include the existing CHZZK login session with API requests. The extension does not prompt for passwords or directly extract and separately store cookies or authentication tokens. It has no maintainer data-collection server, external analytics or advertising trackers. The service providers' own processing is governed by their policies. Opening guide, support or source links visits GitHub or other linked sites, whose policies apply to those visits and voluntarily submitted information.
 

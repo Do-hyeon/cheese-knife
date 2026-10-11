@@ -87,3 +87,7 @@ summary {
 .capability-state { color: #666; }
 .capability-state.ready { color: #047857; }
 .capability-state.limited, .capability-state.failed { color: #b45309; }
+.settings-state { font-size: 13px; line-height: 1.5; }
+.settings-state button { margin-top: 6px; white-space: normal; }
+[aria-disabled="true"] { opacity: 0.6; cursor: wait; }
+#settings-status[data-phase="failed"], #settings-status[data-phase="unknown"], #settings-status[data-phase="repair-required"] { color: #9a3412; }

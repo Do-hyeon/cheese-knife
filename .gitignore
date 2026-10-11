@@ -92,6 +92,7 @@ out
 dist
 
 # Local browser profiles, media and diagnostic output must not be published.
+dist-firefox/
 output/
 .playwright-cli/
 

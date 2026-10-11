@@ -12,17 +12,32 @@ for (const [id, key, fallback] of [
   if (link) link.textContent = chrome.i18n.getMessage(key) || fallback;
 }
 
+const stylesLink = document.getElementById('stylesConfig').closest('a');
+let targetCaptured = false;
+stylesLink.addEventListener('click', event => { if (!targetCaptured) event.preventDefault(); });
+const capturedTab = chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+  if (![tab?.id, tab?.windowId].every(id => Number.isSafeInteger(id) && id >= 0) || new URL(tab.url).origin !== 'https://chzzk.naver.com') return null;
+  return tab;
+}).catch(() => null);
+void capturedTab.then(tab => {
+  const url = new URL(chrome.runtime.getURL('styles.html'));
+  if (tab) { url.searchParams.set('targetTabId', tab.id); url.searchParams.set('targetWindowId', tab.windowId); }
+  stylesLink.href = url.href; targetCaptured = true; stylesLink.setAttribute('aria-disabled', 'false');
+});
+
 (async () => {
   const box = document.getElementById("capabilities");
   const message = (key, fallback) => chrome.i18n.getMessage(key) || fallback;
   const title = document.createElement("div"); title.className = "title";
   title.textContent = message("capability_title", "Current tab"); box.append(title);
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = await capturedTab;
+    if (!tab) throw new Error('no-target');
     const result = await chrome.tabs.sendMessage(tab.id, { type: "cheese-knife-status" }, { frameId: 0 });
+    const statusMap = new Map(Object.entries(result?.statuses || {}));
     let shown = 0;
     for (const feature of ["player", "compressor", "preview", "livePreview", "chatResize", "donationChat", "deletedChat", "sidebarRefresh", "statistics"]) {
-      const status = result?.statuses?.[feature];
+      const status = statusMap.get(feature);
       if (!status) continue;
       const row = document.createElement("div"); row.className = "capability-row";
       const name = document.createElement("span"); name.textContent = message("capability_" + feature, feature);
@@ -45,7 +60,9 @@ try {
   hardwareAcceleration = !!gl;
 } catch {}
 
-getConfig().then(({ config }) => {
+const settingsClient = createSettingsClient(chrome);
+const renderFields = new Map();
+(() => {
   const list = document.getElementById("list");
   const createRow = (c) => {
     const row = document.createElement("div");
@@ -63,12 +80,12 @@ getConfig().then(({ config }) => {
     let warning;
     if (c.id === "sharpness") {
       warning = document.createElement("a");
-      warning.style.visibility =
-        config[c.id] && !hardwareAcceleration ? "visible" : "hidden";
+      warning.style.visibility = 'hidden';
       warning.href = "#";
       warning.title = chrome.i18n.getMessage(`config_${c.id}_warning`);
       warning.textContent = "⚠️";
-      warning.addEventListener("click", () => {
+      warning.addEventListener("click", event => {
+        event.preventDefault();
         chrome.tabs.create({
           url: navigator.userAgent.includes("Firefox")
             ? "about:preferences"
@@ -80,30 +97,21 @@ getConfig().then(({ config }) => {
 
     const input = document.createElement("input");
     input.id = c.id;
+    input.disabled = true;
     row.appendChild(input);
 
     if (c.type == null) {
       input.type = "checkbox";
-      input.checked = config[c.id];
       input.addEventListener("change", (e) => {
-        config[e.target.id] = e.target.checked;
-        chrome.storage.local.set({ config });
+        settingsClient.edit({ type: 'config', id: c.id, value: e.target.checked });
       });
     } else if (c.type === "range") {
       input.type = "range";
       input.min = c.min;
       input.max = c.max;
       input.step = c.step;
-      input.value = config[c.id];
       input.addEventListener("input", (e) => {
-        config[e.target.id] = Number(e.target.value);
-        setCurrent(e.target.value);
-        chrome.storage.local.set({ config });
-
-        if (warning != null) {
-          warning.style.visibility =
-            config[e.target.id] && !hardwareAcceleration ? "visible" : "hidden";
-        }
+        settingsClient.edit({ type: 'config', id: c.id, value: Number(e.target.value) });
       });
       input.addEventListener("dblclick", () => {
         input.value = Number(c.defaultValue);
@@ -115,12 +123,20 @@ getConfig().then(({ config }) => {
         current.textContent = c.digits ? Number(v).toFixed(c.digits) : v;
       };
       setCurrent(input.value);
+      renderFields.set(c.id, view => {
+        input.value = view.values.config[c.id]; setCurrent(input.value);
+        input.disabled = !view.snapshot || view.phase === 'repair-required';
+        if (warning) warning.style.visibility = view.values.config[c.id] && !hardwareAcceleration ? 'visible' : 'hidden';
+      });
       row.appendChild(current);
 
       if (c.unit) {
         row.appendChild(document.createTextNode(c.unit));
       }
     }
+    if (c.type == null) renderFields.set(c.id, view => {
+      input.checked = view.values.config[c.id]; input.disabled = !view.snapshot || view.phase === 'repair-required';
+    });
     return row;
   };
 
@@ -159,4 +175,15 @@ getConfig().then(({ config }) => {
       box.appendChild(createRow(c));
     }
   }
+})();
+const settingsStatus = document.getElementById('settings-status');
+const discard = document.getElementById('settings-discard');
+discard.textContent = chrome.i18n.getMessage('settings_discard');
+discard.addEventListener('click', () => { void settingsClient.discardPending(); });
+settingsClient.subscribe(view => {
+  for (const render of renderFields.values()) render(view);
+  settingsStatus.dataset.phase = view.phase;
+  settingsStatus.textContent = chrome.i18n.getMessage(`settings_${view.phase.replace('-', '_')}`);
+  discard.hidden = !['failed', 'unknown'].includes(view.phase);
 });
+window.addEventListener('pagehide', () => settingsClient.dispose(), { once: true });

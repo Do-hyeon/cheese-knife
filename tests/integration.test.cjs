@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { page, load, runtime, deliver, playerHTML, flush } = require('./helpers.cjs');
+const { page, load, runtime, deliver, playerHTML, flush, clock } = require('./helpers.cjs');
 
 function setup(t, html = playerHTML, url, beforeInject = () => {}) {
   const dom = page(html, url);
@@ -364,11 +364,12 @@ test('current VOD date without start metadata stays unannotated and limited', as
 });
 
 function sidebarFixture(t, config = {}) {
-  const html = '<div id="root"><aside id="sidebar">' +
+  const html = playerHTML.replace('<div class="pzp-pc__volume-control"></div>',
+    '<div class="pzp-pc__volume-control"></div><button class="pzp-pc__viewmode-button" aria-label="넓은 화면"></button>') + '<aside id="sidebar">' +
     '<nav><strong class="_title_test">인기 카테고리</strong><button aria-label="새로고침" id="foreign-refresh"></button><button class="_more_button_test" aria-expanded="false" id="foreign-more">더보기</button></nav>' +
     '<nav id="following"><div class="_header_test"><strong class="_title_test">팔로잉 채널</strong><button aria-label="새로고침" id="refresh"></button></div><button class="_more_button_test" aria-expanded="false" id="more">더보기</button></nav>' +
-    '</aside><div id="layout-body"></div></div>';
-  const dom = page(html);
+    '</aside>';
+  const dom = page(html), time = clock(dom);
   const timers = new Map(); let next = 10000;
   const setInterval = dom.window.setInterval.bind(dom.window), clearInterval = dom.window.clearInterval.bind(dom.window);
   dom.window.setInterval = (fn, ms) => { if (ms !== 30000) return setInterval(fn, ms); const id = next++; timers.set(id, fn); return id; };
@@ -378,9 +379,12 @@ function sidebarFixture(t, config = {}) {
   deliver(dom, config); load(dom, 'web/inject.js');
   const counts = { refresh: 0, more: 0, foreign: 0 };
   dom.window.document.getElementById('refresh').addEventListener('click', () => counts.refresh++);
-  dom.window.document.getElementById('more').addEventListener('click', event => { counts.more++; event.currentTarget.setAttribute('aria-expanded', 'true'); });
+  dom.window.document.getElementById('more').addEventListener('click', event => {
+    counts.more++; const button = event.currentTarget;
+    button.setAttribute('aria-expanded', button.getAttribute('aria-expanded') === 'true' ? 'false' : 'true');
+  });
   for (const id of ['foreign-refresh', 'foreign-more']) dom.window.document.getElementById(id).addEventListener('click', () => counts.foreign++);
-  return { dom, timers, counts, tick() { for (const fn of [...timers.values()]) fn(); } };
+  return { dom, timers, counts, advance: ms => time.advance(ms), tick() { for (const fn of [...timers.values()]) fn(); } };
 }
 
 test('sidebar refresh uses only following native control and stops when disabled or disposed', t => {
@@ -399,18 +403,24 @@ test('sidebar refresh uses only following native control and stops when disabled
 });
 
 test('following expansion handles late controls and option changes without reopening a user collapse', async t => {
-  const { dom, counts } = sidebarFixture(t, { expandFollowings: false });
+  const { dom, counts, advance } = sidebarFixture(t, { expandFollowings: false });
   deliver(dom, { expandFollowings: true }, 2);
+  await advance(500);
   assert.equal(counts.more, 1); assert.equal(counts.foreign, 0);
-  const button = dom.window.document.getElementById('more'); button.setAttribute('aria-expanded', 'false');
-  runtime(dom).reconcile(); assert.equal(counts.more, 1);
+  const button = dom.window.document.getElementById('more'); button.click();
+  assert.equal(button.getAttribute('aria-expanded'), 'false');
+  runtime(dom).reconcile(); assert.equal(counts.more, 2, 'one automatic and one user activation, no automatic reopening');
+  assert.equal(runtime(dom).statuses.expandFollowings.reason, 'user-collapsed');
   deliver(dom, { expandFollowings: false }, 3); deliver(dom, { expandFollowings: true }, 4);
-  assert.equal(counts.more, 2);
-  button.remove(); runtime(dom).reconcile();
-  const replacement = button.cloneNode(true); replacement.setAttribute('aria-expanded', 'false');
-  replacement.addEventListener('click', () => counts.more++);
-  dom.window.document.getElementById('following').append(replacement); await flush();
+  await advance(500);
   assert.equal(counts.more, 3);
+  button.remove(); runtime(dom).reconcile();
+  deliver(dom, { expandFollowings: false }, 5); deliver(dom, { expandFollowings: true }, 6);
+  await advance(400);
+  const replacement = button.cloneNode(true); replacement.setAttribute('aria-expanded', 'false');
+  replacement.addEventListener('click', () => { counts.more++; replacement.setAttribute('aria-expanded', 'true'); });
+  dom.window.document.getElementById('following').append(replacement); await advance(500);
+  assert.equal(counts.more, 4);
 });
 
 test('sidebar refresh suspends for bfcache and restores one timer after pageshow', t => {
