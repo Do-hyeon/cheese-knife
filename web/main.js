@@ -1,17 +1,12 @@
-const initConfig = (config) => {
-  currentConfig = normalizeConfig(config);
-  setFilters(currentConfig);
-  if (requestId) sendConfig();
-};
-
 const initStyleParameters = (styleParameters) => {
-  if (!isNaN(styleParameters["chat-font-size"])) {
-    for (const t of [1, 2, 10, 20]) {
+  const value = styleParameters?.['chat-font-size'];
+  for (const t of [1, 2, 10, 20]) {
+    if (typeof value === 'number' && Number.isFinite(value) && value >= -6 && value <= 16) {
       document.documentElement.style.setProperty(
         `--knife-chat-size-${t}`,
-        `${styleParameters["chat-font-size"] / t}px`
+        `${value / t}px`
       );
-    }
+    } else document.documentElement.style.removeProperty(`--knife-chat-size-${t}`);
   }
 };
 
@@ -21,25 +16,38 @@ let revision = 0;
 let requestId;
 let statuses = {};
 let diagnostics = {};
-let changedBeforeLoad = false;
-let parametersChangedBeforeLoad = false;
+let readEpoch = 0, reading = null, readWanted = false, frozen = false, disposed = false;
 const sendConfig = () => window.postMessage({ namespace: "cheese-knife", protocol: 1,
   type: "config", requestId, revision: revision++, config: currentConfig, i18n }, location.origin);
-const configPromise = getConfig(true);
-window.addEventListener("message", async (e) => {
+function requestLatestSettings() {
+  if (disposed) return Promise.resolve();
+  readWanted = true;
+  if (frozen) return Promise.resolve();
+  if (reading) return reading.promise;
+  const job = {}; reading = job;
+  job.promise = (async () => {
+    while (readWanted && !disposed && !frozen && reading === job) {
+      readWanted = false;
+      const started = readEpoch;
+      try {
+        const stored = await getConfig(true);
+        if (disposed || frozen || reading !== job) return;
+        if (started !== readEpoch) { readWanted = true; continue; }
+        currentConfig = stored.config; currentParameters = stored.styleParameters;
+        setFilters(currentConfig); initStyleParameters(currentParameters);
+        if (requestId) sendConfig();
+      } catch { /* MAIN reports a bounded initial configuration timeout. Do not invent a successful read. */ }
+    }
+  })().finally(() => { if (reading === job) reading = null; });
+  return job.promise;
+}
+const onBridgeMessage = e => {
   const data = e.data;
   if (e.source !== window || e.origin !== location.origin || data == null || typeof data !== "object" ||
     data.namespace !== "cheese-knife" || data.protocol !== 1) return;
   if (data.type === "config-request" && typeof data.requestId === "string" && data.requestId.length <= 100) {
     requestId = data.requestId;
-    try {
-      const stored = await configPromise;
-      if (!changedBeforeLoad || !currentConfig) currentConfig = stored.config;
-      if (!parametersChangedBeforeLoad) currentParameters = stored.styleParameters;
-      setFilters(currentConfig);
-      initStyleParameters(currentParameters);
-      sendConfig();
-    } catch { /* MAIN reports the bounded configuration timeout. */ }
+    void requestLatestSettings();
   } else if (data.type === "status" && data.statuses && typeof data.statuses === "object") {
     const accepted = {};
     for (const [key, value] of Object.entries(data.statuses).slice(0, 30)) {
@@ -54,22 +62,35 @@ window.addEventListener("message", async (e) => {
     if (!node) { node = document.createElement("script"); node.id = "knife-status"; node.type = "application/json"; document.body.appendChild(node); }
     node.textContent = JSON.stringify({ statuses, diagnostics });
   }
-});
-chrome.runtime.onMessage.addListener((message, _sender, respond) => {
+};
+window.addEventListener('message', onBridgeMessage);
+const onStatusRequest = (message, _sender, respond) => {
   if (message?.type === "cheese-knife-status") respond({ statuses, diagnostics });
-});
-
-chrome.storage.local.onChanged.addListener((changes) => {
-  if (changes.config != null) {
-    changedBeforeLoad = true;
-    initConfig(changes.config.newValue);
+};
+chrome.runtime.onMessage.addListener(onStatusRequest);
+const onSettingsChanged = changes => {
+  if (['config', 'styleParameters', 'settingsRevision'].some(id => Object.hasOwn(changes, id))) {
+    readEpoch++; void requestLatestSettings();
   }
-  if (changes.styleParameters != null) {
-    parametersChangedBeforeLoad = true;
-    currentParameters = changes.styleParameters.newValue || {};
-    initStyleParameters(currentParameters);
-  }
-});
+};
+// Subscribe before starting the first read; event payloads are never the settings authority.
+chrome.storage.local.onChanged.addListener(onSettingsChanged);
+const onPageShow = event => {
+  if (!event.persisted || disposed) return;
+  frozen = false; readEpoch++; void requestLatestSettings();
+};
+const onPageHide = event => {
+  readEpoch++; reading = null; frozen = true;
+  if (event.persisted) return;
+  disposed = true;
+  chrome.storage.local.onChanged.removeListener(onSettingsChanged);
+  chrome.runtime.onMessage.removeListener(onStatusRequest);
+  window.removeEventListener('message', onBridgeMessage);
+  window.removeEventListener('pageshow', onPageShow);
+  window.removeEventListener('pagehide', onPageHide);
+};
+window.addEventListener('pageshow', onPageShow);
+window.addEventListener('pagehide', onPageHide);
 
 const i18n = {};
 for (const m of [
@@ -172,3 +193,4 @@ const setFilters = (config) => {
     document.body.classList.remove("knife-filter");
   }
 };
+void requestLatestSettings();

@@ -7,9 +7,9 @@ function bridge(t, mainFirst, get = async () => ({ config: { arrowSeek: false },
   let storageListener;
   dom.window.chrome = {
     storage: { local: { get,
-      onChanged: { addListener(fn) { storageListener = fn; } } } },
+      onChanged: { addListener(fn) { storageListener = fn; }, removeListener() {} } } },
     i18n: { getMessage: key => key },
-    runtime: { onMessage: { addListener() {} } },
+    runtime: { onMessage: { addListener() {}, removeListener() {} } },
   };
   load(dom, 'config.js');
   if (mainFirst) { load(dom, 'web/main.js'); load(dom, 'web/runtime.js'); }
@@ -44,8 +44,8 @@ for (const mainFirst of [true, false]) test(`settings handshake works with ISOLA
 });
 
 for (const latest of [{ 'chat-font-size': 8 }, {}]) test(`initial style snapshot does not overwrite a newer parameter event: ${Object.keys(latest).length ? 'offset' : 'reset'}`, async t => {
-  let resolveRead;
-  const { dom, storageListener } = bridge(t, false, () => new Promise(resolve => { resolveRead = resolve; }));
+  let resolveRead, calls = 0;
+  const { dom, storageListener } = bridge(t, false, () => ++calls === 1 ? new Promise(resolve => { resolveRead = resolve; }) : Promise.resolve({ config: {}, styleParameters: latest }));
   storageListener({ styleParameters: { newValue: latest } });
   dom.window.dispatchEvent(new dom.window.MessageEvent('message', {
     source: dom.window, origin: dom.window.location.origin,

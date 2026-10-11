@@ -67,3 +67,11 @@ test('resource scope disposal removes listeners and timers exactly once', async 
   await flush();
   assert.equal(calls, 0);
 });
+test('same-route runtimes keep window-local configuration and scopes', async t => {
+  const a = setup(t), b = setup(t);
+  deliver(a, { preview: false }, 1); deliver(b, { preview: true }, 1);
+  assert.notEqual(runtime(a), runtime(b)); assert.equal(runtime(a).config.preview, false); assert.equal(runtime(b).config.preview, true);
+  const scopeA = runtime(a).createScope(), scopeB = runtime(b).createScope(); let calls = 0;
+  scopeB.on(b.window, 'local-sample', () => calls++); scopeA.dispose();
+  b.window.dispatchEvent(new b.window.Event('local-sample')); assert.equal(calls, 1); scopeB.dispose();
+});
