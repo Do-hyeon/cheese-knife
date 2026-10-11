@@ -63,6 +63,13 @@ test('artifact negative table fails with distinct codes', async () => {
   assert.throws(() => mod.inspectProofRun(twoCharacterIdentity, ['xy']), error => error?.code === 'proof-environment-identity');
 });
 
+test('browser source inspection is reusable without changing proof errors', async () => {
+  const mod = await proofModule();
+  assert.doesNotThrow(() => mod.inspectBrowserSource('const local = "safe";', ['runner-host']));
+  assert.throws(() => mod.inspectBrowserSource('eval("x")', ['runner-host']), { code: 'proof-eval' });
+  assert.throws(() => mod.inspectBrowserSource('const host = "runner-host";', ['runner-host']), { code: 'proof-environment-identity' });
+});
+
 test('different proof runs are rejected', async () => {
   const mod = await proofModule();
   const left = mod.inspectProofRun(cleanRun());
