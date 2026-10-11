@@ -21,7 +21,7 @@
 다음 조건을 모두 만족해야 기능 로드맵을 재개할 수 있다.
 
 1. 빌드된 `dist`를 격리된 Chrome 프로필에 설치해 popup, background service worker, ISOLATED world, MAIN world와 페이지 fixture를 한 흐름으로 자동 검증한다.
-2. 설정 변경, 메시지 전달, 페이지 적용, 다중 탭·창, worker 재시작, BFCache와 확장 컨텍스트 종료의 핵심 계약을 E2E로 보호한다.
+2. 설정 변경, 메시지 전달, 페이지 적용, 다중 탭·창, worker 재시작, BFCache 수명주기와 확장 컨텍스트 종료의 핵심 계약을 자동 검사로 보호한다. 실제 BFCache 복원은 Playwright가 지원하지 않으므로 설치형 E2E의 합격 조건으로 거짓 주장하지 않는다.
 3. 신규 첫 번째 당사자 런타임 코드는 TypeScript로 작성하고 `strict` 타입 검사를 통과한다.
 4. MAIN/ISOLATED/background/UI 경계와 치지직 DOM·내부 상태 경계를 명시적인 인터페이스와 런타임 검사로 구분한다.
 5. `web/inject.js`의 기능 책임이 테스트 가능한 기능 모듈로 분리되고, 진입점은 조정 역할만 담당한다.
@@ -112,11 +112,15 @@ src/
 5. 두 popup/styles 창의 서로 다른 필드 병합과 최신 snapshot 동기화
 6. 두 탭·두 창에서 설정 공유와 오디오·미리보기 상태 비간섭
 7. service worker 종료·재시작 뒤 설정 보존
-8. SPA route 변경, BFCache pageshow/pagehide와 최종 탭 종료
+8. SPA route 변경, 설치된 content script에 대한 합성 BFCache `pageshow`/`pagehide`, 최종 탭 종료
 9. 확장 새로고침 뒤 이전 content script의 context invalidation 정리
 10. 잘못된 메시지, 오래된 revision과 손상 storage 값 거부
 
 fixture가 실제 사이트의 모든 DOM을 흉내 내려고 해서는 안 된다. 각 fixture는 검증하려는 계약에 필요한 최소 DOM과 이벤트만 제공하며, 실제 사이트 drift는 별도 adapter 검사와 smoke 검사로 탐지한다.
+
+Playwright는 기본적으로 BFCache를 비활성화하며, 명시적으로 활성화해도 BFCache 복원 검사를 지원하지 않는다. 따라서 AF00은 설치된 확장의 실제 content script에 `persisted: true` 수명주기 이벤트를 전달하는 E2E와 기존 상태 전이 단위·통합 검사를 합격 게이트로 사용한다. 실제 Chrome의 back/forward 복원은 비결정적 수동 smoke로만 기록하며 자동 PASS를 대체하지 않는다. 이 한계를 숨기기 위해 Playwright 기본 인수를 임의로 제거하거나 합격 조건을 완화하지 않는다.
+
+근거: [Playwright BFCache 제한](https://playwright.dev/docs/next/navigations#backforward-cache-bfcache), [Playwright Chrome 확장 검사](https://playwright.dev/docs/next/chrome-extensions).
 
 ## 7. 빌드 전략
 
