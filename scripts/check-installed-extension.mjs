@@ -61,10 +61,15 @@ export async function runBaseInstalledScenario({ context, worker, extensionId, r
   let page = context.pages()[0] || await context.newPage();
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(FIXTURE_LIVE_URL, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => {
-    const runtime = window[Symbol.for('cheese-knife.runtime.v1')];
-    return !!runtime?.configReady;
-  }, null, { timeout: 15000 });
+  try {
+    await page.waitForFunction(() => {
+      const runtime = window[Symbol.for('cheese-knife.runtime.v1')];
+      return !!runtime?.configReady;
+    }, null, { timeout: 15000 });
+  } catch (error) {
+    if (error?.name === 'TimeoutError') throw runnerError('main-runtime-missing', error);
+    throw error;
+  }
 
   let popup = await context.newPage();
   await popup.goto(`chrome-extension://${extensionId}/popup.html`, { waitUntil: 'domcontentloaded' });
