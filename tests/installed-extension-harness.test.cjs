@@ -174,6 +174,26 @@ test('worker reacquisition may reuse only a live valid previous worker', async (
   assert.deepEqual(result, { worker: previous, extensionId });
 });
 
+test('reload reacquisition rejects a still-responsive previous worker and requires a replacement', async () => {
+  const { reacquireExtensionWorker } = await harnessModule();
+  const previous = { url: () => workerURL, evaluate: async () => extensionId };
+  await assert.rejects(reacquireExtensionWorker({
+    serviceWorkers: () => [previous],
+    waitForEvent: async () => { throw new Error('timeout'); },
+  }, previous, 5, { reusePrevious: false }), { code: 'extension-worker-reacquire-timeout' });
+
+  const nextId = 'ponmlkjihgfedcbaponmlkjihgfedcba';
+  const replacement = { url: () => `chrome-extension://${nextId}/background.js`, evaluate: async () => nextId };
+  const context = {
+    serviceWorkers: () => [previous, replacement],
+    waitForEvent: async () => replacement,
+  };
+  assert.deepEqual(await reacquireExtensionWorker(context, previous, 20, { reusePrevious: false }), {
+    worker: replacement,
+    extensionId: nextId,
+  });
+});
+
 test('worker reacquisition excludes a dead previous worker and recalculates replacement ID', async () => {
   const { reacquireExtensionWorker } = await harnessModule();
   const nextId = 'ponmlkjihgfedcbaponmlkjihgfedcba';

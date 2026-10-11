@@ -121,14 +121,21 @@ const replacementWorkers = (context, previousWorker) => {
   return candidates;
 };
 
-export async function reacquireExtensionWorker(context, previousWorker, timeoutMs = 15000) {
+export async function reacquireExtensionWorker(context, previousWorker, timeoutMs = 15000, options = {}) {
   if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) throw harnessError('extension-worker-timeout-invalid');
+  if (!options || typeof options !== 'object' || Array.isArray(options) ||
+      (Object.hasOwn(options, 'reusePrevious') && typeof options.reusePrevious !== 'boolean')) {
+    throw harnessError('extension-worker-options-invalid');
+  }
+  const reusePrevious = options.reusePrevious !== false;
   const deadline = Date.now() + timeoutMs;
-  try {
-    const extensionId = await boundedWorkerProbe(previousWorker, timeoutMs);
-    return { worker: previousWorker, extensionId };
-  } catch (error) {
-    if (!['extension-worker-probe-failed', 'extension-worker-probe-timeout'].includes(error?.code)) throw error;
+  if (reusePrevious) {
+    try {
+      const extensionId = await boundedWorkerProbe(previousWorker, timeoutMs);
+      return { worker: previousWorker, extensionId };
+    } catch (error) {
+      if (!['extension-worker-probe-failed', 'extension-worker-probe-timeout'].includes(error?.code)) throw error;
+    }
   }
 
   const inspect = async () => {

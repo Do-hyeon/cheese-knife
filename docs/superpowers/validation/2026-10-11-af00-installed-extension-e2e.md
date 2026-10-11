@@ -17,7 +17,7 @@ AF00의 로컬 수용 조건을 충족했다. 격리된 Chrome MV3 후보를 fre
 | 전체 Node 테스트 | 629 passed, 0 failed, 0 skipped |
 | 빌드·패키지 검사 | `dist` 빌드, v2.13.3, manifest 참조 20개 통과 |
 | 객관 오디오 검사 | Chromium 151, full-scale 초과 0, 극단 설정 peak 0.980000019, 250/750Hz 전환 기준선 일치 |
-| positive 설치 E2E | `Task8Boundary`, 62,158ms, 모든 보고 section passed |
+| positive 설치 E2E | `Task8ReviewFix`, 62,487ms, 모든 보고 section passed |
 | negative 설치 E2E | `Task8FinalNegative`, 예상 오류 `main-runtime-missing`만 관측 |
 | 도구 감사 | npm 0, Gitleaks 현재/Git 0, ESLint guarded-boundary 7, open/new 0, 입력 전후 해시 일치 |
 | whitespace | `git -c core.safecrlf=false diff --check` 통과 |
@@ -26,7 +26,7 @@ AF00의 로컬 수용 조건을 충족했다. 격리된 Chrome MV3 후보를 fre
 
 ## 설치 시나리오 경계
 
-- 허용한 HTTP(S) fixture는 `https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`와 `https://chzzk.naver.com/__knife_fixture__/site.js`뿐이다. 그 밖의 요청은 차단한다.
+- 허용한 HTTP(S) fixture는 `https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`, `https://chzzk.naver.com/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`, `https://chzzk.naver.com/__knife_fixture__/site.js`뿐이다. 그 밖의 요청은 차단한다.
 - 실제 치지직 계정, 쿠키, 채팅, 결제, 후원, 연령 제한 콘텐츠와 운영 API 응답은 사용하지 않았다.
 - 설정 revision, 잘못된 message 거부, 오래된 MAIN envelope 거부, 손상 revision의 repair-required 상태를 검사했다.
 - 서로 다른 창의 서로 다른 설정 변경이 병합되고 두 UI에 동기화되며, 스타일 적용은 캡처한 원래 탭만 reload함을 검사했다.
@@ -63,4 +63,4 @@ git -c core.safecrlf=false diff --check
 
 감사 명령은 위에서 설명한 guarded-boundary 때문에 종료 1을 유지한다. 기능·패키지·E2E 게이트의 성공과 섞어 clean으로 해석하지 않는다.
 
-AF00 전체를 되돌려야 하면 새 복구 브랜치에서 `32f4b6d`부터 `dc11a91`까지를 역순으로 revert하고, 위 게이트를 다시 실행한다. 기존 공개 버전·스토어 항목은 이 브랜치 작업만으로 변경되지 않는다.
+AF00 전체를 되돌려야 하면 AF01 작업 전의 새 복구 브랜치에서 `git revert --no-commit ca4259b..codex/ai-foundation-design`으로 AF00의 설계·코드·CI·상태 문서를 함께 되돌리고, 위 게이트를 다시 실행한다. 기존 공개 버전·스토어 항목은 이 브랜치 작업만으로 변경되지 않는다.

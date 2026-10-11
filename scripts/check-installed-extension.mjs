@@ -339,7 +339,7 @@ export async function runLifecycleScenario({ context, worker, extensionId, page,
   await new Promise(resolve => setTimeout(resolve, 250));
   let inPlaceReloadObserved = true;
   try {
-    ({ worker, extensionId } = await reacquireExtensionWorker(context, worker, 15000));
+    ({ worker, extensionId } = await reacquireExtensionWorker(context, worker, 15000, { reusePrevious: false }));
     await page.close();
   } catch (error) {
     if (error?.code !== 'extension-worker-reacquire-timeout' || typeof restartSession !== 'function') throw error;
