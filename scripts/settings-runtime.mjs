@@ -15,6 +15,14 @@ export const SETTINGS_RUNTIME_OPTIONS = Object.freeze({ loader: 'ts', target: 'c
 const fail = code => Object.assign(new Error(code), { code });
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 const repositoryRoot = () => path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const hasExpectedGlobal = (output, source) => {
+  switch (output) {
+    case 'settings-contract.js': return /\bvar\s+KnifeSettingsContract\b/.test(source);
+    case 'settings-client.js': return /\bvar\s+createSettingsClient\b/.test(source);
+    case 'settings-broker.js': return /\bvar\s+createSettingsBroker\b/.test(source);
+    default: return false;
+  }
+};
 
 export async function renderSettingsRuntime(root = repositoryRoot()) {
   const owned = await openOwnedRoot(root);
@@ -35,7 +43,7 @@ export function validateSettingsRuntime(outputs, identities) {
   if (JSON.stringify(names) !== JSON.stringify(expected)) throw fail('settings-runtime-output-set');
   for (const entry of SETTINGS_RUNTIME_ENTRIES) {
     const source = outputs[entry.output];
-    if (typeof source !== 'string' || !new RegExp(`\\bvar\\s+${entry.global}\\b`).test(source)) throw fail('settings-runtime-global');
+    if (typeof source !== 'string' || !hasExpectedGlobal(entry.output, source)) throw fail('settings-runtime-global');
     if (/sourceMappingURL|sourceURL/.test(source)) throw fail('settings-runtime-source-map');
     const inspected = source.replace(/(["'])https:\/\/chzzk\.naver\.com\1/g, '$1$1');
     inspectBrowserSource(inspected, identities);
@@ -44,7 +52,12 @@ export function validateSettingsRuntime(outputs, identities) {
 
 function report(outputs) {
   const files = SETTINGS_RUNTIME_ENTRIES.map(entry => entry.output);
-  return { files, hashes: Object.fromEntries(files.map(file => [file, sha256(outputs[file])])) };
+  const hashes = {
+    'settings-contract.js': sha256(outputs['settings-contract.js']),
+    'settings-client.js': sha256(outputs['settings-client.js']),
+    'settings-broker.js': sha256(outputs['settings-broker.js']),
+  };
+  return { files, hashes };
 }
 
 export async function checkSettingsRuntime(root = repositoryRoot()) {
