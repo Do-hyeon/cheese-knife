@@ -1,6 +1,6 @@
-import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { openOwnedRoot } from './owned-files.mjs';
 
 export const TOOLCHAIN_CONTRACT = {
   typescript: { version: '7.0.2', license: 'Apache-2.0' },
@@ -9,7 +9,7 @@ export const TOOLCHAIN_CONTRACT = {
 };
 
 const fail = (code, message) => Object.assign(new Error(message), { code });
-const readJson = async file => JSON.parse(await readFile(file, 'utf8'));
+const ownValue = (record, key) => Object.getOwnPropertyDescriptor(record || {}, key)?.value;
 
 function companionNames() {
   const platform = process.platform === 'win32' ? 'win32' : process.platform;
@@ -21,25 +21,25 @@ function companionNames() {
 }
 
 export async function inspectToolchain(root = process.cwd()) {
-  const packageJson = await readJson(path.join(root, 'package.json'));
-  const lock = await readJson(path.join(root, 'package-lock.json'));
+  const owned = await openOwnedRoot(root);
+  const packageJson = JSON.parse(await owned.readFile('package.json', 'utf8'));
+  const lock = JSON.parse(await owned.readFile('package-lock.json', 'utf8'));
   const packages = Object.entries(TOOLCHAIN_CONTRACT).map(([name, contract]) => ({
     name,
-    requested: packageJson.devDependencies?.[name],
+    requested: ownValue(packageJson.devDependencies, name),
     contract,
-    lock: lock.packages?.[`node_modules/${name}`],
+    lock: ownValue(lock.packages, `node_modules/${name}`),
   }));
   const companions = Object.entries(companionNames()).map(([parent, name]) => ({
     parent,
     name,
-    lock: lock.packages?.[`node_modules/${name}`],
+    lock: ownValue(lock.packages, `node_modules/${name}`),
   }));
   const suffix = process.platform === 'win32' ? '.cmd' : '';
   const executables = [];
   for (const name of ['esbuild', 'tsc']) {
     try {
-      await access(path.join(root, 'node_modules', '.bin', `${name}${suffix}`));
-      executables.push(name);
+      if (await owned.resolve(`node_modules/.bin/${name}${suffix}`, { type: 'file', optional: true })) executables.push(name);
     } catch {}
   }
   return { packageJson, lock, packages, companions, executables };
@@ -47,10 +47,11 @@ export async function inspectToolchain(root = process.cwd()) {
 
 export async function checkToolchain(root = process.cwd()) {
   const report = await inspectToolchain(root);
+  const owned = await openOwnedRoot(root);
   const invalid = [];
 
   for (const item of report.packages) {
-    const installed = await readJson(path.join(root, 'node_modules', ...item.name.split('/'), 'package.json'));
+    const installed = JSON.parse(await owned.readFile(`node_modules/${item.name}/package.json`, 'utf8'));
     const { name, requested, contract, lock } = item;
     if (requested !== contract.version) invalid.push(`${name} must be pinned to ${contract.version}`);
     if (!lock || lock.version !== contract.version || lock.license !== contract.license || lock.dev !== true || !lock.integrity || !lock.resolved) {

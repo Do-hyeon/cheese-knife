@@ -35,7 +35,7 @@ export async function runtimeExecutableHashes(root, runtimeFiles) {
     throw fail('runtime-js-inventory-invalid');
   }
   const files = await openOwnedRoot(root);
-  const hashes = {};
+  const hashes = [];
   for (const relative of runtimeFiles) {
     const source = await files.readFile(relative, 'utf8');
     const output = await transform(source, {
@@ -47,9 +47,9 @@ export async function runtimeExecutableHashes(root, runtimeFiles) {
       minifyIdentifiers: false,
       sourcemap: false,
     });
-    hashes[relative] = createHash('sha256').update(output.code).digest('hex');
+    hashes.push([relative, createHash('sha256').update(output.code).digest('hex')]);
   }
-  return hashes;
+  return Object.fromEntries(hashes);
 }
 
 export async function checkRuntimeInventory(

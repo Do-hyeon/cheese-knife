@@ -43,6 +43,13 @@ test('different proof runs are rejected', async () => {
   assert.throws(() => mod.compareProofRuns(left, mod.inspectProofRun(changed)), error => error?.code === 'proof-nondeterministic');
 });
 
+test('metafile byte counts do not make the logical graph OS-dependent', async () => {
+  const mod = await proofModule();
+  const left = cleanRun(), right = cleanRun();
+  right.metafile.inputs['build-proof/shared.ts'].bytes = 99;
+  assert.equal(mod.inspectProofRun(left).graphHash, mod.inspectProofRun(right).graphHash);
+});
+
 test('runner source cannot import network modules', async () => {
   const source = await fs.readFile('scripts/check-build-proof.mjs', 'utf8');
   assert.doesNotMatch(source, /node:(?:http|https|net|tls|dns)/);

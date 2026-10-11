@@ -17,11 +17,18 @@ export async function buildProof(proofRoot) {
 }
 
 function normalizedMetafile(metafile) {
+  const logical = name => {
+    const clean = name.split('\\').join('/').replace(/^.*?build-proof\//, 'build-proof/');
+    return clean.startsWith('build-proof/') ? clean : `build-proof/${clean.replace(/^\.\//, '')}`;
+  };
   const inputs = Object.fromEntries(Object.entries(metafile.inputs || {}).sort(([a], [b]) => a.localeCompare(b)).map(([name, value]) => {
-    const logical = name.split('\\').join('/').replace(/^.*?build-proof\//, 'build-proof/');
-    return [logical.startsWith('build-proof/') ? logical : `build-proof/${logical}`, value];
+    const imports = (value.imports || []).map(item => ({ path: logical(item.path), kind: item.kind, external: item.external === true })).sort((a, b) => a.path.localeCompare(b.path));
+    return [logical(name), { imports }];
   }));
-  const outputs = Object.fromEntries(Object.entries(metafile.outputs || {}).sort(([a], [b]) => a.localeCompare(b)).map(([name, value]) => [path.posix.basename(name.split('\\').join('/')), value]));
+  const outputs = Object.fromEntries(Object.entries(metafile.outputs || {}).sort(([a], [b]) => a.localeCompare(b)).map(([name, value]) => [path.posix.basename(name.split('\\').join('/')), {
+    entryPoint: value.entryPoint ? logical(value.entryPoint) : null,
+    inputs: Object.keys(value.inputs || {}).map(logical).sort(),
+  }]));
   return { inputs, outputs };
 }
 
@@ -36,11 +43,12 @@ export function inspectProofRun(run) {
     if (/https?:\/\//.test(source)) throw fail('proof-remote-url');
     if (/[A-Za-z]:\\[^\s"']+/.test(source)) throw fail('proof-windows-path');
     if (/\/(?:tmp|var\/tmp)\//.test(source)) throw fail('proof-temp-path');
-    if (/\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z/.test(source)) throw fail('proof-timestamp');
+    if (source.split(/[\s"'`]+/).some(token => token.length >= 20 && token.length <= 30 && token.at(4) === '-' && token.at(7) === '-' && token.at(10) === 'T' && token.endsWith('Z') && Number.isFinite(Date.parse(token)))) throw fail('proof-timestamp');
   }
   if (Object.keys(run.metafile.inputs || {}).some(name => name.split('\\').join('/').includes('node_modules/'))) throw fail('proof-unexpected-dependency');
   const graph = normalizedMetafile(run.metafile);
-  return { hashes: Object.fromEntries(names.map(name => [name, sha256(run.outputs[name])])), graphHash: sha256(JSON.stringify(graph)) };
+  const outputs = new Map(Object.entries(run.outputs));
+  return { hashes: Object.fromEntries(names.map(name => [name, sha256(outputs.get(name))])), graphHash: sha256(JSON.stringify(graph)) };
 }
 
 export function compareProofRuns(left, right) {
