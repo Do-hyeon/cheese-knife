@@ -32,6 +32,13 @@ npm run build
 npm run check
 ```
 
+To optionally exercise the installed artifact's settings, multi-window and lifecycle paths in bundled Chromium, run the following gates. External CHZZK requests are replaced by closed fixtures and temporary profiles are removed afterward.
+
+```powershell
+npm run test:e2e
+npm run test:e2e:negative
+```
+
 Enable Developer mode at `chrome://extensions`, load the generated `dist` directory as an unpacked extension, and reload open CHZZK tabs. Do not enable the original extension and this recovery at the same time. Settings are not assumed to transfer or synchronize between different extension IDs.
 
 ## Known limitations
@@ -51,9 +58,9 @@ Security checks cover specific tools and scopes and are not proof that the produ
 
 ## Development direction
 
-Installed MV3 E2E coverage, explicit module boundaries and an incremental TypeScript transition take priority over new features. The feature roadmap will resume after current behavior has a reliable automated safety net.
+The installed MV3 E2E foundation is in place. Explicit module boundaries and an incremental TypeScript transition are next, while the feature roadmap resumes on top of that safety net.
 
-[Execution plan](PLANS.md) (Korean) · [Validation scope](docs/superpowers/validation/2026-10-11-recovery-release-gates.md) (Korean) · [Third-party notices](THIRD_PARTY_NOTICES.md)
+[Execution plan](PLANS.md) (Korean) · [AF00 validation record](docs/superpowers/validation/2026-10-11-af00-installed-extension-e2e.md) (Korean) · [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 Before proposing a change, open an [Issue](https://github.com/Do-hyeon/cheese-knife/issues) with its scope and reproduction steps.
 

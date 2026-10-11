@@ -6,7 +6,7 @@
 
 **Current stack:** Chrome MV3, JavaScript, Node 24.19.0, Node test runner, Playwright 1.62.1, ESLint, npm audit, Gitleaks. TypeScript는 AF01 이후의 장기 목표이며 아직 제품 빌드에 도입하지 않았다.
 
-**Core references:** [AI 친화적 유지보수 기반 장기 설계](docs/superpowers/specs/2026-10-11-ai-friendly-foundation-design.md), [AF00 설치형 E2E 구현 계획](docs/superpowers/plans/2026-10-11-af00-installed-extension-e2e.md), [최신 출시 게이트](docs/superpowers/validation/2026-10-11-recovery-release-gates.md), [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md).
+**Core references:** [AI 친화적 유지보수 기반 장기 설계](docs/superpowers/specs/2026-10-11-ai-friendly-foundation-design.md), [AF00 설치형 E2E 구현 계획](docs/superpowers/plans/2026-10-11-af00-installed-extension-e2e.md), [AF00 검증 기록](docs/superpowers/validation/2026-10-11-af00-installed-extension-e2e.md), [최신 출시 게이트](docs/superpowers/validation/2026-10-11-recovery-release-gates.md), [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md).
 
 작성일: 2026-10-11 / Asia-Seoul.
 
@@ -29,7 +29,7 @@
 - GitHub prerelease `v2.13.3-community.1`이 공개됐다.
 - Chrome 웹 스토어 2.13.3 교체본은 사용자가 제출했으며 마지막 확인 상태는 **심사 대기**다. 이 문서는 심사 통과나 실제 자동 업데이트를 완료로 가정하지 않는다.
 - 현재 계획 브랜치: `codex/ai-foundation-design`.
-- 현재 브랜치의 제품 코드는 변경하지 않았다. 승인된 장기 설계와 AF00 구현 계획만 준비한다.
+- 현재 브랜치에는 AF00 테스트·CI 기반만 추가했다. 확장 제품 동작·권한·사용자 데이터 계약은 변경하지 않았다.
 
 GitHub 상태는 2026-10-11에 공개 API로 재확인했다. 스토어 상태는 사용자가 보고한 마지막 상태이며 P09에서 게시 후 다시 확인한다.
 
@@ -51,15 +51,15 @@ GitHub 상태는 2026-10-11에 공개 API로 재확인했다. 스토어 상태�
 | --- | --- | --- | --- | --- |
 | P01–P08 | 복구·검증·2.13.3 GitHub 공개 | 기존 승인 | DONE | 상세는 archive/validation 참조 |
 | P09 | 스토어 2.13.3 게시·업데이트 기준 고정 | 외부 심사 통과 | WAITING-DEPENDENCY | 실제 게시·새 설치·업데이트·설정 보존 확인 |
-| AF00 | 설치된 MV3 산출물 E2E | 설계 승인 | PLAN-REVIEW | 구현 계획 승인과 실행 방식 선택 |
-| AF01 | 타입·빌드 전환 기반 | AF00 | BLOCKED | AF00 증거를 반영한 별도 설계·계획 |
+| AF00 | 설치된 MV3 산출물 E2E | 설계 승인 | DONE | 검증 기록과 CI 게이트 유지 |
+| AF01 | 타입·빌드 전환 기반 | AF00 | READY | AF00 증거를 반영한 별도 설계·계획 |
 | AF02 | 계약 우선 TypeScript 전환 | AF01 | BLOCKED | 설정·메시지·revision 경계 이전 |
 | AF03 | MAIN runtime·site adapter 분리 | AF02 | BLOCKED | 불안정한 치지직 경계 격리 |
 | AF04 | 기능별 모듈 이전 | AF03 | BLOCKED | audio/player/preview/chat/sidebar 순차 이전 |
 | AF05 | 이행 종료·공개 게이트 | AF04, P09 | BLOCKED | 설치·업데이트·롤백과 정책 정합성 확인 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **AF00 구현 계획 검토**. 제품 구현은 아직 시작하지 않는다.
+현재 커서: **AF01 타입·빌드 기반 설계**. 승인된 세부 설계와 구현 계획 전에는 빌드 도구나 제품 런타임을 변경하지 않는다.
 
 ## 5. P09 — 스토어 게시 후 고정
 
@@ -85,19 +85,19 @@ P09는 외부 심사 대기 중이지만 AF00의 격리된 계획·구현을 막
 - [x] 현재 manifest, UI ID, 후보 빌더, 기존 테스트 파일명과 계획 대조.
 - [x] 실제 BFCache 복원을 Playwright 합격 조건으로 둔 잘못된 초안을 공식 제약에 맞게 수정.
 - [x] clean CI에서 `build`보다 `check`가 먼저 실행되던 잘못된 순서 수정.
-- [ ] 사용자의 구현 계획 승인.
-- [ ] 실행 방식 선택: 주 실행자 순차 구현 또는 task별 subagent 구현·검토.
+- [x] 사용자의 구현 계획 승인.
+- [x] 주 실행자 순차 구현 방식 선택.
 
 ### 구현 체크리스트
 
-- [ ] AF00-1 격리 후보 생성·정리 수명주기.
-- [ ] AF00-2 외부 네트워크를 닫은 최소 CHZZK fixture 라우터.
-- [ ] AF00-3 fresh persistent profile과 bundled Chromium 확장 harness.
-- [ ] AF00-4 popup→background→ISOLATED→MAIN 설정 흐름.
-- [ ] AF00-5 두 창 설정 병합과 styles 원래 대상만 reload.
-- [ ] AF00-6 worker 실제 idle 종료·재기동, 합성 BFCache 수명주기, 확장 reload/context invalidation.
-- [ ] AF00-7 MAIN runtime 누락 negative control과 CI 공개 게이트.
-- [ ] AF00-8 전체 회귀·패키지 경계·validation·README 기록.
+- [x] AF00-1 격리 후보 생성·정리 수명주기.
+- [x] AF00-2 외부 네트워크를 닫은 최소 CHZZK fixture 라우터.
+- [x] AF00-3 fresh persistent profile과 bundled Chromium 확장 harness.
+- [x] AF00-4 popup→background→ISOLATED→MAIN 설정 흐름.
+- [x] AF00-5 두 창 설정 병합과 styles 원래 대상만 reload.
+- [x] AF00-6 worker wake·설정 보존, 합성 persisted 수명주기, context invalidation 후 fresh startup. 자연 idle 종료와 headless unpacked in-place reload 미관측은 validation에 제한으로 기록.
+- [x] AF00-7 MAIN runtime 누락 negative control과 CI 공개 게이트.
+- [x] AF00-8 전체 회귀·패키지 경계·validation·README 기록.
 
 완료 조건: fresh profile의 설치형 positive/negative E2E와 기존 게이트가 모두 통과하고, 제품 동작·권한·데이터 계약이 넓어지지 않으며 private 프로필이 성공·실패 뒤 모두 제거된다.
 
@@ -158,18 +158,13 @@ node scripts/build.mjs
 node scripts/check-package.mjs dist
 node scripts/check-audio-quality.mjs --chrome
 node scripts/tool-audit.mjs
-git -c core.safecrlf=false diff --check
-```
-
-AF00 완료 뒤 다음 명령을 공개 게이트에 추가한다.
-
-```powershell
 npm run test:e2e
 npm run test:e2e:negative
+git -c core.safecrlf=false diff --check
 ```
 
 문서만 바뀌면 전체 제품 회귀를 반복하지 않는다. 링크·경로·상태·`diff --check`를 검증한다.
 
 ## 10. 현재 사용자 개입 지점
 
-AF00 구현 계획을 검토한 뒤 실행 방식을 선택해야 한다. 승인 전에는 TypeScript, manifest, 제품 코드와 새 빌드 도구를 변경하지 않는다. 스토어 심사가 끝나면 P09 설치 수용을 별도로 재개한다.
+AF01의 도구 선택, 출력 계약과 점진적 전환 범위를 설계·공격 검토한 뒤 구현 계획을 승인해야 한다. 그 전에는 TypeScript, manifest, 제품 런타임과 새 빌드 도구를 변경하지 않는다. 스토어 심사가 끝나면 P09 설치 수용을 별도로 재개한다.
