@@ -2,7 +2,6 @@
 // floating output before a silent sink; never record a broadcast/user profile.
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {chromium} from 'playwright';
 import {createRequire} from 'node:module';
 import {measureSignal,channelDifferenceRms,rmsEnvelope,audioQualityFailures} from './audio-metrics.mjs';
 import {openOwnedRoot} from './owned-files.mjs';
@@ -11,6 +10,7 @@ const require=createRequire(import.meta.url);
 const {playerHTML}=require('../tests/helpers.cjs');
 const repositoryRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const options=parseAudioQualityArgs(process.argv.slice(2),repositoryRoot);
+const {chromium}=await import('playwright');
 const files=await openOwnedRoot(repositoryRoot);
 const targetFiles=await openOwnedRoot(options.root);
 const artifact=await describeAudioArtifact(options.root,options.label);
