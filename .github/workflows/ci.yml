@@ -9,7 +9,35 @@ permissions:
   contents: read
 
 jobs:
+  foundation:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24.19.0
+          cache: npm
+
+      - name: Install exact dependencies without scripts
+        run: npm ci --ignore-scripts
+
+      - name: Check offline foundation
+        run: npm run check:toolchain && npm run check:runtime-js && npm run typecheck && npm run check:build-proof
+        env:
+          npm_config_offline: "true"
+          HTTP_PROXY: http://127.0.0.1:9
+          HTTPS_PROXY: http://127.0.0.1:9
+          NO_PROXY: ""
+
   verify:
+    needs: foundation
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
