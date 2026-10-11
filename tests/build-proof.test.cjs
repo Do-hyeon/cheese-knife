@@ -44,8 +44,14 @@ test('artifact negative table fails with distinct codes', async () => {
   const identity = cleanRun(); identity.outputs['main.js'] = 'const leaked = "runner-host";';
   assert.throws(() => mod.inspectProofRun(identity, ['runner-host']), error => error?.code === 'proof-environment-identity');
 
+  const embeddedIdentity = cleanRun(); embeddedIdentity.outputs['main.js'] = 'const leaked = "host:runner-host";';
+  assert.throws(() => mod.inspectProofRun(embeddedIdentity, ['runner-host']), error => error?.code === 'proof-environment-identity');
+
   const shortIdentity = cleanRun(); shortIdentity.outputs['main.js'] = 'const leaked = "x"; const extra = "example";';
   assert.throws(() => mod.inspectProofRun(shortIdentity, ['x']), error => error?.code === 'proof-environment-identity');
+
+  const embeddedShortIdentity = cleanRun(); embeddedShortIdentity.outputs['main.js'] = 'const leaked = "host:x"; const allowed = "example";';
+  assert.throws(() => mod.inspectProofRun(embeddedShortIdentity, ['x']), error => error?.code === 'proof-environment-identity');
 });
 
 test('different proof runs are rejected', async () => {

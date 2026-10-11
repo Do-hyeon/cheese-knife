@@ -61,7 +61,7 @@
 ### 수정 파일
 
 - `package.json`, `package-lock.json`: exact dev dependencies와 AF01 명령을 추가한다.
-- `config.js`, `style-schema.js`, `settings-contract.js`, `settings-client.js`, `settings-broker.js`: 런타임 변화 없는 JSDoc 타입만 추가한다.
+- `config.js`, `style-schema.js`, `settings-contract.js`, `settings-broker.js`: 런타임 변화 없는 JSDoc 타입만 추가한다. `settings-client.js`는 JSDoc과 함께 검토에서 발견된 malformed reply 거부 validator를 추가하는 유일한 실행 변경이다.
 - `scripts/check-package.mjs`: distribution 전용 금지 파일 검사를 export한다.
 - `scripts/build.mjs`: 복사 완료 뒤 distribution 금지 파일 검사를 호출한다. 복사 목록은 바꾸지 않는다.
 - `tests/package.test.cjs`: proof/developer 파일 미포함과 source→dist runtime byte 동일성을 검사한다.
@@ -82,7 +82,7 @@
 
 - [ ] **Step 1: pinned dependency 실패 검사를 작성한다**
 
-`tests/toolchain-contract.test.cjs`에 exact version/license/integrity가 없거나 root dependency가 range일 때 `checkToolchain`이 거부하는 테스트와, `node_modules/.bin/tsc`·`esbuild` 중 하나가 없을 때 `toolchain-executable-missing`으로 실패하는 테스트를 작성한다.
+`tests/toolchain-contract.test.cjs`에 exact version/license/integrity가 없거나 root dependency가 range일 때 `checkToolchain`이 거부하는 테스트와, package의 `bin` metadata나 package-owned `tsc`·`esbuild` target 중 하나가 없을 때 `toolchain-executable-missing`으로 실패하는 테스트를 작성한다. npm의 OS별 `.bin` shim 형식은 신뢰 경계로 사용하지 않는다.
 
 - [ ] **Step 2: 실패를 확인한다**
 

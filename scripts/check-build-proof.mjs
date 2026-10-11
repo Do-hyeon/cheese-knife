@@ -39,6 +39,22 @@ function environmentIdentities() {
   return [...new Set(values.filter(value => typeof value === 'string' && value.length > 0))];
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function containsEnvironmentIdentity(source, identities) {
+  const literals = source.match(/(["'`])(?:\\.|[^\\\r\n])*?\1/g) || [];
+  return identities.some(identity => literals.some(raw => {
+    let value = raw.slice(1, -1);
+    if (raw.startsWith('"')) {
+      try { value = JSON.parse(raw); } catch {}
+    }
+    if (identity.length > 2) return value.includes(identity);
+    return new RegExp(`(^|[^A-Za-z0-9_-])${escapeRegExp(identity)}($|[^A-Za-z0-9_-])`).test(value);
+  }));
+}
+
 export function inspectProofRun(run, identities = environmentIdentities()) {
   const names = Object.keys(run.outputs).sort();
   const expected = PROOF_CONTEXTS.map(name => `${name}.js`).sort();
@@ -51,7 +67,7 @@ export function inspectProofRun(run, identities = environmentIdentities()) {
     if (/[A-Za-z]:\\[^\s"']+/.test(source)) throw fail('proof-windows-path');
     if (/\/(?:tmp|var\/tmp)\//.test(source)) throw fail('proof-temp-path');
     if (/(["'`])\/(?!\/)(?:\\.|[^\\\r\n])*?\1/.test(source)) throw fail('proof-posix-path');
-    if (identities.some(identity => source.includes(JSON.stringify(identity)))) throw fail('proof-environment-identity');
+    if (containsEnvironmentIdentity(source, identities)) throw fail('proof-environment-identity');
     if (source.split(/[\s"'`]+/).some(token => token.length >= 20 && token.length <= 30 && token.at(4) === '-' && token.at(7) === '-' && token.at(10) === 'T' && token.endsWith('Z') && Number.isFinite(Date.parse(token)))) throw fail('proof-timestamp');
   }
   if (Object.keys(run.metafile.inputs || {}).some(name => name.split('\\').join('/').includes('node_modules/'))) throw fail('proof-unexpected-dependency');

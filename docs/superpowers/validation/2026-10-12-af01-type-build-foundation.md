@@ -19,7 +19,7 @@ manifest, HTML, background 등록, 권한, host permission, 외부 통신과 사
 | `@types/chrome` | 0.2.8 | MIT | Chrome MV3 API 타입 proof |
 | esbuild | 0.28.2 | MIT | 네 실행 문맥의 IIFE·CSP·결정성 proof |
 
-버전은 정확히 고정되며 `check:toolchain`이 패키지 메타데이터, 라이선스, 설치 스크립트와 native optional package 경계를 검사한다. 제품 `dist` 생성은 기존 파일 복사를 유지하고 esbuild 출력물을 포함하지 않는다.
+버전은 정확히 고정되며 `check:toolchain`이 패키지 메타데이터, 라이선스, package-owned `bin` target과 native optional package 경계를 검사한다. 제품 `dist` 생성은 기존 파일 복사를 유지하고 esbuild 출력물을 포함하지 않는다.
 
 ## 자동 검증
 
@@ -51,6 +51,7 @@ manifest, HTML, background 등록, 권한, host permission, 외부 통신과 사
   - main world: `88b57045911eb5e765f72d10bd0c8a1cba7f26a2d693b0a309ab2e57463d8689`
 - 논리 import graph: `aff9f9d5ef5dbc47b47c0d2b25ddee7b6ebc4197275b225d300347e91a56cedf`
 - 논리 graph는 OS별 경로 구분자와 esbuild의 비계약 byte count를 제외한다.
+- proof 출력의 인용 문자열에 환경 식별자가 독립 값이나 복합 문자열로 포함되면 거부한다. 1~2자 식별자는 영숫자·밑줄·하이픈 토큰 경계를 적용해 일반 단어의 부분 문자열 오탐을 제한한다.
 - runtime executable 기준선은 `tests/fixtures/runtime-executable-baseline.json`에 파일별로 고정한다.
 - `settings-client.js`는 malformed snapshot·patch CSS·reload reply를 거부하도록 `25ae1391e38782dcff2c58e75e5910df69591ea91b29a7426c07f0e772c23bc8`로 전진했다. 이전 baseline은 `ba9469653ace0fb7ee874c24933ce830d68f0efb65150ccb4a68dc4f8cc0f983`다.
 
