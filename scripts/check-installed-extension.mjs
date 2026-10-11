@@ -29,7 +29,7 @@ const waitUntil = async (read, accept, code, timeoutMs = 15000) => {
 
 const storageSnapshot = worker => worker.evaluate(() => chrome.storage.local.get(null));
 
-export async function runBaseInstalledScenario({ context, worker, extensionId, responses, restartSession }) {
+export async function runBaseInstalledScenario({ context, worker, extensionId, responses, restartSession, captureState }) {
   const pageErrors = [];
   const routeErrors = [];
   const fulfilled = [];
@@ -132,6 +132,7 @@ export async function runBaseInstalledScenario({ context, worker, extensionId, r
   const allowed = new Set(responses.map(response => response.url));
   assertCondition(fulfilled.every(url => allowed.has(url)), 'network-allowlist-escape');
 
+  if (typeof captureState === 'function') captureState({ context, worker, extensionId, page, popup, pageErrors, routeErrors });
   return {
     worker: passed({ extensionId }),
     popup: passed({ phase: 'ready' }),
@@ -145,6 +146,135 @@ export async function runBaseInstalledScenario({ context, worker, extensionId, r
   };
 }
 
+const runtimeSnapshot = page => page.evaluate(() => {
+  const runtime = window[Symbol.for('cheese-knife.runtime.v1')];
+  const video = document.querySelector('video');
+  return {
+    ready: !!runtime?.configReady,
+    generation: runtime?.generation,
+    ownedControls: document.querySelectorAll('.knife-owned').length,
+    loads: window.__knifeFixture?.loads,
+    video: video ? { muted: video.muted, volume: video.volume, playbackRate: video.playbackRate } : null,
+  };
+});
+
+const sendSettingsMessage = (page, message) => page.evaluate(value => new Promise(resolve => chrome.runtime.sendMessage(value, resolve)), message);
+
+export async function runMultiWindowScenario({ context, worker, extensionId, page, popup, pageErrors = [], routeErrors = [] }) {
+  assertCondition(context && worker && page && popup, 'base-handshake-state-missing');
+  await popup.close();
+  const firstTab = await worker.evaluate(async url => {
+    const matches = (await chrome.tabs.query({})).filter(tab => tab.url === url);
+    return matches.length === 1 ? { tabId: matches[0].id, windowId: matches[0].windowId } : null;
+  }, FIXTURE_LIVE_URL);
+  assertCondition(firstTab && [firstTab.tabId, firstTab.windowId].every(Number.isSafeInteger), 'first-target-missing');
+
+  const secondTarget = await worker.evaluate(async url => {
+    const created = await chrome.windows.create({ url, focused: false });
+    const tabs = created.tabs?.length ? created.tabs : await chrome.tabs.query({ windowId: created.id });
+    return tabs.length === 1 ? { tabId: tabs[0].id, windowId: created.id } : null;
+  }, FIXTURE_LIVE_URL);
+  assertCondition(secondTarget && [secondTarget.tabId, secondTarget.windowId].every(Number.isSafeInteger), 'second-target-missing');
+  assertCondition(firstTab.tabId !== secondTarget.tabId && firstTab.windowId !== secondTarget.windowId, 'multi-window-not-distinct');
+  const secondPage = await waitUntil(
+    () => Promise.resolve(context.pages().find(candidate => candidate !== page && candidate.url() === FIXTURE_LIVE_URL)),
+    Boolean,
+    'second-page-missing',
+  );
+  await secondPage.goto(FIXTURE_LIVE_URL, { waitUntil: 'domcontentloaded' });
+  await secondPage.waitForFunction(() => window[Symbol.for('cheese-knife.runtime.v1')]?.configReady === true, null, { timeout: 15000 });
+  await page.waitForFunction(() => window[Symbol.for('cheese-knife.runtime.v1')]?.configReady === true, null, { timeout: 15000 });
+  await Promise.all([
+    page.waitForFunction(() => Number.isSafeInteger(window.__knifeFixture?.loads), null, { timeout: 15000 }),
+    secondPage.waitForFunction(() => Number.isSafeInteger(window.__knifeFixture?.loads), null, { timeout: 15000 }),
+  ]);
+
+  const popupA = await context.newPage();
+  const popupB = await context.newPage();
+  await Promise.all([
+    popupA.goto(`chrome-extension://${extensionId}/popup.html`, { waitUntil: 'domcontentloaded' }),
+    popupB.goto(`chrome-extension://${extensionId}/popup.html`, { waitUntil: 'domcontentloaded' }),
+  ]);
+  await Promise.all([
+    popupA.locator('#settings-status[data-phase="ready"]').waitFor({ timeout: 15000 }),
+    popupB.locator('#settings-status[data-phase="ready"]').waitFor({ timeout: 15000 }),
+  ]);
+  await popupA.locator('#arrowSeek').check();
+  await waitUntil(() => storageSnapshot(worker), value => value?.config?.arrowSeek === true, 'concurrent-prime-setting-missing');
+  await Promise.all([popupA.locator('#arrowSeek').uncheck(), popupB.locator('#previewVolume').fill('25')]);
+  const concurrent = await waitUntil(
+    () => storageSnapshot(worker),
+    value => value?.config?.arrowSeek === false && value?.config?.previewVolume === 25,
+    'concurrent-settings-missing',
+  );
+  await waitUntil(async () => ({
+    aArrow: await popupA.locator('#arrowSeek').isChecked(),
+    aVolume: await popupA.locator('#previewVolume').inputValue(),
+    bArrow: await popupB.locator('#arrowSeek').isChecked(),
+    bVolume: await popupB.locator('#previewVolume').inputValue(),
+  }), value => !value.aArrow && !value.bArrow && value.aVolume === '25' && value.bVolume === '25', 'concurrent-popup-sync-missing');
+
+  const beforeFirstReload = await runtimeSnapshot(page);
+  const beforeSecondReload = await runtimeSnapshot(secondPage);
+  const stylesPage = await context.newPage();
+  const stylesURL = new URL(`chrome-extension://${extensionId}/styles.html`);
+  stylesURL.searchParams.set('targetTabId', firstTab.tabId);
+  stylesURL.searchParams.set('targetWindowId', firstTab.windowId);
+  await stylesPage.goto(stylesURL.href, { waitUntil: 'domcontentloaded' });
+  await stylesPage.locator('#settings-status[data-phase="ready"]').waitFor({ timeout: 15000 });
+  await stylesPage.locator('#hide-ranking').check();
+  const reload = stylesPage.locator('#reload');
+  await reload.waitFor({ state: 'visible', timeout: 15000 });
+  await waitUntil(() => reload.isEnabled(), Boolean, 'style-reload-not-ready');
+  const navigation = page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 });
+  await reload.click();
+  await navigation;
+  await page.waitForFunction(() => window[Symbol.for('cheese-knife.runtime.v1')]?.configReady === true, null, { timeout: 15000 });
+  await page.waitForFunction(() => Number.isSafeInteger(window.__knifeFixture?.loads), null, { timeout: 15000 });
+  const afterFirstReload = await waitUntil(() => runtimeSnapshot(page), value => value.loads === beforeFirstReload.loads + 1, 'style-target-not-reloaded');
+  const afterSecondReload = await runtimeSnapshot(secondPage);
+  assertCondition(afterSecondReload.loads === beforeSecondReload.loads, 'style-cross-target-reload');
+  assertCondition(await page.evaluate(() => getComputedStyle(document.querySelector('[class^="live_chatting_ranking_container__"]')).display === 'none'), 'style-not-applied');
+
+  const isolationFirst = await runtimeSnapshot(page);
+  const isolationSecond = await runtimeSnapshot(secondPage);
+  await page.close();
+  const reloadReply = await sendSettingsMessage(stylesPage, {
+    namespace: 'cheese-knife-settings', protocol: 1, action: 'reload-target', requestId: 'e2e-closed-target',
+    targetTabId: firstTab.tabId, targetWindowId: firstTab.windowId,
+  });
+  assertCondition(reloadReply?.ok === false && ['target-missing', 'target-origin-changed', 'target-window-changed'].includes(reloadReply.code), 'closed-style-target-accepted');
+  assertCondition((await runtimeSnapshot(secondPage)).loads === isolationSecond.loads, 'closed-target-reloaded-other-tab');
+
+  await popupB.locator('#previewVolume').fill('26');
+  await waitUntil(() => storageSnapshot(worker), value => value?.config?.previewVolume === 26, 'isolation-setting-not-stored');
+  await secondPage.waitForFunction(() => window[Symbol.for('cheese-knife.runtime.v1')]?.config.previewVolume === 26, null, { timeout: 15000 });
+  const finalSecond = await runtimeSnapshot(secondPage);
+  assertCondition(finalSecond.generation === isolationSecond.generation, 'second-runtime-generation-changed');
+  assertCondition(finalSecond.ownedControls === isolationSecond.ownedControls, 'second-runtime-controls-changed');
+  assertCondition(finalSecond.loads === isolationSecond.loads, 'second-runtime-reloaded');
+  assertCondition(JSON.stringify(finalSecond.video) === JSON.stringify(isolationSecond.video), 'second-runtime-video-changed');
+  assertCondition(routeErrors.length === 0, 'fixture-route-error');
+  assertCondition(pageErrors.length === 0, 'installed-page-error');
+
+  return {
+    multiWindow: passed({ first: firstTab, second: secondTarget }),
+    concurrentSettings: passed({ revision: concurrent.settingsRevision, arrowSeek: false, previewVolume: 25 }),
+    styleTargetReload: passed({ firstReloads: afterFirstReload.loads - beforeFirstReload.loads, secondReloads: afterSecondReload.loads - beforeSecondReload.loads, closedTargetCode: reloadReply.code }),
+    runtimeIsolation: passed({ firstGeneration: isolationFirst.generation, secondGeneration: finalSecond.generation, secondLoads: finalSecond.loads }),
+  };
+}
+
+export async function runInstalledScenarioSequence(args, implementations = {}) {
+  const state = {};
+  const base = implementations.base || runBaseInstalledScenario;
+  const multiWindow = implementations.multiWindow || runMultiWindowScenario;
+  const baseSections = await base({ ...args, captureState: value => Object.assign(state, value) });
+  assertCondition(state.context && state.worker, 'base-handshake-state-missing');
+  const multiWindowSections = await multiWindow({ ...args, ...state });
+  return { ...baseSections, ...multiWindowSections };
+}
+
 const defaultDependencies = {
   openRepository: () => openOwnedRoot(repositoryRoot),
   verifyCandidate,
@@ -153,7 +283,7 @@ const defaultDependencies = {
   loadFixtureResponses,
   launchInstalledExtension,
   chromiumApi: chromium,
-  scenario: runBaseInstalledScenario,
+  scenario: runInstalledScenarioSequence,
 };
 
 const relativeOwnedPath = (root, absolute) => {

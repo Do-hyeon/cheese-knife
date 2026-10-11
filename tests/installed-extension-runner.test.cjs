@@ -84,3 +84,38 @@ test('installed E2E runner never overwrites an existing artifact directory', asy
   assert.equal(fixture.events.includes('candidate-remove'), true);
   assert.equal(fixture.events.includes('profile-create'), false);
 });
+
+test('multi-window scenario starts only after the base handshake state is captured', async () => {
+  const { runInstalledScenarioSequence } = await runnerModule();
+  const order = [];
+  const result = await runInstalledScenarioSequence({ marker: 'input' }, {
+    async base(args) {
+      order.push('base');
+      assert.equal(args.marker, 'input');
+      args.captureState({ context: {}, worker: {}, handshake: 'ready' });
+      return { popup: { passed: true } };
+    },
+    async multiWindow(args) {
+      order.push('multi-window');
+      assert.equal(args.handshake, 'ready');
+      return { multiWindow: { passed: true } };
+    },
+  });
+  assert.deepEqual(order, ['base', 'multi-window']);
+  assert.deepEqual(result, { popup: { passed: true }, multiWindow: { passed: true } });
+});
+
+test('multi-window scenario failure keeps runner cleanup guarantees', async () => {
+  const { runInstalledExtensionE2E, runInstalledScenarioSequence } = await runnerModule();
+  const fixture = runnerFixture();
+  fixture.dependencies.scenario = args => runInstalledScenarioSequence(args, {
+    async base(baseArgs) { baseArgs.captureState({ context: {}, worker: {}, handshake: 'ready' }); return { popup: { passed: true } }; },
+    async multiWindow() { throw Object.assign(new Error('multi-window-failed'), { code: 'multi-window-failed' }); },
+  });
+  await assert.rejects(runInstalledExtensionE2E({ runId: 'Run1', headed: false, dependencies: fixture.dependencies }), {
+    code: 'multi-window-failed',
+  });
+  assert.equal(fixture.events.includes('context-close'), true);
+  assert.equal(fixture.events.includes('profile-remove'), true);
+  assert.equal(fixture.events.includes('candidate-remove'), true);
+});
