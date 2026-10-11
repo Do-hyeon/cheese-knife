@@ -37,6 +37,8 @@
 
 ## 파일과 공통 계약
 
+구현 최종 검토 보완: 성공 reload 응답에는 아래 기존 필드에 `appliedStyles`를 추가한다. 값은 그 작업이 확인한 정규화된 스타일 목록이며 응답 시점 화면 값으로 대체하지 않는다. 원래 승인 계약에 대한 이 보완과 실패 검사는 [최종 검토 기록](../reviews/2026-10-11-multi-window-settings-final-review.md)에 남긴다.
+
 새 루트 파일은 `style-schema.js`(현재 STYLES 목록), `settings-contract.js`(순수 검증·병합), `settings-broker.js`(백그라운드 큐·Chrome API), `settings-client.js`(설정 화면의 입력·응답 순서)다. `config.js`의 CONFIGS와 normalizeConfig를 재사용한다. 기존 `background.js`는 로드·이벤트 연결·권한 확인만 담당하도록 줄인다. Task 1~3의 새 모듈은 Task 4 전까지 실제 entry point에 연결하지 않는다.
 
 `RawSettings`는 저장된 네 키와 legacy `t`를 담는 내부 객체다. `Snapshot`은 `{revision, config, styles, styleParameters, css}`이고 config는 normalizeConfig 결과, styles/매개변수는 알려진 유효 항목만 포함한다. CSS 상태는 `{state:'pending'|'ready'|'failed', code:string|null}`이다.

@@ -22,7 +22,9 @@ reload.addEventListener('click', async () => {
   if (reload.disabled || !target) return;
   try {
     const result = await settingsClient.reloadTarget(target);
-    if (result.reloaded) { appliedStyles = [...currentView.values.styles]; render(currentView); }
+    if (result.reloaded && Array.isArray(result.appliedStyles)) {
+      appliedStyles = [...result.appliedStyles]; render(currentView);
+    }
   } catch { /* Client publishes the controlled failure state. */ }
 });
 retry.addEventListener('click', () => { void settingsClient.retryStyles().catch(() => {}); });

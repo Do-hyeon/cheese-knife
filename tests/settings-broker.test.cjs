@@ -69,6 +69,17 @@ test('snapshot waits for pending write instead of exposing its intermediate stat
   let readDone = false; const read = h.snapshot().then(r => { readDone = true; return r; }); await h.settle(); assert.equal(readDone, false);
   gate.release(); await write; assert.equal((await read).snapshot.config.arrowSeek, false);
 });
+
+test('reload returns only its own canonical applied styles even after a later save', async t => {
+  const h = settingsHarness(t, { styles: ['left-chat', 'future-style'] }); await h.initialize();
+  const response = h.holdNext('response'), pending = h.reload(); await response.reached;
+  await h.patch('styles', [style('hide-studio', true)]); response.release();
+  const result = await pending;
+  assert.equal(result.reloaded, true); assert.equal(result.revision, 0);
+  assert.deepEqual(Array.from(result.appliedStyles), ['left-chat']);
+  assert.ok(h.saved.styles.includes('hide-studio'));
+  assert.ok(h.saved.styles.includes('future-style'), 'unknown stored field remains private and preserved');
+});
 test('a closed response channel cannot create an unhandled failure or block later requests', async t => {
   const h = settingsHarness(t); await h.initialize();
   h.broker.listener({ namespace: 'cheese-knife-settings', protocol: 1, action: 'patch', requestId: 'closed', operations: [config('arrowSeek', false)] },

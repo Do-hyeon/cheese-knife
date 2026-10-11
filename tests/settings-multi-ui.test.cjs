@@ -64,6 +64,33 @@ test('font nonzero changes do not request an unnecessary second CSS reload', asy
   input(a, 'chat-font-size', 9); await h.settle(); assert.equal(a.dom.window.document.getElementById('reload').classList.contains('hidden'), true);
   assert.equal(h.saved.styleParameters['chat-font-size'], 9);
 });
+
+for (const scenario of ['local input', 'another UI', 'CSS failure'])
+test('reload acknowledgement cannot mark later styles applied: ' + scenario, async t => {
+  const h = settingsHarness(t); await h.initialize();
+  const a = await h.openUi('styles', { target: { tabId: 7, windowId: 9 } });
+  const b = scenario === 'another UI' ? await h.openUi('styles') : a;
+  input(a, 'left-chat', true); await h.settle();
+  const reloadGate = h.holdNext(scenario === 'another UI' ? 'callback:reload-target' : 'tab-reload');
+  const button = a.dom.window.document.getElementById('reload');
+  button.click(); await reloadGate.reached;
+  assert.deepEqual(h.registrations.get('styles').css, ['styles/left-chat.css']);
+  if (scenario === 'CSS failure') h.failNext('css-update');
+  input(b, 'hide-studio', true);
+  if (scenario === 'another UI') await h.settle();
+  reloadGate.release(); await h.settle();
+  if (scenario === 'CSS failure') {
+    assert.equal(button.disabled, true);
+    a.dom.window.document.getElementById('settings-retry').click(); await h.settle();
+  }
+  assert.ok(h.saved.styles.includes('hide-studio'));
+  assert.equal(h.calls.filter(c => c.kind === 'tab-reload').length, 1);
+  assert.equal(button.classList.contains('hidden'), false, 'later style still needs target application');
+  assert.equal(button.disabled, false);
+  button.click(); await h.settle();
+  assert.equal(h.calls.filter(c => c.kind === 'tab-reload').length, 2);
+  assert.equal(button.classList.contains('hidden'), true);
+});
 for (const locale of ['ko', 'en']) test('unknown response is shown honestly and never automatically resent in ' + locale, async t => {
   const h = settingsHarness(t); await h.initialize(); const a = await h.openUi('popup', { locale, fakeTime: true });
   const gate = h.holdNext('callback:patch'); input(a, 'previewVolume', 10); await gate.reached;

@@ -105,7 +105,8 @@ var createSettingsBroker = chromeApi => {
     if (tab.windowId !== request.targetWindowId) throw fault('target', 'target-window-changed');
     try { await chromeApi.tabs.reload(request.targetTabId); }
     catch { throw fault('reload', 'target-reload-failed'); }
-    return { ok: true, requestId: request.requestId, revision, reloaded: true, css: { ...css }, stage: null, code: null };
+    return { ok: true, requestId: request.requestId, revision, reloaded: true,
+      appliedStyles: contract.makeSnapshot(raw, css).styles, css: { ...css }, stage: null, code: null };
   }
   function listener(message, sender, respond) {
     if (message?.namespace !== 'cheese-knife-settings') return false;
