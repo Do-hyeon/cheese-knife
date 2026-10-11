@@ -28,8 +28,8 @@
 - PR #2 `2.13.3` 복구 변경, PR #3 README 간소화, PR #4 AF00 설치형 E2E 기반과 PR #5 AF01 타입·빌드 기반은 `main`에 병합됐다.
 - GitHub prerelease `v2.13.3-community.1`이 공개됐다.
 - Chrome 웹 스토어 2.13.3 교체본은 사용자가 게시 완료를 확인했다. 새 설치·기존 설치 자동 업데이트와 설정 보존은 아직 완료로 가정하지 않는다.
-- 현재 계획 브랜치: `codex/af02-contract-first-migration`.
-- AF01은 PR #5로 병합됐고 최종 공개 CI run `38157976040`에서 Windows·Ubuntu foundation과 전체 verify가 통과했다. 현재 브랜치는 승인된 AF02 구현·로컬 전체 검증·독립 branch 검토와 지적 보완을 완료했다.
+- 현재 기준 브랜치: `main` (`15fbfba`, AF02 PR #6 병합).
+- AF01은 PR #5로 병합됐고 최종 공개 CI run `38157976040`에서 Windows·Ubuntu foundation과 전체 verify가 통과했다. AF02는 PR #6과 공개 CI run `38161802432`를 통과해 `main`에 병합됐다.
 
 GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 상태는 사용자가 보고한 마지막 상태이며 P09에서 게시 후 다시 확인한다.
 
@@ -53,13 +53,13 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 상태�
 | P09 | 스토어 2.13.3 게시·업데이트 기준 고정 | 외부 심사 통과 | READY | 새 설치·업데이트·설정 보존 확인 |
 | AF00 | 설치된 MV3 산출물 E2E | 설계 승인 | DONE | 검증 기록과 CI 게이트 유지 |
 | AF01 | 타입·빌드 전환 기반 | AF00 | DONE | strict/build proof와 공개 CI 유지 |
-| AF02 | 계약 우선 TypeScript 전환 | AF01 | READY | 한글 PR·Windows/Ubuntu 공개 CI |
-| AF03 | MAIN runtime·site adapter 분리 | AF02 | BLOCKED | 불안정한 치지직 경계 격리 |
+| AF02 | 계약 우선 TypeScript 전환 | AF01 | DONE | 생성·drift·strict·설치형 E2E 게이트 유지 |
+| AF03 | MAIN runtime·site adapter 분리 | AF02 | PLAN-REVIEW | 불안정한 치지직 경계 격리 상세 설계 |
 | AF04 | 기능별 모듈 이전 | AF03 | BLOCKED | audio/player/preview/chat/sidebar 순차 이전 |
 | AF05 | 이행 종료·공개 게이트 | AF04, P09 | BLOCKED | 설치·업데이트·롤백과 정책 정합성 확인 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **AF02 한글 PR·공개 CI**. 공개 게이트가 통과하면 병합 상태를 고정한다.
+현재 커서: **AF03 상세 설계**. 구현 전에 runtime·site adapter 경계와 롤백 단위를 공격 검토하고 사용자 승인을 받는다.
 
 ## 5. P09 — 스토어 게시 후 고정
 
@@ -136,7 +136,7 @@ P09의 게시 뒤 설치·업데이트 수용 검사는 AF02의 내부 계약 �
 - [x] 공개 checkout 조건 전체 회귀·객관 오디오·설치형 positive/negative E2E 확인.
 - [x] npm·Gitleaks 0, AF02 신규 ESLint 관측 0과 기존 guarded observation 보존 확인.
 - [x] 전체 branch 독립 검토와 Critical/Important finding 보완.
-- [ ] 한글 PR, Windows·Ubuntu 공개 CI와 병합 상태 고정.
+- [x] 한글 PR #6, Windows·Ubuntu 공개 CI run `38161802432`와 merge commit `15fbfba`로 상태 고정.
 
 ### AF03 — runtime·adapter 분리
 
@@ -189,4 +189,4 @@ git -c core.safecrlf=false diff --check
 
 ## 10. 현재 사용자 개입 지점
 
-AF02의 다음 단계는 한글 PR·공개 CI다. 승인된 구현 범위 안에서는 사용자 개입 없이 이어가며 GitHub 인증·보호 규칙·CI 장애처럼 외부 입력이 실제로 필요한 경우에만 요청한다. P09 설치 수용은 AF02와 별도로 재개한다.
+다음 단계는 AF03 상세 설계와 공격 검토다. 구현 범위·불변 조건·검증·롤백을 한 묶음으로 제시해 승인받은 뒤, 사용자 개입이 필요하지 않은 구현과 검증은 순차적으로 이어간다. P09 설치 수용은 AF03과 별도로 재개한다.
