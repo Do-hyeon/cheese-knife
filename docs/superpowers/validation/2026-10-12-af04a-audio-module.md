@@ -92,7 +92,14 @@ Astra max 독립 검토가 pending resume 도중 final pagehide 뒤 resolve 경�
 
 ## 공개 PR과 병합
 
-로컬 검증 시점에는 공개 PR·CI·병합 전이다. 한글 PR에서 Windows·Ubuntu foundation과 전체 verify가 모두 통과한 뒤에만 병합하고, 별도 상태 고정 변경에서 PR·CI·merge commit을 기록한다.
+- 한글 PR: [#13 AF04-A: 오디오 런타임을 TypeScript 모듈로 이전](https://github.com/Do-hyeon/cheese-knife/pull/13)
+- 공개 CI: [run 38185697240](https://github.com/Do-hyeon/cheese-knife/actions/runs/38185697240), 전체 결론 `success`
+  - Ubuntu foundation: 12초, 통과
+  - Windows foundation: 43초, 통과
+  - 전체 verify: 3분 2초, Node tests·build·package·객관 오디오·설치형 positive/negative E2E 통과
+- 병합: 2026-10-12 08:53:11 KST, merge commit `5d28c481b4d2b693eb08d504140c72cc99412cb1`
+
+공개 CI와 병합은 로컬 수용 결과를 변경하지 않았다. PR #13 병합 뒤 `main`을 AF04-B의 새 기준점으로 고정한다.
 
 ## 재현 명령
 
@@ -115,4 +122,4 @@ git diff --check
 
 ## 롤백
 
-병합 전 제품 범위는 `dfd5a59..5bb3e9a`다. 병합 뒤에는 최신 `main` 기반 복구 브랜치에서 `git revert -m 1 <AF04-A merge commit>`을 실행하고 전체 게이트를 다시 검증한다. 강제 reset은 사용하지 않으며 manifest, 사용자 storage와 기존 스토어 배포물을 직접 수정하지 않는다.
+제품 범위는 `dfd5a59..5bb3e9a`다. AF04-A를 되돌릴 때는 최신 `main` 기반 복구 브랜치에서 `git revert -m 1 5d28c481b4d2b693eb08d504140c72cc99412cb1`을 실행하고 전체 게이트를 다시 검증한다. 강제 reset은 사용하지 않으며 manifest, 사용자 storage와 기존 스토어 배포물을 직접 수정하지 않는다.
