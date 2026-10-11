@@ -24,9 +24,9 @@
 
 ## 2. 현재 상태
 
-- 작업 기준: HEAD `e45af19c7ba5d05bd57e2cc6d1520d8730ada6ee` 위의 dirty working tree. HEAD만으로 현재 소스나 배포본을 식별하지 않는다.
+- 제품·설치 산출물 기준 커밋: `c82841ae703e5286309fb403397fce8787876045`. 이후 문서 정합성 커밋은 제품·패키지 파일을 바꾸지 않으며, 최종 PR HEAD는 GitHub PR 메타데이터로 식별한다.
 - 패키지: Chrome Manifest V3 `2.13.3`, Firefox 미지원.
-- 설치 검증 산출물: 객관 오디오 수용을 마친 `audioheadroomfinal20261011a`에 라벨만 바꾼 `fitplayerlabel20261011a`를 생성해 root `dist`와 58/58 동일하게 반영했다. package v2.13.3/20개 진입 자원 검사와 전체 회귀를 통과했으며 새 라벨의 설치 화면 확인만 남았다.
+- 설치 검증 산출물: 객관 오디오 수용을 마친 `audioheadroomfinal20261011a`에 라벨만 바꾼 `fitplayerlabel20261011a`를 생성해 root `dist`와 58/58 동일하게 반영했다. package v2.13.3/20개 진입 자원 검사와 전체 회귀를 통과했고, 사용자가 새 라벨 표시와 기존 체크 상태 보존을 확인했다.
 - 복구 경로: 직전 root `dist`는 private `output/tool-audit/p06-pre-audio-headroom-dist-20261011a`에 보존했다.
 - 자동 검증: 전체 회귀 605/605, 오디오·다중 페이지 집중 55/55, 경고 원장 32/32.
 - 오디오 합성: Chrome 155에서 12개 sample-rate 정렬, 18개 전환, stress peak `0.9800000190734863`, full-scale 초과 0.
@@ -34,7 +34,7 @@
 - 최신 audit: `output/tool-audit/run-2026-10-11T11-56-19-063Z-hNcJoa/summary.json`. npm 0, Gitleaks 현재/Git 0, ESLint guarded 7행, 새 경고 0, 전체 종료 1. 이를 clean scan이나 무취약성 증명으로 부르지 않는다.
 - 객관 오디오 수용: Chrome 155가 소스·최종 후보·root `dist`를 각각 직접 실행했다. 네 제품 진입 파일 SHA-256이 모두 같고, 각 보고서의 품질 실패 0건과 안정 수치 비교 실패 0건을 확인했다. 절대 오차 `1e-7`, 상대 오차 `1e-6`이며 실행 시점에 민감한 원시 진단값은 개별 보고서에만 보존한다.
 - 설치 통합: 실제 방송에서 컴프레서·Gain·음소거·페이지 재로딩 뒤 재생·설정 복원과 warning/error 0건을 확인했다. 사용자 청취 결과는 보조 기록이며 품질 합격 근거로 사용하지 않는다. 이후 `화면 채우기` 라벨을 `플레이어 영역 채우기`/`Fill player area`로 명확히 바꿨고 저장 키 `fit-player`와 CSS 동작은 유지했다.
-- 공개 상태: Chrome 웹 스토어에는 `2.13.2 community recovery preview`가 게시되어 있고 공개 페이지의 업데이트일은 2026-10-09이다. fork `main`은 `d5f268d84fa64b6fffbdf2c309235476fc89e6e7`, 공개 릴리즈는 prerelease `v2.13.2-community.1`, 열린 PR은 0건이다. 이번 2.13.3 묶음의 커밋·push·PR·릴리즈·스토어 교체는 수행하지 않았다.
+- 공개 상태: Chrome 웹 스토어에는 `2.13.2 community recovery preview`가 게시되어 있고 공개 페이지의 업데이트일은 2026-10-09이다. fork `main`은 `d5f268d84fa64b6fffbdf2c309235476fc89e6e7`, 공개 릴리즈는 prerelease `v2.13.2-community.1`, 읽기 전용 확인 시 열린 PR은 0건이었다. 이번 2.13.3 묶음은 제품 기준 커밋 `c82841a`까지 만들었고 push·PR은 진행 중이며, 병합·릴리즈·스토어 교체는 수행하지 않는다.
 - 공개 설명 차이: 현재 스토어 설명에는 이미 해결한 컴프레서 전환 dip·full-scale 초과가 남은 문제로 기재되어 있고, Firefox를 단순 미검증으로 표현하며, 사용 안내가 과거 `codex/community-store-preview` 브랜치를 가리킨다. 2.13.3 교체 시 Chrome 전용 지원·객관 계측 결과·`main` 문서 링크로 함께 바로잡는다.
 
 ## 3. 실행 규칙
@@ -58,12 +58,12 @@
 | G-SEC | 정의된 도구·HLS·패키지 로컬 게이트 | P02, P03, P04 | DONE-LOCAL | 무취약성 보증으로 확대하지 않음 |
 | P06 | 같은 산출물의 최종 설치본 수용 | G-SEC, P05 | DONE-INSTALLED | 라벨 갱신 포함 설치·표시·설정 보존 확인 완료 |
 | P07 | 한국어 PR·릴리즈·스토어 초안 | P01 | DONE-LOCAL | private 초안 유지 |
-| G-REL | 실제 출시 허용 게이트 | G-SEC, P06, P07 | WAITING-USER | 설치 수용·읽기 전용 원격 확인 완료. 외부 변경 범위 승인 필요 |
-| P08 | 한글 PR·GitHub 릴리즈·스토어 교체 | G-REL | READY | 승인된 공개 행동만 수행 |
+| G-REL | 실제 출시 허용 게이트 | G-SEC, P06, P07 | DOING | 공개 소스 커밋 완료. 승인된 push·한글 PR만 수행 |
+| P08 | 한글 PR·GitHub 릴리즈·스토어 교체 | G-REL | DOING | 이번 범위는 push·한글 PR까지. 병합·태그·릴리즈·스토어 교체 제외 |
 | P09 | 실제 설치·업데이트와 배포 기준 고정 | P08 | WAITING-DEPENDENCY | 배포 커밋·버전·ZIP·스토어 상태 기록 |
 | F00–F05 | 배포 후 공통 기반·후속 기능 | P09 | BACKLOG | 배포 단위별 설계 승인 |
 
-실행 커서: **G-REL — `Do-hyeon/cheese-knife`의 현재 브랜치에서 검증 묶음만 명시적으로 커밋·push하고 `main` 대상 한글 PR을 열 범위를 승인받는다. 병합·태그·릴리즈·스토어 교체는 별도 게이트로 유지한다.**
+실행 커서: **P08 — 제품 기준 커밋 `c82841a`와 제품을 바꾸지 않는 문서 정합성 커밋을 `Do-hyeon/cheese-knife`의 현재 브랜치에 push하고 `main` 대상 한글 PR을 연다. 병합·태그·릴리즈·스토어 교체는 별도 게이트로 유지한다.**
 
 ## 5. P06 — 최종 설치본 수용
 
@@ -84,9 +84,11 @@
 ## 6. G-REL / P08 / P09 — 공개와 배포
 
 - [x] **G-REL:** P06 완료 후 현재 소스·후보·root `dist`가 같은 기준인지 다시 확인했다. 세 대상의 오디오 진입 파일 해시가 같고 후보와 root `dist`는 58/58 일치한다.
-- [x] **G-REL:** 저장소는 `Do-hyeon/cheese-knife`, 현재 작업 브랜치는 `codex/sidebar-preview-followup`, PR 대상은 `main`임을 확인했다. 커밋·push·PR·릴리즈·스토어 교체의 실제 수행 범위는 별도 승인을 받는다.
+- [x] **G-REL:** 저장소는 `Do-hyeon/cheese-knife`, 현재 작업 브랜치는 `codex/sidebar-preview-followup`, PR 대상은 `main`임을 확인했다. 사용자가 검증한 공개 파일의 commit·push·한글 PR을 승인했고 병합·태그·릴리즈·스토어 교체는 제외했다.
 - [x] **P08:** GitHub `main`/PR/릴리즈와 스토어 게시 버전을 2026-10-11에 조회했다. `main`은 `d5f268d84fa64b6fffbdf2c309235476fc89e6e7`, 열린 PR 0건, 공개 릴리즈는 prerelease `v2.13.2-community.1`, 스토어는 `2.13.2 community recovery preview`다.
-- [ ] **P08:** 검증한 묶음만 명시적으로 stage·commit하고 승인 범위에서 push·한글 PR·릴리즈를 수행한다.
+- [x] **P08:** 검증한 공개 묶음만 명시적으로 stage해 제품 기준 커밋 `c82841a`를 만들었다. private `output/**`와 ignored `dist`는 포함하지 않았다.
+- [ ] **P08:** 제품을 바꾸지 않는 문서 정합성 커밋을 만든 뒤 현재 브랜치를 push하고 `main` 대상 한글 PR을 연다.
+- [ ] **P08:** 병합·태그·GitHub 릴리즈·스토어 교체는 이번 승인 범위 밖이며 별도 승인 전 수행하지 않는다.
 - [ ] **P08:** 원본/보류/사용자 변경을 일괄 포함하지 않는다. 새 파일이나 버전이 생기면 해당 산출물을 다시 P06 검증한다.
 - [ ] **P08:** 개인정보처리방침 URL은 새 문서가 main에서 공개되고 접근 확인된 뒤에만 변경한다.
 - [ ] **P08:** 심사 취소·자동 병합·스토어 제출처럼 권한이 불명확한 외부 행동은 사용자 확인 없이 수행하지 않는다.
