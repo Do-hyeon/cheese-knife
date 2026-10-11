@@ -121,3 +121,36 @@ test('revision exhaustion after a confirmed commit remains repair-required inste
   assert.equal(a.view().phase, 'repair-required');
   await assert.rejects(a.reloadTarget({ tabId: 7, windowId: 9 }));
 });
+
+test('malformed snapshot fields remain unknown instead of becoming trusted client state', async t => {
+  const { a } = await clientFixture(t);
+  a.api.runtime.sendMessage = (message, callback) => callback({
+    ok: true,
+    requestId: message.requestId,
+    snapshot: { revision: 1, config: {}, styles: [], styleParameters: {}, css: { state: 'ready', code: 7 } },
+  });
+  await a.refresh();
+  assert.equal(a.view().phase, 'unknown');
+  assert.equal(a.view().code, 'response-unknown');
+});
+
+test('malformed patch CSS cannot acknowledge and discard pending intent', async t => {
+  const { h, a } = await clientFixture(t);
+  const original = a.api.runtime.sendMessage;
+  a.api.runtime.sendMessage = (message, callback) => message.action === 'patch'
+    ? callback({ ok: true, requestId: message.requestId, stored: true, revision: 1, css: { state: 'ready', code: 7 } })
+    : original(message, callback);
+  a.edit(config('previewVolume', 25));
+  await h.settle();
+  assert.equal(a.view().phase, 'unknown');
+  assert.deepEqual(Array.from(a.view().pendingKeys), ['config:previewVolume']);
+});
+
+test('malformed reload response is rejected before caller use', async t => {
+  const { a } = await clientFixture(t);
+  const original = a.api.runtime.sendMessage;
+  a.api.runtime.sendMessage = (message, callback) => message.action === 'reload-target'
+    ? callback({ ok: true, requestId: message.requestId, reloaded: true, revision: 1, css: 'ready' })
+    : original(message, callback);
+  await assert.rejects(a.reloadTarget({ tabId: 7, windowId: 9 }), error => error?.code === 'response-unknown');
+});

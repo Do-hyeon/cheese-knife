@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkPackage, resolveFile } from './check-package.mjs';
+import { checkDistributionFiles, checkPackage, resolveFile } from './check-package.mjs';
 import { openOwnedRoot } from './owned-files.mjs';
 
 const sourceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -35,6 +35,7 @@ export async function build(directory = sourceRoot, output = path.join(directory
     await files.copyFile(file, `dist/${file}`);
   }
   for (const file of ['LICENSE', 'THIRD_PARTY_NOTICES.md']) if (await files.lstat(file, { optional: true })) await files.copyFile(file, `dist/${file}`);
+  await checkDistributionFiles(target);
   await checkPackage(target, source.version, browser);
   return target;
 }

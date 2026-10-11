@@ -20,6 +20,26 @@ export function resolveFile(root, file) {
   catch { throw new Error(`Invalid extension path: ${file}`); }
 }
 
+export async function checkDistributionFiles(directory) {
+  const owned = await openOwnedRoot(directory);
+  const files = [];
+  async function visit(folder = '') {
+    for (const entry of await owned.readdir(folder, { withFileTypes: true })) {
+      const relative = folder ? `${folder}/${entry.name}` : entry.name;
+      const stat = await owned.lstat(relative);
+      if (stat.isDirectory()) await visit(relative);
+      else if (stat.isFile()) files.push(relative);
+      else throw Object.assign(new Error('distribution-special-file'), { code: 'distribution-special-file' });
+    }
+  }
+  await visit();
+  files.sort();
+  if (files.some(file => file.endsWith('.map') || file.startsWith('build-proof/') || file.startsWith('types/') || /^tsconfig.*\.json$/.test(file))) {
+    throw Object.assign(new Error('distribution-developer-file'), { code: 'distribution-developer-file' });
+  }
+  return { files };
+}
+
 // Check every component without following internal links. The caller may use
 // an alias for the package root; checkPackage resolves that root once below.
 // This checks a stable package tree, not an atomic filesystem read sandbox.

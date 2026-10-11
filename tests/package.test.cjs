@@ -302,3 +302,24 @@ test('candidate verifier copies package inputs only and builds an isolated Chrom
   }
   assert.equal(result.resources > 0, true);
 });
+
+test('distribution rejects proof, type, config and source-map developer files', async t => {
+  const { checkDistributionFiles } = await import(pathToFileURL(path.resolve('scripts/check-package.mjs')));
+  for (const forbidden of ['build-proof/main.js', 'types/knife-settings.d.ts', 'tsconfig.af01.json', 'source.js.map']) {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'cheese-dist-boundary-'));
+    t.after(() => fs.rm(root, { recursive: true, force: true }));
+    await fs.mkdir(path.dirname(path.join(root, forbidden)), { recursive: true });
+    await fs.writeFile(path.join(root, forbidden), 'forbidden');
+    await assert.rejects(checkDistributionFiles(root), error => error?.code === 'distribution-developer-file');
+  }
+});
+
+test('production build preserves first-party runtime bytes and excludes developer files', async t => {
+  const { build } = await import(pathToFileURL(path.resolve('scripts/build.mjs')));
+  const baseline = require('./fixtures/runtime-js-baseline.json');
+  const target = await build(path.resolve('.'), path.resolve('dist'));
+  t.after(() => fs.rm(target, { recursive: true, force: true }));
+  for (const file of baseline) assert.deepEqual(await fs.readFile(path.join(target, file)), await fs.readFile(file), file);
+  const { files } = await (await import(pathToFileURL(path.resolve('scripts/check-package.mjs')))).checkDistributionFiles(target);
+  assert.equal(files.some(file => file.endsWith('.map') || file.startsWith('build-proof/') || file.startsWith('types/') || /^tsconfig.*\.json$/.test(file)), false);
+});
