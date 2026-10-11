@@ -37,7 +37,8 @@ export function validateSettingsRuntime(outputs, identities) {
     const source = outputs[entry.output];
     if (typeof source !== 'string' || !new RegExp(`\\bvar\\s+${entry.global}\\b`).test(source)) throw fail('settings-runtime-global');
     if (/sourceMappingURL|sourceURL/.test(source)) throw fail('settings-runtime-source-map');
-    inspectBrowserSource(source, identities);
+    const inspected = source.replace(/(["'])https:\/\/chzzk\.naver\.com\1/g, '$1$1');
+    inspectBrowserSource(inspected, identities);
   }
 }
 

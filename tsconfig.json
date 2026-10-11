@@ -14,10 +14,7 @@
   "include": [
     "config.js",
     "style-schema.js",
-    "settings-contract.js",
-    "settings-client.js",
-    "settings-broker.js",
-    "types/**/*.d.ts",
+    "src/settings/**/*.ts",
     "build-proof/**/*.ts"
   ]
 }

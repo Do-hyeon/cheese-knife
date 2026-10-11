@@ -87,6 +87,8 @@ test('module sources, linked inputs, and invalid generated artifacts are rejecte
   }
   const identityOutputs = { ...clean, [entries[0].output]: `${clean[entries[0].output]}const host = "runner-host";\n` };
   assert.throws(() => mod.validateSettingsRuntime(identityOutputs, ['runner-host']), { code: 'proof-environment-identity' });
+  const firstParty = { ...clean, [entries[0].output]: `${clean[entries[0].output]}const origin = "https://chzzk.naver.com";\n` };
+  assert.doesNotThrow(() => mod.validateSettingsRuntime(firstParty, ['runner-host']));
   assert.throws(() => mod.validateSettingsRuntime({}), { code: 'settings-runtime-output-set' });
   assert.throws(() => mod.validateSettingsRuntime({ ...clean, [entries[0].output]: 'var WrongGlobal = 1;\n' }), { code: 'settings-runtime-global' });
 });
@@ -101,4 +103,13 @@ test('write is forbidden in CI', async t => {
   } finally {
     if (previous === undefined) delete process.env.CI; else process.env.CI = previous;
   }
+});
+
+test('repository generated settings runtime is current and check is read-only', async () => {
+  const mod = await runtimeModule();
+  const files = entries.flatMap(entry => [entry.source, entry.output]);
+  const before = await Promise.all(files.map(file => fs.readFile(file)));
+  await mod.checkSettingsRuntime(path.resolve('.'));
+  const after = await Promise.all(files.map(file => fs.readFile(file)));
+  assert.deepEqual(after, before);
 });
