@@ -6,7 +6,7 @@
 
 **Current stack:** Chrome MV3, JavaScript, Node 24.19.0, Node test runner, Playwright 1.62.1, ESLint, npm audit, Gitleaks. TypeScript는 AF01 이후의 장기 목표이며 아직 제품 빌드에 도입하지 않았다.
 
-**Core references:** [AI 친화적 유지보수 기반 장기 설계](docs/superpowers/specs/2026-10-11-ai-friendly-foundation-design.md), [AF00 설치형 E2E 구현 계획](docs/superpowers/plans/2026-10-11-af00-installed-extension-e2e.md), [AF00 검증 기록](docs/superpowers/validation/2026-10-11-af00-installed-extension-e2e.md), [최신 출시 게이트](docs/superpowers/validation/2026-10-11-recovery-release-gates.md), [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md).
+**Core references:** [AI 친화적 유지보수 기반 장기 설계](docs/superpowers/specs/2026-10-11-ai-friendly-foundation-design.md), [AF01 타입·빌드 기반 상세 설계](docs/superpowers/specs/2026-10-12-af01-type-build-foundation-design.md), [AF00 설치형 E2E 구현 계획](docs/superpowers/plans/2026-10-11-af00-installed-extension-e2e.md), [AF00 검증 기록](docs/superpowers/validation/2026-10-11-af00-installed-extension-e2e.md), [최신 출시 게이트](docs/superpowers/validation/2026-10-11-recovery-release-gates.md), [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md).
 
 작성일: 2026-10-11 / Asia-Seoul.
 
@@ -24,14 +24,14 @@
 
 ## 2. 현재 공개·저장소 상태
 
-- GitHub `main`: `ca4259b38d8ab0dc96daeedc6093889e31c56347`.
-- PR #2 `2.13.3` 복구 변경과 PR #3 README 간소화는 `main`에 병합됐다.
+- GitHub `main`: `81b35c97811901acd80e8a4a2d5b4e9be0ceba91`.
+- PR #2 `2.13.3` 복구 변경, PR #3 README 간소화와 PR #4 AF00 설치형 E2E 기반은 `main`에 병합됐다.
 - GitHub prerelease `v2.13.3-community.1`이 공개됐다.
 - Chrome 웹 스토어 2.13.3 교체본은 사용자가 제출했으며 마지막 확인 상태는 **심사 대기**다. 이 문서는 심사 통과나 실제 자동 업데이트를 완료로 가정하지 않는다.
-- 현재 계획 브랜치: `codex/ai-foundation-design`.
-- 현재 브랜치에는 AF00 테스트·CI 기반만 추가했다. 확장 제품 동작·권한·사용자 데이터 계약은 변경하지 않았다.
+- 현재 계획 브랜치: `codex/af01-type-build-foundation`.
+- 현재 브랜치는 AF01 상세 설계와 계획 상태만 다룬다. TypeScript/esbuild 의존성, 확장 제품 동작·권한·사용자 데이터 계약은 아직 변경하지 않았다.
 
-GitHub 상태는 2026-10-11에 공개 API로 재확인했다. 스토어 상태는 사용자가 보고한 마지막 상태이며 P09에서 게시 후 다시 확인한다.
+GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 상태는 사용자가 보고한 마지막 상태이며 P09에서 게시 후 다시 확인한다.
 
 ## 3. 상태와 실행 규칙
 
@@ -52,14 +52,14 @@ GitHub 상태는 2026-10-11에 공개 API로 재확인했다. 스토어 상태�
 | P01–P08 | 복구·검증·2.13.3 GitHub 공개 | 기존 승인 | DONE | 상세는 archive/validation 참조 |
 | P09 | 스토어 2.13.3 게시·업데이트 기준 고정 | 외부 심사 통과 | WAITING-DEPENDENCY | 실제 게시·새 설치·업데이트·설정 보존 확인 |
 | AF00 | 설치된 MV3 산출물 E2E | 설계 승인 | DONE | 검증 기록과 CI 게이트 유지 |
-| AF01 | 타입·빌드 전환 기반 | AF00 | READY | AF00 증거를 반영한 별도 설계·계획 |
+| AF01 | 타입·빌드 전환 기반 | AF00 | PLAN-REVIEW | 상세 설계 검토 후 구현 계획 작성 |
 | AF02 | 계약 우선 TypeScript 전환 | AF01 | BLOCKED | 설정·메시지·revision 경계 이전 |
 | AF03 | MAIN runtime·site adapter 분리 | AF02 | BLOCKED | 불안정한 치지직 경계 격리 |
 | AF04 | 기능별 모듈 이전 | AF03 | BLOCKED | audio/player/preview/chat/sidebar 순차 이전 |
 | AF05 | 이행 종료·공개 게이트 | AF04, P09 | BLOCKED | 설치·업데이트·롤백과 정책 정합성 확인 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **AF01 타입·빌드 기반 설계**. 승인된 세부 설계와 구현 계획 전에는 빌드 도구나 제품 런타임을 변경하지 않는다.
+현재 커서: **AF01 타입·빌드 기반 상세 설계 검토**. 세부 설계와 후속 구현 계획이 각각 승인되기 전에는 빌드 도구나 제품 런타임을 변경하지 않는다.
 
 ## 5. P09 — 스토어 게시 후 고정
 
@@ -105,6 +105,11 @@ P09는 외부 심사 대기 중이지만 AF00의 격리된 계획·구현을 막
 
 ### AF01 — 타입·빌드 기반
 
+- [x] TypeScript + esbuild proof-only 방향과 범위의 대화상 설계 승인.
+- [x] 현재 실행 문맥·전역 ABI·스토어 정책을 반영한 상세 설계 문서 작성.
+- [x] IIFE 전역 격리, 정적 타입 과신, native binary, 결정성, 형식적 proof와 JS 금지의 역효과 공격 검토 반영.
+- [ ] 상세 설계 문서 사용자 검토·승인.
+- [ ] 정확한 파일·테스트·명령·커밋 단위를 가진 구현 계획 작성·검토·승인.
 - [ ] TypeScript strict와 Chrome API 타입 proof.
 - [ ] 엔트리별 현재 출력 계약·CSP·비압축 검토 가능성 비교.
 - [ ] 선택 도구의 결정적 출력·라이선스·원격 접근 여부 검증.
@@ -167,4 +172,4 @@ git -c core.safecrlf=false diff --check
 
 ## 10. 현재 사용자 개입 지점
 
-AF01의 도구 선택, 출력 계약과 점진적 전환 범위를 설계·공격 검토한 뒤 구현 계획을 승인해야 한다. 그 전에는 TypeScript, manifest, 제품 런타임과 새 빌드 도구를 변경하지 않는다. 스토어 심사가 끝나면 P09 설치 수용을 별도로 재개한다.
+AF01 상세 설계 문서를 검토·승인한 뒤 정확한 구현 계획을 작성하고 별도로 승인해야 한다. 그 전에는 TypeScript 의존성, manifest, 제품 런타임과 새 빌드 도구를 변경하지 않는다. 스토어 심사가 끝나면 P09 설치 수용을 별도로 재개한다.
