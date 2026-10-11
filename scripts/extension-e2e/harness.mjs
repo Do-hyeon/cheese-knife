@@ -1,8 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import { execFile } from 'node:child_process';
-import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { openOwnedRoot } from '../owned-files.mjs';
 
 const harnessError = (code, cause) => Object.assign(new Error(code, cause ? { cause } : undefined), { code });
 const runIdPattern = /^[A-Za-z0-9]{1,64}$/;
@@ -154,14 +154,14 @@ export async function reacquireExtensionWorker(context, previousWorker, timeoutM
 
 const windowsSideBySideFailure = error => /spawn UNKNOWN|side-by-side/i.test(String(error?.message || error));
 
-async function findManifestLayout(sourceRoot) {
-  const entries = await fs.readdir(sourceRoot, { withFileTypes: true });
+async function findManifestLayout(source) {
+  const entries = await source.readdir('', { withFileTypes: true });
   const rootManifest = entries.find(entry => entry.isFile() && /^\d+\.\d+\.\d+\.\d+\.manifest$/.test(entry.name));
-  if (rootManifest) return { version: rootManifest.name.slice(0, -'.manifest'.length), payloadRoot: sourceRoot };
+  if (rootManifest) return { version: rootManifest.name.slice(0, -'.manifest'.length), payloadRelative: '' };
   for (const entry of entries) {
     if (!entry.isDirectory() || !/^\d+\.\d+\.\d+\.\d+$/.test(entry.name)) continue;
-    const manifest = path.join(sourceRoot, entry.name, `${entry.name}.manifest`);
-    try { if ((await fs.lstat(manifest)).isFile()) return { version: entry.name, payloadRoot: path.join(sourceRoot, entry.name) }; }
+    const manifest = `${entry.name}/${entry.name}.manifest`;
+    try { if ((await source.lstat(manifest)).isFile()) return { version: entry.name, payloadRelative: entry.name }; }
     catch (error) { if (error?.code !== 'ENOENT') throw error; }
   }
   throw harnessError('bundled-chromium-layout-invalid');
@@ -169,13 +169,14 @@ async function findManifestLayout(sourceRoot) {
 
 async function findManifestTool() {
   const kitsRoot = path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'Windows Kits', '10', 'bin');
-  const versions = (await fs.readdir(kitsRoot, { withFileTypes: true }))
-    .filter(entry => entry.isDirectory() && /^\d+(?:\.\d+){3}$/.test(entry.name))
+  const kits = await openOwnedRoot(kitsRoot);
+  const versions = (await kits.readdir('', { withFileTypes: true }))
+    .filter(entry => entry.isDirectory() && /^\d+\.\d+\.\d+\.\d+$/.test(entry.name))
     .map(entry => entry.name)
     .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
   for (const version of versions) {
-    const candidate = path.join(kitsRoot, version, process.arch === 'arm64' ? 'arm64' : 'x64', 'mt.exe');
-    try { if ((await fs.lstat(candidate)).isFile()) return candidate; }
+    const candidate = `${version}/${process.arch === 'arm64' ? 'arm64' : 'x64'}/mt.exe`;
+    try { if ((await kits.lstat(candidate)).isFile()) return kits.resolve(candidate, { type: 'file' }); }
     catch (error) { if (error?.code !== 'ENOENT') throw error; }
   }
   throw harnessError('manifest-tool-unavailable');
@@ -185,30 +186,41 @@ async function prepareWindowsBundledChromium({ chromiumApi, profilePath }) {
   if (typeof chromiumApi.executablePath !== 'function') throw harnessError('bundled-chromium-path-unavailable');
   const sourceExecutable = chromiumApi.executablePath();
   const sourceRoot = path.dirname(sourceExecutable);
-  const { version, payloadRoot } = await findManifestLayout(sourceRoot);
-  const targetRoot = path.join(profilePath, 'bundled-chromium');
-  const targetVersion = path.join(targetRoot, version);
-  const targetExecutable = path.join(targetRoot, 'chrome.exe');
-  const readyMarker = path.join(targetRoot, '.knife-ready');
+  const source = await openOwnedRoot(sourceRoot);
+  const profile = await openOwnedRoot(profilePath);
+  const sourceExecutableRelative = path.basename(sourceExecutable);
+  await source.resolve(sourceExecutableRelative, { type: 'file' });
+  const { version, payloadRelative } = await findManifestLayout(source);
+  const targetRoot = 'bundled-chromium';
+  const targetVersion = `${targetRoot}/${version}`;
+  const targetExecutable = `${targetRoot}/chrome.exe`;
+  const readyMarker = `${targetRoot}/.knife-ready`;
   try {
-    if (await fs.readFile(readyMarker, 'utf8') === version && (await fs.lstat(targetExecutable)).isFile()) return targetExecutable;
+    if (await profile.readFile(readyMarker, 'utf8') === version && (await profile.lstat(targetExecutable)).isFile()) {
+      return profile.resolve(targetExecutable, { type: 'file' });
+    }
   } catch (error) { if (error?.code !== 'ENOENT') throw error; }
-  await fs.mkdir(targetVersion, { recursive: true });
-  await fs.copyFile(sourceExecutable, targetExecutable);
-  const proxy = path.join(sourceRoot, 'chrome_proxy.exe');
-  try { await fs.copyFile(proxy, path.join(targetRoot, 'chrome_proxy.exe')); }
-  catch (error) { if (error?.code !== 'ENOENT') throw error; }
-  for (const entry of await fs.readdir(payloadRoot, { withFileTypes: true })) {
-    if (payloadRoot === sourceRoot && ['chrome.exe', 'chrome_proxy.exe', version].includes(entry.name)) continue;
-    await fs.cp(path.join(payloadRoot, entry.name), path.join(targetVersion, entry.name), { recursive: true, force: false, errorOnExist: true });
+  await profile.ensureDirectory(targetVersion);
+  await profile.copyFileFrom(source, sourceExecutableRelative, targetExecutable);
+  if (await source.lstat('chrome_proxy.exe', { optional: true })) {
+    await profile.copyFileFrom(source, 'chrome_proxy.exe', `${targetRoot}/chrome_proxy.exe`);
   }
-  const manifest = path.join(targetVersion, `${version}.manifest`);
-  const assembly = path.join(targetVersion, `${version}.dll`);
-  await fs.copyFile(path.join(targetVersion, 'chrome_elf.dll'), assembly);
+  for (const entry of await source.readdir(payloadRelative, { withFileTypes: true })) {
+    if (!payloadRelative && ['chrome.exe', 'chrome_proxy.exe', version].includes(entry.name)) continue;
+    const sourceChild = payloadRelative ? `${payloadRelative}/${entry.name}` : entry.name;
+    const destinationChild = `${targetVersion}/${entry.name}`;
+    if (entry.isDirectory()) await profile.copyTreeFrom(source, sourceChild, destinationChild);
+    else if (entry.isFile()) await profile.copyFileFrom(source, sourceChild, destinationChild);
+    else throw harnessError('bundled-chromium-layout-invalid');
+  }
+  const manifest = await profile.resolve(`${targetVersion}/${version}.manifest`, { type: 'file' });
+  const assemblyRelative = `${targetVersion}/${version}.dll`;
+  await profile.copyFile(`${targetVersion}/chrome_elf.dll`, assemblyRelative);
+  const assembly = await profile.resolve(assemblyRelative, { type: 'file' });
   const manifestTool = await findManifestTool();
   await execFileAsync(manifestTool, ['-manifest', manifest, `-outputresource:${assembly};#2`], { windowsHide: true });
-  await fs.writeFile(readyMarker, version, 'utf8');
-  return targetExecutable;
+  await profile.writeFile(readyMarker, version, 'utf8');
+  return profile.resolve(targetExecutable, { type: 'file' });
 }
 
 export async function launchInstalledExtension({ chromiumApi, extensionPath, profilePath, artifactPath, headed, browserCompatibility }) {
