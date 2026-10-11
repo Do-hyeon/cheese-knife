@@ -62,6 +62,16 @@ test('MAIN runtime validator rejects a raw adapter publication', async () => {
   const rendered = await mod.renderMainRuntime(path.resolve('.'));
   const unsafe = { ...rendered, 'web/site-adapter.js': rendered['web/site-adapter.js'] + '\nruntime.adapter = { fiberOf: null };\n' };
   assert.throws(() => mod.validateMainRuntime(unsafe), { code: 'main-runtime-raw-adapter' });
+  const appended = { ...rendered, 'web/site-adapter.js': rendered['web/site-adapter.js'] + '\nruntime.adapter.fiberOf = () => ({});\n' };
+  assert.throws(() => mod.validateMainRuntime(appended), { code: 'main-runtime-raw-adapter' });
+});
+
+test('generated MAIN runtime outputs are pinned to LF checkouts', async () => {
+  const attributes = await fs.readFile('.gitattributes', 'utf8');
+  const lines = new Set(attributes.split(/\r?\n/));
+  for (const file of ['src/main/**/*.ts', 'web/runtime.js', 'web/site-adapter.js']) {
+    assert.equal(lines.has(`${file} text eol=lf`), true);
+  }
 });
 
 test('MAIN runtime check is read-only for stale and unexpected outputs', async t => {

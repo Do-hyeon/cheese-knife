@@ -220,6 +220,21 @@ test('deleted chat preserves a native thenable and reports limited support', asy
   assert.equal(runtime(f.dom).statuses.deletedChat.state, 'limited');
 });
 
+test('deleted chat treats an accessor then result as unsupported after native handling', async t => {
+  const result = {};
+  Object.defineProperty(result, 'then', { get() { throw new Error('fixture-then'); } });
+  const f = setup(t, {}, fixture => {
+    const original = fixture.controller.notiBlindListener;
+    const replacement = event => { original(event); return result; };
+    fixture.controller.notiBlindListener = replacement;
+    fixture.native.listener = replacement;
+  });
+  assert.equal(f.emit()[1], result); await flush();
+  assert.equal(f.controller.messageList[0].status, 'BLIND');
+  assert.equal(f.text.dataset.knifeDeleted, undefined);
+  assert.equal(runtime(f.dom).statuses.deletedChat.state, 'limited');
+});
+
 test('deleted chat rejects oversized content without extension mutation', async t => {
   const oversized = 'x'.repeat(65537);
   const f = setup(t, {}, fixture => { fixture.controller.messageList[0].content = oversized; });
@@ -444,6 +459,23 @@ test('deleted chat client replacement reconnects without layering native callbac
   f.controller.chatClient = { _events: { notiBlind: [freshEntry] } };
   runtime(f.dom).reconcile(); runtime(f.dom).reconcile();
   assert.equal(f.native.listener, f.original);
+  assert.equal(freshEntry.listener({ messageTime: 123, userId: 'synthetic', blindType: 'RESTRICT' }), 'native');
+  await flush();
+  assert.equal(f.text.dataset.knifeDeleted, '1');
+  deliver(f.dom, { showDeleted: false }, 2);
+  assert.equal(freshEntry.listener, f.original);
+  assert.equal(f.controller.messageList[0].status, 'RESTRICT');
+  assert.equal(f.calls.filter(x => x === 'RESTRICT').length, 1);
+});
+
+test('deleted chat same-client event-array replacement reconnects without a detached binding', async t => {
+  const f = setup(t); f.emit(); await flush();
+  const copied = f.native.listener;
+  const freshEntry = { listener: copied, once: false };
+  f.client._events.notiBlind = [freshEntry];
+  runtime(f.dom).reconcile(); runtime(f.dom).reconcile();
+  assert.equal(f.native.listener, f.original);
+  assert.notEqual(freshEntry.listener, copied);
   assert.equal(freshEntry.listener({ messageTime: 123, userId: 'synthetic', blindType: 'RESTRICT' }), 'native');
   await flush();
   assert.equal(f.text.dataset.knifeDeleted, '1');

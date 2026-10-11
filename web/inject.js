@@ -188,7 +188,7 @@
         const message = runtime.adapter.chat.readMessage(node);
         const target = node.querySelector('[class^="_chatting_message_"], [class^="live_chatting_message_chatting_message__"]');
         if (!message || !target) continue;
-        if (isLive) {
+        if (isLive && message.time != null) {
           const date = new Date(message.time);
           if (Number.isFinite(date.getTime())) { target.dataset.timestamp = pad(date.getHours()) + ':' + pad(date.getMinutes()); supported++; }
         } else if (Number.isFinite(message.playerTime)) { target.dataset.timestamp = formatTime(message.playerTime); supported++; }

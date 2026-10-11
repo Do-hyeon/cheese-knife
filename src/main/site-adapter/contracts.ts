@@ -50,6 +50,7 @@ export interface ChatControllerPort {
 
 export interface SiteAdapter {
   discover(root: Document, route: Route): SiteSnapshot;
+  affectsDiscovery(node: Element): boolean;
   chat: {
     readMessage(row: Element): ChatMessageSnapshot | null;
     connect(container: Element): ChatControllerPort | null;

@@ -11,6 +11,11 @@ function setup(t, html = '') {
   return { dom, adapter: runtime(dom).adapter };
 }
 
+test('adapter publishes only the bounded capability surface', t => {
+  const { adapter } = setup(t);
+  assert.deepEqual(Array.from(Object.keys(adapter)).sort(), ['affectsDiscovery', 'banner', 'chat', 'discover', 'player', 'video']);
+});
+
 function attachState(node, value) {
   const hook = { memoizedState: value, next: null };
   node.__reactFiber$fixture = { memoizedState: hook, return: null };
@@ -227,6 +232,24 @@ test('blind listener reconnect unwraps only its exact copied callback', t => {
   assert.equal(foreignEntry.listener, foreign);
 });
 
+test('blind listener reconnects when the same client replaces its event array', t => {
+  const { dom, adapter } = setup(t), container = dom.window.document.createElement('aside');
+  const fixture = controllerFixture(); attachState(container, fixture.controller);
+  const port = adapter.chat.connect(container), first = port.installBlindListener(() => {});
+  const copied = fixture.entry.listener, foreign = () => 'foreign';
+  const freshEntry = { listener: copied, once: false }, foreignEntry = { listener: foreign, once: false };
+  fixture.controller.chatClient._events.notiBlind = [foreignEntry, freshEntry];
+  assert.equal(first.active, false);
+  const second = port.installBlindListener(() => {});
+  assert.notEqual(second, first);
+  assert.equal(fixture.entry.listener, fixture.originalBlind);
+  assert.equal(foreignEntry.listener, foreign);
+  assert.notEqual(freshEntry.listener, copied);
+  second.dispose();
+  assert.equal(freshEntry.listener, fixture.originalBlind);
+  assert.equal(foreignEntry.listener, foreign);
+});
+
 test('blind listener contains thenables and stale list identity without overwriting foreign handlers', t => {
   const { dom, adapter } = setup(t), container = dom.window.document.createElement('aside');
   const thenable = { then() {} };
@@ -250,4 +273,42 @@ test('blind listener contains thenables and stale list identity without overwrit
   binding.dispose(); port.dispose();
   assert.equal(fixture.entry.listener, foreign);
   assert.equal(fixture.controller.notiBlindListener, foreign);
+});
+
+test('blind listener preserves native handling when a hostile list length throws', t => {
+  const { dom, adapter } = setup(t), container = dom.window.document.createElement('aside');
+  let nativeCalls = 0;
+  const fixture = controllerFixture({ notiBlindListener() { nativeCalls++; return 'native-result'; } });
+  fixture.controller.notiBlindListener = fixture.controller.notiBlindListener.bind(fixture.controller);
+  fixture.entry.listener = fixture.controller.notiBlindListener;
+  fixture.controller.messageList = new Proxy([], { get(target, key, receiver) {
+    if (key === 'length') throw new Error('fixture-length');
+    return Reflect.get(target, key, receiver);
+  } });
+  attachState(container, fixture.controller);
+  const port = adapter.chat.connect(container), binding = port.installBlindListener(() => assert.fail('no transition expected'));
+  assert.equal(port.messages().length, 0);
+  assert.equal(fixture.entry.listener({ messageTime: 1, userId: 'x', blindType: 'BLIND' }), 'native-result');
+  assert.equal(nativeCalls, 1);
+  binding.dispose();
+});
+
+test('blind listener treats an accessor then result as unsupported without exposing after state', t => {
+  const { dom, adapter } = setup(t), container = dom.window.document.createElement('aside');
+  const result = {};
+  Object.defineProperty(result, 'then', { get() { throw new Error('fixture-then'); } });
+  const fixture = controllerFixture({ notiBlindListener(event) {
+    this.messageList[0] = { ...this.messageList[0], status: event.blindType };
+    return result;
+  } });
+  fixture.controller.notiBlindListener = fixture.controller.notiBlindListener.bind(fixture.controller);
+  fixture.entry.listener = fixture.controller.notiBlindListener;
+  attachState(container, fixture.controller);
+  let transition;
+  const binding = adapter.chat.connect(container).installBlindListener(value => { transition = value; });
+  assert.equal(fixture.entry.listener({ messageTime: 123, userId: 'synthetic', blindType: 'BLIND' }), result);
+  assert.equal(transition.before.status, 'NORMAL');
+  assert.equal(transition.after, null);
+  assert.equal(transition.replaceAfterStatus(transition.before, 'NORMAL'), null);
+  binding.dispose();
 });

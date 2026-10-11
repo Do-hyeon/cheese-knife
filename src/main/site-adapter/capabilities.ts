@@ -1,13 +1,14 @@
 import type {
   BlindEventSnapshot, BlindTransition, ChatControllerPort, ChatMessageSnapshot, OwnedBinding, SiteAdapter, SitePlayerMetrics,
 } from './contracts';
-import { discoverSite } from './discovery';
+import { affectsSiteDiscovery, discoverSite } from './discovery';
 import { ownData, replaceOwnData, siteObject, type ReactReader, type SiteObject } from './react';
 
 const MAX_TEXT = 256, MAX_CONTENT = 64 * 1024, MAX_MESSAGES = 10000, MAX_EVENTS = 256;
 const INVALID = Symbol('invalid');
 type Invalid = typeof INVALID;
 type SnapshotOwner = { list: unknown[]; index: number; raw: SiteObject };
+type BoundedArray = { value: unknown[]; length: number };
 
 function text(value: unknown, max = MAX_TEXT): string | null | Invalid {
   return value == null ? null : typeof value === 'string' && value.length <= max ? value : INVALID;
@@ -32,11 +33,19 @@ function thenable(value: unknown): boolean {
   if (!siteObject(value)) return false;
   let current: unknown = value;
   for (let depth = 0; siteObject(current) && depth < 4; depth++) {
-    const property = ownData(current, 'then');
-    if (property) return typeof property.value === 'function';
+    let descriptor: PropertyDescriptor | undefined;
+    try { descriptor = Object.getOwnPropertyDescriptor(current, 'then'); } catch { return true; }
+    if (descriptor) return !('value' in descriptor) || typeof descriptor.value === 'function';
     try { current = Object.getPrototypeOf(current); } catch { return true; }
   }
-  return false;
+  return siteObject(current);
+}
+function boundedArray(value: unknown, max: number): BoundedArray | null {
+  try {
+    if (!Array.isArray(value)) return null;
+    const length = ownData(value, 'length')?.value;
+    return Number.isSafeInteger(length) && (length as number) >= 0 && (length as number) <= max ? { value, length: length as number } : null;
+  } catch { return null; }
 }
 function binding(active: () => boolean, release: () => void): OwnedBinding {
   let disposed = false;
@@ -77,9 +86,9 @@ export function createSiteCapabilities(reader: ReactReader): SiteAdapter {
     let active = true, filterBinding: OwnedBinding | null = null, blindBinding: OwnedBinding | null = null;
     let previousBlind: { original: unknown; replacement: unknown } | null = null;
     const owners = new WeakMap<ChatMessageSnapshot, SnapshotOwner>();
-    const currentList = (): unknown[] | null => {
+    const currentList = (): BoundedArray | null => {
       const value = data(controller, 'messageList');
-      return Array.isArray(value) && value.length <= MAX_MESSAGES ? value : null;
+      return boundedArray(value, MAX_MESSAGES);
     };
     const snapshotAt = (list: unknown[], index: number): ChatMessageSnapshot | null => {
       const property = ownData(list, String(index)), snapshot = property && snapshotMessage(property.value);
@@ -87,18 +96,20 @@ export function createSiteCapabilities(reader: ReactReader): SiteAdapter {
       return snapshot;
     };
     const messages = (): readonly ChatMessageSnapshot[] => {
-      const list = active && currentList();
-      if (!list) return [];
+      const current = active && currentList();
+      if (!current) return [];
+      const { value: list, length } = current;
       const snapshots: ChatMessageSnapshot[] = [];
-      for (let index = 0; index < list.length; index++) { const snapshot = snapshotAt(list, index); if (snapshot) snapshots.push(snapshot); }
+      for (let index = 0; index < length; index++) { const snapshot = snapshotAt(list, index); if (snapshot) snapshots.push(snapshot); }
       return snapshots;
     };
     const replaceStatus = (expected: ChatMessageSnapshot, nextStatus: string): ChatMessageSnapshot | null => {
       if (!active || typeof nextStatus !== 'string' || text(nextStatus) === INVALID) return null;
-      const owner = owners.get(expected), list = currentList();
-      if (!owner || !list || owner.list !== list || owner.index >= list.length || ownData(list, String(owner.index))?.value !== owner.raw) return null;
-      const current = snapshotMessage(owner.raw);
-      if (!current || Object.keys(expected).some(key => data(expected, key) !== data(current, key))) return null;
+      const owner = owners.get(expected), current = currentList();
+      if (!owner || !current || owner.list !== current.value || owner.index >= current.length || ownData(current.value, String(owner.index))?.value !== owner.raw) return null;
+      const list = current.value;
+      const currentSnapshot = snapshotMessage(owner.raw);
+      if (!currentSnapshot || Object.keys(expected).some(key => data(expected, key) !== data(currentSnapshot, key))) return null;
       let descriptors: PropertyDescriptorMap;
       try { descriptors = Object.getOwnPropertyDescriptors(owner.raw); for (const descriptor of Object.values(descriptors)) if (!('value' in descriptor)) return null; }
       catch { return null; }
@@ -147,15 +158,16 @@ export function createSiteCapabilities(reader: ReactReader): SiteAdapter {
         if (blindBinding?.active) return blindBinding;
         blindBinding?.dispose();
         const originalProperty = ownData(controller, 'notiBlindListener');
-        const client = data(controller, 'chatClient'), entries = data(data(client, '_events'), 'notiBlind');
-        if (!originalProperty || typeof originalProperty.value !== 'function' || originalProperty.descriptor.writable !== true || !Array.isArray(entries) || entries.length > MAX_EVENTS) return null;
+        const client = data(controller, 'chatClient'), boundedEntries = boundedArray(data(data(client, '_events'), 'notiBlind'), MAX_EVENTS);
+        if (!originalProperty || typeof originalProperty.value !== 'function' || originalProperty.descriptor.writable !== true || !boundedEntries) return null;
+        const { value: entries, length: entryCount } = boundedEntries;
         const original = originalProperty.value;
-        if (previousBlind) for (let index = 0; index < entries.length; index++) {
+        if (previousBlind) for (let index = 0; index < entryCount; index++) {
           const entry = ownData(entries, String(index))?.value;
           if (data(entry, 'listener') === previousBlind.replacement) replaceOwnData(entry, 'listener', previousBlind.replacement, previousBlind.original);
         }
         const matches: SiteObject[] = [];
-        for (let index = 0; index < entries.length; index++) {
+        for (let index = 0; index < entryCount; index++) {
           const entry = ownData(entries, String(index))?.value;
           if (siteObject(entry) && data(entry, 'listener') === original) matches.push(entry);
         }
@@ -163,9 +175,9 @@ export function createSiteCapabilities(reader: ReactReader): SiteAdapter {
         if (!entry || data(entry, 'once') !== false || ownData(entry, 'listener')?.descriptor.writable !== true) return null;
         let owned: OwnedBinding;
         const replacement = function (this: unknown, event: unknown, ...args: unknown[]) {
-          const list = currentList(), eventSnapshot = snapshotEvent(event);
+          const current = currentList(), list = current?.value || null, listLength = current?.length || 0, eventSnapshot = snapshotEvent(event);
           let before: ChatMessageSnapshot | null = null;
-          if (list && eventSnapshot) for (let index = 0; index < list.length; index++) {
+          if (list && eventSnapshot) for (let index = 0; index < listLength; index++) {
             const candidate = snapshotAt(list, index);
             if (candidate && candidate.time === eventSnapshot.messageTime && candidate.user === eventSnapshot.userId) { before = candidate; break; }
           }
@@ -180,7 +192,7 @@ export function createSiteCapabilities(reader: ReactReader): SiteAdapter {
             return result;
           }
           let after: ChatMessageSnapshot | null = null;
-          if (eventSnapshot) for (let index = 0; index < list.length; index++) {
+          if (eventSnapshot) for (let index = 0; index < listLength; index++) {
             const candidate = snapshotAt(list, index);
             if (candidate && candidate.time === eventSnapshot.messageTime && candidate.user === eventSnapshot.userId) { after = candidate; break; }
           }
@@ -190,8 +202,14 @@ export function createSiteCapabilities(reader: ReactReader): SiteAdapter {
         if (!replaceOwnData(entry, 'listener', original, replacement) || !replaceOwnData(controller, 'notiBlindListener', original, replacement)) {
           replaceOwnData(entry, 'listener', replacement, original); return null;
         }
+        const ownsEntry = () => {
+          const current = boundedArray(data(data(client, '_events'), 'notiBlind'), MAX_EVENTS);
+          if (!current || current.value !== entries) return false;
+          for (let index = 0; index < current.length; index++) if (ownData(entries, String(index))?.value === entry) return true;
+          return false;
+        };
         previousBlind = { original, replacement };
-        owned = binding(() => data(controller, 'chatClient') === client && data(entry, 'listener') === replacement && data(controller, 'notiBlindListener') === replacement,
+        owned = binding(() => data(controller, 'chatClient') === client && ownsEntry() && data(entry, 'listener') === replacement && data(controller, 'notiBlindListener') === replacement,
           () => { replaceOwnData(entry, 'listener', replacement, original); replaceOwnData(controller, 'notiBlindListener', replacement, original); });
         blindBinding = owned; return owned;
       },
@@ -202,6 +220,7 @@ export function createSiteCapabilities(reader: ReactReader): SiteAdapter {
   };
   return {
     discover: (document, route) => discoverSite(document, route, reader),
+    affectsDiscovery: affectsSiteDiscovery,
     chat: {
       readMessage: row => snapshotMessage(messageFromRow(row)),
       connect(container) {

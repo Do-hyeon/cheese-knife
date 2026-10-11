@@ -26,10 +26,10 @@ export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvir
     cleanups.push(() => target.removeEventListener(type, listener));
   };
   const requestConfig = () => {
-    if (disposed || suspended || runtime.configReady) return;
+    if (disposed || suspended || runtime.configReady || requestTimer !== null) return;
     if (attempts++ >= 20) { runtime.setStatus('configuration', 'limited', 'config-unavailable'); return; }
     environment.window.postMessage({ namespace: 'cheese-knife', protocol: 1, type: 'config-request', requestId: runtime.requestId }, environment.location.origin);
-    requestTimer = environment.setTimeout(requestConfig, 100);
+    requestTimer = environment.setTimeout(() => { requestTimer = null; requestConfig(); }, 100);
   };
   const startPulse = () => {
     clearPulse();
@@ -74,7 +74,9 @@ export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvir
         if (node.nodeType !== 1) continue;
         const element = node as Element;
         if (element.classList?.contains('knife-owned') || element.closest?.('.knife-owned')) continue;
-        if (element.matches?.(interesting) || element.querySelector?.(interesting)) { schedule(); return; }
+        let siteChange = false;
+        try { siteChange = runtime.adapter?.affectsDiscovery(element) === true; } catch {}
+        if (siteChange || element.matches?.(interesting) || element.querySelector?.(interesting)) { schedule(); return; }
       }
     }
   };

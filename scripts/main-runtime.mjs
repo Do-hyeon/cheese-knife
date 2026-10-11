@@ -22,6 +22,7 @@ const codes = Object.freeze({
   writeCi: 'main-runtime-write-ci',
 });
 const rawAdapterPublication = /runtime\.adapter\s*=\s*\{[\s\S]{0,1000}\b(?:fiberOf|propsOf|stateOf|contextOf|getWebpackRequire|getCorePlayer)\s*:/;
+const rawAdapterMutation = /runtime\.adapter\s*\.\s*(?:fiberOf|propsOf|stateOf|contextOf|getWebpackRequire|getCorePlayer)\s*=/;
 const repositoryRoot = () => path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const marker = entry => `// Generated from ${entry.source} by scripts/main-runtime.mjs. Do not edit.\n`;
 const slash = value => value.split(path.sep).join('/');
@@ -61,7 +62,7 @@ export function validateMainRuntime(outputs, identities = []) {
   if (!outputs['web/site-adapter.js'].includes('cheese-knife.runtime.v1') || !outputs['web/site-adapter.js'].includes('runtime.adapter')) {
     throw generatedFailure('main-runtime-adapter-abi');
   }
-  if (rawAdapterPublication.test(outputs['web/site-adapter.js'])) throw generatedFailure('main-runtime-raw-adapter');
+  if (rawAdapterPublication.test(outputs['web/site-adapter.js']) || rawAdapterMutation.test(outputs['web/site-adapter.js'])) throw generatedFailure('main-runtime-raw-adapter');
 }
 
 export async function renderMainRuntime(root = repositoryRoot()) {

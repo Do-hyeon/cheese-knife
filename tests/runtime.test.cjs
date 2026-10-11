@@ -96,6 +96,28 @@ test('delayed root and video replacement are reconciled without duplicate runtim
   assert.notEqual(runtime(dom).state.player.video, first);
 });
 
+test('late site layout divs trigger adapter discovery without leaking selectors into runtime', async t => {
+  const dom = setup(t, '<div id="root"></div>');
+  assert.equal(runtime(dom).state.body, null);
+  const body = dom.window.document.createElement('div');
+  body.id = 'layout-body';
+  dom.window.document.getElementById('root').append(body);
+  await flush();
+  assert.equal(runtime(dom).state.body, body);
+});
+
+test('late license anchor triggers one adapter-owned discovery reconciliation', async t => {
+  const dom = setup(t), knife = runtime(dom);
+  let reconciles = 0;
+  const reconcile = knife.reconcile;
+  knife.reconcile = () => { reconciles++; return reconcile(); };
+  const license = dom.window.document.createElement('div');
+  license.id = 'license'; license.innerHTML = '<a href="/license">License</a>';
+  dom.window.document.body.append(license);
+  await flush();
+  assert.equal(reconciles, 1);
+});
+
 test('config accepts current same-window response and rejects null, foreign, stale messages', t => {
   const dom = setup(t);
   dom.window.dispatchEvent(new dom.window.MessageEvent('message', { data: null }));
@@ -169,6 +191,26 @@ test('persisted pagehide freezes one pulse and pageshow resumes it once', t => {
   dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow', { persisted: true }));
   dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow', { persisted: true }));
   assert.equal(active.size, 1);
+});
+
+test('configuration retry owns one timeout across repeated pageshow and teardown', t => {
+  const dom = page(playerHTML);
+  const active = new Map(); let next = 0;
+  dom.window.setTimeout = callback => { const id = ++next; active.set(id, callback); return id; };
+  dom.window.clearTimeout = id => active.delete(id);
+  t.after(() => dom.window.close());
+  load(dom, 'web/runtime.js');
+  assert.equal(active.size, 1);
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow', { persisted: true }));
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow', { persisted: true }));
+  assert.equal(active.size, 1);
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide', { persisted: true }));
+  assert.equal(active.size, 0);
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow', { persisted: true }));
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow', { persisted: true }));
+  assert.equal(active.size, 1);
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
+  assert.equal(active.size, 0);
 });
 
 test('final pagehide removes owned listeners observer timers and registry', t => {

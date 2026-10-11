@@ -101,6 +101,14 @@
   }
 
   // src/main/site-adapter/discovery.ts
+  var discoverySelector = '#root, #layout-body, #sidebar, #live_player_layout, #player_layout, .pzp-pc, .pzp-pc__video, .pzp-pc__bottom-buttons-left, #license, aside[aria-label="사이드바"]';
+  function affectsSiteDiscovery(node) {
+    try {
+      return node.matches(discoverySelector) || !!node.querySelector(discoverySelector) || !!node.closest(".pzp-pc__bottom-buttons-left");
+    } catch {
+      return false;
+    }
+  }
   function discoverSite(document, route, reader) {
     const root = document.getElementById("root");
     const body = document.getElementById("layout-body");
@@ -156,15 +164,29 @@
     if (!siteObject(value)) return false;
     let current = value;
     for (let depth = 0; siteObject(current) && depth < 4; depth++) {
-      const property = ownData(current, "then");
-      if (property) return typeof property.value === "function";
+      let descriptor;
+      try {
+        descriptor = Object.getOwnPropertyDescriptor(current, "then");
+      } catch {
+        return true;
+      }
+      if (descriptor) return !("value" in descriptor) || typeof descriptor.value === "function";
       try {
         current = Object.getPrototypeOf(current);
       } catch {
         return true;
       }
     }
-    return false;
+    return siteObject(current);
+  }
+  function boundedArray(value, max) {
+    try {
+      if (!Array.isArray(value)) return null;
+      const length = ownData(value, "length")?.value;
+      return Number.isSafeInteger(length) && length >= 0 && length <= max ? { value, length } : null;
+    } catch {
+      return null;
+    }
   }
   function binding(active, release) {
     let disposed = false;
@@ -212,7 +234,7 @@
       const owners = /* @__PURE__ */ new WeakMap();
       const currentList = () => {
         const value = data(controller, "messageList");
-        return Array.isArray(value) && value.length <= MAX_MESSAGES ? value : null;
+        return boundedArray(value, MAX_MESSAGES);
       };
       const snapshotAt = (list, index) => {
         const property = ownData(list, String(index)), snapshot = property && snapshotMessage(property.value);
@@ -220,10 +242,11 @@
         return snapshot;
       };
       const messages = () => {
-        const list = active && currentList();
-        if (!list) return [];
+        const current = active && currentList();
+        if (!current) return [];
+        const { value: list, length } = current;
         const snapshots = [];
-        for (let index = 0; index < list.length; index++) {
+        for (let index = 0; index < length; index++) {
           const snapshot = snapshotAt(list, index);
           if (snapshot) snapshots.push(snapshot);
         }
@@ -231,10 +254,11 @@
       };
       const replaceStatus = (expected, nextStatus) => {
         if (!active || typeof nextStatus !== "string" || text(nextStatus) === INVALID) return null;
-        const owner = owners.get(expected), list = currentList();
-        if (!owner || !list || owner.list !== list || owner.index >= list.length || ownData(list, String(owner.index))?.value !== owner.raw) return null;
-        const current = snapshotMessage(owner.raw);
-        if (!current || Object.keys(expected).some((key) => data(expected, key) !== data(current, key))) return null;
+        const owner = owners.get(expected), current = currentList();
+        if (!owner || !current || owner.list !== current.value || owner.index >= current.length || ownData(current.value, String(owner.index))?.value !== owner.raw) return null;
+        const list = current.value;
+        const currentSnapshot = snapshotMessage(owner.raw);
+        if (!currentSnapshot || Object.keys(expected).some((key) => data(expected, key) !== data(currentSnapshot, key))) return null;
         let descriptors;
         try {
           descriptors = Object.getOwnPropertyDescriptors(owner.raw);
@@ -314,15 +338,16 @@
           if (blindBinding?.active) return blindBinding;
           blindBinding?.dispose();
           const originalProperty = ownData(controller, "notiBlindListener");
-          const client = data(controller, "chatClient"), entries = data(data(client, "_events"), "notiBlind");
-          if (!originalProperty || typeof originalProperty.value !== "function" || originalProperty.descriptor.writable !== true || !Array.isArray(entries) || entries.length > MAX_EVENTS) return null;
+          const client = data(controller, "chatClient"), boundedEntries = boundedArray(data(data(client, "_events"), "notiBlind"), MAX_EVENTS);
+          if (!originalProperty || typeof originalProperty.value !== "function" || originalProperty.descriptor.writable !== true || !boundedEntries) return null;
+          const { value: entries, length: entryCount } = boundedEntries;
           const original = originalProperty.value;
-          if (previousBlind) for (let index = 0; index < entries.length; index++) {
+          if (previousBlind) for (let index = 0; index < entryCount; index++) {
             const entry2 = ownData(entries, String(index))?.value;
             if (data(entry2, "listener") === previousBlind.replacement) replaceOwnData(entry2, "listener", previousBlind.replacement, previousBlind.original);
           }
           const matches = [];
-          for (let index = 0; index < entries.length; index++) {
+          for (let index = 0; index < entryCount; index++) {
             const entry2 = ownData(entries, String(index))?.value;
             if (siteObject(entry2) && data(entry2, "listener") === original) matches.push(entry2);
           }
@@ -330,9 +355,9 @@
           if (!entry || data(entry, "once") !== false || ownData(entry, "listener")?.descriptor.writable !== true) return null;
           let owned;
           const replacement = function(event, ...args) {
-            const list = currentList(), eventSnapshot = snapshotEvent(event);
+            const current = currentList(), list = current?.value || null, listLength = current?.length || 0, eventSnapshot = snapshotEvent(event);
             let before = null;
-            if (list && eventSnapshot) for (let index = 0; index < list.length; index++) {
+            if (list && eventSnapshot) for (let index = 0; index < listLength; index++) {
               const candidate = snapshotAt(list, index);
               if (candidate && candidate.time === eventSnapshot.messageTime && candidate.user === eventSnapshot.userId) {
                 before = candidate;
@@ -356,7 +381,7 @@
               return result;
             }
             let after = null;
-            if (eventSnapshot) for (let index = 0; index < list.length; index++) {
+            if (eventSnapshot) for (let index = 0; index < listLength; index++) {
               const candidate = snapshotAt(list, index);
               if (candidate && candidate.time === eventSnapshot.messageTime && candidate.user === eventSnapshot.userId) {
                 after = candidate;
@@ -373,9 +398,15 @@
             replaceOwnData(entry, "listener", replacement, original);
             return null;
           }
+          const ownsEntry = () => {
+            const current = boundedArray(data(data(client, "_events"), "notiBlind"), MAX_EVENTS);
+            if (!current || current.value !== entries) return false;
+            for (let index = 0; index < current.length; index++) if (ownData(entries, String(index))?.value === entry) return true;
+            return false;
+          };
           previousBlind = { original, replacement };
           owned = binding(
-            () => data(controller, "chatClient") === client && data(entry, "listener") === replacement && data(controller, "notiBlindListener") === replacement,
+            () => data(controller, "chatClient") === client && ownsEntry() && data(entry, "listener") === replacement && data(controller, "notiBlindListener") === replacement,
             () => {
               replaceOwnData(entry, "listener", replacement, original);
               replaceOwnData(controller, "notiBlindListener", replacement, original);
@@ -396,6 +427,7 @@
     };
     return {
       discover: (document, route) => discoverSite(document, route, reader),
+      affectsDiscovery: affectsSiteDiscovery,
       chat: {
         readMessage: (row) => snapshotMessage(messageFromRow(row)),
         connect(container) {
