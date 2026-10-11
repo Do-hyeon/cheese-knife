@@ -13,11 +13,16 @@ function setup(t, suspended = false, manualClock = false, suppliedConfig = { com
   let resolveResume;
   let context;
   let sources = 0;
+  let gains = 0;
   dom.window.AudioContext = class {
     constructor() { this.state = suspended ? 'suspended' : 'running'; this.destination = node('destination'); this.currentTime = 0; this.sampleRate = failures.sampleRate || 48000; context = this; }
     resume() { return new Promise(resolve => { resolveResume = () => { this.state = 'running'; resolve(); }; }); }
     createMediaElementSource(element) { assert.equal(element, video); sources++; return node('source'); }
-    createGain() { return Object.assign(node('gain'), { gain: parameter(1) }); }
+    createGain() {
+      gains++;
+      if (failures.gainAt === gains) throw new Error('gain unavailable');
+      return Object.assign(node('gain'), { gain: parameter(1) });
+    }
     createDelay(maxDelayTime) {
       if (failures.delay) throw new Error('delay unavailable');
       return Object.assign(node('delay'), { maxDelayTime, delayTime: parameter(0) });
@@ -27,12 +32,14 @@ function setup(t, suspended = false, manualClock = false, suppliedConfig = { com
       return Object.assign(node('limiter'), { curve: null, oversample: 'none' });
     }
     createDynamicsCompressor() {
+      if (failures.compressor) throw new Error('compressor unavailable');
       const compressor = Object.assign(node('compressor'), Object.fromEntries(['threshold','knee','ratio','attack','release'].map(key => [key, parameter(0)])));
       Object.defineProperty(compressor, 'foreignParameter', { enumerable: true, value: parameter(77) });
       return compressor;
     }
   };
   load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom, suppliedConfig);
+  if (failures.storage) Object.defineProperty(dom.window, 'localStorage', { configurable: true, get() { throw new Error('storage unavailable'); } });
   let tick;
   if (manualClock) dom.window.setInterval = callback => { tick = callback; return 9001; };
   load(dom, 'web/audio.js');
@@ -146,6 +153,48 @@ test('limiter construction failure leaves native media unintercepted', async t =
   const { audio, video, sources } = setup(t, false, false, { compressorAttack: 0 }, { limiter: true });
   assert.equal(await audio.setEnabled(video, true), 'unavailable');
   assert.equal(sources(), 0);
+});
+
+test('audio preparation failure before source creation preserves the native path', async t => {
+  for (const failures of [{ gainAt: 1 }, { gainAt: 2 }, { delay: true }, { compressor: true }, { gainAt: 3 }, { limiter: true }]) {
+    await t.test(JSON.stringify(failures), async child => {
+      const { audio, video, sources } = setup(child, false, false, { compressorAttack: 0 }, failures);
+      assert.equal(await audio.setEnabled(video, true), 'unavailable');
+      assert.equal(sources(), 0);
+    });
+  }
+});
+
+test('invalid or inaccessible gain storage falls back without blocking audio', async t => {
+  for (const storage of ['invalid', 'inaccessible']) {
+    await t.test(storage, async child => {
+      const { audio, video, dom, nodes } = setup(child, false, false, { compressorAttack: 0 }, { storage: storage === 'inaccessible' });
+      if (storage === 'invalid') dom.window.localStorage.setItem('knifeGain', 'not-a-number');
+      assert.equal(await audio.setEnabled(video, true), 'on');
+      assert.equal([...nodes.find(value => value.type === 'compressor').outputs][0].gain.value, 1);
+    });
+  }
+});
+
+test('audio entry does not publish a partial controller after startup failure', t => {
+  const dom = page(playerHTML);
+  t.after(() => dom.window.close());
+  load(dom, 'web/runtime.js');
+  const owner = runtime(dom);
+  owner.createScope = () => ({ interval() { throw new Error('interval unavailable'); }, on() {}, dispose() {} });
+  assert.throws(() => load(dom, 'web/audio.js'), /interval unavailable/);
+  assert.equal(Object.hasOwn(owner, 'audio'), false);
+});
+
+test('audio entry preserves an existing foreign controller', t => {
+  const dom = page(playerHTML);
+  t.after(() => dom.window.close());
+  load(dom, 'web/runtime.js');
+  const owner = runtime(dom);
+  const foreign = Object.freeze({ owner: 'foreign' });
+  owner.audio = foreign;
+  load(dom, 'web/audio.js');
+  assert.equal(owner.audio, foreign);
 });
 
 test('invalid stored gain is normalized before being applied to an audio graph', async t => {
