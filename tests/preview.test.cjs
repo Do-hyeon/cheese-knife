@@ -178,11 +178,28 @@ test('cached re-entry still waits its own hover delay without another API reques
   tick(300);assert.equal(dom.window.document.querySelector('.knife-preview').hidden,false);
 });
 
-test('preloading never constructs media for an age-restricted stream', async t => {
+test('an authenticated age-restricted stream prepares media when the API returns HLS playback', async t => {
   const {dom,preview,one,pending}=setup(t);
+  dom.window.HTMLMediaElement.prototype.pause=()=>{};
+  dom.window.HTMLMediaElement.prototype.load=()=>{};
+  let attached=0;
+  runtime(dom).Hls=class{static isSupported(){return true;}static Events={ERROR:'error',MANIFEST_PARSED:'manifest'};
+    on(){}loadSource(){}attachMedia(){attached++;}destroy(){}};
   deliver(dom,{preview:true,livePreview:true,previewDelay:0.1},2);
   const tick=clockPreview(dom),showing=preview.show(one.href,one,true);
   pending[0].resolve({ok:true,json:async()=>({code:200,content:{status:'OPEN',adult:true,livePlaybackJson:JSON.stringify({media:[{mediaId:'HLS',path:'https://media.invalid/master.m3u8'}]})}})});
+  await showing;tick(100);
+  assert.equal(dom.window.document.querySelector('.knife-preview').hidden,false);
+  assert.equal(attached,1);
+  assert.ok(dom.window.document.querySelector('.knife-preview-video'));
+  assert.notEqual(runtime(dom).statuses.livePreview.reason,'age-restricted-stream');
+});
+
+test('an age-restricted stream without returned playback stays thumbnail-only and limited', async t => {
+  const {dom,preview,one,pending}=setup(t);
+  deliver(dom,{preview:true,livePreview:true,previewDelay:0.1},2);
+  const tick=clockPreview(dom),showing=preview.show(one.href,one,true);
+  pending[0].resolve({ok:true,json:async()=>({code:200,content:{status:'OPEN',adult:true,livePlaybackJson:'{}'}})});
   await showing;tick(100);
   assert.equal(dom.window.document.querySelector('.knife-preview').hidden,false);
   assert.equal(dom.window.document.querySelector('.knife-preview-video'),null);

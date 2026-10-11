@@ -225,22 +225,31 @@
     "message": "치즈 나이프를 설치해주셔서 감사합니다! 본 확장 프로그램은 다음과 같은 권한이 필요합니다."
   },
   "permission_host": {
-    "message": "$HOST$에 접근",
+    "message": "$HOST$ 접근(HTTPS 치지직 페이지 기능·스타일 적용)",
     "placeholders": {
       "HOST": {
         "content": "$1",
-        "example": "chzzk.naver.com"
+        "example": "https://chzzk.naver.com/*"
       }
     }
   },
   "permission_grant": {
     "message": "허용"
   },
+  "permission_pending": {
+    "message": "권한 허용 여부를 확인하고 있습니다."
+  },
+  "permission_denied": {
+    "message": "권한이 허용되지 않았습니다. 허용 버튼을 눌러 다시 시도할 수 있습니다."
+  },
+  "permission_failed": {
+    "message": "권한 요청을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요."
+  },
   "styles_category_player": {
     "message": "플레이어"
   },
   "styles_fit_player": {
-    "message": "화면 채우기"
+    "message": "플레이어 영역 채우기"
   },
   "styles_fit_player_desc": {
     "message": "플레이어 영역의 높이 제한을 완화합니다. VOD는 정보 행 때문에 예약된 여백을 줄입니다. 전체화면 전환이나 영상 확대·잘라내기, 화질 변경 기능이 아닙니다."

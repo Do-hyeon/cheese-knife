@@ -53,3 +53,45 @@ test('install/startup reconcile only owned CSS and permission removal still open
   api.permissions.contains = async () => false; api.permissions.onRemoved.emit(); await h.settle();
   assert.equal(h.calls.filter(c => c.kind === 'tab-create').at(-1).args.url, api.runtime.getURL('permission.html'));
 });
+
+test('every worker permission check uses the exact shared host policy', async t => {
+  const { h, api, snapshot } = background(t); await snapshot();
+  api.runtime.onInstalled.emit(); await h.settle();
+  api.runtime.onStartup.emit(); await h.settle();
+  api.permissions.onRemoved.emit({ origins: ['https://chzzk.naver.com/*'] }); await h.settle();
+  api.permissions.onAdded.emit({ origins: ['https://chzzk.naver.com/*'] }); await h.settle();
+  const checks = h.calls.filter(call => call.kind === 'permission-contains');
+  assert.equal(checks.length, 4);
+  for (const check of checks) assert.deepEqual(check.args.origins, ['https://chzzk.naver.com/*']);
+});
+
+test('permission grant retries identical failed CSS without storage writes or tab reloads', async t => {
+  const { h, api, snapshot, patch } = background(t, { styles: ['left-chat'], settingsRevision: 4 }); await snapshot();
+  h.failNext('css-update');
+  const failed = await patch([style('left-chat', false), style('hide-studio', true)]);
+  assert.equal(failed.css.state, 'failed');
+  assert.deepEqual(h.registrations.get('styles').css, ['styles/left-chat.css']);
+  const writes = h.calls.filter(call => call.kind === 'commit').length;
+  const reloads = h.calls.filter(call => call.kind === 'tab-reload').length;
+  api.permissions.onAdded.emit({ origins: ['https://chzzk.naver.com/*'] }); await h.settle();
+  assert.deepEqual(h.registrations.get('styles').matches, ['https://chzzk.naver.com/*']);
+  assert.deepEqual(h.registrations.get('styles').css, ['styles/hide-studio.css']);
+  assert.equal(h.calls.filter(call => call.kind === 'commit').length, writes);
+  assert.equal(h.calls.filter(call => call.kind === 'tab-reload').length, reloads);
+});
+
+test('ungranted permission event rechecks required origins without forcing CSS retry', async t => {
+  const { h, api, snapshot } = background(t, { styles: ['left-chat'] }); await snapshot();
+  h.registrations.delete('styles'); h.failNext('css-register'); h.invalidate(); await h.settle();
+  const attempts = h.calls.filter(call => call.kind === 'css-register').length;
+  h.setPermission(false); api.permissions.onAdded.emit({ origins: ['https://chzzk.naver.com/*'] }); await h.settle();
+  assert.equal(h.calls.filter(call => call.kind === 'permission-contains').length, 1);
+  assert.equal(h.calls.filter(call => call.kind === 'css-register').length, attempts);
+});
+
+test('permission grant recheck failure is contained and later worker requests still work', async t => {
+  const { h, api, snapshot, patch } = background(t); await snapshot();
+  h.failNext('permission-contains'); api.permissions.onAdded.emit({ origins: ['https://chzzk.naver.com/*'] }); await h.settle();
+  assert.equal(h.calls.filter(call => call.kind === 'permission-contains').length, 1);
+  assert.equal((await patch([config('arrowSeek', false)])).stored, true);
+});

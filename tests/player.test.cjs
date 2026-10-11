@@ -22,6 +22,33 @@ test('Vue-free live controls mount once and do not seek an empty buffer', t => {
   assert.equal(dom.window.document.querySelector('video').currentTime, 0);
 });
 
+test('live-edge and compressor button SVG artwork and accessibility remain unchanged', t => {
+  const dom = setup(t, false, dom => load(dom, 'web/audio.js'));
+  for (const [selector, expectedPath] of [
+    ['.knife-ff', 'M4 6v12l8-6zm9 0v12l8-6z'],
+    ['.knife-comp button', 'M3 7v10m4-13v16m5-18v20m5-18v16m4-13v10'],
+  ]) {
+    const button = dom.window.document.querySelector(selector);
+    assert.ok(button.getAttribute('aria-label'));
+    const svg = button.querySelector('svg');
+    assert.equal(svg.namespaceURI, 'http://www.w3.org/2000/svg');
+    assert.equal(svg.getAttribute('width'), '22');
+    assert.equal(svg.getAttribute('height'), '22');
+    assert.equal(svg.querySelector('path').getAttribute('d'), expectedPath);
+  }
+});
+
+test('player labels use own supported translations and ignore inherited values', t => {
+  const dom = setup(t, false, dom => {
+    const inherited = Object.create({ fastForward: 'Inherited live edge' });
+    Object.defineProperty(inherited, 'enableCompressor', { enumerable: true, value: 'Own compressor label' });
+    runtime(dom).i18n = inherited;
+    load(dom, 'web/audio.js');
+  });
+  assert.equal(dom.window.document.querySelector('.knife-ff').getAttribute('aria-label'), 'Live edge');
+  assert.equal(dom.window.document.querySelector('.knife-comp button').getAttribute('aria-label'), 'Own compressor label');
+});
+
 test('live seeking clamps gaps and supports finite live duration', t => {
   const dom = setup(t);
   const video = dom.window.document.querySelector('video');

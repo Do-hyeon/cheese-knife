@@ -49,14 +49,16 @@ const onBridgeMessage = e => {
     requestId = data.requestId;
     void requestLatestSettings();
   } else if (data.type === "status" && data.statuses && typeof data.statuses === "object") {
-    const accepted = {};
-    for (const [key, value] of Object.entries(data.statuses).slice(0, 30)) {
-      if (/^[a-zA-Z][a-zA-Z0-9-]{0,39}$/.test(key) && value &&
+    const accepted = [];
+    for (const [key, value] of Object.entries(data.statuses)) {
+      if (/^[a-zA-Z][a-zA-Z0-9-]{0,39}$/.test(key) &&
+        !['__proto__', 'prototype', 'constructor'].includes(key) && value &&
         ["pending", "ready", "limited", "failed", "disabled"].includes(value.state)) {
-        accepted[key] = { state: value.state, reason: typeof value.reason === "string" ? value.reason.slice(0, 80) : "" };
+        accepted.push([key, { state: value.state, reason: typeof value.reason === "string" ? value.reason.slice(0, 80) : "" }]);
+        if (accepted.length === 30) break;
       }
     }
-    statuses = accepted;
+    statuses = Object.fromEntries(accepted);
     diagnostics = data.diagnostics?.world === "MAIN" ? data.diagnostics : {};
     let node = document.getElementById("knife-status");
     if (!node) { node = document.createElement("script"); node.id = "knife-status"; node.type = "application/json"; document.body.appendChild(node); }
@@ -80,20 +82,41 @@ const onPageShow = event => {
   frozen = false; readEpoch++; void requestLatestSettings();
 };
 const onPageHide = event => {
+  if (disposed) return;
   readEpoch++; reading = null; frozen = true;
   if (event.persisted) return;
   disposed = true;
-  chrome.storage.local.onChanged.removeListener(onSettingsChanged);
-  chrome.runtime.onMessage.removeListener(onStatusRequest);
-  window.removeEventListener('message', onBridgeMessage);
-  window.removeEventListener('pageshow', onPageShow);
-  window.removeEventListener('pagehide', onPageHide);
+  const failures = [];
+  try {
+    // Chrome records an extension error as soon as an invalidated API boundary
+    // is touched, even when the resulting exception is caught below. The old
+    // context has already released these listeners, so only detach them while
+    // this content-script context still owns a runtime ID.
+    if (chrome.runtime?.id) {
+      for (const remove of [
+        () => chrome.storage.local.onChanged.removeListener(onSettingsChanged),
+        () => chrome.runtime.onMessage.removeListener(onStatusRequest),
+      ]) {
+        try { remove(); }
+        catch (error) {
+          // Invalidation can still race the runtime-ID check. Only that expected
+          // teardown error is tolerated, never arbitrary faults.
+          if (error?.message !== 'Extension context invalidated.') failures.push(error);
+        }
+      }
+    }
+  } finally {
+    window.removeEventListener('message', onBridgeMessage);
+    window.removeEventListener('pageshow', onPageShow);
+    window.removeEventListener('pagehide', onPageHide);
+  }
+  if (failures.length === 1) throw failures[0];
+  if (failures.length > 1) throw new AggregateError(failures, 'Extension listener cleanup failed');
 };
 window.addEventListener('pageshow', onPageShow);
 window.addEventListener('pagehide', onPageHide);
 
-const i18n = {};
-for (const m of [
+const i18n = Object.fromEntries([
   "close",
   "chat",
   "stats",
@@ -111,9 +134,7 @@ for (const m of [
   "previewAudioBlocked",
   "previewAudioRightClick",
   "measured"
-]) {
-  i18n[m] = chrome.i18n.getMessage(`content_${m}`);
-}
+].map(key => [key, chrome.i18n.getMessage(`content_${key}`)]));
 const i18nScript = document.createElement("script");
 i18nScript.id = "knife-i18n";
 i18nScript.type = "application/json";
@@ -136,8 +157,7 @@ document.body.appendChild(svg);
 
 const setFilters = (config) => {
   const filters = [];
-  for (const f of ["brightness", "contrast", "gamma"]) {
-    const v = config[f];
+  for (const [f, v] of [["brightness", config.brightness], ["contrast", config.contrast], ["gamma", config.gamma]]) {
     if (isNaN(v) || v === 1) {
       continue;
     }

@@ -8,8 +8,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 void settingsBroker.initialize().catch(() => {});
 async function checkPermission() {
-  const granted = await chrome.permissions.contains({ origins: ['*://*.chzzk.naver.com/*'] });
+  const granted = await chrome.permissions.contains({ origins: [...KnifeHostPolicy.origins] });
   if (!granted) await chrome.tabs.create({ url: chrome.runtime.getURL('permission.html') });
+}
+async function retryStylesAfterPermissionGrant() {
+  const granted = await chrome.permissions.contains({ origins: [...KnifeHostPolicy.origins] });
+  if (granted) settingsBroker.invalidateStyles({ retry: true });
 }
 function onWake() {
   settingsBroker.invalidateStyles();
@@ -17,4 +21,5 @@ function onWake() {
 }
 chrome.runtime.onInstalled.addListener(onWake);
 chrome.runtime.onStartup.addListener(onWake);
+chrome.permissions.onAdded.addListener(() => { void retryStylesAfterPermissionGrant().catch(() => {}); });
 chrome.permissions.onRemoved.addListener(() => { void checkPermission().catch(() => {}); });

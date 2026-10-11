@@ -237,13 +237,21 @@
     };
     const rehide = () => {
       let changed = false;
-      if (Array.isArray(controller.messageList)) for (let i = 0; i < controller.messageList.length; i++) {
-        const message = controller.messageList[i], saved = message && retained.get(message);
+      const list = controller.messageList;
+      if (Array.isArray(list)) for (let index = 0; index < list.length; index++) {
+        const message = list.at(index), saved = message && retained.get(message);
         if (!saved) continue;
         retained.delete(message);
         if (message.status !== 'NORMAL' || message.content !== saved.content || message.key !== saved.key ||
           message.user !== saved.user || message.time !== saved.time || message.type !== 1) continue;
-        controller.messageList[i] = { ...message, status: saved.status }; changed = true;
+        if (index < 0 || index >= list.length || controller.messageList !== list || list.at(index) !== message) continue;
+        const hidden = { ...message, status: saved.status };
+        const stillOwned = message.status === 'NORMAL' && message.content === saved.content && message.key === saved.key &&
+          message.user === saved.user && message.time === saved.time && message.type === 1;
+        if (!stillOwned || index >= list.length ||
+          Object.getOwnPropertyDescriptor(controller, 'messageList')?.value !== list ||
+          Object.getOwnPropertyDescriptor(list, String(index))?.value !== message) continue;
+        list.splice(index, 1, hidden); changed = true;
       }
       if (changed) controller.notiUpdateMessageList();
       for (const node of markers) releaseMarker(node);
@@ -287,24 +295,43 @@
       const next = { client, entry: matches[0], original };
       const replacement = next.replacement = function (event, ...args) {
         const enabled = binding === next && !scope.disposed && config.showDeleted === true;
-        const before = enabled && Array.isArray(controller.messageList) && event &&
-          controller.messageList.find(message => message.time === event.messageTime && message.user === event.userId);
+        const list = enabled && Array.isArray(controller.messageList) ? controller.messageList : null;
+        const before = list && event && list.find(message => message.time === event.messageTime && message.user === event.userId);
         const previous = before && retained.get(before);
         const unchanged = !previous || ownsMessage(before, previous);
+        const beforeState = before && {
+          key: before.key, user: before.user, time: before.time, type: before.type,
+          status: before.status, content: before.content,
+        };
         if (previous && !unchanged) retained.delete(before);
-        const eligible = before && before.type === 1 && before.status === 'NORMAL' && unchanged &&
+        const eligible = before && beforeState.type === 1 && beforeState.status === 'NORMAL' && unchanged &&
           typeof event.blindType === 'string' && event.blindType.length > 0 && event.blindType.length <= 80 &&
           !['CANCEL', 'NORMAL', 'CBOTBLIND'].includes(event.blindType);
         const result = original.call(this, event, ...args);
         if (!eligible || binding !== next || scope.disposed || config.showDeleted !== true || result?.then) { paint(); return result; }
-        const index = controller.messageList.findIndex(message => message.time === before.time && message.user === before.user);
-        const after = controller.messageList[index];
-        if (after && after !== before && after.key === before.key && after.type === 1 &&
-          after.status === event.blindType && after.content === before.content) {
+        if (Object.getOwnPropertyDescriptor(controller, 'messageList')?.value !== list) { paint(); return result; }
+        const index = list.findIndex(message => message.time === beforeState.time && message.user === beforeState.user);
+        if (index < 0 || index >= list.length) { paint(); return result; }
+        const after = list.at(index);
+        const afterState = after && { key: after.key, type: after.type, status: after.status, content: after.content };
+        if (after && after !== before && afterState.key === beforeState.key && afterState.type === 1 &&
+          afterState.status === event.blindType && afterState.content === beforeState.content) {
           const visible = { ...after, status: 'NORMAL' };
-          retained.delete(before);
-          retained.set(visible, { status: after.status, content: before.content, key: before.key, user: before.user, time: before.time });
-          controller.messageList[index] = visible; controller.notiUpdateMessageList();
+          const finalState = { key: after.key, type: after.type, status: after.status, content: after.content };
+          const stillEligible = after !== before && finalState.key === beforeState.key && finalState.type === 1 &&
+            finalState.status === event.blindType && finalState.content === beforeState.content;
+          const retainedState = {
+            status: finalState.status, content: beforeState.content, key: beforeState.key,
+            user: beforeState.user, time: beforeState.time,
+          };
+          if (stillEligible && index < list.length &&
+            Object.getOwnPropertyDescriptor(controller, 'messageList')?.value === list &&
+            Object.getOwnPropertyDescriptor(list, String(index))?.value === after) {
+            list.splice(index, 1, visible);
+            retained.delete(before);
+            retained.set(visible, retainedState);
+            controller.notiUpdateMessageList();
+          }
         }
         paint(); return result;
       };

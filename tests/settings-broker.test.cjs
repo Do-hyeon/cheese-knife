@@ -86,3 +86,84 @@ test('a closed response channel cannot create an unhandled failure or block late
     { id: extensionId, url: getURL('popup.html') }, () => { throw new Error('receiver-closed'); });
   await h.settle(); assert.equal((await h.patch('popup', [config('previewVolume', 25)])).stored, true);
 });
+
+test('owned wildcard CSS registration updates to HTTPS only without touching foreign registration or settings', async t => {
+  const initial = { config: { arrowSeek: false }, styles: ['left-chat'], styleParameters: { fontSize: 2 }, settingsRevision: 7 };
+  const h = settingsHarness(t, initial);
+  h.registrations.set('styles', { id: 'styles', matches: ['*://chzzk.naver.com/*'], css: ['styles/left-chat.css'], runAt: 'document_start' });
+  h.registrations.set('foreign', { id: 'foreign', matches: ['https://example.com/*'], js: ['foreign.js'] });
+  await h.initialize();
+  assert.deepEqual(h.registrations.get('styles').matches, ['https://chzzk.naver.com/*']);
+  assert.deepEqual(h.registrations.get('foreign'), { id: 'foreign', matches: ['https://example.com/*'], js: ['foreign.js'] });
+  assert.deepEqual(h.saved, initial);
+  assert.equal(h.calls.filter(call => call.kind === 'css-update').length, 1);
+});
+
+test('explicit retry bypasses an identical failed CSS fingerprint exactly once', async t => {
+  const h = settingsHarness(t, { styles: ['left-chat'] }); h.failNext('css-register'); await h.initialize();
+  assert.equal(h.registrations.has('styles'), false);
+  const before = h.calls.filter(call => call.kind === 'css-register').length;
+  h.invalidate({ retry: true }); await h.settle();
+  assert.deepEqual(h.registrations.get('styles').matches, ['https://chzzk.naver.com/*']);
+  assert.equal(h.calls.filter(call => call.kind === 'css-register').length, before + 1);
+});
+
+test('a read failure before CSS work preserves the explicit retry for the next invalidation', async t => {
+  const h = settingsHarness(t, { styles: ['left-chat'] }); h.failNext('css-register'); await h.initialize();
+  const before = h.calls.filter(call => call.kind === 'css-register').length;
+  h.failNext('read'); h.invalidate({ retry: true }); await h.settle();
+  assert.equal(h.calls.filter(call => call.kind === 'css-register').length, before);
+  h.invalidate(); await h.settle();
+  assert.deepEqual(h.registrations.get('styles').matches, ['https://chzzk.naver.com/*']);
+  assert.equal(h.calls.filter(call => call.kind === 'css-register').length, before + 1);
+});
+
+test('normal invalidation cannot erase a queued permission retry', async t => {
+  const h = settingsHarness(t, { styles: ['left-chat'] }); h.failNext('css-register'); await h.initialize();
+  const read = h.holdNext('read'); h.invalidate(); await read.reached;
+  h.invalidate({ retry: true }); h.invalidate(); read.release(); await h.settle();
+  assert.equal(h.registrations.has('styles'), true);
+});
+
+test('retry arriving during CSS registration remains pending for the latest stored selection', async t => {
+  const h = settingsHarness(t, { styles: ['left-chat'] }); h.failNext('css-register'); await h.initialize();
+  h.saved.styles = ['hide-studio'];
+  const registration = h.holdNext('css-register'); h.invalidate({ retry: true }); await registration.reached;
+  h.saved.styles = ['left-chat']; h.invalidate({ retry: true }); registration.release(); await h.settle();
+  assert.deepEqual(h.registrations.get('styles').css, ['styles/left-chat.css']);
+  assert.equal(h.maxConcurrentCss, 1);
+});
+
+test('queue saturation retains permission retry until queued writes drain', async t => {
+  const h = settingsHarness(t, { styles: ['left-chat'] }); h.failNext('css-register'); await h.initialize();
+  const commit = h.holdNext('commit'); const first = h.patch('popup', [config('previewVolume', 1)]); await commit.reached;
+  const queued = Array.from({ length: 64 }, (_, i) => h.patch('popup', [config('previewVolume', (i + 2) % 101)]));
+  h.invalidate({ retry: true }); commit.release(); await Promise.all([first, ...queued]); await h.settle();
+  assert.equal(h.registrations.has('styles'), true); assert.equal(h.maxConcurrentCss, 1);
+});
+
+test('repeated retry notifications coalesce without parallel registration', async t => {
+  const h = settingsHarness(t, { styles: ['left-chat'] }); h.failNext('css-register'); await h.initialize();
+  h.saved.styles = ['hide-studio'];
+  const registration = h.holdNext('css-register'); h.invalidate({ retry: true }); await registration.reached;
+  h.invalidate({ retry: true }); h.invalidate({ retry: true }); registration.release(); await h.settle();
+  assert.equal(h.calls.filter(call => call.kind === 'css-register').length, 2);
+  assert.equal(h.maxConcurrentCss, 1);
+});
+
+test('failed retry settles until a new explicit retry signal', async t => {
+  const h = settingsHarness(t, { styles: ['left-chat'] }); h.failNext('css-register'); await h.initialize();
+  let count = h.calls.filter(call => call.kind === 'css-register').length;
+  h.failNext('css-register'); h.invalidate({ retry: true }); await h.settle();
+  assert.equal(h.calls.filter(call => call.kind === 'css-register').length, ++count);
+  await h.settle(); assert.equal(h.calls.filter(call => call.kind === 'css-register').length, count);
+  h.failNext('css-register'); h.invalidate({ retry: true }); await h.settle();
+  assert.equal(h.calls.filter(call => call.kind === 'css-register').length, count + 1);
+});
+
+test('failed boot keeps permission retry gated', async t => {
+  const h = settingsHarness(t); h.failNext('read'); await assert.rejects(h.initialize());
+  h.invalidate({ retry: true }); await h.settle();
+  assert.equal(h.calls.some(call => call.kind.startsWith('css-')), false);
+  assert.equal((await h.patch('popup', [config('arrowSeek', false)])).stage, 'initialization');
+});

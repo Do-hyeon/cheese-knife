@@ -13,6 +13,36 @@ function setup(t, html = playerHTML, url) {
   return dom;
 }
 
+test('runtime installs an own singleton instead of trusting an inherited symbol value', t => {
+  const dom = page(playerHTML);
+  const key = dom.window.Symbol.for('cheese-knife.runtime.v1');
+  const prototype = Object.getPrototypeOf(dom.window);
+  Object.defineProperty(prototype, key, { configurable: true, value: { foreign: true } });
+  t.after(async () => {
+    delete prototype[key];
+    dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
+    await flush(); dom.window.close();
+  });
+  load(dom, 'web/runtime.js');
+  const descriptor = Object.getOwnPropertyDescriptor(dom.window, key);
+  assert.ok(descriptor, 'the page runtime must be an own property');
+  assert.notEqual(descriptor.value, prototype[key]);
+  assert.equal(descriptor.value.requestId.startsWith('knife-'), true);
+});
+
+test('runtime status keys reject prototype names and preserve a bounded ordinary snapshot', t => {
+  const dom = setup(t), knife = runtime(dom);
+  const beforePrototype = Object.getPrototypeOf(knife.statuses);
+  for (const key of ['__proto__', 'prototype', 'constructor', '', 'a'.repeat(41), 'bad key']) {
+    knife.setStatus(key, 'ready', 'must-not-appear');
+  }
+  knife.setStatus('validFeature', 'limited', 'x'.repeat(100));
+  assert.equal(Object.getPrototypeOf(knife.statuses), beforePrototype);
+  assert.deepEqual(Object.keys(knife.statuses), ['validFeature']);
+  assert.equal(knife.statuses.validFeature.state, 'limited');
+  assert.equal(knife.statuses.validFeature.reason, 'x'.repeat(80));
+});
+
 test('VOD route remains VOD when the same player class is present', t => {
   const dom = setup(t, playerHTML.replace('live_player_layout', 'player_layout'), 'https://chzzk.naver.com/video/123456');
   assert.equal(runtime(dom).route().kind, 'vod');

@@ -12,13 +12,13 @@
     "48": "icon48.png",
     "128": "icon128.png"
   },
-  "homepage_url": "https://github.com/Do-hyeon/cheese-knife/blob/codex/community-store-preview/README.md",
+  "homepage_url": "https://github.com/Do-hyeon/cheese-knife/blob/main/README.md",
   "permissions": [
     "scripting",
     "storage"
   ],
   "host_permissions": [
-    "*://*.chzzk.naver.com/*"
+    "https://chzzk.naver.com/*"
   ],
   "action": {
     "default_popup": "popup.html"
@@ -37,7 +37,7 @@
         "web/main.css"
       ],
       "matches": [
-        "*://chzzk.naver.com/*"
+        "https://chzzk.naver.com/*"
       ],
       "exclude_matches": [
         "*://chzzk.naver.com/chat/*",
@@ -74,7 +74,7 @@
         "web/inject.js"
       ],
       "matches": [
-        "*://chzzk.naver.com/*"
+        "https://chzzk.naver.com/*"
       ],
       "exclude_matches": [
         "*://chzzk.naver.com/chat/*",

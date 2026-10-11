@@ -34,9 +34,10 @@ void capturedTab.then(tab => {
     const tab = await capturedTab;
     if (!tab) throw new Error('no-target');
     const result = await chrome.tabs.sendMessage(tab.id, { type: "cheese-knife-status" }, { frameId: 0 });
+    const statusMap = new Map(Object.entries(result?.statuses || {}));
     let shown = 0;
     for (const feature of ["player", "compressor", "preview", "livePreview", "chatResize", "donationChat", "deletedChat", "sidebarRefresh", "statistics"]) {
-      const status = result?.statuses?.[feature];
+      const status = statusMap.get(feature);
       if (!status) continue;
       const row = document.createElement("div"); row.className = "capability-row";
       const name = document.createElement("span"); name.textContent = message("capability_" + feature, feature);

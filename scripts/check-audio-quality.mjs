@@ -1,14 +1,22 @@
 // Synthetic signals only, fresh profile. Capture the production graph's summed
 // floating output before a silent sink; never record a broadcast/user profile.
-import fs from 'node:fs/promises';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
 import {createRequire} from 'node:module';
-import {measureSignal,channelDifferenceRms,rmsEnvelope} from './audio-metrics.mjs';
+import {measureSignal,channelDifferenceRms,rmsEnvelope,audioQualityFailures} from './audio-metrics.mjs';
+import {openOwnedRoot} from './owned-files.mjs';
+import {describeAudioArtifact,parseAudioQualityArgs} from './audio-artifacts.mjs';
 const require=createRequire(import.meta.url);
 const {playerHTML}=require('../tests/helpers.cjs');
-const browser=await chromium.launch({headless:true,...(process.argv.includes('--chrome')?{channel:'chrome'}:{})});
-const output=path.resolve('output/audio-quality');
+const repositoryRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const options=parseAudioQualityArgs(process.argv.slice(2),repositoryRoot);
+const files=await openOwnedRoot(repositoryRoot);
+const targetFiles=await openOwnedRoot(options.root);
+const artifact=await describeAudioArtifact(options.root,options.label);
+const browser=await chromium.launch({headless:true,...(options.chrome?{channel:'chrome'}:{})});
+const output='output/audio-quality';
+const reportPath=options.label==='source'?`${output}/report.json`:`${output}/report-${options.label}.json`;
 try {
   const page=await browser.newPage();
   await page.route('https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',route=>route.fulfill({contentType:'text/html',body:playerHTML}));
@@ -41,7 +49,7 @@ try {
     context.createGain=()=>{const node=gain();probe.gains.push(node);return node;};
     window.AudioContext=class {constructor(){return context;}};
   });
-  for(const file of ['config.js','web/runtime.js','web/audio.js','web/player.js']) await page.evaluate(await fs.readFile(file,'utf8'));
+  for(const file of ['config.js','web/runtime.js','web/audio.js','web/player.js']) await page.evaluate(await targetFiles.readFile(file,'utf8'));
   await page.evaluate(()=>{
     const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
     window.postMessage({namespace:'cheese-knife',protocol:1,type:'config',requestId:runtime.requestId,
@@ -85,7 +93,10 @@ try {
     for(const chunk of chunks){
       const a=Math.max(start,chunk.frame),b=Math.min(end,chunk.frame+(chunk.samples[0]?.length||0));if(a>=b)continue;
       covered.fill(1,a-start,b-start);
-      for(let channel=0;channel<2;channel++)if(chunk.samples[channel])channels[channel].set(chunk.samples[channel].subarray(a-chunk.frame,b-chunk.frame),a-start);
+      for(let channel=0;channel<2;channel++){
+        const samples=chunk.samples.at(channel),target=channels.at(channel);
+        if(samples)target.set(samples.subarray(a-chunk.frame,b-chunk.frame),a-start);
+      }
     }
     if(covered.some(value=>!value))throw new Error('Incomplete audio capture window');
     return {rate,start,end,channels:channels.map(channel=>Array.from(channel))};
@@ -123,6 +134,29 @@ try {
         after:summarize(await windowSamples(frame+Math.round(rate*0.1),frame+Math.round(rate*0.14)))});
     }
   }
+  const alignments=await page.evaluate(async()=>{
+    const rates=[8000,11025,16000,22050,32000,44100,48000,88200,96000,176400,192000,384000];
+    const firstAndLast=channel=>{
+      let first=-1,last=-1;
+      for(let index=0;index<channel.length;index++)if(Math.abs(channel.at(index))>1e-7){if(first<0)first=index;last=index;}
+      return {first,last};
+    };
+    const results=[];
+    for(const sampleRate of rates){
+      const expectedFrame=Math.min(Math.floor(Math.fround(Math.fround(0.006)*Math.fround(sampleRate))),1023);
+      const context=new OfflineAudioContext(2,2048,sampleRate);
+      const source=context.createBufferSource(),buffer=context.createBuffer(1,1,sampleRate);buffer.getChannelData(0)[0]=1;source.buffer=buffer;
+      const delay=context.createDelay(0.02);delay.delayTime.value=expectedFrame/sampleRate;
+      const compressor=context.createDynamicsCompressor();compressor.threshold.value=0;compressor.knee.value=0;compressor.ratio.value=1;
+      const channels=context.createChannelMerger(2);
+      source.connect(delay);delay.connect(channels,0,0);
+      source.connect(compressor);compressor.connect(channels,0,1);
+      channels.connect(context.destination);source.start();
+      const rendered=await context.startRendering(),dry=firstAndLast(rendered.getChannelData(0)),wet=firstAndLast(rendered.getChannelData(1));
+      results.push({sampleRate,expectedFrame,dryFirst:dry.first,dryLast:dry.last,compressorFirst:wet.first,compressorLast:wet.last});
+    }
+    return results;
+  });
   // Explicitly labeled stress case; no user's settings or speakers are changed.
   await page.evaluate(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
     window.__quality.defaultConfig=runtime.config;
@@ -131,14 +165,18 @@ try {
   const stress={profile:'threshold0/knee0/ratio1/gain2',...summarize(await windowSamples(),1000)};
   await page.evaluate(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];runtime.config=window.__quality.defaultConfig;runtime.audio.configure();});
   const nodes=await page.evaluate(()=>({sources:window.__quality.sources,
-    compressor:window.__quality.compressors.map(node=>Object.fromEntries(['threshold','knee','ratio','attack','release'].map(key=>[key,node[key].value]))),
+    compressor:window.__quality.compressors.map(node=>({threshold:node.threshold.value,knee:node.knee.value,
+      ratio:node.ratio.value,attack:node.attack.value,release:node.release.value})),
     sampleRate:window.__quality.context.sampleRate}));
   await page.evaluate(async()=>{document.querySelector('video').pause();await window.__quality.context.close();});
-  const report={browser:browser.version(),profile:'fresh synthetic, silent output sink',configuration:'normalized defaults; separately labeled stress case',nodes,cases,transitions,stress,
+  const report={browser:browser.version(),artifact,profile:'fresh synthetic, silent output sink',configuration:'normalized defaults; separately labeled stress case',nodes,cases,transitions,alignments,stress,
     limits:'Steady coherent-window THD reports harmonics 2..10 below Nyquist, not all distortion. Floating >1 indicates headroom risk, not a measured hardware clip. Synthetic data is not subjective listening.'};
   if(nodes.sources!==1||cases[0].channels[0].rms<0.34||cases[0].channels[0].rms>0.36)throw new Error('Capture calibration failed');
-  await fs.mkdir(output,{recursive:true});await fs.writeFile(path.join(output,'report.json'),JSON.stringify(report,null,2));
-  console.log(JSON.stringify({browser:report.browser,nodes,report:path.join(output,'report.json'),cases:cases.map(item=>({frequency:item.frequency,amplitude:item.inputAmplitude,gain:item.gain,enabled:item.enabled,stereo:item.stereo,bursts:item.bursts,peak:item.channels[0].peak,rms:item.channels[0].rms,overFullScaleSamples:item.channels[0].overFullScaleSamples,thdPercent:item.channels[0].thdPercent})),
-    stress:{profile:stress.profile,peak:stress.channels[0].peak,overFullScaleSamples:stress.channels[0].overFullScaleSamples},
+  const qualityFailures=audioQualityFailures(report);
+  report.qualityFailures=qualityFailures;
+  await files.ensureDirectory(output);await files.writeFile(reportPath,JSON.stringify(report,null,2));
+  console.log(JSON.stringify({browser:report.browser,artifact,nodes,report:reportPath,cases:cases.map(item=>({frequency:item.frequency,amplitude:item.inputAmplitude,gain:item.gain,enabled:item.enabled,stereo:item.stereo,bursts:item.bursts,peak:item.channels[0].peak,rms:item.channels[0].rms,overFullScaleSamples:item.channels[0].overFullScaleSamples,thdPercent:item.channels[0].thdPercent})),
+    stress:{profile:stress.profile,peak:stress.channels[0].peak,overFullScaleSamples:stress.channels[0].overFullScaleSamples},alignments,
     transitions:transitions.map(item=>({frequency:item.frequency,kind:item.kind,value:item.value,maxAdjacentStep:item.change.channels[0].maxAdjacentStep,baselineAdjacentStep:Math.max(item.before.channels[0].maxAdjacentStep,item.after.channels[0].maxAdjacentStep),peak:item.change.channels[0].peak,min8msRms:item.change.channels[0].envelope8ms.min,baselineMin8msRms:Math.min(item.before.channels[0].envelope8ms.min,item.after.channels[0].envelope8ms.min)}))},null,2));
+  if(qualityFailures.length)throw new Error(`Audio quality failed: ${qualityFailures.join(', ')}`);
 }finally{await browser.close();}

@@ -1,6 +1,6 @@
-import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { openOwnedRoot, resolveOwnedPath } from './owned-files.mjs';
 
 export function manifestFiles(manifest) {
   const files = new Set(['manifest.json']);
@@ -9,7 +9,6 @@ export function manifestFiles(manifest) {
   add(manifest.action?.default_popup);
   Object.values(manifest.action?.default_icon || {}).forEach(add);
   add(manifest.background?.service_worker);
-  (manifest.background?.scripts || []).forEach(add);
   for (const script of manifest.content_scripts || []) {
     [...script.js || [], ...script.css || []].forEach(add);
   }
@@ -17,63 +16,77 @@ export function manifestFiles(manifest) {
 }
 
 export function resolveFile(root, file) {
-  if (typeof file !== 'string' || path.isAbsolute(file) || file.includes('\\')) throw new Error(`Invalid extension path: ${file}`);
-  const resolved = path.resolve(root, file);
-  if (!resolved.startsWith(path.resolve(root) + path.sep)) throw new Error(`Path outside package: ${file}`);
-  return resolved;
+  try { return resolveOwnedPath(root, file); }
+  catch { throw new Error(`Invalid extension path: ${file}`); }
+}
+
+// Check every component without following internal links. The caller may use
+// an alias for the package root; checkPackage resolves that root once below.
+// This checks a stable package tree, not an atomic filesystem read sandbox.
+async function regularPackageFile(owned, file, missingMessage) {
+  try { return await owned.resolve(file, { type: 'file' }); }
+  catch (error) {
+    if (error.code === 'owned-path-link') throw new Error(`Linked package path: ${file}`, { cause: error });
+    if (error.code === 'owned-path-type') throw new Error(`Not a regular package file: ${file}`, { cause: error });
+    if (missingMessage && error.code === 'ENOENT') throw new Error(`${missingMessage}: ${file}`, { cause: error });
+    throw error;
+  }
 }
 
 export async function checkPackage(directory, expectedVersion, browser = 'chrome') {
-  const root = path.resolve(directory);
-  const manifest = JSON.parse(await fs.readFile(path.join(root, 'manifest.json'), 'utf8'));
+  if (browser !== 'chrome') throw new Error('Chrome only: Firefox packages are not supported by the community recovery');
+  const owned = await openOwnedRoot(directory);
+  await regularPackageFile(owned, 'manifest.json', 'Missing extension resource');
+  const manifest = JSON.parse(await owned.readFile('manifest.json', 'utf8'));
   if (manifest.manifest_version !== 3) throw new Error('Expected Manifest V3');
-  if (!['chrome', 'firefox'].includes(browser)) throw new Error('Unsupported browser package');
-  if (browser === 'chrome') {
-    if (manifest.background && ['scripts', 'page', 'persistent'].some(key => Object.hasOwn(manifest.background, key))) {
-      throw new Error('Chrome MV3 must not declare background.scripts, page or persistent');
-    }
-    if (manifest.browser_specific_settings) throw new Error('Chrome package must not declare browser_specific_settings');
-  } else if (manifest.background && (manifest.background.service_worker || !Array.isArray(manifest.background.scripts) || !manifest.background.scripts.length)) {
-    throw new Error('Firefox package requires background.scripts instead of service_worker');
+  if (manifest.background && ['scripts', 'page', 'persistent'].some(key => Object.hasOwn(manifest.background, key))) {
+    throw new Error('Chrome MV3 must not declare background.scripts, page or persistent');
   }
+  if (manifest.browser_specific_settings) throw new Error('Chrome package must not declare browser_specific_settings');
   let project;
-  try { project = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8')); }
-  catch (error) { if (error.code !== 'ENOENT') throw error; }
+  try {
+    await regularPackageFile(owned, 'package.json');
+    project = JSON.parse(await owned.readFile('package.json', 'utf8'));
+  } catch (error) { if (error.code !== 'ENOENT') throw error; }
   const version = expectedVersion || project?.version;
   if (version && manifest.version !== version) throw new Error('Package/manifest version mismatch');
-  const files = manifestFiles(manifest);
-  for (const file of await fs.readdir(root)) {
-    if (file.endsWith('.html')) files.add(file);
+  const resources = manifestFiles(manifest);
+  for (const file of await owned.readdir('')) {
+    if (file.endsWith('.html')) resources.add(file);
   }
-  if ([...files].some(file => file.startsWith('vendor/'))) files.add('vendor/hls.js.LICENSE');
-  if (manifest.default_locale) files.add(`_locales/${manifest.default_locale}/messages.json`);
-  for (const file of files) {
-    await fs.access(resolveFile(root, file)).catch(() => { throw new Error(`Missing extension resource: ${file}`); });
+  if ([...resources].some(file => file.startsWith('vendor/'))) resources.add('vendor/hls.js.LICENSE');
+  if (manifest.default_locale) resources.add(`_locales/${manifest.default_locale}/messages.json`);
+  for (const file of resources) {
+    await regularPackageFile(owned, file, 'Missing extension resource');
     if (file.endsWith('.html')) {
-      const html = await fs.readFile(resolveFile(root, file), 'utf8');
+      const html = await owned.readFile(file, 'utf8');
       for (const match of html.matchAll(/<(?:script|link)\b[^>]*\b(?:src|href)=["']([^"']+)["']/g)) {
         if (/^(?:https?:|#|data:)/.test(match[1])) continue;
         const asset = path.posix.join(path.posix.dirname(file), match[1]);
-        await fs.access(resolveFile(root, asset)).catch(() => { throw new Error(`Missing HTML resource: ${asset}`); });
+        await regularPackageFile(owned, asset, 'Missing HTML resource');
       }
     }
     if (file === manifest.background?.service_worker) {
-      const worker = await fs.readFile(resolveFile(root, file), 'utf8');
+      const worker = await owned.readFile(file, 'utf8');
       // Only inspect our literal classic-worker imports: never execute or guess computed paths.
       for (const call of worker.matchAll(/\bimportScripts\s*\(([^)]*)\)/g)) {
-        if (!/^\s*(?:['"][^'"\\]+['"]\s*,\s*)*['"][^'"\\]+['"]\s*$/.test(call[1])) continue;
-        for (const match of call[1].matchAll(/['"]([^'"]+)['"]/g)) {
-          const dependency = path.posix.join(path.posix.dirname(file), match[1]);
-          await fs.access(resolveFile(root, dependency)).catch(() => { throw new Error(`Missing worker resource: ${dependency}`); });
+        const tokens = call[1].match(/['"][^'"\\]+['"]|,|[^\s]+/g) || [];
+        if (!tokens.length || tokens.length % 2 !== 1 ||
+            !tokens.every((token, index) => index % 2 ? token === ',' : /^['"][^'"\\]+['"]$/.test(token))) continue;
+        const literals = tokens.filter((_token, index) => index % 2 === 0);
+        for (const literal of literals) {
+          const dependency = path.posix.join(path.posix.dirname(file), literal.slice(1, -1));
+          await regularPackageFile(owned, dependency, 'Missing worker resource');
         }
       }
     }
   }
-  return { version: manifest.version, resources: files.size };
+  return { version: manifest.version, resources: resources.size };
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const result = await checkPackage(process.argv.slice(2).find(arg => !arg.startsWith('--')) || process.cwd(), undefined,
-    process.argv.includes('--firefox') ? 'firefox' : 'chrome');
+  const args = process.argv.slice(2);
+  if (args.length > 1 || args.some(arg => arg.startsWith('--'))) throw new Error('Chrome only: supply at most one package directory, without browser options');
+  const result = await checkPackage(args[0] || process.cwd());
   console.log(`Package OK: v${result.version}, ${result.resources} entry resources`);
 }

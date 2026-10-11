@@ -14,7 +14,8 @@ function event() {
 function settingsHarness(t, stored = {}) {
   const saved = structuredClone(stored), gates = new Map(), allGates = [], changes = event();
   const calls = [], registrations = new Map(), tabs = new Map([[7, { id: 7, windowId: 9, url: 'https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }]]);
-  const windows = [], clients = [], messages = [], metrics = new WeakMap(); let counter = 0, activeWrites = 0, maxWrites = 0, worker, broker, stopInvalidation;
+  const windows = [], clients = [], messages = [], metrics = new WeakMap();
+  let counter = 0, activeWrites = 0, maxWrites = 0, activeCss = 0, maxCss = 0, permissionGranted = true, worker, broker, stopInvalidation;
   function holdNext(kind) {
     let resolve, reject, entered;
     const wait = new Promise((a, b) => { resolve = a; reject = b; });
@@ -23,6 +24,10 @@ function settingsHarness(t, stored = {}) {
     if (!gates.has(kind)) gates.set(kind, []); gates.get(kind).push(gate); allGates.push(gate); return gate;
   }
   async function boundary(kind, args) { calls.push({ kind, args: structuredClone(args) }); const g = gates.get(kind)?.shift(); if (g) { g.entered(args); await g.wait; } }
+  async function cssBoundary(kind, args) {
+    activeCss++; maxCss = Math.max(maxCss, activeCss);
+    try { await boundary(kind, args); } finally { activeCss--; }
+  }
   const announce = delta => { void boundary('event', delta).then(() => changes.emit(delta, 'local')).catch(() => {}); };
   function apiFor(name = 'background') {
     const metric = { current: 0, max: 0 };
@@ -49,9 +54,9 @@ function settingsHarness(t, stored = {}) {
       } },
       scripting: {
         getRegisteredContentScripts: async options => { await boundary('css-get', options); return structuredClone([...registrations.values()].filter(s => !options?.ids || options.ids.includes(s.id))); },
-        registerContentScripts: async scripts => { await boundary('css-register', scripts); for (const s of scripts) { if (registrations.has(s.id)) throw new Error('duplicate'); registrations.set(s.id, structuredClone(s)); } },
-        updateContentScripts: async scripts => { await boundary('css-update', scripts); for (const s of scripts) { if (!registrations.has(s.id)) throw new Error('missing'); registrations.set(s.id, { ...registrations.get(s.id), ...structuredClone(s) }); } },
-        unregisterContentScripts: async options => { await boundary('css-unregister', options); for (const id of options?.ids || [...registrations.keys()]) registrations.delete(id); },
+        registerContentScripts: async scripts => { await cssBoundary('css-register', scripts); for (const s of scripts) { if (registrations.has(s.id)) throw new Error('duplicate'); registrations.set(s.id, structuredClone(s)); } },
+        updateContentScripts: async scripts => { await cssBoundary('css-update', scripts); for (const s of scripts) { if (!registrations.has(s.id)) throw new Error('missing'); registrations.set(s.id, { ...registrations.get(s.id), ...structuredClone(s) }); } },
+        unregisterContentScripts: async options => { await cssBoundary('css-unregister', options); for (const id of options?.ids || [...registrations.keys()]) registrations.delete(id); },
       },
       tabs: {
         get: async id => { await boundary('tab-get', { id }); if (!tabs.has(id)) throw new Error('missing-tab'); return structuredClone(tabs.get(id)); },
@@ -59,7 +64,10 @@ function settingsHarness(t, stored = {}) {
         query: async options => { await boundary('tab-query', options); return [structuredClone(tabs.get(7))]; },
         sendMessage: async () => ({ statuses: { player: { state: 'ready' }, deletedChat: { state: 'limited', reason: 'jsx-adapter-unavailable' } } }), create: async options => { await boundary('tab-create', options); },
       },
-      permissions: { contains: async () => true, onRemoved: event() },
+      permissions: {
+        contains: async options => { await boundary('permission-contains', options); return permissionGranted; },
+        onRemoved: event(), onAdded: event(),
+      },
     };
     api.runtime.sendMessage = (message, callback) => {
       messages.push({ api, message: structuredClone(message), subscribers: changes.listeners.size });
@@ -119,12 +127,14 @@ function settingsHarness(t, stored = {}) {
     await flush(); return { dom, api, time };
   }
   return { saved, calls, messages, client, openUi, registrations, tabs, changes, holdNext, apiFor, send, request,
-    get worker() { return worker; }, get broker() { return broker; }, get maxConcurrentWrites() { return maxWrites; },
+    get worker() { return worker; }, get broker() { return broker; },
+    get maxConcurrentWrites() { return maxWrites; }, get maxConcurrentCss() { return maxCss; },
     initialize: () => broker.initialize(), snapshot: (name = 'popup') => request(name, 'get-snapshot'),
     patch: (name, operations) => request(name, 'patch', { operations }),
     reload: (id = 7, windowId = 9) => request('styles', 'reload-target', { targetTabId: id, targetWindowId: windowId }),
     failNext: kind => { const g = holdNext(kind); void g.reached.then(() => g.fail()); },
-    restartBroker: startWorker, invalidate: () => broker.invalidateStyles(),
+    restartBroker: startWorker, invalidate: options => broker.invalidateStyles(options),
+    setPermission: value => { permissionGranted = value; },
     settle: async () => { await flush(); await flush(); },
   };
 }

@@ -36,8 +36,9 @@ try {
   await page.route('https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', route => route.fulfill({ contentType: 'text/html', body: '<style>body{margin:0}video{display:block;width:64px;height:64px}canvas{display:none}</style><video id="primary" muted playsinline></video><canvas id="input" width="64" height="64"></canvas>' }));
   await page.goto('https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
   await page.evaluate(() => {
+    window.__filterStored = { config: {}, styleParameters: {} };
     window.chrome = {
-      storage: { local: { get: async () => ({ config: {}, styleParameters: {} }), onChanged: { addListener(fn) { window.__filterStorageChange = fn; } } } },
+      storage: { local: { get: async () => structuredClone(window.__filterStored), onChanged: { addListener(fn) { window.__filterStorageChange = fn; } } } },
       i18n: { getMessage: key => key }, runtime: { onMessage: { addListener() {} } },
     };
   });
@@ -55,9 +56,12 @@ try {
     } finally { clearTimeout(timeout); }
   });
   for (const item of cases) {
-    const report = await page.evaluate(change => {
+    const report = await page.evaluate(async change => {
       const config = normalizeConfig(change);
+      // Changes signal a reread; stored values, not event payloads, are the authority.
+      window.__filterStored.config = config;
       window.__filterStorageChange({ config: { newValue: config } });
+      await requestLatestSettings();
       return { nodes: document.getElementById('knifeFilter').children.length,
         interpolation: getComputedStyle(document.getElementById('knifeFilter')).colorInterpolationFilters,
         videoFilter: getComputedStyle(document.getElementById('primary')).filter,
@@ -66,9 +70,9 @@ try {
     report.pixel = await readPixel(page);
     assert.equal(report.nodes, item.nodes, item.name);
     if (item.nodes) assert.match(report.videoFilter, /knifeFilter/, item.name); else assert.equal(report.videoFilter, 'none', item.name);
-    if (item.expected) for (let i = 0; i < 3; i++) assert.ok(Math.abs(report.pixel[i] - item.expected[i]) <= 1, `${item.name} channel${i}: ${report.pixel[i]}`);
-    if (item.grayscale) { assert.equal(report.pixel[0], report.pixel[1]); assert.equal(report.pixel[1], report.pixel[2]); assert.ok(report.pixel[0] > 0 && report.pixel[0] < 255); }
-    if (item.direction) for (const [i, original] of [100, 80, 60].entries()) assert.ok(item.direction === 'brighter' ? report.pixel[i] > original : report.pixel[i] < original, `${item.name} channel${i}`);
+    if (item.expected) for (let i = 0; i < 3; i++) assert.ok(Math.abs(report.pixel.at(i) - item.expected.at(i)) <= 1, `${item.name} channel${i}: ${report.pixel.at(i)}`);
+    if (item.grayscale) { assert.equal(report.pixel.at(0), report.pixel.at(1)); assert.equal(report.pixel.at(1), report.pixel.at(2)); assert.ok(report.pixel.at(0) > 0 && report.pixel.at(0) < 255); }
+    if (item.direction) for (const [i, original] of [100, 80, 60].entries()) assert.ok(item.direction === 'brighter' ? report.pixel.at(i) > original : report.pixel.at(i) < original, `${item.name} channel${i}`);
     if (item.kernel) assert.equal(report.parameters.find(n => n.tag === 'feConvolveMatrix')?.kernel, item.kernel);
     reports.push({ name: item.name, ...report });
   }
@@ -84,7 +88,7 @@ try {
     { name: 'non-PZP source wrapper retains legacy video filtering', route: 'live', native: false, active: true, foreign: true, pixel: [0, 0, 0] },
   ];
   for (const item of wrapperCases) {
-    const report = await page.evaluate(item => {
+    const report = await page.evaluate(async item => {
       const video = document.getElementById('primary');
       document.body.append(video);
       for (const id of ['native-fixture-root', 'native-fixture-svg', 'native-fixture-style']) document.getElementById(id)?.remove();
@@ -106,10 +110,16 @@ try {
         document.body.append(style);
       }
       history.replaceState(null, '', item.route === 'vod' ? '/video/12345' : '/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
-      window.__filterStorageChange({ config: { newValue: normalizeConfig({ brightness: 0 }) } });
+      window.__filterStored.config = normalizeConfig({ brightness: 0 });
+      window.__filterStorageChange({ config: { newValue: window.__filterStored.config } });
+      await requestLatestSettings();
       const wrapper = document.getElementById('source-wrapper');
       const beforeReset = { wrapper: getComputedStyle(wrapper).filter, video: getComputedStyle(video).filter };
-      if (!item.active) window.__filterStorageChange({ config: { newValue: normalizeConfig({}) } });
+      if (!item.active) {
+        window.__filterStored.config = normalizeConfig({});
+        window.__filterStorageChange({ config: { newValue: window.__filterStored.config } });
+        await requestLatestSettings();
+      }
       return { beforeReset, wrapperFilter: getComputedStyle(wrapper).filter, videoFilter: getComputedStyle(video).filter,
         nodes: document.getElementById('knifeFilter').children.length, paused: video.paused };
     }, item);
@@ -124,7 +134,7 @@ try {
       else assert.equal(report.videoFilter, 'none', 'current video is not filtered twice');
       assert.equal(report.nodes, item.active ? 1 : 0);
       assert.equal(report.paused, false);
-      for (const [i, expected] of item.pixel.entries()) assert.ok(Math.abs(report.pixel[i] - expected) <= 1, `${item.name} channel${i}: ${report.pixel[i]}`);
+      for (const [i, expected] of item.pixel.entries()) assert.ok(Math.abs(report.pixel.at(i) - expected) <= 1, `${item.name} channel${i}: ${report.pixel.at(i)}`);
     } catch (error) { failures.push({ name: item.name, error: error.message }); }
   }
   console.log(JSON.stringify({ browser: browser.version(), checks: reports.length, passed: reports.length - failures.length, failures, reports }, null, 2));

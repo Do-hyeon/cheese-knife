@@ -3,7 +3,7 @@ var createSettingsBroker = chromeApi => {
   const keys = ['config', 'styles', 'styleParameters', 'settingsRevision'];
   const jobs = []; let running = false, boot, initFailure;
   let css = { state: 'pending', code: null }, lastFailedCss;
-  let stylesDirty = false, stylesQueued = false;
+  let stylesDirty = false, stylesQueued = false, stylesRetry = false;
   const fault = (stage, code) => Object.assign(new Error(code), { stage, code });
   const record = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
   const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -34,7 +34,7 @@ var createSettingsBroker = chromeApi => {
     const files = contract.cssFiles(raw.styles), fingerprint = JSON.stringify(files);
     try {
       const [existing] = await chromeApi.scripting.getRegisteredContentScripts({ ids: ['styles'] });
-      const desired = { id: 'styles', matches: ['*://chzzk.naver.com/*'], css: files, runAt: 'document_start' };
+      const desired = { id: 'styles', matches: [...KnifeHostPolicy.origins], css: files, runAt: 'document_start' };
       const matches = !files.length ? !existing : existing && equal(existing.css, files) &&
         equal(existing.matches, desired.matches) && existing.runAt === desired.runAt && !existing.js?.length;
       if (matches) { css = { state: 'ready', code: null }; lastFailedCss = undefined; return; }
@@ -51,13 +51,25 @@ var createSettingsBroker = chromeApi => {
     if (!stylesDirty || stylesQueued || !boot || initFailure || jobs.length >= 64) return;
     stylesQueued = true;
     void enqueue(async () => {
+      const retry = stylesRetry;
       stylesDirty = false;
-      await boot;
-      const raw = await read(); contract.readRevision(raw.settingsRevision);
-      await applyStyles(raw);
+      stylesRetry = false;
+      let raw;
+      try {
+        await boot;
+        raw = await read(); contract.readRevision(raw.settingsRevision);
+      } catch (error) {
+        if (retry) stylesRetry = true;
+        throw error;
+      }
+      await applyStyles(raw, retry);
     }).catch(() => {}).finally(() => { stylesQueued = false; scheduleStyles(); });
   }
-  function invalidateStyles() { stylesDirty = true; scheduleStyles(); }
+  function invalidateStyles(options = {}) {
+    stylesDirty = true;
+    if (options.retry === true) stylesRetry = true;
+    scheduleStyles();
+  }
   function initialize() {
     if (boot) return boot;
     boot = enqueue(async () => {

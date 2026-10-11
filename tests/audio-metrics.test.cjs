@@ -50,3 +50,52 @@ test('local RMS envelope distinguishes a quieter interval without waveform phase
   const report = rmsEnvelope([0.5,-0.5,0.5,-0.5,1,-1,1,-1],1000,2);
   assert.equal(report.min,0.5); assert.equal(report.max,1); assert.equal(report.windowSamples,2);
 });
+
+test('numeric boundaries cover first and last samples, channel shape, and envelope windows', async t => {
+  const { measureSignal, channelDifferenceRms, rmsEnvelope } = await metrics();
+  const cases = [
+    ['first and last waveform samples', () => measureSignal([1, 0, -1], 1000), report => {
+      assert.equal(report.mean, 0); assert.equal(report.peak, 1); assert.equal(report.maxAdjacentStep, 1);
+    }],
+    ['equal one-sample stereo channels', () => channelDifferenceRms([1], [-1]), value => assert.equal(value, 2)],
+    ['exact one-window envelope', () => rmsEnvelope([0.5, -0.5], 1000, 2), report => {
+      assert.equal(report.windowSamples, 2); assert.equal(report.min, 0.5); assert.equal(report.max, 0.5);
+    }],
+  ];
+  for (const [name, run, verify] of cases) await t.test(name, () => verify(run()));
+  for (const run of [
+    () => channelDifferenceRms([0], [0, 1]),
+    () => channelDifferenceRms([0, Infinity], [0, 0]),
+    () => channelDifferenceRms([0, 0], [0, NaN]),
+    () => rmsEnvelope([0, Infinity], 1000, 1),
+    () => rmsEnvelope([0], 1000, 2),
+  ]) assert.throws(run);
+});
+
+test('quality gate rejects a silent enabled path instead of accepting zero baselines', async () => {
+  const { audioQualityFailures } = await metrics();
+  const channel = (rms, peak = rms) => ({ rms, peak, overFullScaleSamples: 0, maxAdjacentStep: 0.1, envelope8ms: { min: rms } });
+  const silent = channel(0, 0), audible = channel(0.25, 0.5);
+  const failures = audioQualityFailures({
+    cases: [{ enabled: true, stereo: 'identical', channels: [silent, silent] }],
+    transitions: [{ frequency: 250, kind: 'enabled', value: false, before: { channels: [silent] }, change: { channels: [silent] }, after: { channels: [audible] } }],
+    stress: { channels: [silent, silent] },
+    alignments: [{ sampleRate: 48000, expectedFrame: 288, dryFirst: 288, dryLast: 288, compressorFirst: 288, compressorLast: 288 }],
+  });
+  assert.ok(failures.some(value => value.includes('enabled-signal')));
+  assert.ok(failures.some(value => value.includes('transition-signal')));
+  assert.ok(failures.some(value => value.includes('stress-peak-low')));
+});
+
+test('quality gate rejects missing and negative delay alignment frames', async () => {
+  const { audioQualityFailures } = await metrics();
+  const channel = { rms: 0.25, peak: 0.98, overFullScaleSamples: 0, maxAdjacentStep: 0.1, envelope8ms: { min: 0.25 } };
+  const base = {
+    cases: [{ enabled: true, stereo: 'identical', channels: [channel, channel] }],
+    transitions: [{ frequency: 250, kind: 'enabled', value: true, before: { channels: [channel] }, change: { channels: [channel] }, after: { channels: [channel] } }],
+    stress: { channels: [channel, channel] },
+  };
+  for (const alignment of [{}, { sampleRate: -1, expectedFrame: -1, dryFirst: -1, dryLast: -1, compressorFirst: -1, compressorLast: -1 }]) {
+    assert.ok(audioQualityFailures({ ...base, alignments: [alignment] }).some(value => value.includes('delay-alignment')));
+  }
+});

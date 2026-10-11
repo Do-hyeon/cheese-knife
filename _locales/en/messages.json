@@ -222,22 +222,31 @@
     "message": "Thank you for installing Cheese Knife! This extension requires the following permissions:"
   },
   "permission_host": {
-    "message": "Access to $HOST$",
+    "message": "Access $HOST$ (features and styles on HTTPS CHZZK pages)",
     "placeholders": {
       "HOST": {
         "content": "$1",
-        "example": "chzzk.naver.com"
+        "example": "https://chzzk.naver.com/*"
       }
     }
   },
   "permission_grant": {
     "message": "Allow"
   },
+  "permission_pending": {
+    "message": "Waiting for your permission decision."
+  },
+  "permission_denied": {
+    "message": "Permission was not granted. Select Allow to try again."
+  },
+  "permission_failed": {
+    "message": "Could not complete the permission request. Please try again."
+  },
   "styles_category_player": {
     "message": "Player"
   },
   "styles_fit_player": {
-    "message": "Fill screen"
+    "message": "Fill player area"
   },
   "styles_fit_player_desc": {
     "message": "Relaxes player-container height limits. VOD uses space reserved for the information row. Does not enter fullscreen, crop or zoom video, or change quality."

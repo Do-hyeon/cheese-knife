@@ -1,8 +1,11 @@
 // Native CSS regression checks in a fresh, synthetic browser profile.
 // No installed extension, user settings, broadcast or chat content is used.
-import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {chromium} from 'playwright';
+import { openOwnedRoot } from './owned-files.mjs';
+const fs = await openOwnedRoot(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
 const browser=await chromium.launch({headless:true,...(process.argv.includes('--chrome')?{channel:'chrome'}:{})});
 const fixture=`<style>body{margin:0}a,ul,div{display:block}.message{font-size:14px}img{width:24px;height:24px}</style>
 <header id="header"><a id="studio" href="https://studio.chzzk.naver.com/example">Studio</a><a id="legacy-studio" class="toolbar_studio_button__old" href="/legacy-studio">Legacy studio</a>

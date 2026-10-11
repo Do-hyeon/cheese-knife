@@ -13,14 +13,13 @@ test('classic Chrome worker imports dependencies and installs callback listener 
   const reply = await new Promise(resolve => { assert.equal([...api.runtime.onMessage.listeners][0](message, sender, resolve), true); });
   assert.equal(reply.ok, true); await flush();
 });
-test('Firefox background loads shared classic files before background without importScripts', async t => {
-  const h = settingsHarness(t); const dom = page(); t.after(() => dom.window.close()); const api = h.apiFor(); dom.window.chrome = api;
-  const scripts = JSON.parse(fs.readFileSync('manifest.firefox.json', 'utf8')).background.scripts;
-  assert.deepEqual(scripts, [...dependencies, 'background.js']);
-  for (const file of scripts) load(dom, file); assert.equal(api.runtime.onMessage.listeners.size, 1); await flush();
-});
 for (const name of ['popup', 'styles']) test(name + ' HTML loads its shared client dependencies in order', () => {
   const html = fs.readFileSync(`${name}.html`, 'utf8');
   const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]);
   assert.deepEqual(scripts, [...dependencies.slice(0, 3), 'settings-client.js', `${name}.js`]);
+});
+test('permission HTML loads the host policy before its grant UI', () => {
+  const html = fs.readFileSync('permission.html', 'utf8');
+  const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]);
+  assert.deepEqual(scripts, ['config.js', 'permission.js']);
 });

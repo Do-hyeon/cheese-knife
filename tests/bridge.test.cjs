@@ -9,7 +9,7 @@ function bridge(t, mainFirst, get = async () => ({ config: { arrowSeek: false },
     storage: { local: { get,
       onChanged: { addListener(fn) { storageListener = fn; }, removeListener() {} } } },
     i18n: { getMessage: key => key },
-    runtime: { onMessage: { addListener() {}, removeListener() {} } },
+    runtime: { id: 'fixture-extension-id', onMessage: { addListener() {}, removeListener() {} } },
   };
   load(dom, 'config.js');
   if (mainFirst) { load(dom, 'web/main.js'); load(dom, 'web/runtime.js'); }

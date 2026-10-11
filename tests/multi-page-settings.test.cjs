@@ -11,7 +11,7 @@ async function bridgePair(t) {
     dom.window.chrome = { storage: { local: { onChanged: changes, get: async () => {
       const captured = structuredClone(saved); reads.push({ name, subscribers: changes.listeners.size });
       const gate = holds.get(name); if (gate) { holds.delete(name); gate.entered(); return gate.promise; } return captured;
-    } } }, i18n: { getMessage: key => key }, runtime: { onMessage: event() } };
+    } } }, i18n: { getMessage: key => key }, runtime: { id: 'fixture-extension-id', onMessage: event() } };
     load(dom, 'config.js'); load(dom, 'web/main.js'); load(dom, 'web/runtime.js');
     return dom;
   }
@@ -93,9 +93,11 @@ test('audio graphs and mute remain page-local across settings updates and closin
     const node = type => { const n = { type, outputs: new Set(), connect(other) { this.outputs.add(other); }, disconnect() { this.outputs.clear(); } }; nodes.push(n); return n; };
     let sourceCount = 0;
     dom.window.AudioContext = class {
-      constructor() { this.state = 'running'; this.currentTime = 0; this.destination = node('destination'); }
+      constructor() { this.state = 'running'; this.currentTime = 0; this.sampleRate = 48000; this.destination = node('destination'); }
       createGain() { return Object.assign(node('gain'), { gain: parameter(1) }); }
+      createDelay() { return Object.assign(node('delay'), { delayTime: parameter(0) }); }
       createDynamicsCompressor() { return Object.assign(node('compressor'), Object.fromEntries(['threshold', 'knee', 'ratio', 'attack', 'release'].map(id => [id, parameter(0)]))); }
+      createWaveShaper() { return Object.assign(node('waveshaper'), { curve: null, oversample: 'none' }); }
       createMediaElementSource(element) { assert.equal(element, video); sourceCount++; return node('source'); }
     };
     load(dom, 'web/audio.js'); return { video, nodes, api: runtime(dom).audio, sourceCount: () => sourceCount };

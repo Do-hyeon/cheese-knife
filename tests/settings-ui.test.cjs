@@ -47,6 +47,19 @@ test('popup reports missing deleted-chat support as limited instead of ready', a
   assert.ok(values[1].parentElement.title, 'limited capability has an explanation');
 });
 
+test('popup ignores inherited and unsupported capability statuses', async t => {
+  const { dom } = await ui(t, 'popup.html', {}, 'ko', api => {
+    api.tabs.sendMessage = async () => {
+      const statuses = Object.create({ player: { state: 'ready', reason: 'inherited' } });
+      Object.defineProperty(statuses, 'unsupportedFeature', { enumerable: true, value: { state: 'ready' } });
+      return { statuses };
+    };
+  });
+  await flush();
+  assert.equal(dom.window.document.querySelectorAll('.capability-row').length, 0);
+  assert.ok(dom.window.document.querySelector('#capabilities .desc'));
+});
+
 test('popup exposes only sidebar preview audio controls, not retired native-card overrides', async t => {
   const { dom } = await ui(t, 'popup.html', { config: { customPreview: true } });
   await flush();
@@ -77,9 +90,9 @@ for (const [locale, recovery, unofficial, labels] of [
   const links = [...dom.window.document.querySelectorAll('footer a')];
   assert.deepEqual(links.map(a => a.textContent.trim()), labels);
   assert.deepEqual(links.map(a => a.href), [
-    'https://github.com/Do-hyeon/cheese-knife/blob/codex/community-store-preview/README.md',
+    'https://github.com/Do-hyeon/cheese-knife/blob/main/README.md',
     'https://github.com/Do-hyeon/cheese-knife/issues',
-    'https://github.com/Do-hyeon/cheese-knife/tree/codex/community-store-preview',
+    'https://github.com/Do-hyeon/cheese-knife/tree/main',
     'https://github.com/jebibot/cheese-knife',
   ]);
   for (const a of links) {
@@ -92,7 +105,7 @@ for (const [locale, recovery, unofficial, labels] of [
 test('community homepage opens the same fork guide that the popup offers', async t => {
   const { dom } = await ui(t, 'popup.html', {}); await flush();
   const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
-  const guide = 'https://github.com/Do-hyeon/cheese-knife/blob/codex/community-store-preview/README.md';
+  const guide = 'https://github.com/Do-hyeon/cheese-knife/blob/main/README.md';
   assert.equal(manifest.homepage_url, guide);
   assert.equal(dom.window.document.querySelector('footer a')?.href, guide);
 });
@@ -126,10 +139,14 @@ test('all style toggles and font offsets persist selections and show reload only
   assert.deepEqual(Array.from(data.styles), []); assert.equal(data.styleParameters['chat-font-size'], 0);
 });
 
-for (const locale of ['ko', 'en']) test('fit-player control exposes its localized explanation without enabling the style in ' + locale, async t => {
+// Break caught: this container-height option must not be mislabeled as a
+// fullscreen, zoom or crop command in either published locale.
+for (const [locale, labelText] of [['ko', '플레이어 영역 채우기'], ['en', 'Fill player area']]) test('fit-player control identifies the player area without enabling the style in ' + locale, async t => {
   const { dom, data } = await ui(t, 'styles.html', { styles: [], styleParameters: {} }, locale);
   await flush();
-  assert.ok(dom.window.document.querySelector('label[for="fit-player"]').title.length > 0);
+  const label = dom.window.document.querySelector('label[for="fit-player"]');
+  assert.equal(label.textContent, labelText);
+  assert.ok(label.title.length > 0);
   assert.equal(dom.window.document.getElementById('fit-player').checked, false);
   assert.deepEqual(data.styles, []);
 });

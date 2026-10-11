@@ -1,3 +1,7 @@
+var KnifeHostPolicy = Object.freeze({
+  origins: Object.freeze(["https://chzzk.naver.com/*"]),
+});
+
 var CONFIGS = [
   {
     id: "preview",

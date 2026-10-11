@@ -57,8 +57,9 @@ var KnifeSettingsContract = (() => {
     if (value === Number.MAX_SAFE_INTEGER) throw error('revision-exhausted');
     return value;
   }
-  const sameRecord = (a, b) => Object.keys(a).length === Object.keys(b).length && Object.keys(a).every(k => Object.hasOwn(b, k) && Object.is(a[k], b[k]));
-  const sameArray = (a, b) => a.length === b.length && a.every((value, i) => Object.is(value, b[i]));
+  const sameRecord = (a, b) => Object.keys(a).length === Object.keys(b).length &&
+    Object.entries(a).every(([key, value]) => Object.hasOwn(b, key) && Object.is(value, Object.getOwnPropertyDescriptor(b, key)?.value));
+  const sameArray = (a, b) => a.length === b.length && a.every((value, index) => Object.is(value, b.at(index)));
   function mergeOperations(raw, operations) {
     const valid = validateOperations(operations);
     if (!valid.ok) throw error(valid.code);
@@ -91,11 +92,12 @@ var KnifeSettingsContract = (() => {
     return [...styleFields.keys()].filter(id => selected.has(id)).map(id => `styles/${id}.css`);
   }
   function makeSnapshot(raw, css) {
-    const styleParameters = {};
+    const source = record(raw.styleParameters), entries = [];
     for (const [id, field] of styleFields) {
-      const value = record(raw.styleParameters)[id];
-      if (field.type === 'range' && numeric(value, field)) styleParameters[id] = value;
+      const value = Object.getOwnPropertyDescriptor(source, id)?.value;
+      if (field.type === 'range' && numeric(value, field)) entries.push([id, value]);
     }
+    const styleParameters = Object.fromEntries(entries);
     return { revision: readRevision(raw.settingsRevision), config: normalizeConfig(raw.config),
       styles: cssFiles(raw.styles).map(file => file.slice(7, -4)), styleParameters, css: { ...css } };
   }

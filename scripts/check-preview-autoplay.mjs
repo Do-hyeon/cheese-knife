@@ -1,8 +1,12 @@
 // Fresh synthetic Chrome contexts; no user profile, extension installation,
 // CHZZK account, real broadcast, audio capture, or browser-policy bypass.
-import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { openOwnedRoot } from './owned-files.mjs';
+
+const files = await openOwnedRoot(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
 
 const rootURL = 'https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const streamURL = 'https://media.invalid/silent-policy-probe.wav';
@@ -14,17 +18,17 @@ wave.write('RIFF', 0); wave.writeUInt32LE(36 + pcmLength, 4); wave.write('WAVEfm
 wave.writeUInt32LE(16, 16); wave.writeUInt16LE(1, 20); wave.writeUInt16LE(1, 22);
 wave.writeUInt32LE(8000, 24); wave.writeUInt32LE(16000, 28); wave.writeUInt16LE(2, 32);
 wave.writeUInt16LE(16, 34); wave.write('data', 36); wave.writeUInt32LE(pcmLength, 40);
-await fs.mkdir('output/playwright', { recursive: true });
+await files.ensureDirectory('output/playwright');
 const browser = await chromium.launch({ headless: true, channel: 'chrome' });
 try {
   const reports = [];
-  const runtimeSource = await fs.readFile('web/runtime.js', 'utf8');
-  const previewSource = await fs.readFile('web/preview.js', 'utf8');
-  const css = await fs.readFile('web/main.css', 'utf8');
+  const runtimeSource = await files.readFile('web/runtime.js', 'utf8');
+  const previewSource = await files.readFile('web/preview.js', 'utf8');
+  const css = await files.readFile('web/main.css', 'utf8');
   for (const [locale, interact] of [['ko', false], ['en', false], ['ko', true]]) {
     const context = await browser.newContext({ viewport: { width: 700, height: 500 } });
     try {
-      const messages = JSON.parse(await fs.readFile(`_locales/${locale}/messages.json`, 'utf8'));
+      const messages = JSON.parse(await files.readFile(`_locales/${locale}/messages.json`, 'utf8'));
       const translations = { previewAudioBlocked: messages.content_previewAudioBlocked.message, previewAudioRightClick: messages.content_previewAudioRightClick.message };
       // Normal parser scripts avoid Playwright's evaluate/userGesture=true.
       // The supposedly unactivated case must really remain unactivated.
@@ -70,7 +74,7 @@ try {
         assert.equal(result.text, messages.content_previewAudioBlocked.message + ' ' + messages.content_previewAudioRightClick.message);
         const clip = await read("(() => {const r=document.querySelector('.knife-preview').getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height,scale:1};})()");
         const screenshot = await session.send('Page.captureScreenshot', { format: 'png', clip });
-        await fs.writeFile(`output/playwright/preview-audio-blocked-${locale}.png`, Buffer.from(screenshot.data, 'base64'));
+        await files.writeFile(`output/playwright/preview-audio-blocked-${locale}.png`, Buffer.from(screenshot.data, 'base64'));
         assert.equal(await read('navigator.userActivation.hasBeenActive'), false, 'capturing proof must not activate manual-unmute fixture');
         const target = await read("(() => {const r=document.querySelector('#target').getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2};})()");
         // Real right-button input, not evaluate/userGesture=true injection.

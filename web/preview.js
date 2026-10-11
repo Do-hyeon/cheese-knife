@@ -45,11 +45,11 @@
   const valid = (token, anchor, href) => token === generation && !!current && ownsAnchor(anchor) && anchor.href === href &&
     location.pathname === current.route && runtime.config.preview === true && !document.hidden && runtime.configReady;
   const prepare = async (info, anchor, href, token) => {
-    if (!valid(token, anchor, href) || runtime.config.livePreview !== true || info.adult) return;
+    if (!valid(token, anchor, href) || runtime.config.livePreview !== true) return;
     const Hls = runtime.Hls;
     diagnostic.hlsSupported = !!Hls?.isSupported();
     const path = info.playback?.media?.find(item => item.mediaId === 'HLS' && typeof item.path === 'string' && item.path.startsWith('https://'))?.path;
-    if (!path) { runtime.setStatus('livePreview', 'limited', 'stream-unavailable'); return; }
+    if (!path) { runtime.setStatus('livePreview', 'limited', info.adult ? 'age-restricted-stream' : 'stream-unavailable'); return; }
     const video = document.createElement('video'); video.playsInline = true; video.muted = true; video.volume = volume();
     video.className = 'knife-preview-video'; video.style.visibility = 'hidden';
     video.style.cssText += ';width:100%;height:100%;object-fit:contain;background:#000;';
@@ -273,8 +273,7 @@
       };
       // Metadata/network time is part of the user's hover delay. Start muted
       // loading in parallel with the remaining wait, not after another full wait.
-      if (runtime.config.livePreview === true && info.status === 'OPEN' && !info.adult) prepare(info, anchor, href, token);
-      else if (info.adult) runtime.setStatus('livePreview', 'limited', 'age-restricted-stream');
+      if (runtime.config.livePreview === true && info.status === 'OPEN') prepare(info, anchor, href, token);
       const delay = Math.max(100, Math.min(3000, Number(runtime.config.previewDelay) * 1000 || 1000));
       later(() => {
         if (!valid(token, anchor, href)) return;

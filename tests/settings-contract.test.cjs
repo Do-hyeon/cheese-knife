@@ -76,6 +76,33 @@ test('snapshot exposes only known normalized fields and CSS uses the fixed style
   assert.deepEqual(plain(api.cssFiles(raw.styles)), ['styles/chat-font-size.css', 'styles/left-chat.css']);
   assert.equal(snap.styles.includes('future-style'), false); assert.equal(snap.revision, 2);
 });
+test('snapshot and operation boundaries ignore inherited and prototype-reserved keys', t => {
+  const { api } = contract(t);
+  const inheritedParameters = Object.create({ 'chat-font-size': 8 });
+  Object.defineProperty(inheritedParameters, '__proto__', { enumerable: true, value: { polluted: true } });
+  const raw = { config: { arrowSeek: false }, styles: ['chat-font-size'], styleParameters: inheritedParameters, settingsRevision: 3 };
+  const objectPrototypeBefore = Object.getPrototypeOf({});
+  const snapshot = api.makeSnapshot(raw, { state: 'ready' });
+  assert.deepEqual(plain(snapshot.styleParameters), {});
+  assert.equal(Object.getPrototypeOf(snapshot.styleParameters), Object.getPrototypeOf(snapshot.config));
+  for (const id of ['__proto__', 'constructor', 'prototype', 'unknown-setting']) {
+    for (const op of [config(id, true), style(id, true), parameter(id, 1)]) {
+      assert.equal(api.validateOperations([op]).ok, false, `${op.type}:${id}`);
+      assert.throws(() => api.mergeOperations(raw, [op]));
+    }
+  }
+  assert.equal(Object.prototype.polluted, undefined);
+  assert.equal(Object.getPrototypeOf({}), objectPrototypeBefore);
+});
+test('record equality ignores key order but detects a changed own value', t => {
+  const { api } = contract(t);
+  const first = { brightness: 1.25, arrowSeek: false };
+  const reordered = { arrowSeek: false, brightness: 1.25 };
+  assert.deepEqual(plain(api.mergeOperations({ config: first, settingsRevision: 9 }, [config('brightness', 1.25)]).changes), {});
+  assert.deepEqual(plain(api.mergeOperations({ config: reordered, settingsRevision: 9 }, [config('brightness', 1.5)]).changes), {
+    config: { arrowSeek: false, brightness: 1.5 }, settingsRevision: 10,
+  });
+});
 test('requests authorize exact extension document protocol host and path, not an opaque origin', t => {
   const { api } = contract(t);
   for (const url of [getURL('popup.html?targetTabId=7#x'), getURL('styles.html')]) assert.equal(api.validateRequest(request(), { ...sender, url, frameId: 0 }, sender.id, getURL).ok, true);
