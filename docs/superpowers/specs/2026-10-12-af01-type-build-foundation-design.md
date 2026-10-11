@@ -205,7 +205,7 @@ AF01 결과는 다음 diff가 0이어야 한다.
 
 - `manifest.json`의 의미와 배열 순서
 - production `dist`의 현재 copy-based 파일 집합과 source→dist byte 동일성
-- JSDoc 대상 runtime은 주석·공백을 제거한 실행 코드 hash가 AF01 시작 baseline과 동일함
+- JSDoc 대상 runtime 15개는 주석·공백을 제거한 실행 코드 hash가 AF01 시작 baseline과 동일하며, `settings-client.js`만 검토에서 발견된 malformed reply 거부를 위해 승인된 새 baseline과 일치함
 - extension page script tag와 content script 순서
 - 권한, host permission, 외부 origin, 네트워크 요청
 - `chrome.storage` key, 설정 기본값, message/revision 형식
@@ -249,18 +249,18 @@ AF01은 작은 커밋으로 나눈다. 정확한 파일명과 테스트명은 �
 5. 결정적 출력·license·offline/ignore-scripts 검증
 6. CI, 문서, validation과 전체 회귀
 
-각 단계에서 production 파일 집합이나 source→dist byte 동일성이 깨지거나, JSDoc 대상의 정규화된 실행 코드 hash가 기준선과 달라지면 즉시 중지한다. JSDoc 주석 자체의 추가로 source와 dist의 절대 byte hash가 과거 baseline과 달라지는 것은 허용하되 실행 코드 변경으로 간주하지 않는다.
+각 단계에서 production 파일 집합이나 source→dist byte 동일성이 깨지거나, JSDoc 대상의 정규화된 실행 코드 hash가 승인된 기준선과 달라지면 즉시 중지한다. JSDoc 주석 자체의 추가로 source와 dist의 절대 byte hash가 과거 baseline과 달라지는 것은 허용하되 실행 코드 변경으로 간주하지 않는다. `settings-client.js`의 malformed reply 거부는 14.9의 독립 검토·회귀를 충족한 단일 실행 코드 예외다.
 
 ## 13. 롤백
 
-AF01은 제품 산출물을 바꾸지 않으므로 롤백 단위도 개발 기반에 한정한다.
+AF01은 제품 패키지 구조와 정상 broker 동작을 바꾸지 않지만 `settings-client.js`의 malformed reply 거부를 포함하므로 롤백 단위는 개발 기반과 이 단일 방어 변경을 함께 포함한다.
 
 - TypeScript/esbuild 개발 의존성과 lockfile 변경 제거
 - AF01 tsconfig, proof entry, runner와 관련 테스트 제거
 - runtime JavaScript inventory 정책 제거
 - CI의 AF01 전용 단계 제거
 
-롤백 뒤 기존 `npm ci`, test, build, package check와 설치형 E2E가 AF00 기준으로 통과해야 한다. manifest, 제품 source와 스토어 ZIP을 되돌리는 롤백이 필요하다면 AF01 범위를 위반한 것이다.
+롤백 뒤 기존 `npm ci`, test, build, package check와 설치형 E2E가 AF00 기준으로 통과해야 한다. manifest나 스토어 ZIP을 되돌리는 롤백이 필요하다면 AF01 범위를 위반한 것이다.
 
 ## 14. 공격적 검토와 보완 결론
 
@@ -340,7 +340,7 @@ AF01은 다음을 모두 만족할 때만 완료다.
 - Windows와 Ubuntu에서 결정적 출력·license·offline 계약 통과
 - 신규 first-party runtime JavaScript 금지 게이트 통과
 - production manifest와 파일 순서가 기준선과 동일하고 source→dist byte가 일치
-- JSDoc 대상 runtime의 정규화된 실행 코드 hash가 AF01 시작 baseline과 동일
+- JSDoc 대상 runtime 15개의 정규화된 실행 코드 hash가 AF01 시작 baseline과 동일하고, `settings-client.js`가 검토된 malformed-response baseline과 일치
 - 기존 전체 회귀와 설치형 E2E 통과
 - 권한·사용자 데이터·외부 전송·스토어 정책 범위 변화 0건
 - 구현 계획, 검증 기록과 한글 PR이 별도 공개 단위로 남음

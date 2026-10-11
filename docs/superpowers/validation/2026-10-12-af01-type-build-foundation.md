@@ -1,13 +1,13 @@
 # AF01 타입·빌드 기반 검증 기록
 
 - 검증일: 2026-10-12 / Asia-Seoul
-- 검증 대상: `a95d218` (`codex/af01-type-build-foundation`)
+- 검증 코드 대상: `565b8c9` (`codex/af01-type-build-foundation`)
 - 기준점: `81b35c97811901acd80e8a4a2d5b4e9be0ceba91` (`main`)
 - 환경: Windows x64, Node 24.19.0, Playwright 1.62.1, bundled Chromium 155.0.8059.39
 
 ## 결론
 
-AF01의 로컬 구현·수용 조건을 충족했다. TypeScript와 esbuild는 제품 런타임 전환이 아닌 strict 계약 및 Chrome 실행 문맥 proof에만 도입했다. 기존 16개 첫 번째 당사자 런타임 JavaScript는 그대로 배포되며, source→`dist` byte 동일성을 보호한다. pre-merge 검토에서 발견된 외부 reply 타입 과신을 닫기 위해 `settings-client.js`만 malformed-response validator를 추가하고 실행 hash를 명시적으로 전진시켰다. 나머지 15개 실행 hash와 정상 broker 응답 동작은 유지된다.
+AF01의 로컬 구현·수용 조건을 충족했다. TypeScript와 esbuild는 제품 런타임 전환이 아닌 strict 계약 및 Chrome 실행 문맥 proof에만 도입했다. 16개 첫 번째 당사자 런타임 JavaScript는 source에서 `dist`로 byte 그대로 복사되며, pre-merge 검토에서 발견된 외부 reply 타입 과신을 닫기 위해 `settings-client.js`만 malformed-response validator를 추가하고 실행 hash를 명시적으로 전진시켰다. 나머지 15개 실행 hash와 정상 broker 응답 동작은 유지된다.
 
 manifest, HTML, background 등록, 권한, host permission, 외부 통신과 사용자 데이터 계약은 변경하지 않았다. 공개 CI의 Windows·Ubuntu 결과는 pull request에서 별도로 확인해야 하며, 이 문서는 아직 GitHub-hosted 결과를 통과로 간주하지 않는다.
 
@@ -25,22 +25,22 @@ manifest, HTML, background 등록, 권한, host permission, 외부 통신과 사
 
 | 게이트 | 결과 |
 | --- | --- |
-| clean archive 전체 Node 테스트 | 최초 cold-start 실행 1 timing failure; 동일 archive 전체 재실행 651 passed, 0 failed, 1 skipped |
-| 최초 실패 분석 | 물리적 `node_modules` 복사 직후 오디오 CLI cold-start가 5초 제한을 한 번 초과; 같은 전체 suite 재실행에서 통과, 제품·수치 실패 없음 |
+| clean archive 전체 Node 테스트 | Git archive와 물리적 `node_modules` 복사 환경에서 659 tests, 658 passed, 0 failed, 1 skipped |
+| cold-start 회귀 보완 | CLI 인수를 Playwright import 전에 검증하고 병렬 suite의 프로세스 기동 guard만 5초에서 15초로 조정; 독립 실행과 clean archive 전체 suite 모두 통과 |
 | private 감사 증거 검사 | 공개 checkout에 없는 비공개 원장 때문에 1 skipped; 공개 CI와 동일한 의도된 동작 |
 | TypeScript strict proof | passed, `any`/`@ts-ignore`/emit 없음 |
 | esbuild 실행 문맥 proof | 네 entry hash와 논리 graph hash 기준선 일치 |
 | runtime JavaScript inventory | root·`web`·`styles`·`_locales`의 16개 파일 목록과 실행 토큰 hash 기준선 일치 |
-| AF01 집중 계약 회귀 | 일반 로컬 권한에서 52 passed, 0 failed |
+| AF01 집중 계약 회귀 | 일반 로컬 권한에서 83 passed, 0 failed |
 | 빌드·패키지 검사 | `dist` 빌드, v2.13.3, manifest 참조 20개 통과 |
 | source→`dist` runtime JavaScript | 모든 제품 JavaScript byte 동일 |
 | 객관 오디오 검사 | Chromium 155, full-scale 초과 0, 극단 설정 peak 0.980000019, 전환 기준선 일치 |
-| positive 설치 E2E | 모든 report section passed, 61,783ms |
+| positive 설치 E2E | 모든 report section passed, 61,858ms |
 | negative 설치 E2E | 예상 오류 `main-runtime-missing`만 관측 |
 | 도구 감사 | npm 0, Gitleaks 현재/Git 0, AF01 신규 ESLint 관측 0 |
 | whitespace | `git -c core.safecrlf=false diff --check` 통과 |
 
-전체 Node 테스트의 단일 cold-start 시간 초과는 같은 clean archive에서 즉시 재현되지 않았다. 이를 숨겨진 PASS로 바꾸지 않으며, CI에서 반복되면 시간 제한과 프로세스 기동 비용을 별도 결함으로 추적한다.
+이전 5초 제한 실패는 제품 오디오나 수치 결함이 아니라 병렬 전체 suite에서 새 Node 프로세스와 Playwright 모듈을 기동하는 시간이었다. CLI가 잘못된 인수를 브라우저 모듈 로드 전에 거부하도록 순서를 고쳤고, hang 검출용 제한만 15초로 늘렸다. 같은 clean archive의 전체 병렬 suite와 독립 CLI 회귀가 모두 통과했으므로 미해결 timing failure로 남기지 않는다.
 
 ## proof 기준선
 
@@ -66,7 +66,7 @@ manifest, HTML, background 등록, 권한, host permission, 외부 통신과 사
 
 ## 감사 경계
 
-최신 비공개 감사 보고서는 `output/tool-audit/run-2026-10-11T16-09-57-909Z-yLSTBK`에 있다. ESLint 관측 7개는 기존 `scripts/owned-files.mjs`의 동적 파일 시스템 capability 경계이며, 각 호출 앞의 containment·link·type 검사를 유지한다. 감사 종료 상태 1은 이 guarded observation을 clean으로 위장하지 않기 위한 기존 계약이다.
+최신 비공개 감사 보고서는 `output/tool-audit/run-2026-10-11T16-39-18-163Z-925TVk`에 있다. ESLint 관측 7개는 기존 `scripts/owned-files.mjs`의 동적 파일 시스템 capability 경계이며, 각 호출 앞의 containment·link·type 검사를 유지한다. 감사 종료 상태 1은 이 guarded observation을 clean으로 위장하지 않기 위한 기존 계약이다.
 
 비공개 warning ledger는 이전 source hash를 참조하므로 현재 작업 트리의 선택적 private 테스트에는 맞지 않는다. 공개 checkout과 CI에는 이 원장을 포함하지 않으며, AF01 코드가 새 경고를 추가하지 않았다는 판단은 최신 raw report와 변경 경로 대조에 한정한다.
 
@@ -96,4 +96,4 @@ git -c core.safecrlf=false diff --check
 
 Windows에서 현재 shell에 `npm` shim이 없으면 위와 같이 `pnpm dlx npm@12.2.0`으로 lockfile 설치를 재현한다. 정상 `npm`이 있는 CI에서는 `npm ci`를 사용한다.
 
-AF01을 되돌려야 하면 최신 `main` 기반 복구 브랜치에서 다음 커밋을 역순으로 `git revert`한다: `a95d218`, `e36ef12`, `57a9937`, `e8f3f79`, `907d7bf`, `01f215d`, `15ffb41`, `7a7fa77`. 공개 스토어 항목과 기존 `2.13.3` 배포물은 이 브랜치만으로 변경되지 않는다.
+AF01을 병합 전에 되돌려야 하면 이 브랜치에서 `git revert --no-commit 81b35c9..HEAD`로 전체 AF01 범위를 역적용한 뒤 diff와 기존 게이트를 검토해 커밋한다. 병합 뒤에는 최신 `main` 기반 복구 브랜치에서 AF01 merge commit을 `git revert -m 1 <merge-commit>`으로 되돌린다. 두 경우 모두 강제 reset 대신 검토 가능한 revert 이력을 남긴다. 공개 스토어 항목과 기존 `2.13.3` 배포물은 이 브랜치만으로 변경되지 않는다.

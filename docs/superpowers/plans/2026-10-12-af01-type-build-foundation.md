@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 기존 Chrome MV3 제품 산출물을 바꾸지 않고 엄격한 타입 검사, 네 실행 문맥 build proof, 결정적 출력과 신규 런타임 JavaScript 차단 게이트를 추가한다.
+**Goal:** 기존 Chrome MV3 제품 패키지 구조와 정상 broker 동작을 유지하면서 엄격한 타입 검사, 네 실행 문맥 build proof, 결정적 출력과 신규 런타임 JavaScript 차단 게이트를 추가한다. 검토에서 발견된 malformed 내부 reply 과신은 `settings-client.js`의 단일 방어 변경으로 닫는다.
 
 **Architecture:** 현재 classic-script 전역 ABI와 copy-based production build는 그대로 유지한다. TypeScript는 다섯 설정 계약 JavaScript와 proof 전용 TypeScript만 검사하고, esbuild는 `build-proof/`의 합성 entry를 `write: false`로 번들해 출력 계약만 검증한다. JSDoc으로 달라지는 주석 byte는 허용하되 고정 transform으로 계산한 실행 코드 hash, source→dist byte 동일성과 제품 파일 집합은 기준선에서 바뀌지 않아야 한다. 단, pre-merge 검토에서 확인된 외부 reply 타입 과신은 malformed-response validator와 회귀 테스트를 함께 추가하고 `settings-client.js` 실행 hash만 명시적으로 전진시키는 승인 범위 내 보안 보완으로 처리한다.
 
@@ -20,7 +20,7 @@
 - `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `useUnknownInCatchVariables`, `allowJs`, `checkJs`, `noEmit`을 켜고 `skipLibCheck`는 켜지 않는다.
 - `any`, `@ts-ignore`, `@ts-nocheck`, 무검증 이중 단언과 runtime validator 제거로 타입 오류를 숨기지 않는다.
 - proof output은 IIFE, browser, unminified, no source map, no tree shaking, `write: false`이며 원격 코드·동적 원격 import·`eval`·`new Function`을 허용하지 않는다.
-- 신규 첫 번째 당사자 runtime `.js`는 root와 `web/`에서 금지하되 기존 16개 inventory 파일의 수정은 허용한다.
+- 신규 첫 번째 당사자 runtime `.js`는 root, `web/`, `styles/`, `_locales/`에서 금지하되 기존 16개 inventory 파일의 수정은 허용한다.
 - `vendor/**`, `tests/**/*.cjs`, `tests/fixtures/**`, `scripts/**/*.mjs`, `dist/**`, `output/**`는 first-party runtime inventory 대상이 아니다.
 - 사용자 데이터, 저장 key, message/revision, 네트워크 요청, 개인정보처리방침과 스토어 공개 범위를 변경하지 않는다.
 - Firefox 구현·빌드·배포를 추가하지 않는다.
@@ -40,7 +40,7 @@
 ### 새 파일
 
 - `scripts/check-toolchain.mjs`: exact dependency, lockfile integrity, license, 설치 실행 파일과 금지 네트워크 모듈을 검사한다.
-- `scripts/check-runtime-inventory.mjs`: root와 `web/`의 first-party `.js`를 baseline과 비교한다.
+- `scripts/check-runtime-inventory.mjs`: root, `web/`, `styles/`, `_locales/`의 first-party `.js`를 baseline과 비교한다.
 - `scripts/check-build-proof.mjs`: 두 격리 root에서 네 entry를 번들하고 artifact와 결정성을 검사한다.
 - `tsconfig.af01.json`: 계약 JavaScript와 proof TypeScript만 포함하는 no-emit strict 설정이다.
 - `types/knife-settings.d.ts`: 설정 field, operation, snapshot, client view의 runtime-neutral 전역 타입만 정의한다.
@@ -134,7 +134,7 @@ git commit -m "build: pin AF01 toolchain contract"
 
 - [ ] **Step 1: baseline과 우회 negative tests를 작성한다**
 
-현재 root/web 16개가 정확히 일치하는 테스트, `web/nested/new-feature.js`가 `runtime-js-inventory-changed`로 실패하는 테스트, vendor/tests/scripts/output/dist가 제외되는 테스트와 root/web 내부 directory link를 거부하는 테스트를 작성한다. JSDoc 주석만 추가한 fixture는 실행 hash가 같고 literal 또는 연산자를 바꾼 fixture는 `runtime-executable-changed`로 실패해야 한다.
+현재 root/`web`/`styles`/`_locales` 16개가 정확히 일치하는 테스트, 각 배포 runtime root의 신규 `.js`가 `runtime-js-inventory-changed`로 실패하는 테스트, vendor/tests/scripts/output/dist가 제외되는 테스트와 배포 runtime root 내부 directory link를 거부하는 테스트를 작성한다. JSDoc 주석만 추가한 fixture는 실행 hash가 같고 literal 또는 연산자를 바꾼 fixture는 `runtime-executable-changed`로 실패해야 한다.
 
 - [ ] **Step 2: 실패를 확인한다**
 
@@ -144,7 +144,7 @@ Expected: FAIL because the inventory module and baseline are absent.
 
 - [ ] **Step 3: baseline과 checker를 구현한다**
 
-inventory baseline에는 `background.js`부터 `web/site-adapter.js`까지 현재 first-party runtime 16개를 POSIX path·사전식 정렬로 기록한다. checker는 `openOwnedRoot`로 root의 직접 `.js`와 `web/` tree만 열고 link·special file·역슬래시·중복을 거부한다. executable baseline은 esbuild `transform`에 `loader: 'js'`, `target: 'chrome121'`, `legalComments: 'none'`, `minifyWhitespace: true`, `minifySyntax: false`, `minifyIdentifiers: false`, `sourcemap: false`를 사용한 결과 byte의 SHA-256을 저장한다. production build는 이 transform을 사용하지 않는다.
+inventory baseline에는 현재 first-party runtime 16개를 POSIX path·사전식 정렬로 기록한다. checker는 `openOwnedRoot`로 root의 직접 `.js`와 `web/`, `styles/`, `_locales/` tree만 열고 link·special file·역슬래시·중복을 거부한다. executable baseline은 esbuild `transform`에 `loader: 'js'`, `target: 'chrome121'`, `legalComments: 'none'`, `minifyWhitespace: true`, `minifySyntax: false`, `minifyIdentifiers: false`, `sourcemap: false`를 사용한 결과 byte의 SHA-256을 저장한다. production build는 이 transform을 사용하지 않는다.
 
 - [ ] **Step 4: 집중 검사를 통과시킨다**
 
@@ -338,7 +338,7 @@ Expected: no whitespace errors; manifest/HTML/background runtime contract unchan
 
 - [ ] **Step 5: validation과 PLANS를 갱신한다**
 
-validation에 exact tool versions, OS별 proof hashes, test 수, CI URL, source→dist byte 동일성과 executable hash 불변, 권한·데이터·네트워크 변화 0건, 알려진 한계와 롤백 명령을 기록한다. `PLANS.md`에서 AF01 체크리스트는 실제 증거가 있는 항목만 완료 처리하고 AF02는 AF01 PR 병합 전까지 BLOCKED로 유지한다.
+validation에 exact tool versions, OS별 proof hashes, test 수, CI URL, source→dist byte 동일성, 15개 executable hash 불변과 `settings-client.js`의 검토된 baseline 전진, 권한·데이터·네트워크 변화 0건, 알려진 한계와 롤백 명령을 기록한다. `PLANS.md`에서 AF01 체크리스트는 실제 증거가 있는 항목만 완료 처리하고 AF02는 AF01 PR 병합 전까지 BLOCKED로 유지한다.
 
 - [ ] **Step 6: 문서 검증 후 커밋한다**
 
@@ -353,4 +353,4 @@ git commit -m "docs: record AF01 foundation validation"
 
 Run: `git log --oneline main..HEAD && git diff --stat main...HEAD`
 
-Expected: 여섯 독립 커밋, 제품 기능·manifest·권한 변화 0건. 한글 PR에는 목표, 도구 버전, 불변 계약, Windows/Ubuntu CI, 검증 명령, 중단 조건과 롤백을 기록한다.
+Expected: 검토 가능한 작은 커밋들, 정상 제품 기능·manifest·권한 변화 0건과 단일 malformed-response 방어 변경. 한글 PR에는 목표, 도구 버전, 불변 계약, Windows/Ubuntu CI, 검증 명령, 중단 조건과 롤백을 기록한다.
