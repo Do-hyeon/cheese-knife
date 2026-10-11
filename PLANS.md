@@ -28,7 +28,7 @@
 - PR #2 `2.13.3` 복구 변경, PR #3 README 간소화, PR #4 AF00 설치형 E2E 기반, PR #5 AF01 타입·빌드 기반, PR #6 AF02 계약 우선 전환, PR #7 AF02 상태 고정, PR #8 AF03 runtime·site adapter 분리와 PR #9 AF03 상태 고정은 `main`에 병합됐다.
 - GitHub prerelease `v2.13.3-community.1`이 공개됐다.
 - Chrome 웹 스토어 2.13.3 교체본은 사용자가 게시 완료를 확인했다. 새 설치·기존 설치 자동 업데이트와 설정 보존은 아직 완료로 가정하지 않는다.
-- 현재 기준 브랜치: PR #9까지 병합된 `main`. 움직이는 최신 문서 merge SHA는 기준점으로 기록하지 않는다.
+- 현재 기준 브랜치: 포크의 `origin/main`. 움직이는 최신 문서 merge SHA나 PR 번호 상한은 기준점으로 기록하지 않는다.
 - AF01은 PR #5로 병합됐고 최종 공개 CI run `38157976040`에서 Windows·Ubuntu foundation과 전체 verify가 통과했다. AF02는 PR #6의 공개 CI run `38161802432`와 PR #7의 공개 CI run `38162135577`를 통과해 `main`에 병합됐다. AF03은 검증 코드 `f125daf`를 PR #8의 공개 CI run `38168282370`에서 검증하고 merge commit `275b9a6`으로 병합했으며, PR #9의 공개 CI run `38168743332`로 상태 문서를 고정했다.
 
 GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 상태는 사용자가 보고한 마지막 상태이며 P09에서 게시 후 다시 확인한다.
