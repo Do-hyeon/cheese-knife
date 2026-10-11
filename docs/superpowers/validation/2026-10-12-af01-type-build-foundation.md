@@ -4,13 +4,14 @@
 - 검증 코드 대상: `a581e03` (`codex/af01-type-build-foundation`)
 - 증거 결속: 아래 clean archive 전체 회귀와 최종 도구 감사는 이 코드 커밋에서 실행했으며, 이후 커밋은 이 검증 기록만 갱신한다.
 - 기준점: `81b35c97811901acd80e8a4a2d5b4e9be0ceba91` (`main`)
+- 병합 결과: PR #5, merge commit `2e2ee90be0f9ba402fe12bbd6cf1bd556b0a607e`
 - 환경: Windows x64, Node 24.19.0, Playwright 1.62.1, bundled Chromium 155.0.8059.39
 
 ## 결론
 
 AF01의 로컬 구현·수용 조건을 충족했다. TypeScript와 esbuild는 제품 런타임 전환이 아닌 strict 계약 및 Chrome 실행 문맥 proof에만 도입했다. 16개 첫 번째 당사자 런타임 JavaScript는 source에서 `dist`로 byte 그대로 복사되며, pre-merge 검토에서 발견된 외부 reply 타입 과신을 닫기 위해 `settings-client.js`만 malformed-response validator를 추가하고 실행 hash를 명시적으로 전진시켰다. 나머지 15개 실행 hash와 정상 broker 응답 동작은 유지된다.
 
-manifest, HTML, background 등록, 권한, host permission, 외부 통신과 사용자 데이터 계약은 변경하지 않았다. [PR #5](https://github.com/Do-hyeon/cheese-knife/pull/5)의 [GitHub Actions run 38157669495](https://github.com/Do-hyeon/cheese-knife/actions/runs/38157669495)에서 Windows·Ubuntu foundation과 Ubuntu 전체 verify가 모두 통과했다.
+manifest, HTML, background 등록, 권한, host permission, 외부 통신과 사용자 데이터 계약은 변경하지 않았다. [PR #5](https://github.com/Do-hyeon/cheese-knife/pull/5)의 초기 공개 [GitHub Actions run 38157669495](https://github.com/Do-hyeon/cheese-knife/actions/runs/38157669495)와 최종 공개 [run 38157976040](https://github.com/Do-hyeon/cheese-knife/actions/runs/38157976040)에서 Windows·Ubuntu foundation과 Ubuntu 전체 verify가 모두 통과했고, merge commit `2e2ee90`으로 `main`에 병합됐다.
 
 ## 도구 계약
 

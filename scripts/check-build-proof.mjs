@@ -12,7 +12,7 @@ const sha256 = value => createHash('sha256').update(value).digest('hex');
 
 export async function buildProof(proofRoot) {
   const entryPoints = Object.fromEntries(PROOF_CONTEXTS.map(name => [name, `${name}.ts`]));
-  const result = await build({ ...PROOF_OPTIONS, absWorkingDir: proofRoot, entryPoints, entryNames: '[name]', outdir: 'proof-output' });
+  const result = await build({ ...PROOF_OPTIONS, tsconfigRaw: {}, absWorkingDir: proofRoot, entryPoints, entryNames: '[name]', outdir: 'proof-output' });
   const outputs = Object.fromEntries(result.outputFiles.map(file => [path.basename(file.path), Buffer.from(file.contents).toString('utf8')]));
   return { outputs, metafile: result.metafile };
 }
@@ -63,21 +63,23 @@ export function inspectProofRun(run, identities = environmentIdentities()) {
   const names = Object.keys(run.outputs).sort();
   const expected = PROOF_CONTEXTS.map(name => `${name}.js`).sort();
   if (JSON.stringify(names) !== JSON.stringify(expected)) throw fail(names.some(name => name.endsWith('.map')) ? 'proof-source-map' : 'proof-output-set');
-  for (const source of Object.values(run.outputs)) {
-    if (/\beval\s*\(/.test(source)) throw fail('proof-eval');
-    if (/\bnew\s+Function\s*\(/.test(source)) throw fail('proof-function-constructor');
-    if (/\bimport\s*\(\s*["']https?:/.test(source)) throw fail('proof-remote-import');
-    if (/https?:\/\//.test(source)) throw fail('proof-remote-url');
-    if (/[A-Za-z]:\\[^\s"']+/.test(source)) throw fail('proof-windows-path');
-    if (/\/(?:tmp|var\/tmp)\//.test(source)) throw fail('proof-temp-path');
-    if (/(["'`])\/(?!\/)(?:\\.|[^\\\r\n])*?\1/.test(source)) throw fail('proof-posix-path');
-    if (containsEnvironmentIdentity(source, identities)) throw fail('proof-environment-identity');
-    if (source.split(/[\s"'`]+/).some(token => token.length >= 20 && token.length <= 30 && token.at(4) === '-' && token.at(7) === '-' && token.at(10) === 'T' && token.endsWith('Z') && Number.isFinite(Date.parse(token)))) throw fail('proof-timestamp');
-  }
+  for (const source of Object.values(run.outputs)) inspectBrowserSource(source, identities);
   if (Object.keys(run.metafile.inputs || {}).some(name => name.split('\\').join('/').includes('node_modules/'))) throw fail('proof-unexpected-dependency');
   const graph = normalizedMetafile(run.metafile);
   const outputs = new Map(Object.entries(run.outputs));
   return { hashes: Object.fromEntries(names.map(name => [name, sha256(outputs.get(name))])), graphHash: sha256(JSON.stringify(graph)) };
+}
+
+export function inspectBrowserSource(source, identities = environmentIdentities()) {
+  if (/\beval\s*\(/.test(source)) throw fail('proof-eval');
+  if (/\bnew\s+Function\s*\(/.test(source)) throw fail('proof-function-constructor');
+  if (/\bimport\s*\(\s*["']https?:/.test(source)) throw fail('proof-remote-import');
+  if (/https?:\/\//.test(source)) throw fail('proof-remote-url');
+  if (/[A-Za-z]:\\[^\s"']+/.test(source)) throw fail('proof-windows-path');
+  if (/\/(?:tmp|var\/tmp)\//.test(source)) throw fail('proof-temp-path');
+  if (/(["'`])\/(?!\/)(?:\\.|[^\\\r\n])*?\1/.test(source)) throw fail('proof-posix-path');
+  if (containsEnvironmentIdentity(source, identities)) throw fail('proof-environment-identity');
+  if (source.split(/[\s"'`]+/).some(token => token.length >= 20 && token.length <= 30 && token.at(4) === '-' && token.at(7) === '-' && token.at(10) === 'T' && token.endsWith('Z') && Number.isFinite(Date.parse(token)))) throw fail('proof-timestamp');
 }
 
 export function compareProofRuns(left, right) {

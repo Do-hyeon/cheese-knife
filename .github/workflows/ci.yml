@@ -29,7 +29,7 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Check offline foundation
-        run: npm run check:toolchain && npm run check:runtime-js && npm run typecheck && npm run check:build-proof
+        run: npm run check:toolchain && npm run check:runtime-js && npm run typecheck && npm run check:settings-runtime && npm run check:build-proof
         env:
           npm_config_offline: "true"
           HTTP_PROXY: http://127.0.0.1:9

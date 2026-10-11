@@ -1,1 +1,6 @@
 vendor/hls.light.private.js text eol=lf
+src/settings/*.ts text eol=lf
+settings-contract.js text eol=lf
+settings-client.js text eol=lf
+settings-broker.js text eol=lf
+build-proof/*.ts text eol=lf

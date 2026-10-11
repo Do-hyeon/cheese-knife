@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const { spawnSync } = require('node:child_process');
 
 async function proofModule() {
   return import(pathToFileURL(path.resolve('scripts/check-build-proof.mjs')));
@@ -17,6 +18,13 @@ test('proof contexts and build options are fixed', async () => {
   const mod = await proofModule();
   assert.deepEqual(mod.PROOF_CONTEXTS, ['background', 'extension-page', 'isolated', 'main']);
   assert.deepEqual(mod.PROOF_OPTIONS, { bundle: true, format: 'iife', platform: 'browser', target: 'chrome121', minify: false, sourcemap: false, treeShaking: false, metafile: true, write: false });
+});
+
+test('proof inputs are fixed to LF across foundation operating systems', () => {
+  const files = ['background.ts', 'extension-page.ts', 'isolated.ts', 'main.ts', 'shared.ts'].map(file => `build-proof/${file}`);
+  const result = spawnSync('git', ['check-attr', 'eol', '--', ...files], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  for (const file of files) assert.match(result.stdout, new RegExp(`${file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}: eol: lf`));
 });
 
 test('artifact negative table fails with distinct codes', async () => {
@@ -61,6 +69,13 @@ test('artifact negative table fails with distinct codes', async () => {
 
   const twoCharacterIdentity = cleanRun(); twoCharacterIdentity.outputs['main.js'] = 'const leaked = "host:xy";';
   assert.throws(() => mod.inspectProofRun(twoCharacterIdentity, ['xy']), error => error?.code === 'proof-environment-identity');
+});
+
+test('browser source inspection is reusable without changing proof errors', async () => {
+  const mod = await proofModule();
+  assert.doesNotThrow(() => mod.inspectBrowserSource('const local = "safe";', ['runner-host']));
+  assert.throws(() => mod.inspectBrowserSource('eval("x")', ['runner-host']), { code: 'proof-eval' });
+  assert.throws(() => mod.inspectBrowserSource('const host = "runner-host";', ['runner-host']), { code: 'proof-environment-identity' });
 });
 
 test('different proof runs are rejected', async () => {

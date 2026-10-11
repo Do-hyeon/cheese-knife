@@ -6,7 +6,7 @@
 
 **Current stack:** Chrome MV3, JavaScript 제품 런타임, Node 24.19.0, Node test runner, Playwright 1.62.1, ESLint, npm audit, Gitleaks. AF01에서 TypeScript 7.0.2와 esbuild 0.28.2를 strict 계약·실행 문맥 proof에만 도입했으며 제품 `dist`는 기존 JavaScript 복사를 유지한다.
 
-**Core references:** [AI 친화적 유지보수 기반 장기 설계](docs/superpowers/specs/2026-10-11-ai-friendly-foundation-design.md), [AF01 타입·빌드 기반 상세 설계](docs/superpowers/specs/2026-10-12-af01-type-build-foundation-design.md), [AF01 구현 계획](docs/superpowers/plans/2026-10-12-af01-type-build-foundation.md), [AF01 검증 기록](docs/superpowers/validation/2026-10-12-af01-type-build-foundation.md), [AF00 설치형 E2E 구현 계획](docs/superpowers/plans/2026-10-11-af00-installed-extension-e2e.md), [AF00 검증 기록](docs/superpowers/validation/2026-10-11-af00-installed-extension-e2e.md), [최신 출시 게이트](docs/superpowers/validation/2026-10-11-recovery-release-gates.md), [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md).
+**Core references:** [AI 친화적 유지보수 기반 장기 설계](docs/superpowers/specs/2026-10-11-ai-friendly-foundation-design.md), [AF01 타입·빌드 기반 상세 설계](docs/superpowers/specs/2026-10-12-af01-type-build-foundation-design.md), [AF01 구현 계획](docs/superpowers/plans/2026-10-12-af01-type-build-foundation.md), [AF01 검증 기록](docs/superpowers/validation/2026-10-12-af01-type-build-foundation.md), [AF02 계약 우선 TypeScript 전환 상세 설계](docs/superpowers/specs/2026-10-12-af02-contract-first-migration-design.md), [AF02 구현 계획](docs/superpowers/plans/2026-10-12-af02-contract-first-migration.md), [AF00 설치형 E2E 구현 계획](docs/superpowers/plans/2026-10-11-af00-installed-extension-e2e.md), [AF00 검증 기록](docs/superpowers/validation/2026-10-11-af00-installed-extension-e2e.md), [최신 출시 게이트](docs/superpowers/validation/2026-10-11-recovery-release-gates.md), [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md).
 
 작성일: 2026-10-11 / Asia-Seoul.
 
@@ -24,12 +24,12 @@
 
 ## 2. 현재 공개·저장소 상태
 
-- GitHub `main`: `81b35c97811901acd80e8a4a2d5b4e9be0ceba91`.
-- PR #2 `2.13.3` 복구 변경, PR #3 README 간소화와 PR #4 AF00 설치형 E2E 기반은 `main`에 병합됐다.
+- GitHub `main`: `2e2ee90be0f9ba402fe12bbd6cf1bd556b0a607e`.
+- PR #2 `2.13.3` 복구 변경, PR #3 README 간소화, PR #4 AF00 설치형 E2E 기반과 PR #5 AF01 타입·빌드 기반은 `main`에 병합됐다.
 - GitHub prerelease `v2.13.3-community.1`이 공개됐다.
-- Chrome 웹 스토어 2.13.3 교체본은 사용자가 제출했으며 마지막 확인 상태는 **심사 대기**다. 이 문서는 심사 통과나 실제 자동 업데이트를 완료로 가정하지 않는다.
-- 현재 계획 브랜치: `codex/af01-type-build-foundation`.
-- 현재 브랜치는 AF01 상세 설계·구현·로컬 검증을 완료했다. TypeScript/esbuild는 proof-only이며 확장 제품 동작·권한·사용자 데이터 계약은 변경하지 않았다. GitHub PR과 Windows·Ubuntu CI 확인은 남아 있다.
+- Chrome 웹 스토어 2.13.3 교체본은 사용자가 게시 완료를 확인했다. 새 설치·기존 설치 자동 업데이트와 설정 보존은 아직 완료로 가정하지 않는다.
+- 현재 계획 브랜치: `codex/af02-contract-first-migration`.
+- AF01은 PR #5로 병합됐고 최종 공개 CI run `38157976040`에서 Windows·Ubuntu foundation과 전체 verify가 통과했다. 현재 브랜치는 승인된 AF02 구현·로컬 전체 검증·독립 branch 검토와 지적 보완을 완료했다.
 
 GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 상태는 사용자가 보고한 마지막 상태이며 P09에서 게시 후 다시 확인한다.
 
@@ -50,27 +50,27 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 상태�
 | ID | 작업 묶음 | 선행 조건 | 상태 | 다음 게이트 |
 | --- | --- | --- | --- | --- |
 | P01–P08 | 복구·검증·2.13.3 GitHub 공개 | 기존 승인 | DONE | 상세는 archive/validation 참조 |
-| P09 | 스토어 2.13.3 게시·업데이트 기준 고정 | 외부 심사 통과 | WAITING-DEPENDENCY | 실제 게시·새 설치·업데이트·설정 보존 확인 |
+| P09 | 스토어 2.13.3 게시·업데이트 기준 고정 | 외부 심사 통과 | READY | 새 설치·업데이트·설정 보존 확인 |
 | AF00 | 설치된 MV3 산출물 E2E | 설계 승인 | DONE | 검증 기록과 CI 게이트 유지 |
-| AF01 | 타입·빌드 전환 기반 | AF00 | DOING | 한글 PR·Windows/Ubuntu CI·병합 확인 |
-| AF02 | 계약 우선 TypeScript 전환 | AF01 | BLOCKED | 설정·메시지·revision 경계 이전 |
+| AF01 | 타입·빌드 전환 기반 | AF00 | DONE | strict/build proof와 공개 CI 유지 |
+| AF02 | 계약 우선 TypeScript 전환 | AF01 | READY | 한글 PR·Windows/Ubuntu 공개 CI |
 | AF03 | MAIN runtime·site adapter 분리 | AF02 | BLOCKED | 불안정한 치지직 경계 격리 |
 | AF04 | 기능별 모듈 이전 | AF03 | BLOCKED | audio/player/preview/chat/sidebar 순차 이전 |
 | AF05 | 이행 종료·공개 게이트 | AF04, P09 | BLOCKED | 설치·업데이트·롤백과 정책 정합성 확인 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **AF01 로컬 구현·검증 완료, PR/CI 대기**. 공개 CI와 diff 검토를 통과해 `main`에 병합하기 전에는 AF02 제품 이전을 시작하지 않는다.
+현재 커서: **AF02 한글 PR·공개 CI**. 공개 게이트가 통과하면 병합 상태를 고정한다.
 
 ## 5. P09 — 스토어 게시 후 고정
 
 - [x] 2.13.3 소스 PR 병합과 GitHub prerelease 공개.
 - [x] Chrome 웹 스토어 교체본 제출.
-- [ ] 스토어 공개 페이지에서 2.13.3 게시 상태와 설명·스크린샷·지원 링크 확인.
+- [x] 사용자가 스토어 공개 페이지의 2.13.3 게시 상태를 확인.
 - [ ] 새 설치가 게시 산출물을 받는지 확인.
 - [ ] 기존 2.13.2 설치가 2.13.3으로 업데이트되고 설정이 보존되는지 확인.
 - [ ] 배포 commit, version, ZIP SHA-256, 게시 시각, 검증 범위와 롤백 경로를 validation 문서에 고정.
 
-P09는 외부 심사 대기 중이지만 AF00의 격리된 계획·구현을 막지 않는다. AF05 공개 게이트 전에는 반드시 완료한다.
+P09의 게시 뒤 설치·업데이트 수용 검사는 AF02의 내부 계약 전환을 막지 않는다. AF05 공개 게이트 전에는 반드시 완료한다.
 
 ## 6. AF00 — 설치형 MV3 E2E
 
@@ -120,13 +120,23 @@ P09는 외부 심사 대기 중이지만 AF00의 격리된 계획·구현을 막
 - [x] npm·ESLint·Gitleaks 감사에서 AF01 신규 관측 0 확인.
 - [x] pre-merge 검토의 POSIX npm bin·companion native binary, 전체 배포 JS inventory, reply 타입 과신, POSIX 경로와 복합 환경 식별자 누출 지적 보완.
 - [x] 한글 PR #5에서 Windows·Ubuntu 공개 CI와 변경 diff 검토.
-- [ ] AF01 병합 뒤 기준 commit·CI URL·최종 상태 고정.
+- [x] AF01 병합 commit `2e2ee90`, PR #5와 최종 공개 CI run `38157976040`으로 상태 고정.
 
 ### AF02 — 계약 우선 이전
 
-- [ ] 설정 schema·validator·message union·revision 계약을 단일 근거로 정리.
-- [ ] background broker/client와 popup/styles 경계를 작은 단위로 TypeScript 이전.
-- [ ] 손상 storage, 오래된 revision, 잘못된 message의 정적·런타임 거부 확인.
+- [x] TypeScript 원본과 기존 global-script ABI를 함께 유지하는 대화상 방향 승인.
+- [x] 생성 JS drift, 타입 과신, module 전환, queue·storage 의미 변화에 대한 공격 검토를 상세 설계에 반영.
+- [x] 상세 설계 문서 사용자 검토·승인.
+- [x] 정확한 파일·테스트·명령·커밋 단위의 구현 계획 작성·자체 검토.
+- [x] 구현 계획 사용자 검토·승인과 주 실행자 순차 실행 방식 선택.
+- [x] 설정 schema·validator·message union·revision 계약을 단일 TypeScript 근거로 정리.
+- [x] background broker/client와 popup/styles 경계를 기존 전역 ABI 그대로 TypeScript 이전.
+- [x] 손상 storage, 오래된 revision, 잘못된 message의 정적·런타임 거부 확인.
+- [x] 결정적 생성·drift·build/candidate/package 우회 방지와 LF 계약 확인.
+- [x] 공개 checkout 조건 전체 회귀·객관 오디오·설치형 positive/negative E2E 확인.
+- [x] npm·Gitleaks 0, AF02 신규 ESLint 관측 0과 기존 guarded observation 보존 확인.
+- [x] 전체 branch 독립 검토와 Critical/Important finding 보완.
+- [ ] 한글 PR, Windows·Ubuntu 공개 CI와 병합 상태 고정.
 
 ### AF03 — runtime·adapter 분리
 
@@ -179,4 +189,4 @@ git -c core.safecrlf=false diff --check
 
 ## 10. 현재 사용자 개입 지점
 
-AF01은 로컬 구현·검증이 끝났으므로 사용자 개입 없이 브랜치 push, 한글 PR, 공개 CI 확인과 승인 범위 내 병합을 이어간다. GitHub 인증·보호 규칙·CI 장애처럼 외부 입력이 실제로 필요한 경우에만 요청한다. 스토어 심사가 끝나면 P09 설치 수용을 별도로 재개한다.
+AF02의 다음 단계는 한글 PR·공개 CI다. 승인된 구현 범위 안에서는 사용자 개입 없이 이어가며 GitHub 인증·보호 규칙·CI 장애처럼 외부 입력이 실제로 필요한 경우에만 요청한다. P09 설치 수용은 AF02와 별도로 재개한다.
