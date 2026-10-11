@@ -3,7 +3,7 @@
 - 작성일: 2026-10-12 / Asia-Seoul
 - 기준점: `2e2ee90be0f9ba402fe12bbd6cf1bd556b0a607e` (`main`, PR #5 병합)
 - 대상 브랜치: `codex/af02-contract-first-migration`
-- 상태: 대화상 방향 승인, 상세 설계 검토 대기
+- 상태: 사용자 상세 설계 승인
 
 ## 1. 목적
 
@@ -48,6 +48,7 @@ AF02는 설정 message, storage snapshot, operation, revision 계약의 타입�
 | 생성 산출물 | `settings-contract.js`, `settings-client.js`, `settings-broker.js` |
 | 타입 설정 | 일반화된 root TypeScript config와 `package.json` script |
 | 생성 도구 | 기존 esbuild와 `scripts/owned-files.mjs`를 재사용하는 한 개의 작은 generator/checker |
+| build 호출자 | `scripts/build.mjs`, 격리 후보를 만드는 `scripts/verify-candidate.mjs`, CI와 publish workflow |
 | 직접 호출자 | `background.js`, `popup.js`, `styles.js` |
 | 로드 선언 | `background.js`, `popup.html`, `styles.html` |
 | 집중 회귀 | settings contract/client/broker/load-order/style-apply/popup/styles/type foundation 테스트 |
@@ -84,7 +85,7 @@ AF02는 설정 message, storage snapshot, operation, revision 계약의 타입�
 
 `types/knife-settings.d.ts`에 있는 settings protocol, snapshot, reply, client state, broker job 타입은 `contract.ts`로 이동한다. 별도 수기 선언 사본은 남기지 않는다.
 
-protocol version, namespace와 action 이름은 런타임 상수로 한 번만 선언하고 validator와 request 생성이 이를 사용한다. validator가 만든 성공 결과에서 정확하게 추론할 수 있는 union은 반환 타입에서 얻는다. 추론을 억지로 복잡하게 만드는 경우에는 같은 파일에서 명시 타입과 validator를 나란히 두고 action별 positive/negative 표로 일치 여부를 검사한다. 이를 위해 새 schema DSL이나 dependency를 추가하지 않는다.
+protocol version, namespace와 action 이름의 타입·validator는 같은 파일에 둔다. validator가 만든 성공 결과에서 정확하게 추론할 수 있는 union은 반환 타입에서 얻는다. 추론을 억지로 복잡하게 만드는 경우에는 같은 파일에서 명시 타입과 validator를 나란히 두고 action별 positive/negative 표로 일치 여부를 검사한다. client의 기존 request literal과의 일치는 통합 테스트로 고정하며, 이를 위해 새 공개 helper, 전역, schema DSL이나 dependency를 추가하지 않는다.
 
 `CONFIGS`와 `STYLES`의 실제 필드 목록은 기존 JavaScript schema가 계속 단일 런타임 근거다. contract는 현재처럼 이 값을 읽어 허용 ID와 범위를 구성한다. 이 두 schema 자체의 TypeScript 이전은 AF02에 포함하지 않는다.
 
@@ -135,6 +136,8 @@ popup과 styles는 현재 factory API를 그대로 호출한다. styles reload�
 6. 같은 입력을 두 번 변환한 byte가 다르면 실패한다.
 7. 생성 결과에 절대 경로, 환경 식별자, timestamp, `eval`, `new Function`, 원격 import가 있으면 실패한다.
 8. `npm run build`는 생성 drift를 먼저 거부한 뒤 기존 copy build를 수행한다.
+9. `verify-candidate`도 package 파일을 복사하기 전에 원본 checkout의 생성 drift를 거부한다.
+10. 세 TypeScript 원본과 세 생성 JavaScript는 `.gitattributes`에서 LF로 고정해 Windows와 Ubuntu의 byte 비교가 checkout 설정에 좌우되지 않게 한다.
 
 기존 runtime JavaScript inventory는 파일 목록을 유지하고 세 생성 파일의 승인된 executable hash만 AF02 기준으로 전진시킨다. source→`dist` JavaScript byte 동일성은 계속 요구한다.
 
@@ -238,6 +241,12 @@ config/style ID와 범위를 TypeScript literal union으로 다시 적으면 기
 새 codegen package나 임시 디렉터리 처리로 원격 다운로드, symlink traversal 또는 환경 정보 누출이 생길 수 있다.
 
 **보완:** 이미 고정된 esbuild와 `openOwnedRoot`만 재사용하고 새 dependency를 추가하지 않는다. 입력·출력 allowlist와 offline CI를 유지한다.
+
+### 9.9 build API 우회와 줄바꿈 차이가 drift 검사를 무력화할 수 있음
+
+`verify-candidate`는 build 함수를 직접 호출하고, Windows의 `core.autocrlf=true` checkout은 생성 파일을 CRLF로 바꿀 수 있다. CLI만 검사하거나 줄바꿈을 고정하지 않으면 후보 검증이 stale JS를 복사하거나 정상 checkout이 거짓 실패할 수 있다.
+
+**보완:** 일반 `npm run build`와 `verify-candidate`가 각각 drift 검사를 호출한다. 임시 package fixture를 위한 순수 copy build 함수는 생성 source를 요구하지 않는다. TypeScript 원본과 생성 JS 여섯 파일은 LF로 고정하고 Windows·Ubuntu CI에서 동일 검사를 실행한다.
 
 ## 10. 단계와 중단 조건
 
