@@ -1,4 +1,5 @@
 import type { SiteAdapter } from '../site-adapter/contracts';
+import type { AudioController } from '../features/audio/contracts';
 
 export type RouteKind = 'excluded' | 'live' | 'vod' | 'channel' | 'explore';
 
@@ -88,7 +89,7 @@ export interface KnifeRuntime {
   features: Record<string, unknown>;
   generation: number;
   adapter?: SiteAdapter;
-  audio?: unknown;
+  audio?: AudioController;
   player?: unknown;
   preview?: unknown;
   coordinatorStarted?: boolean;
