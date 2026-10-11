@@ -8,7 +8,7 @@
 
 **Core references:** [AI 친화적 유지보수 기반 장기 설계](docs/superpowers/specs/2026-10-11-ai-friendly-foundation-design.md), [AF01 타입·빌드 기반 상세 설계](docs/superpowers/specs/2026-10-12-af01-type-build-foundation-design.md), [AF01 구현 계획](docs/superpowers/plans/2026-10-12-af01-type-build-foundation.md), [AF01 검증 기록](docs/superpowers/validation/2026-10-12-af01-type-build-foundation.md), [AF02 계약 우선 TypeScript 전환 상세 설계](docs/superpowers/specs/2026-10-12-af02-contract-first-migration-design.md), [AF02 구현 계획](docs/superpowers/plans/2026-10-12-af02-contract-first-migration.md), [AF03 runtime·site adapter 상세 설계](docs/superpowers/specs/2026-10-12-af03-runtime-site-adapter-design.md), [AF03 구현 계획](docs/superpowers/plans/2026-10-12-af03-runtime-site-adapter.md), [AF03 검증 기록](docs/superpowers/validation/2026-10-12-af03-runtime-site-adapter.md), [AF00 설치형 E2E 구현 계획](docs/superpowers/plans/2026-10-11-af00-installed-extension-e2e.md), [AF00 검증 기록](docs/superpowers/validation/2026-10-11-af00-installed-extension-e2e.md), [최신 출시 게이트](docs/superpowers/validation/2026-10-11-recovery-release-gates.md), [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md).
 
-**AF04 references:** [기능 모듈 이전 상세 설계](docs/superpowers/specs/2026-10-12-af04-feature-modules-design.md), [AF04-A 오디오 계획](docs/superpowers/plans/2026-10-12-af04a-audio-module.md), [AF04-B 플레이어 계획](docs/superpowers/plans/2026-10-12-af04b-player-module.md), [AF04-C 미리보기 계획](docs/superpowers/plans/2026-10-12-af04c-preview-module.md), [AF04-D inject 계획](docs/superpowers/plans/2026-10-12-af04d-inject-modules.md).
+**AF04 references:** [기능 모듈 이전 상세 설계](docs/superpowers/specs/2026-10-12-af04-feature-modules-design.md), [AF04-A 오디오 계획](docs/superpowers/plans/2026-10-12-af04a-audio-module.md), [AF04-A 검증 기록](docs/superpowers/validation/2026-10-12-af04a-audio-module.md), [AF04-B 플레이어 계획](docs/superpowers/plans/2026-10-12-af04b-player-module.md), [AF04-C 미리보기 계획](docs/superpowers/plans/2026-10-12-af04c-preview-module.md), [AF04-D inject 계획](docs/superpowers/plans/2026-10-12-af04d-inject-modules.md).
 
 작성일: 2026-10-11 / Asia-Seoul.
 
@@ -57,11 +57,11 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 상태�
 | AF01 | 타입·빌드 전환 기반 | AF00 | DONE | strict/build proof와 공개 CI 유지 |
 | AF02 | 계약 우선 TypeScript 전환 | AF01 | DONE | 생성·drift·strict·설치형 E2E 게이트 유지 |
 | AF03 | MAIN runtime·site adapter 분리 | AF02 | DONE | 생성·strict·설치형 E2E·공개 CI 유지 |
-| AF04 | 기능별 모듈 이전 | AF03 | WAITING-USER | 네 단계 상세 계획 묶음 승인과 실행 방식 확정 |
+| AF04 | 기능별 모듈 이전 | AF03 | DOING | AF04-A 공개 PR·CI·merge 뒤 AF04-B 착수 |
 | AF05 | 이행 종료·공개 게이트 | AF04, P09 | BLOCKED | 설치·업데이트·롤백과 정책 정합성 확인 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **AF04 구현 계획 묶음 승인 대기**. 상위 설계는 승인됐고, audio → player → preview → inject 네 계획을 작성·자체 검토했다. 각 단계는 별도 PR·CI·merge 뒤 다음 단계로 진행하며, 제품 구현은 네 계획의 묶음 승인과 실행 방식 확정 뒤 시작한다.
+현재 커서: **AF04-A 공개 PR·CI·merge**. 네 계획 묶음과 주 실행자 순차 실행 방식은 승인됐다. AF04-A의 로컬 구현·전체 검증·독립 검토를 완료했으며, 공개 CI와 병합 전까지 AF04-B 제품 코드는 시작하지 않는다.
 
 ## 5. P09 — 스토어 게시 후 고정
 
@@ -165,7 +165,8 @@ P09의 게시 뒤 설치·업데이트 수용 검사는 AF02의 내부 계약 �
 - [x] AF04-B 플레이어의 정확한 파일·인터페이스·검사·커밋 계획 작성·자체 검토.
 - [x] AF04-C 미리보기의 정확한 파일·인터페이스·검사·커밋 계획 작성·자체 검토.
 - [x] AF04-D chat/sidebar/popup/page/coordinator의 정확한 파일·인터페이스·검사·커밋 계획 작성·자체 검토.
-- [ ] 네 구현 계획 묶음 사용자 승인과 실행 방식 확정.
+- [x] 네 구현 계획 묶음 사용자 승인과 실행 방식 확정.
+- [x] AF04-A audio typed source graph 로컬 구현·전체 검증·독립 검토 완료.
 - [ ] AF04-A audio를 typed source graph로 이전하고 공개 CI·merge 완료.
 - [ ] AF04-B player를 typed source graph로 이전하고 공개 CI·merge 완료.
 - [ ] AF04-C preview를 typed source graph로 이전하고 공개 CI·merge 완료.
@@ -211,4 +212,4 @@ git -c core.safecrlf=false diff --check
 
 ## 10. 현재 사용자 개입 지점
 
-AF04 상위 설계와 네 구현 계획은 작성·자체 검토를 마쳤다. 사용자에게 네 계획과 주 실행자 순차 실행 방식을 한 번에 승인받은 뒤 AF04-A부터 구현한다. 승인되지 않은 동작 변경은 선행하지 않는다. P09 설치 수용은 AF04와 별도로 재개한다.
+AF04-A는 로컬 구현·전체 게이트·독립 검토를 마쳤다. 한글 PR의 Windows·Ubuntu foundation과 전체 verify가 통과한 뒤 병합하고 상태를 고정한다. 그전에는 AF04-B 제품 코드를 시작하지 않는다. P09 설치 수용은 AF04와 별도로 재개한다.
