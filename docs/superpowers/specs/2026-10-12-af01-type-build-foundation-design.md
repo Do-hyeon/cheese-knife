@@ -204,7 +204,8 @@ AF01 완료 이후 새 첫 번째 당사자 런타임 소스는 `.ts`만 허용�
 AF01 결과는 다음 diff가 0이어야 한다.
 
 - `manifest.json`의 의미와 배열 순서
-- production `dist`의 현재 copy-based 파일 집합과 각 runtime byte
+- production `dist`의 현재 copy-based 파일 집합과 source→dist byte 동일성
+- JSDoc 대상 runtime은 주석·공백을 제거한 실행 코드 hash가 AF01 시작 baseline과 동일함
 - extension page script tag와 content script 순서
 - 권한, host permission, 외부 origin, 네트워크 요청
 - `chrome.storage` key, 설정 기본값, message/revision 형식
@@ -248,7 +249,7 @@ AF01은 작은 커밋으로 나눈다. 정확한 파일명과 테스트명은 �
 5. 결정적 출력·license·offline/ignore-scripts 검증
 6. CI, 문서, validation과 전체 회귀
 
-각 단계에서 production `dist` byte가 기준선과 달라지면 즉시 중지한다.
+각 단계에서 production 파일 집합이나 source→dist byte 동일성이 깨지거나, JSDoc 대상의 정규화된 실행 코드 hash가 기준선과 달라지면 즉시 중지한다. JSDoc 주석 자체의 추가로 source와 dist의 절대 byte hash가 과거 baseline과 달라지는 것은 허용하되 실행 코드 변경으로 간주하지 않는다.
 
 ## 13. 롤백
 
@@ -305,6 +306,12 @@ esbuild는 플랫폼 binary와 설치 동작에 의존한다. `--ignore-scripts`
 
 **보완:** 네 Chrome 실행 문맥, chrome121, browser IIFE, CSP 금지 패턴과 metafile 계약을 고정하고, AF02에서 첫 실제 계약 모듈을 이전할 때 동일 runner를 production 후보 비교에 재사용하도록 완료 조건에 연결한다.
 
+### 14.8 JSDoc 추가와 runtime byte 동일 조건이 충돌함
+
+copy-based build에서는 타입 전용 JSDoc도 그대로 `dist`에 복사되므로 과거 source의 절대 byte hash를 유지할 수 없다. 이를 무시하면 타입 proof나 byte 불변 조건 중 하나를 거짓으로 보고하게 된다.
+
+**보완:** 파일 집합과 source→dist byte 동일성은 계속 요구한다. 별도로 AF01 시작 시 기존 16개 runtime JavaScript를 esbuild의 고정된 comment/whitespace 제거 transform으로 정규화해 실행 코드 hash baseline을 만든다. JSDoc 추가 뒤에도 이 hash가 같아야 하며, literal·연산자·분기 등 실행 코드가 바뀌면 실패한다. 이 transform은 production emit에 사용하지 않는다.
+
 ## 15. 중단 조건
 
 다음 중 하나가 발생하면 검사를 약화하지 않고 AF01을 중지해 설계를 다시 승인받는다.
@@ -326,7 +333,8 @@ AF01은 다음을 모두 만족할 때만 완료다.
 - 네 실행 문맥 build proof와 negative controls 통과
 - Windows와 Ubuntu에서 결정적 출력·license·offline 계약 통과
 - 신규 first-party runtime JavaScript 금지 게이트 통과
-- production manifest, 파일 순서와 `dist` runtime byte가 기준선과 동일
+- production manifest와 파일 순서가 기준선과 동일하고 source→dist byte가 일치
+- JSDoc 대상 runtime의 정규화된 실행 코드 hash가 AF01 시작 baseline과 동일
 - 기존 전체 회귀와 설치형 E2E 통과
 - 권한·사용자 데이터·외부 전송·스토어 정책 범위 변화 0건
 - 구현 계획, 검증 기록과 한글 PR이 별도 공개 단위로 남음
