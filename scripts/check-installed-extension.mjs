@@ -1,9 +1,10 @@
+import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { checkPackage } from './check-package.mjs';
 import { FIXTURE_LIVE_URL, fixtureDecision, loadFixtureResponses } from './extension-e2e/fixture-router.mjs';
-import { launchInstalledExtension, parseInstalledE2EArgs } from './extension-e2e/harness.mjs';
+import { launchInstalledExtension, parseInstalledE2EArgs, reacquireExtensionWorker } from './extension-e2e/harness.mjs';
 import { openOwnedRoot } from './owned-files.mjs';
 import { removeCandidate, verifyCandidate } from './verify-candidate.mjs';
 
@@ -160,7 +161,7 @@ const runtimeSnapshot = page => page.evaluate(() => {
 
 const sendSettingsMessage = (page, message) => page.evaluate(value => new Promise(resolve => chrome.runtime.sendMessage(value, resolve)), message);
 
-export async function runMultiWindowScenario({ context, worker, extensionId, page, popup, pageErrors = [], routeErrors = [] }) {
+export async function runMultiWindowScenario({ context, worker, extensionId, page, popup, pageErrors = [], routeErrors = [], captureState }) {
   assertCondition(context && worker && page && popup, 'base-handshake-state-missing');
   await popup.close();
   const firstTab = await worker.evaluate(async url => {
@@ -254,8 +255,14 @@ export async function runMultiWindowScenario({ context, worker, extensionId, pag
   assertCondition(finalSecond.ownedControls === isolationSecond.ownedControls, 'second-runtime-controls-changed');
   assertCondition(finalSecond.loads === isolationSecond.loads, 'second-runtime-reloaded');
   assertCondition(JSON.stringify(finalSecond.video) === JSON.stringify(isolationSecond.video), 'second-runtime-video-changed');
+  await popupB.locator('#previewVolume').fill('25');
+  await waitUntil(() => storageSnapshot(worker), value => value?.config?.previewVolume === 25, 'isolation-setting-restore-failed');
+  await secondPage.waitForFunction(() => window[Symbol.for('cheese-knife.runtime.v1')]?.config.previewVolume === 25, null, { timeout: 15000 });
   assertCondition(routeErrors.length === 0, 'fixture-route-error');
   assertCondition(pageErrors.length === 0, 'installed-page-error');
+  if (typeof captureState === 'function') captureState({
+    context, worker, extensionId, page: secondPage, popupA, popupB, stylesPage, pageErrors, routeErrors,
+  });
 
   return {
     multiWindow: passed({ first: firstTab, second: secondTarget }),
@@ -265,14 +272,118 @@ export async function runMultiWindowScenario({ context, worker, extensionId, pag
   };
 }
 
+export async function runLifecycleScenario({ context, worker, extensionId, page, popupA, popupB, stylesPage,
+  pageErrors = [], routeErrors = [], responses, restartSession }) {
+  assertCondition(context && worker && page, 'multi-window-state-missing');
+  const sentinel = randomBytes(16).toString('hex');
+  await worker.evaluate(value => { globalThis.__knifeE2ESentinel = value; }, sentinel);
+  await Promise.all([popupA, popupB, stylesPage].filter(Boolean).map(extensionPage => extensionPage.close().catch(() => {})));
+  const workerBeforeIdle = worker;
+  await new Promise(resolve => setTimeout(resolve, 35000));
+  let wakePopup = await context.newPage();
+  await wakePopup.goto(`chrome-extension://${extensionId}/popup.html`, { waitUntil: 'domcontentloaded' });
+  await wakePopup.locator('#settings-status[data-phase="ready"]').waitFor({ timeout: 15000 });
+  ({ worker, extensionId } = await reacquireExtensionWorker(context, worker, 15000));
+  const idleWorkerReused = worker === workerBeforeIdle;
+  const sentinelAfterWake = await worker.evaluate(() => globalThis.__knifeE2ESentinel ?? null);
+  const wakeStorage = await storageSnapshot(worker);
+  const idleSuspensionObserved = sentinelAfterWake === null;
+  if (!idleSuspensionObserved) await worker.evaluate(() => { delete globalThis.__knifeE2ESentinel; });
+  assertCondition(wakeStorage?.config?.arrowSeek === false && wakeStorage?.config?.previewVolume === 25, 'worker-wake-settings-changed');
+  assertCondition(!Object.hasOwn(wakeStorage, '__knifeE2ESentinel'), 'worker-sentinel-persisted');
+  await wakePopup.close();
+
+  const beforeLifecycle = await runtimeSnapshot(page);
+  const beforeLifecycleConfig = await page.evaluate(() => ({ ...window[Symbol.for('cheese-knife.runtime.v1')].config }));
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })));
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
+  await page.waitForFunction(() => window[Symbol.for('cheese-knife.runtime.v1')]?.configReady === true, null, { timeout: 15000 });
+  const generationBeforePulse = await page.evaluate(() => window[Symbol.for('cheese-knife.runtime.v1')].generation);
+  const originalPath = await page.evaluate(() => location.pathname);
+  await page.evaluate(() => history.pushState({}, '', '/live/cccccccccccccccccccccccccccccccc'));
+  await page.waitForFunction(previous => window[Symbol.for('cheese-knife.runtime.v1')].generation > previous, generationBeforePulse, { timeout: 5000 });
+  const generationAfterPulse = await page.evaluate(() => window[Symbol.for('cheese-knife.runtime.v1')].generation);
+  await page.evaluate(pathname => history.replaceState({}, '', pathname), originalPath);
+  await page.waitForFunction(previous => window[Symbol.for('cheese-knife.runtime.v1')].generation > previous, generationAfterPulse, { timeout: 5000 });
+  const afterLifecycle = await runtimeSnapshot(page);
+  const afterLifecycleState = await page.evaluate(() => ({
+    config: { ...window[Symbol.for('cheese-knife.runtime.v1')].config },
+    pageshowPersisted: window.__knifeFixture.pageshowPersisted,
+    pagehidePersisted: window.__knifeFixture.pagehidePersisted,
+  }));
+  assertCondition(afterLifecycleState.config.arrowSeek === false && afterLifecycleState.config.previewVolume === 25, 'bfcache-settings-changed');
+  assertCondition(beforeLifecycleConfig.arrowSeek === false && beforeLifecycleConfig.previewVolume === 25, 'bfcache-baseline-invalid');
+  assertCondition(afterLifecycleState.pageshowPersisted >= 1 && afterLifecycleState.pagehidePersisted >= 1, 'bfcache-events-missing');
+  assertCondition(afterLifecycle.ownedControls === beforeLifecycle.ownedControls, 'bfcache-duplicate-controls');
+  assertCondition(afterLifecycle.loads === beforeLifecycle.loads, 'bfcache-unexpected-reload');
+
+  const disposable = await context.newPage();
+  await disposable.goto(FIXTURE_LIVE_URL, { waitUntil: 'domcontentloaded' });
+  await disposable.waitForFunction(() => window[Symbol.for('cheese-knife.runtime.v1')]?.configReady === true, null, { timeout: 15000 });
+  await disposable.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: false })));
+  await disposable.waitForFunction(() => document.querySelectorAll('.knife-owned').length === 0, null, { timeout: 5000 });
+  await disposable.close();
+
+  const trigger = await context.newPage();
+  await trigger.goto(`chrome-extension://${extensionId}/popup.html`, { waitUntil: 'domcontentloaded' });
+  await trigger.locator('#settings-status[data-phase="ready"]').waitFor({ timeout: 15000 });
+  try { await trigger.evaluate(() => chrome.runtime.reload()); }
+  catch (error) {
+    if (!/closed|destroyed|Target page/i.test(String(error?.message || error))) throw error;
+  }
+  await new Promise(resolve => setTimeout(resolve, 250));
+  let inPlaceReloadObserved = true;
+  try {
+    ({ worker, extensionId } = await reacquireExtensionWorker(context, worker, 15000));
+    await page.close();
+  } catch (error) {
+    if (error?.code !== 'extension-worker-reacquire-timeout' || typeof restartSession !== 'function') throw error;
+    inPlaceReloadObserved = false;
+    ({ context, worker, extensionId } = await restartSession());
+    const attachPage = candidate => candidate.on('pageerror', pageError => pageErrors.push(String(pageError?.message || pageError).slice(0, 240)));
+    for (const existing of context.pages()) attachPage(existing);
+    context.on('page', attachPage);
+    await context.route(/^https?:\/\//, async route => {
+      try {
+        const decision = fixtureDecision(route.request().url(), responses);
+        if (decision.action === 'fulfill') await route.fulfill({ status: decision.status, contentType: decision.contentType, body: decision.body });
+        else await route.abort('blockedbyclient');
+      } catch (routeError) {
+        routeErrors.push(String(routeError?.code || routeError?.message || routeError).slice(0, 120));
+        await route.abort('blockedbyclient').catch(() => {});
+      }
+    });
+  }
+  await new Promise(resolve => setTimeout(resolve, 100));
+  assertCondition(!pageErrors.some(message => message.includes('Extension context invalidated')), 'extension-context-invalidated-error');
+  const freshPage = await context.newPage();
+  await freshPage.goto(FIXTURE_LIVE_URL, { waitUntil: 'domcontentloaded' });
+  await freshPage.waitForFunction(() => {
+    const runtime = window[Symbol.for('cheese-knife.runtime.v1')];
+    return runtime?.configReady && runtime.config.arrowSeek === false && runtime.config.previewVolume === 25;
+  }, null, { timeout: 15000 });
+  assertCondition(routeErrors.length === 0, 'fixture-route-error');
+  assertCondition(pageErrors.length === 0, 'installed-page-error');
+
+  return {
+    workerWake: passed({ playwrightWorkerReused: idleWorkerReused, settingsPreserved: true,
+      idleSuspensionObserved, limitation: idleSuspensionObserved ? null : 'playwright-debug-session-kept-worker-alive' }),
+    bfcacheLifecycle: passed({ syntheticPersisted: true, generationBefore: beforeLifecycle.generation, generationAfter: afterLifecycle.generation, timersResumed: true, controls: afterLifecycle.ownedControls }),
+    contextReload: passed({ extensionIdRecalculated: true, freshHandshake: true, inPlaceReloadObserved,
+      limitation: inPlaceReloadObserved ? null : 'headless-unpacked-runtime-reload-did-not-restart-worker' }),
+  };
+}
+
 export async function runInstalledScenarioSequence(args, implementations = {}) {
   const state = {};
   const base = implementations.base || runBaseInstalledScenario;
   const multiWindow = implementations.multiWindow || runMultiWindowScenario;
+  const lifecycle = implementations.lifecycle || runLifecycleScenario;
   const baseSections = await base({ ...args, captureState: value => Object.assign(state, value) });
   assertCondition(state.context && state.worker, 'base-handshake-state-missing');
-  const multiWindowSections = await multiWindow({ ...args, ...state });
-  return { ...baseSections, ...multiWindowSections };
+  const multiWindowSections = await multiWindow({ ...args, ...state, captureState: value => Object.assign(state, value) });
+  const lifecycleSections = await lifecycle({ ...args, ...state });
+  return { ...baseSections, ...multiWindowSections, ...lifecycleSections };
 }
 
 const defaultDependencies = {
@@ -294,6 +405,7 @@ const relativeOwnedPath = (root, absolute) => {
 
 export async function runInstalledExtensionE2E({ headed = false, runId, dependencies = {} } = {}) {
   if (!/^[A-Za-z0-9]{1,64}$/.test(runId || '')) throw runnerError('installed-e2e-run-id-invalid');
+  const startedAt = Date.now();
   const deps = { ...defaultDependencies, ...dependencies };
   const files = await deps.openRepository();
   const artifactRelative = `output/playwright/installed-extension-${runId}`;
@@ -374,6 +486,7 @@ export async function runInstalledExtensionE2E({ headed = false, runId, dependen
   }
 
   if (primaryError && report?.ok) report = { ok: false, runId, error: { code: primaryError?.code || 'installed-e2e-cleanup-failed' } };
+  if (report) report.durationMs = Date.now() - startedAt;
   if (artifactCreated) {
     try {
       await files.writeFile(`${artifactRelative}/summary.json`, `${JSON.stringify(report, null, 2)}\n`, 'utf8');

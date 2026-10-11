@@ -98,11 +98,17 @@ test('multi-window scenario starts only after the base handshake state is captur
     async multiWindow(args) {
       order.push('multi-window');
       assert.equal(args.handshake, 'ready');
+      args.captureState({ lifecycleReady: true });
       return { multiWindow: { passed: true } };
     },
+    async lifecycle(args) {
+      order.push('lifecycle');
+      assert.equal(args.lifecycleReady, true);
+      return { workerWake: { passed: true } };
+    },
   });
-  assert.deepEqual(order, ['base', 'multi-window']);
-  assert.deepEqual(result, { popup: { passed: true }, multiWindow: { passed: true } });
+  assert.deepEqual(order, ['base', 'multi-window', 'lifecycle']);
+  assert.deepEqual(result, { popup: { passed: true }, multiWindow: { passed: true }, workerWake: { passed: true } });
 });
 
 test('multi-window scenario failure keeps runner cleanup guarantees', async () => {
@@ -111,6 +117,7 @@ test('multi-window scenario failure keeps runner cleanup guarantees', async () =
   fixture.dependencies.scenario = args => runInstalledScenarioSequence(args, {
     async base(baseArgs) { baseArgs.captureState({ context: {}, worker: {}, handshake: 'ready' }); return { popup: { passed: true } }; },
     async multiWindow() { throw Object.assign(new Error('multi-window-failed'), { code: 'multi-window-failed' }); },
+    async lifecycle() { throw new Error('must-not-run'); },
   });
   await assert.rejects(runInstalledExtensionE2E({ runId: 'Run1', headed: false, dependencies: fixture.dependencies }), {
     code: 'multi-window-failed',

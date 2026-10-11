@@ -166,3 +166,42 @@ test('Windows SxS recovery retries only the same bundled Chromium through an inj
   assert.equal(launches[1].channel, 'chromium');
   assert.deepEqual(launches[1].args, [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`]);
 });
+
+test('worker reacquisition may reuse only a live valid previous worker', async () => {
+  const { reacquireExtensionWorker } = await harnessModule();
+  const previous = { url: () => workerURL, evaluate: async () => extensionId };
+  const result = await reacquireExtensionWorker({ serviceWorkers: () => [previous] }, previous, 20);
+  assert.deepEqual(result, { worker: previous, extensionId });
+});
+
+test('worker reacquisition excludes a dead previous worker and recalculates replacement ID', async () => {
+  const { reacquireExtensionWorker } = await harnessModule();
+  const nextId = 'ponmlkjihgfedcbaponmlkjihgfedcba';
+  const previous = { url: () => workerURL, evaluate: async () => { throw new Error('closed'); } };
+  const replacement = { url: () => `chrome-extension://${nextId}/background.js`, evaluate: async () => nextId };
+  const context = {
+    serviceWorkers: () => [previous, replacement],
+    waitForEvent: async () => replacement,
+  };
+  assert.deepEqual(await reacquireExtensionWorker(context, previous, 20), { worker: replacement, extensionId: nextId });
+});
+
+test('worker reacquisition bounds timeout and rejects malformed or ambiguous replacements', async () => {
+  const { reacquireExtensionWorker } = await harnessModule();
+  const dead = { url: () => workerURL, evaluate: async () => { throw new Error('closed'); } };
+  await assert.rejects(reacquireExtensionWorker({
+    serviceWorkers: () => [dead],
+    waitForEvent: async () => { throw new Error('timeout'); },
+  }, dead, 5), { code: 'extension-worker-reacquire-timeout' });
+
+  const malformed = { url: () => `chrome-extension://${extensionId}/other.js`, evaluate: async () => extensionId };
+  await assert.rejects(reacquireExtensionWorker({ serviceWorkers: () => [dead, malformed] }, dead, 20), {
+    code: 'extension-worker-url-invalid',
+  });
+
+  const first = { url: () => workerURL, evaluate: async () => extensionId };
+  const second = { url: () => workerURL, evaluate: async () => extensionId };
+  await assert.rejects(reacquireExtensionWorker({ serviceWorkers: () => [dead, first, second] }, dead, 20), {
+    code: 'extension-worker-ambiguous',
+  });
+});

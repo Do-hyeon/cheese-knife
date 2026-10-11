@@ -89,6 +89,69 @@ export async function waitForExtensionWorker(context, timeoutMs = 15000) {
   return selected;
 }
 
+const boundedWorkerProbe = async (worker, timeoutMs) => {
+  if (!worker || typeof worker.url !== 'function' || typeof worker.evaluate !== 'function') throw harnessError('extension-worker-url-invalid');
+  const expectedId = extensionIdFromWorkerURL(worker.url());
+  let timer;
+  try {
+    const actualId = await Promise.race([
+      Promise.resolve().then(() => worker.evaluate(() => chrome.runtime.id)).catch(cause => { throw harnessError('extension-worker-probe-failed', cause); }),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(harnessError('extension-worker-probe-timeout')), timeoutMs); }),
+    ]);
+    if (actualId !== expectedId) throw harnessError('extension-worker-probe-invalid');
+    return expectedId;
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+const replacementWorkers = (context, previousWorker) => {
+  const candidates = [];
+  for (const worker of new Set(serviceWorkers(context))) {
+    if (worker === previousWorker) continue;
+    const url = typeof worker?.url === 'function' ? worker.url() : '';
+    try {
+      extensionIdFromWorkerURL(url);
+      candidates.push(worker);
+    } catch (error) {
+      if (typeof url === 'string' && url.startsWith('chrome-extension://')) throw error;
+    }
+  }
+  if (candidates.length > 1) throw harnessError('extension-worker-ambiguous');
+  return candidates;
+};
+
+export async function reacquireExtensionWorker(context, previousWorker, timeoutMs = 15000) {
+  if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) throw harnessError('extension-worker-timeout-invalid');
+  const deadline = Date.now() + timeoutMs;
+  try {
+    const extensionId = await boundedWorkerProbe(previousWorker, timeoutMs);
+    return { worker: previousWorker, extensionId };
+  } catch (error) {
+    if (!['extension-worker-probe-failed', 'extension-worker-probe-timeout'].includes(error?.code)) throw error;
+  }
+
+  const inspect = async () => {
+    const [candidate] = replacementWorkers(context, previousWorker);
+    if (!candidate) return null;
+    const remaining = Math.max(1, deadline - Date.now());
+    try { return { worker: candidate, extensionId: await boundedWorkerProbe(candidate, remaining) }; }
+    catch (error) {
+      if (['extension-worker-probe-failed', 'extension-worker-probe-timeout'].includes(error?.code)) return null;
+      throw error;
+    }
+  };
+  const existing = await inspect();
+  if (existing) return existing;
+  const remaining = deadline - Date.now();
+  if (remaining <= 0 || typeof context.waitForEvent !== 'function') throw harnessError('extension-worker-reacquire-timeout');
+  try { await context.waitForEvent('serviceworker', { timeout: remaining }); }
+  catch (cause) { throw harnessError('extension-worker-reacquire-timeout', cause); }
+  const replacement = await inspect();
+  if (!replacement) throw harnessError('extension-worker-reacquire-timeout');
+  return replacement;
+}
+
 const windowsSideBySideFailure = error => /spawn UNKNOWN|side-by-side/i.test(String(error?.message || error));
 
 async function findManifestLayout(sourceRoot) {
