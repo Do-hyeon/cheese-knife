@@ -82,7 +82,7 @@
 
 - [ ] **Step 1: pinned dependency 실패 검사를 작성한다**
 
-`tests/toolchain-contract.test.cjs`에 exact version/license/integrity가 없거나 root dependency가 range일 때 `checkToolchain`이 거부하는 테스트와, package의 `bin` metadata나 package-owned `tsc`·`esbuild` target 중 하나가 없을 때 `toolchain-executable-missing`으로 실패하는 테스트를 작성한다. npm의 OS별 `.bin` shim 형식은 신뢰 경계로 사용하지 않는다.
+`tests/toolchain-contract.test.cjs`에 exact version/license/integrity가 없거나 root dependency가 range일 때 `checkToolchain`이 거부하는 테스트와, package의 `bin` metadata, package-owned JavaScript launcher 또는 선택된 optional companion의 실제 `tsc`·`esbuild` native binary 중 하나가 없을 때 `toolchain-executable-missing`으로 실패하는 테스트를 작성한다. npm의 OS별 `.bin` shim 형식은 신뢰 경계로 사용하지 않는다.
 
 - [ ] **Step 2: 실패를 확인한다**
 
@@ -98,13 +98,13 @@ Run: `npm install --save-dev --save-exact --ignore-scripts typescript@7.0.2 @typ
 
 - [ ] **Step 4: toolchain checker를 최소 구현한다**
 
-`TOOLCHAIN_CONTRACT`는 `{ typescript: { version: '7.0.2', license: 'Apache-2.0' }, '@types/chrome': { version: '0.2.8', license: 'MIT' }, esbuild: { version: '0.28.2', license: 'MIT' } }`로 고정한다. `inspectToolchain`은 package/lock/install metadata를 읽어 보고서만 반환하고, `checkToolchain`은 exact pin, integrity, license, dev-only와 실행 파일을 강제한다. 현재 OS/architecture에 선택된 `@typescript/typescript-*`와 `@esbuild/*` companion도 parent와 같은 version, lockfile integrity와 license를 가져야 한다.
+`TOOLCHAIN_CONTRACT`는 `{ typescript: { version: '7.0.2', license: 'Apache-2.0' }, '@types/chrome': { version: '0.2.8', license: 'MIT' }, esbuild: { version: '0.28.2', license: 'MIT' } }`로 고정한다. `inspectToolchain`은 package/lock/install metadata를 읽어 보고서만 반환하고, `checkToolchain`은 exact pin, integrity, license, dev-only와 실행 파일을 강제한다. 현재 OS/architecture에 선택된 `@typescript/typescript-*`와 `@esbuild/*` companion도 parent와 같은 version, lockfile integrity와 license를 가져야 하며, Windows는 `lib/tsc.exe`·`esbuild.exe`, 그 밖의 CI 플랫폼은 `lib/tsc`·`bin/esbuild`가 regular package-owned file이어야 한다.
 
 - [ ] **Step 5: ignore-scripts 설치 계약을 확인한다**
 
 Run: `npm ci --ignore-scripts && node --test tests/toolchain-contract.test.cjs && npm run check:toolchain`
 
-Expected: PASS, report lists all three exact direct tools and both `tsc` and `esbuild` executables as available.
+Expected: PASS, report lists all three exact direct tools and both `tsc` and `esbuild` launchers/native executables as available.
 
 - [ ] **Step 6: 일반 설치 계약도 별도로 확인한다**
 

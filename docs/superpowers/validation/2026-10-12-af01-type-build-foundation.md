@@ -1,7 +1,8 @@
 # AF01 타입·빌드 기반 검증 기록
 
 - 검증일: 2026-10-12 / Asia-Seoul
-- 검증 코드 대상: `565b8c9` (`codex/af01-type-build-foundation`)
+- 검증 코드 대상: `a581e03` (`codex/af01-type-build-foundation`)
+- 증거 결속: 아래 clean archive 전체 회귀와 최종 도구 감사는 이 코드 커밋에서 실행했으며, 이후 커밋은 이 검증 기록만 갱신한다.
 - 기준점: `81b35c97811901acd80e8a4a2d5b4e9be0ceba91` (`main`)
 - 환경: Windows x64, Node 24.19.0, Playwright 1.62.1, bundled Chromium 155.0.8059.39
 
@@ -19,19 +20,19 @@ manifest, HTML, background 등록, 권한, host permission, 외부 통신과 사
 | `@types/chrome` | 0.2.8 | MIT | Chrome MV3 API 타입 proof |
 | esbuild | 0.28.2 | MIT | 네 실행 문맥의 IIFE·CSP·결정성 proof |
 
-버전은 정확히 고정되며 `check:toolchain`이 패키지 메타데이터, 라이선스, package-owned `bin` target과 native optional package 경계를 검사한다. 제품 `dist` 생성은 기존 파일 복사를 유지하고 esbuild 출력물을 포함하지 않는다.
+버전은 정확히 고정되며 `check:toolchain`이 패키지 메타데이터, 라이선스, package-owned JavaScript launcher와 선택된 optional companion의 실제 native binary를 regular file로 검사한다. 제품 `dist` 생성은 기존 파일 복사를 유지하고 esbuild 출력물을 포함하지 않는다.
 
 ## 자동 검증
 
 | 게이트 | 결과 |
 | --- | --- |
-| clean archive 전체 Node 테스트 | Git archive와 물리적 `node_modules` 복사 환경에서 659 tests, 658 passed, 0 failed, 1 skipped |
+| clean archive 전체 Node 테스트 | Git archive와 물리적 `node_modules` 복사 환경에서 660 tests, 659 passed, 0 failed, 1 skipped |
 | cold-start 회귀 보완 | CLI 인수를 Playwright import 전에 검증하고 병렬 suite의 프로세스 기동 guard만 5초에서 15초로 조정; 독립 실행과 clean archive 전체 suite 모두 통과 |
 | private 감사 증거 검사 | 공개 checkout에 없는 비공개 원장 때문에 1 skipped; 공개 CI와 동일한 의도된 동작 |
 | TypeScript strict proof | passed, `any`/`@ts-ignore`/emit 없음 |
 | esbuild 실행 문맥 proof | 네 entry hash와 논리 graph hash 기준선 일치 |
 | runtime JavaScript inventory | root·`web`·`styles`·`_locales`의 16개 파일 목록과 실행 토큰 hash 기준선 일치 |
-| AF01 집중 계약 회귀 | 일반 로컬 권한에서 83 passed, 0 failed |
+| AF01 집중 계약 회귀 | 일반 로컬 권한에서 84 passed, 0 failed |
 | 빌드·패키지 검사 | `dist` 빌드, v2.13.3, manifest 참조 20개 통과 |
 | source→`dist` runtime JavaScript | 모든 제품 JavaScript byte 동일 |
 | 객관 오디오 검사 | Chromium 155, full-scale 초과 0, 극단 설정 peak 0.980000019, 전환 기준선 일치 |
@@ -67,7 +68,7 @@ manifest, HTML, background 등록, 권한, host permission, 외부 통신과 사
 
 ## 감사 경계
 
-최신 비공개 감사 보고서는 `output/tool-audit/run-2026-10-11T16-47-20-932Z-bY2Vso`에 있다. ESLint 관측 7개는 기존 `scripts/owned-files.mjs`의 동적 파일 시스템 capability 경계이며, 각 호출 앞의 containment·link·type 검사를 유지한다. 감사 종료 상태 1은 이 guarded observation을 clean으로 위장하지 않기 위한 기존 계약이다.
+최신 비공개 감사 보고서는 `output/tool-audit/run-2026-10-11T16-54-11-186Z-US1WOj`에 있다. ESLint 관측 7개는 기존 `scripts/owned-files.mjs`의 동적 파일 시스템 capability 경계이며, 각 호출 앞의 containment·link·type 검사를 유지한다. 감사 종료 상태 1은 이 guarded observation을 clean으로 위장하지 않기 위한 기존 계약이다.
 
 비공개 warning ledger는 이전 source hash를 참조하므로 현재 작업 트리의 선택적 private 테스트에는 맞지 않는다. 공개 checkout과 CI에는 이 원장을 포함하지 않으며, AF01 코드가 새 경고를 추가하지 않았다는 판단은 최신 raw report와 변경 경로 대조에 한정한다.
 
