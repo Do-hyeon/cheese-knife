@@ -36,7 +36,7 @@ function normalizedMetafile(metafile) {
 function environmentIdentities() {
   const values = [os.hostname(), process.env.USERNAME, process.env.USER];
   try { values.push(os.userInfo().username); } catch {}
-  return [...new Set(values.filter(value => typeof value === 'string' && value.length >= 4))];
+  return [...new Set(values.filter(value => typeof value === 'string' && value.length > 0))];
 }
 
 export function inspectProofRun(run, identities = environmentIdentities()) {
@@ -50,8 +50,8 @@ export function inspectProofRun(run, identities = environmentIdentities()) {
     if (/https?:\/\//.test(source)) throw fail('proof-remote-url');
     if (/[A-Za-z]:\\[^\s"']+/.test(source)) throw fail('proof-windows-path');
     if (/\/(?:tmp|var\/tmp)\//.test(source)) throw fail('proof-temp-path');
-    if (/\/(?:home|Users|root|workspace|workspaces|mnt|private|opt|srv)\//.test(source)) throw fail('proof-posix-path');
-    if (identities.some(identity => source.includes(identity))) throw fail('proof-environment-identity');
+    if (/(["'`])\/(?!\/)(?:\\.|[^\\\r\n])*?\1/.test(source)) throw fail('proof-posix-path');
+    if (identities.some(identity => source.includes(JSON.stringify(identity)))) throw fail('proof-environment-identity');
     if (source.split(/[\s"'`]+/).some(token => token.length >= 20 && token.length <= 30 && token.at(4) === '-' && token.at(7) === '-' && token.at(10) === 'T' && token.endsWith('Z') && Number.isFinite(Date.parse(token)))) throw fail('proof-timestamp');
   }
   if (Object.keys(run.metafile.inputs || {}).some(name => name.split('\\').join('/').includes('node_modules/'))) throw fail('proof-unexpected-dependency');

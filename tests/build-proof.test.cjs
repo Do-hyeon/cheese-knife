@@ -38,8 +38,14 @@ test('artifact negative table fails with distinct codes', async () => {
   const posixPath = cleanRun(); posixPath.outputs['main.js'] = 'const leaked = "/home/runner/work/repository/main.js";';
   assert.throws(() => mod.inspectProofRun(posixPath), error => error?.code === 'proof-posix-path');
 
+  const uncommonPosixPath = cleanRun(); uncommonPosixPath.outputs['main.js'] = 'const leaked = "/data/build/repository/main.js";';
+  assert.throws(() => mod.inspectProofRun(uncommonPosixPath), error => error?.code === 'proof-posix-path');
+
   const identity = cleanRun(); identity.outputs['main.js'] = 'const leaked = "runner-host";';
   assert.throws(() => mod.inspectProofRun(identity, ['runner-host']), error => error?.code === 'proof-environment-identity');
+
+  const shortIdentity = cleanRun(); shortIdentity.outputs['main.js'] = 'const leaked = "x"; const extra = "example";';
+  assert.throws(() => mod.inspectProofRun(shortIdentity, ['x']), error => error?.code === 'proof-environment-identity');
 });
 
 test('different proof runs are rejected', async () => {
