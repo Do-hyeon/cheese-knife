@@ -1,9 +1,13 @@
 import { randomBytes } from 'node:crypto';
+import { execFile } from 'node:child_process';
+import fs from 'node:fs/promises';
 import path from 'node:path';
+import { promisify } from 'node:util';
 
 const harnessError = (code, cause) => Object.assign(new Error(code, cause ? { cause } : undefined), { code });
 const runIdPattern = /^[A-Za-z0-9]{1,64}$/;
 const workerURLPattern = /^chrome-extension:\/\/([a-p]{32})\/background\.js$/;
+const execFileAsync = promisify(execFile);
 
 export function parseInstalledE2EArgs(argv) {
   if (!Array.isArray(argv)) throw harnessError('installed-e2e-args-invalid');
@@ -85,7 +89,66 @@ export async function waitForExtensionWorker(context, timeoutMs = 15000) {
   return selected;
 }
 
-export async function launchInstalledExtension({ chromiumApi, extensionPath, profilePath, artifactPath, headed }) {
+const windowsSideBySideFailure = error => /spawn UNKNOWN|side-by-side/i.test(String(error?.message || error));
+
+async function findManifestLayout(sourceRoot) {
+  const entries = await fs.readdir(sourceRoot, { withFileTypes: true });
+  const rootManifest = entries.find(entry => entry.isFile() && /^\d+\.\d+\.\d+\.\d+\.manifest$/.test(entry.name));
+  if (rootManifest) return { version: rootManifest.name.slice(0, -'.manifest'.length), payloadRoot: sourceRoot };
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !/^\d+\.\d+\.\d+\.\d+$/.test(entry.name)) continue;
+    const manifest = path.join(sourceRoot, entry.name, `${entry.name}.manifest`);
+    try { if ((await fs.lstat(manifest)).isFile()) return { version: entry.name, payloadRoot: path.join(sourceRoot, entry.name) }; }
+    catch (error) { if (error?.code !== 'ENOENT') throw error; }
+  }
+  throw harnessError('bundled-chromium-layout-invalid');
+}
+
+async function findManifestTool() {
+  const kitsRoot = path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'Windows Kits', '10', 'bin');
+  const versions = (await fs.readdir(kitsRoot, { withFileTypes: true }))
+    .filter(entry => entry.isDirectory() && /^\d+(?:\.\d+){3}$/.test(entry.name))
+    .map(entry => entry.name)
+    .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+  for (const version of versions) {
+    const candidate = path.join(kitsRoot, version, process.arch === 'arm64' ? 'arm64' : 'x64', 'mt.exe');
+    try { if ((await fs.lstat(candidate)).isFile()) return candidate; }
+    catch (error) { if (error?.code !== 'ENOENT') throw error; }
+  }
+  throw harnessError('manifest-tool-unavailable');
+}
+
+async function prepareWindowsBundledChromium({ chromiumApi, profilePath }) {
+  if (typeof chromiumApi.executablePath !== 'function') throw harnessError('bundled-chromium-path-unavailable');
+  const sourceExecutable = chromiumApi.executablePath();
+  const sourceRoot = path.dirname(sourceExecutable);
+  const { version, payloadRoot } = await findManifestLayout(sourceRoot);
+  const targetRoot = path.join(profilePath, 'bundled-chromium');
+  const targetVersion = path.join(targetRoot, version);
+  const targetExecutable = path.join(targetRoot, 'chrome.exe');
+  const readyMarker = path.join(targetRoot, '.knife-ready');
+  try {
+    if (await fs.readFile(readyMarker, 'utf8') === version && (await fs.lstat(targetExecutable)).isFile()) return targetExecutable;
+  } catch (error) { if (error?.code !== 'ENOENT') throw error; }
+  await fs.mkdir(targetVersion, { recursive: true });
+  await fs.copyFile(sourceExecutable, targetExecutable);
+  const proxy = path.join(sourceRoot, 'chrome_proxy.exe');
+  try { await fs.copyFile(proxy, path.join(targetRoot, 'chrome_proxy.exe')); }
+  catch (error) { if (error?.code !== 'ENOENT') throw error; }
+  for (const entry of await fs.readdir(payloadRoot, { withFileTypes: true })) {
+    if (payloadRoot === sourceRoot && ['chrome.exe', 'chrome_proxy.exe', version].includes(entry.name)) continue;
+    await fs.cp(path.join(payloadRoot, entry.name), path.join(targetVersion, entry.name), { recursive: true, force: false, errorOnExist: true });
+  }
+  const manifest = path.join(targetVersion, `${version}.manifest`);
+  const assembly = path.join(targetVersion, `${version}.dll`);
+  await fs.copyFile(path.join(targetVersion, 'chrome_elf.dll'), assembly);
+  const manifestTool = await findManifestTool();
+  await execFileAsync(manifestTool, ['-manifest', manifest, `-outputresource:${assembly};#2`], { windowsHide: true });
+  await fs.writeFile(readyMarker, version, 'utf8');
+  return targetExecutable;
+}
+
+export async function launchInstalledExtension({ chromiumApi, extensionPath, profilePath, artifactPath, headed, browserCompatibility }) {
   const options = extensionLaunchOptions(extensionPath, headed);
   if (typeof profilePath !== 'string' || !path.isAbsolute(profilePath)) throw harnessError('profile-path-invalid');
   if (typeof artifactPath !== 'string' || !path.isAbsolute(artifactPath)) throw harnessError('artifact-path-invalid');
@@ -95,7 +158,16 @@ export async function launchInstalledExtension({ chromiumApi, extensionPath, pro
   try {
     context = await chromiumApi.launchPersistentContext(profilePath, { ...options, tracesDir: artifactPath });
   } catch (cause) {
-    throw harnessError('browser-unavailable', cause);
+    const compatibility = browserCompatibility || { platform: process.platform, prepare: prepareWindowsBundledChromium };
+    if (compatibility.platform !== 'win32' || !windowsSideBySideFailure(cause) || typeof compatibility.prepare !== 'function') {
+      throw harnessError('browser-unavailable', cause);
+    }
+    try {
+      const executablePath = await compatibility.prepare({ chromiumApi, profilePath });
+      context = await chromiumApi.launchPersistentContext(profilePath, { ...options, tracesDir: artifactPath, executablePath });
+    } catch (fallbackCause) {
+      throw harnessError('browser-unavailable', fallbackCause);
+    }
   }
 
   try {
