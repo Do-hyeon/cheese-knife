@@ -1,6 +1,7 @@
 (() => {
   const runtime = window[Symbol.for('cheese-knife.runtime.v1')];
   if (!runtime || runtime.player) return;
+  if (!runtime.adapter) runtime.setStatus('player', 'pending', 'site-adapter-unavailable');
   let current;
   const defaultRequested = new WeakSet();
   const manuallyToggled = new WeakSet();
@@ -155,9 +156,10 @@
           overlayScope.add(() => overlay.remove()); overlayScope.on(close, 'click', () => overlayScope.dispose());
           let last;
           const update = async () => {
-            const core = await runtime.adapter?.getCorePlayer(state.layout);
+            let metrics = null;
+            try { metrics = await runtime.adapter?.player.readMetrics(state.layout); } catch {}
             if (overlayScope.disposed || scope.disposed) return;
-            const info = readStats(video, core);
+            const info = readStats(video, metrics);
             let fps = null;
             const quality = video.getVideoPlaybackQuality?.();
             const now = performance.now();
@@ -228,10 +230,10 @@
       });
     }
   };
-  const readStats = (video, core) => ({
+  const readStats = (video, metrics) => ({
     resolution: video?.videoWidth > 0 && video?.videoHeight > 0 ? video.videoWidth + '×' + video.videoHeight : null,
     bitrate: null, latency: null,
-    codec: core?._currentCodecs ? [core._currentCodecs.video, core._currentCodecs.audio].filter(Boolean).join(', ') : null,
+    codec: metrics?.codec || null,
   });
   runtime.player = { seek, liveEdge, ranges, readStats };
   runtime.subscribe(state => {

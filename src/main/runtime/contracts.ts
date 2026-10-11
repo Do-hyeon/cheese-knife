@@ -1,3 +1,5 @@
+import type { SiteAdapter } from '../site-adapter/contracts';
+
 export type RouteKind = 'excluded' | 'live' | 'vod' | 'channel' | 'explore';
 
 export interface Route {
@@ -10,6 +12,8 @@ export interface PlayerSnapshot {
   layout: Element | null;
   pzp: Element;
   video: HTMLVideoElement | null;
+  vue: boolean;
+  reactOnLayout: boolean;
 }
 
 export interface RuntimeState {
@@ -83,7 +87,7 @@ export interface KnifeRuntime {
   readonly statuses: Record<string, FeatureStatus>;
   features: Record<string, unknown>;
   generation: number;
-  adapter?: unknown;
+  adapter?: SiteAdapter;
   audio?: unknown;
   player?: unknown;
   preview?: unknown;

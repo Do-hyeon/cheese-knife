@@ -1,7 +1,7 @@
 import { readConfigEnvelope } from './bridge';
 import type { KnifeRuntime, RuntimeEnvironment, RuntimeLifecycle } from './contracts';
 
-const interesting = '#root, #layout-body, #sidebar, #live_player_layout, #player_layout, .pzp-pc, .pzp-pc__video, .pzp-pc__bottom-buttons-left, #license, video, section, aside, [role="tablist"]';
+const interesting = 'video, button, section, aside, [role="tablist"]';
 
 export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvironment): RuntimeLifecycle {
   const cleanups: (() => void)[] = [];
@@ -70,9 +70,6 @@ export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvir
     if (runtime.state.player && !runtime.state.player.pzp.isConnected) { schedule(); return; }
     for (const mutation of mutations) {
       const changed = [...mutation.addedNodes, ...mutation.removedNodes];
-      const foreign = changed.some(node => node.nodeType === 1 && !(node as Element).classList?.contains('knife-owned') && !(node as Element).closest?.('.knife-owned'));
-      if (foreign && !(mutation.target as Element).closest?.('.knife-owned') &&
-          (mutation.target as Element).closest?.('.pzp-pc__bottom-buttons-left, .pzp-pc__video, #license')) { schedule(); return; }
       for (const node of changed) {
         if (node.nodeType !== 1) continue;
         const element = node as Element;

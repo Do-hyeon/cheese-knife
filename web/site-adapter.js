@@ -1,22 +1,6 @@
 // Generated from src/main/site-adapter/entry.ts by scripts/main-runtime.mjs. Do not edit.
 "use strict";
 (() => {
-  // src/main/site-adapter/discovery.ts
-  function discoverSite(document, route) {
-    const root = document.getElementById("root");
-    const body = document.getElementById("layout-body");
-    const sidebar = document.getElementById("sidebar") || document.querySelector('aside[aria-label="사이드바"]');
-    if (route.kind !== "live" && route.kind !== "vod" || !body) return { root, body, sidebar, player: null };
-    const layout = document.getElementById(route.kind === "live" ? "live_player_layout" : "player_layout");
-    const container = layout || body;
-    const candidates = [...container.querySelectorAll(".pzp-pc")].filter((node) => !node.closest(".knife-preview, .knife-popup"));
-    if (container.matches(".pzp-pc")) candidates.unshift(container);
-    if (candidates.length !== 1 || !candidates[0]) return { root, body, sidebar, player: null };
-    const pzp = candidates[0];
-    const video = pzp.querySelector(".pzp-pc__video video") || pzp.querySelector("video");
-    return { root, body, sidebar, player: { layout: layout || pzp.parentElement, pzp, video } };
-  }
-
   // src/main/site-adapter/react.ts
   function siteObject(value) {
     return typeof value === "object" && value !== null || typeof value === "function";
@@ -116,6 +100,29 @@
     return { fiberOf, propsOf, stateOf, contextOf };
   }
 
+  // src/main/site-adapter/discovery.ts
+  function discoverSite(document, route, reader) {
+    const root = document.getElementById("root");
+    const body = document.getElementById("layout-body");
+    const sidebar = document.getElementById("sidebar") || document.querySelector('aside[aria-label="사이드바"]');
+    if (route.kind !== "live" && route.kind !== "vod" || !body) return { root, body, sidebar, player: null };
+    const layout = document.getElementById(route.kind === "live" ? "live_player_layout" : "player_layout");
+    const container = layout || body;
+    const candidates = [...container.querySelectorAll(".pzp-pc")].filter((node) => !node.closest(".knife-preview, .knife-popup"));
+    if (container.matches(".pzp-pc")) candidates.unshift(container);
+    if (candidates.length !== 1 || !candidates[0]) return { root, body, sidebar, player: null };
+    const pzp = candidates[0];
+    const video = pzp.querySelector(".pzp-pc__video video") || pzp.querySelector("video");
+    const playerLayout = layout || pzp.parentElement;
+    return { root, body, sidebar, player: {
+      layout: playerLayout,
+      pzp,
+      video,
+      vue: !!ownData(pzp, "__vue__")?.value,
+      reactOnLayout: !!reader.fiberOf(playerLayout)
+    } };
+  }
+
   // src/main/site-adapter/capabilities.ts
   var MAX_TEXT = 256;
   var MAX_CONTENT = 64 * 1024;
@@ -135,6 +142,15 @@
   }
   function data(object, key) {
     return ownData(object, key)?.value;
+  }
+  function field(object, key) {
+    if (!siteObject(object)) return INVALID;
+    try {
+      const descriptor = Object.getOwnPropertyDescriptor(object, key);
+      return !descriptor ? void 0 : "value" in descriptor ? descriptor.value : INVALID;
+    } catch {
+      return INVALID;
+    }
   }
   function thenable(value) {
     if (!siteObject(value)) return false;
@@ -174,15 +190,15 @@
     };
     const snapshotMessage = (value) => {
       if (!siteObject(value)) return null;
-      const key = text(data(value, "key")), user = text(data(value, "user")), messageTime = time(data(value, "time")), playerTime = finite(data(value, "playerMessageTime")), type = finite(data(value, "type")), status = text(data(value, "status"));
-      const rawContent = data(value, "content");
+      const key = text(field(value, "key")), user = text(field(value, "user")), messageTime = time(field(value, "time")), playerTime = finite(field(value, "playerMessageTime")), type = finite(field(value, "type")), status = text(field(value, "status"));
+      const rawContent = field(value, "content");
       const content = typeof rawContent === "string" ? text(rawContent, MAX_CONTENT) : siteObject(rawContent) ? identity(rawContent) : finite(rawContent);
       if ([key, user, messageTime, playerTime, type, status, content].includes(INVALID)) return null;
       return Object.freeze({ identity: identity(value), key, user, time: messageTime, playerTime, type, status, content });
     };
     const snapshotEvent = (value) => {
       if (!siteObject(value)) return null;
-      const messageTime = time(data(value, "messageTime")), userId = text(data(value, "userId")), blindType = text(data(value, "blindType"));
+      const messageTime = time(field(value, "messageTime")), userId = text(field(value, "userId")), blindType = text(field(value, "blindType"));
       return [messageTime, userId, blindType].includes(INVALID) ? null : Object.freeze({ messageTime, userId, blindType });
     };
     const messageFromRow = (row) => {
@@ -241,9 +257,21 @@
         }
         const update = data(controller, "notiUpdateMessageList");
         if (typeof update === "function") {
+          let result;
           try {
-            Reflect.apply(update, controller, []);
+            result = Reflect.apply(update, controller, []);
           } catch {
+            if (ownData(list, String(owner.index))?.value === replacement) try {
+              Array.prototype.splice.call(list, owner.index, 1, owner.raw);
+            } catch {
+            }
+            return null;
+          }
+          if (thenable(result)) {
+            if (ownData(list, String(owner.index))?.value === replacement) try {
+              Array.prototype.splice.call(list, owner.index, 1, owner.raw);
+            } catch {
+            }
             return null;
           }
         }
@@ -312,7 +340,21 @@
               }
             }
             const result = Reflect.apply(original, this, [event, ...args]);
-            if (!owned.active || thenable(result) || !list || data(controller, "messageList") !== list) return result;
+            if (!owned.active) return result;
+            if (thenable(result)) {
+              try {
+                handler({ event: eventSnapshot, before, after: null, replaceAfterStatus: () => null });
+              } catch {
+              }
+              return result;
+            }
+            if (!list || data(controller, "messageList") !== list) {
+              try {
+                handler({ event: eventSnapshot, before, after: null, replaceAfterStatus: () => null });
+              } catch {
+              }
+              return result;
+            }
             let after = null;
             if (eventSnapshot) for (let index = 0; index < list.length; index++) {
               const candidate = snapshotAt(list, index);
@@ -353,7 +395,7 @@
       return port;
     };
     return {
-      discover: discoverSite,
+      discover: (document, route) => discoverSite(document, route, reader),
       chat: {
         readMessage: (row) => snapshotMessage(messageFromRow(row)),
         connect(container) {
@@ -393,16 +435,7 @@
   // src/main/site-adapter/entry.ts
   var runtime = window[/* @__PURE__ */ Symbol.for("cheese-knife.runtime.v1")];
   if (runtime && !runtime.adapter) {
-    const reader = createReactReader();
-    runtime.adapter = {
-      ...createSiteCapabilities(reader),
-      fiberOf: reader.fiberOf,
-      propsOf: reader.propsOf,
-      stateOf: reader.stateOf,
-      async getCorePlayer(node = runtime.state.player?.layout) {
-        const state = reader.stateOf(node, (value) => siteObject(ownData(value, "_corePlayer")?.value));
-        return ownData(state, "_corePlayer")?.value || null;
-      }
-    };
+    runtime.adapter = createSiteCapabilities(createReactReader());
+    runtime.reconcile();
   }
 })();

@@ -52,7 +52,7 @@
   }
 
   // src/main/runtime/lifecycle.ts
-  var interesting = '#root, #layout-body, #sidebar, #live_player_layout, #player_layout, .pzp-pc, .pzp-pc__video, .pzp-pc__bottom-buttons-left, #license, video, section, aside, [role="tablist"]';
+  var interesting = 'video, button, section, aside, [role="tablist"]';
   function createLifecycle(runtime, environment) {
     const cleanups = [];
     let observer = null;
@@ -138,11 +138,6 @@
       }
       for (const mutation of mutations) {
         const changed = [...mutation.addedNodes, ...mutation.removedNodes];
-        const foreign = changed.some((node) => node.nodeType === 1 && !node.classList?.contains("knife-owned") && !node.closest?.(".knife-owned"));
-        if (foreign && !mutation.target.closest?.(".knife-owned") && mutation.target.closest?.(".pzp-pc__bottom-buttons-left, .pzp-pc__video, #license")) {
-          schedule();
-          return;
-        }
         for (const node of changed) {
           if (node.nodeType !== 1) continue;
           const element = node;
@@ -294,19 +289,6 @@
 
   // src/main/runtime/entry.ts
   var registryName = "cheese-knife.runtime.v1";
-  function selectPlayer(document, kind) {
-    if (kind !== "live" && kind !== "vod") return null;
-    const body = document.getElementById("layout-body");
-    const layout = document.getElementById(kind === "live" ? "live_player_layout" : "player_layout");
-    const container = layout || body;
-    if (!container) return null;
-    const candidates = [...container.querySelectorAll(".pzp-pc")].filter((node) => !node.closest(".knife-preview, .knife-popup"));
-    if (container.matches(".pzp-pc")) candidates.unshift(container);
-    if (candidates.length !== 1 || !candidates[0]) return null;
-    const pzp = candidates[0];
-    const video = pzp.querySelector(".pzp-pc__video video") || pzp.querySelector("video");
-    return { layout: layout || pzp.parentElement, pzp, video };
-  }
   function installRuntime(target) {
     const browser = target;
     const key = browser.Symbol.for(registryName);
@@ -328,7 +310,13 @@
       features: {},
       generation: 0,
       route: () => parseRoute(target.location.pathname),
-      selectPlayer: () => selectPlayer(target.document, runtime.route().kind),
+      selectPlayer() {
+        try {
+          return runtime.adapter?.discover(target.document, runtime.route()).player || null;
+        } catch {
+          return null;
+        }
+      },
       setStatus: (feature, state, reason = "") => status.setStatus(feature, state, reason),
       diagnostics() {
         const player = runtime.state.player;
@@ -337,9 +325,9 @@
           world: "MAIN",
           route: runtime.route().kind,
           player: !!player,
-          vue: !!player?.pzp?.__vue__,
+          vue: player?.vue === true,
           webpackKnown: Array.isArray(webpack),
-          reactOnLayout: !!player && Object.keys(player.layout || {}).some((name) => name.startsWith("__reactFiber$")),
+          reactOnLayout: player?.reactOnLayout === true,
           mediaBlob: !!player?.video?.currentSrc?.startsWith("blob:")
         };
       },
@@ -359,9 +347,12 @@
       },
       reconcile() {
         const route = runtime.route();
-        const body = target.document.getElementById("layout-body");
-        const player = runtime.selectPlayer();
-        const sidebar = target.document.getElementById("sidebar") || target.document.querySelector('aside[aria-label="사이드바"]');
+        let site;
+        try {
+          site = runtime.adapter?.discover(target.document, route);
+        } catch {
+        }
+        const body = site?.body || null, player = site?.player || null, sidebar = site?.sidebar || null;
         const previous = runtime.state;
         if (previous.route?.path === route.path && previous.body === body && previous.sidebar === sidebar && previous.player?.pzp === player?.pzp && previous.player?.video === player?.video) {
           runtime.notify();

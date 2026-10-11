@@ -53,49 +53,49 @@ function controllerFixture(overrides = {}) {
   return { controller, entry, originalBlind, get updates() { return updates; }, get receiver() { return receiver; } };
 }
 
-test('React traversal reads own data only and caches a throwing proxy failure', t => {
-  const { adapter } = setup(t);
+test('React traversal reads own data only and caches a throwing proxy failure', async t => {
+  const { dom } = setup(t), reader = await sourceReader(dom);
   const inherited = Object.create({ __reactFiber$bad: { memoizedState: null } });
-  assert.equal(adapter.fiberOf(inherited), null);
+  assert.equal(reader.fiberOf(inherited), null);
   let getterCalls = 0;
   const accessor = {};
   Object.defineProperty(accessor, '__reactFiber$bad', { enumerable: true, get() { getterCalls++; return {}; } });
-  assert.equal(adapter.fiberOf(accessor), null);
+  assert.equal(reader.fiberOf(accessor), null);
   assert.equal(getterCalls, 0);
   let proxyCalls = 0;
   const proxy = new Proxy({}, { ownKeys() { proxyCalls++; throw new Error('fixture-proxy'); } });
-  assert.equal(adapter.fiberOf(proxy), null);
-  assert.equal(adapter.fiberOf(proxy), null);
+  assert.equal(reader.fiberOf(proxy), null);
+  assert.equal(reader.fiberOf(proxy), null);
   assert.equal(proxyCalls, 1);
   let descriptorCalls = 0;
   const descriptorProxy = new Proxy({}, {
     ownKeys() { return ['__reactFiber$fixture']; },
     getOwnPropertyDescriptor() { descriptorCalls++; throw new Error('fixture-descriptor-proxy'); },
   });
-  assert.equal(adapter.fiberOf(descriptorProxy), null);
-  assert.equal(adapter.fiberOf(descriptorProxy), null);
+  assert.equal(reader.fiberOf(descriptorProxy), null);
+  assert.equal(reader.fiberOf(descriptorProxy), null);
   assert.equal(descriptorCalls, 1);
 });
 
-test('fiber and hook traversal stop at 300 and cycles return null', t => {
-  const { adapter } = setup(t);
+test('fiber and hook traversal stop at 300 and cycles return null', async t => {
+  const { dom } = setup(t), reader = await sourceReader(dom);
   const node = {}, head = { memoizedState: null, return: null };
   node.__reactFiber$fixture = head;
   let fiber = head;
   for (let i = 1; i < 300; i++) fiber = fiber.return = { memoizedState: null, return: null };
   fiber.return = { memoizedState: { memoizedState: { target: true }, next: null }, return: null };
-  assert.equal(adapter.stateOf(node, value => value.target === true), null);
+  assert.equal(reader.stateOf(node, value => value.target === true), null);
   head.return = head;
-  assert.equal(adapter.stateOf(node, () => false), null);
+  assert.equal(reader.stateOf(node, () => false), null);
 
   const hookNode = {}, hookHead = { memoizedState: null, next: null };
   hookNode.__reactFiber$fixture = { memoizedState: hookHead, return: null };
   let hook = hookHead;
   for (let i = 1; i < 300; i++) hook = hook.next = { memoizedState: null, next: null };
   hook.next = { memoizedState: { target: true }, next: null };
-  assert.equal(adapter.stateOf(hookNode, value => value.target === true), null);
+  assert.equal(reader.stateOf(hookNode, value => value.target === true), null);
   hookHead.next = hookHead;
-  assert.equal(adapter.stateOf(hookNode, () => false), null);
+  assert.equal(reader.stateOf(hookNode, () => false), null);
 });
 
 test('private context traversal stops at 100 and cycles return null', async t => {
@@ -138,6 +138,10 @@ test('readMessage returns bounded primitive snapshots with stable numeric identi
   assert.equal(adapter.chat.readMessage(row), null);
   source.time = 123; source.key = 'x'.repeat(257);
   assert.equal(adapter.chat.readMessage(row), null);
+  source.key = 'fixture'; let getters = 0;
+  Object.defineProperty(source, 'content', { configurable: true, enumerable: true, get() { getters++; return 'unsafe'; } });
+  assert.equal(adapter.chat.readMessage(row), null);
+  assert.equal(getters, 0);
 });
 
 test('banner video and player capabilities preserve receiver and expose primitives only', async t => {
@@ -195,6 +199,17 @@ test('blind listener exposes snapshots and identity-checked replacement while pr
   assert.equal(fixture.entry.listener, fixture.originalBlind);
 });
 
+test('status replacement rolls back its exact slot when native publication fails', t => {
+  const { dom, adapter } = setup(t), container = dom.window.document.createElement('aside');
+  const fixture = controllerFixture({ notiUpdateMessageList() { throw new Error('fixture-update'); } });
+  const original = fixture.controller.messageList[0];
+  attachState(container, fixture.controller);
+  const port = adapter.chat.connect(container), before = port.messages()[0];
+  assert.equal(port.replaceStatus(before, 'BLIND'), null);
+  assert.equal(fixture.controller.messageList[0], original);
+  assert.equal(original.status, 'NORMAL');
+});
+
 test('blind listener reconnect unwraps only its exact copied callback', t => {
   const { dom, adapter } = setup(t), container = dom.window.document.createElement('aside');
   const fixture = controllerFixture(); attachState(container, fixture.controller);
@@ -219,10 +234,12 @@ test('blind listener contains thenables and stale list identity without overwrit
   fixture.controller.notiBlindListener = fixture.controller.notiBlindListener.bind(fixture.controller);
   fixture.entry.listener = fixture.controller.notiBlindListener;
   attachState(container, fixture.controller);
-  const port = adapter.chat.connect(container); let calls = 0;
-  const binding = port.installBlindListener(() => { calls++; });
+  const port = adapter.chat.connect(container); let transition;
+  const binding = port.installBlindListener(value => { transition = value; });
   assert.equal(fixture.entry.listener({ messageTime: 123, userId: 'synthetic', blindType: 'BLIND' }), thenable);
-  assert.equal(calls, 0);
+  assert.equal(transition.before.status, 'NORMAL');
+  assert.equal(transition.after, null);
+  assert.equal(transition.replaceAfterStatus(transition.before, 'BLIND'), null);
   const before = port.messages()[0];
   const initialStatus = fixture.controller.messageList[0].status;
   assert.equal(port.replaceStatus(before, null), null);

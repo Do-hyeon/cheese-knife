@@ -203,9 +203,34 @@ test('deleted chat does not disclose into a replacement message array', async t 
   assert.equal(nativeList[0].status, 'BLIND');
   assert.equal(replacementList[0].status, 'BLIND');
   assert.equal(updates, 1, 'only the native update is published');
+  assert.equal(runtime(f.dom).statuses.deletedChat.state, 'limited');
 });
 
-test('deleted chat preserves a same-index foreign replacement during post-native validation', async t => {
+test('deleted chat preserves a native thenable and reports limited support', async t => {
+  const thenable = { then() {} };
+  const f = setup(t, {}, fixture => {
+    const replacement = () => thenable;
+    fixture.controller.notiBlindListener = replacement;
+    fixture.native.listener = replacement;
+  });
+  const result = f.emit(); await flush();
+  assert.equal(result[1], thenable);
+  assert.equal(f.controller.messageList[0].status, 'NORMAL');
+  assert.equal(f.text.dataset.knifeDeleted, undefined);
+  assert.equal(runtime(f.dom).statuses.deletedChat.state, 'limited');
+});
+
+test('deleted chat rejects oversized content without extension mutation', async t => {
+  const oversized = 'x'.repeat(65537);
+  const f = setup(t, {}, fixture => { fixture.controller.messageList[0].content = oversized; });
+  f.emit(); await flush();
+  assert.equal(f.controller.messageList[0].status, 'BLIND');
+  assert.equal(f.controller.messageList[0].content, oversized);
+  assert.equal(f.text.dataset.knifeDeleted, undefined);
+  assert.equal(runtime(f.dom).statuses.deletedChat.state, 'limited');
+});
+
+test('deleted chat does not invoke a foreign findIndex override during post-native validation', async t => {
   let foreign;
   const f = setup(t, {}, fixture => {
     const original = fixture.controller.notiBlindListener;
@@ -239,12 +264,12 @@ test('deleted chat preserves a same-index foreign replacement during post-native
     fixture.native.listener = replacement;
   });
   f.emit(); await flush();
-  assert.equal(f.controller.messageList[0], foreign);
-  assert.equal(foreign.status, 'BLIND');
+  assert.equal(foreign, undefined);
+  assert.equal(f.controller.messageList[0].status, 'NORMAL');
 });
 
-test('deleted chat preserves a same-index foreign replacement triggered during visible message construction', async t => {
-  let foreign;
+test('deleted chat rejects a visible message accessor without invoking it', async t => {
+  let foreign, getterCalls = 0;
   const f = setup(t, {}, fixture => {
     const original = fixture.controller.notiBlindListener;
     const replacement = event => {
@@ -254,7 +279,7 @@ test('deleted chat preserves a same-index foreign replacement triggered during v
       foreign = { ...expected };
       Object.defineProperty(expected, 'lateRace', {
         configurable: true, enumerable: true,
-        get() { list[0] = foreign; return 'external'; },
+        get() { getterCalls++; list[0] = foreign; return 'external'; },
       });
       return result;
     };
@@ -262,13 +287,15 @@ test('deleted chat preserves a same-index foreign replacement triggered during v
     fixture.native.listener = replacement;
   });
   f.emit(); await flush();
-  assert.equal(f.controller.messageList[0], foreign);
-  assert.equal(foreign.status, 'BLIND');
+  assert.notEqual(f.controller.messageList[0], foreign);
+  assert.equal(f.controller.messageList[0].status, 'BLIND');
+  assert.equal(getterCalls, 0);
+  assert.equal(runtime(f.dom).statuses.deletedChat.state, 'limited');
   assert.equal(f.text.dataset.knifeDeleted, undefined);
 });
 
-test('deleted chat preserves a same-index foreign replacement triggered during final visible validation', async t => {
-  let foreign;
+test('deleted chat rejects an accessor field during final visible validation', async t => {
+  let foreign, reads = 0;
   const f = setup(t, {}, fixture => {
     const original = fixture.controller.notiBlindListener;
     const replacement = event => {
@@ -276,7 +303,6 @@ test('deleted chat preserves a same-index foreign replacement triggered during f
       const list = fixture.controller.messageList;
       const expected = list[0];
       foreign = { ...expected };
-      let reads = 0;
       Object.defineProperty(expected, 'content', {
         configurable: true, enumerable: true,
         get() {
@@ -291,12 +317,14 @@ test('deleted chat preserves a same-index foreign replacement triggered during f
     fixture.native.listener = replacement;
   });
   f.emit(); await flush();
-  assert.equal(f.controller.messageList[0], foreign);
-  assert.equal(foreign.status, 'BLIND');
+  assert.notEqual(f.controller.messageList[0], foreign);
+  assert.equal(reads, 0);
+  assert.equal(Object.getOwnPropertyDescriptor(f.controller.messageList[0], 'content').get instanceof Function, true);
+  assert.equal(runtime(f.dom).statuses.deletedChat.state, 'limited');
   assert.equal(f.text.dataset.knifeDeleted, undefined);
 });
 
-test('deleted chat restoration stops when a message read replaces the active array', async t => {
+test('deleted chat restoration does not invoke an accessor that could replace the active array', async t => {
   const f = setup(t); f.emit(); await flush();
   const oldList = f.controller.messageList;
   const visible = oldList[0];
@@ -312,30 +340,31 @@ test('deleted chat restoration stops when a message read replaces the active arr
   let updates = 0;
   f.controller.notiUpdateMessageList = () => { updates++; };
   deliver(f.dom, { showDeleted: false }, 2); await flush();
-  assert.equal(f.controller.messageList[0], foreign);
-  assert.equal(foreign.status, 'NORMAL');
+  assert.equal(f.controller.messageList, oldList);
+  assert.equal(swapped, false);
   assert.equal(oldList[0], visible);
   assert.equal(updates, 0);
 });
 
-test('deleted chat restoration preserves a same-index foreign replacement triggered during hidden message construction', async t => {
+test('deleted chat restoration rejects an extra accessor without invoking it', async t => {
   const f = setup(t); f.emit(); await flush();
   const list = f.controller.messageList;
   const visible = list[0];
   const foreign = { key: 'foreign', user: 'other', time: 456, type: 1, status: 'NORMAL', content: 'Foreign' };
+  let getterCalls = 0;
   Object.defineProperty(visible, 'lateRace', {
     configurable: true, enumerable: true,
-    get() { list[0] = foreign; return 'external'; },
+    get() { getterCalls++; list[0] = foreign; return 'external'; },
   });
   let updates = 0;
   f.controller.notiUpdateMessageList = () => { updates++; };
   deliver(f.dom, { showDeleted: false }, 2); await flush();
-  assert.equal(f.controller.messageList[0], foreign);
-  assert.equal(foreign.status, 'NORMAL');
+  assert.equal(f.controller.messageList[0], visible);
+  assert.equal(getterCalls, 0);
   assert.equal(updates, 0);
 });
 
-test('deleted chat restoration preserves a same-index foreign replacement triggered during final hidden validation', async t => {
+test('deleted chat restoration rejects a status accessor without invoking it', async t => {
   const f = setup(t); f.emit(); await flush();
   const list = f.controller.messageList;
   const visible = list[0];
@@ -352,8 +381,8 @@ test('deleted chat restoration preserves a same-index foreign replacement trigge
   let updates = 0;
   f.controller.notiUpdateMessageList = () => { updates++; };
   deliver(f.dom, { showDeleted: false }, 2); await flush();
-  assert.equal(f.controller.messageList[0], foreign);
-  assert.equal(foreign.status, 'NORMAL');
+  assert.equal(f.controller.messageList[0], visible);
+  assert.equal(reads, 0);
   assert.equal(updates, 0);
 });
 

@@ -10,7 +10,7 @@ test('player controls use DOM SVG construction without an unsafe HTML assignment
   assert.equal(result.flatMap(file => file.messages).filter(message => message.ruleId === 'no-unsanitized/property').length, 0);
   const dom = page(playerHTML);
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
-  load(dom, 'web/runtime.js'); deliver(dom); load(dom, 'web/audio.js'); load(dom, 'web/player.js');
+  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom); load(dom, 'web/audio.js'); load(dom, 'web/player.js');
   runtime(dom).reconcile();
   for (const selector of ['.knife-ff', '.knife-comp button']) {
     const button = dom.window.document.querySelector(selector);

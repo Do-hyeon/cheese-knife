@@ -49,11 +49,19 @@ test('MAIN runtime render is deterministic classic JavaScript with separate grap
   assert.deepEqual(Object.keys(first).sort(), ['web/runtime.js', 'web/site-adapter.js']);
   for (const source of Object.values(first)) assert.doesNotThrow(() => new Script(source));
   assert.match(first['web/runtime.js'], /cheese-knife\.runtime\.v1/);
+  assert.doesNotMatch(first['web/runtime.js'], /#layout-body|#sidebar|#live_player_layout|#player_layout|\.pzp-pc|#license/);
   assert.match(first['web/site-adapter.js'], /cheese-knife\.runtime\.v1/);
   assert.match(first['web/site-adapter.js'], /runtime\.adapter/);
   const graphs = await mod.inspectMainRuntimeGraphs(path.resolve('.'));
   assert.equal(graphs.adapter.some(file => /src\/main\/runtime\/(?:entry|lifecycle)\.ts$/.test(file)), false);
   assert.equal(graphs.runtime.some(file => /src\/main\/runtime\/entry\.ts$/.test(file)), true);
+});
+
+test('MAIN runtime validator rejects a raw adapter publication', async () => {
+  const mod = await mainModule();
+  const rendered = await mod.renderMainRuntime(path.resolve('.'));
+  const unsafe = { ...rendered, 'web/site-adapter.js': rendered['web/site-adapter.js'] + '\nruntime.adapter = { fiberOf: null };\n' };
+  assert.throws(() => mod.validateMainRuntime(unsafe), { code: 'main-runtime-raw-adapter' });
 });
 
 test('MAIN runtime check is read-only for stale and unexpected outputs', async t => {

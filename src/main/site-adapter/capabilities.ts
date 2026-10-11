@@ -21,6 +21,13 @@ function time(value: unknown): string | number | null | Invalid {
   return typeof value === 'number' && Number.isFinite(value) ? value : INVALID;
 }
 function data(object: unknown, key: PropertyKey): unknown { return ownData(object, key)?.value; }
+function field(object: unknown, key: PropertyKey): unknown | Invalid {
+  if (!siteObject(object)) return INVALID;
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(object, key);
+    return !descriptor ? undefined : 'value' in descriptor ? descriptor.value : INVALID;
+  } catch { return INVALID; }
+}
 function thenable(value: unknown): boolean {
   if (!siteObject(value)) return false;
   let current: unknown = value;
@@ -47,10 +54,10 @@ export function createSiteCapabilities(reader: ReactReader): SiteAdapter {
   };
   const snapshotMessage = (value: unknown): ChatMessageSnapshot | null => {
     if (!siteObject(value)) return null;
-    const key = text(data(value, 'key')), user = text(data(value, 'user')),
-      messageTime = time(data(value, 'time')), playerTime = finite(data(value, 'playerMessageTime')),
-      type = finite(data(value, 'type')), status = text(data(value, 'status'));
-    const rawContent = data(value, 'content');
+    const key = text(field(value, 'key')), user = text(field(value, 'user')),
+      messageTime = time(field(value, 'time')), playerTime = finite(field(value, 'playerMessageTime')),
+      type = finite(field(value, 'type')), status = text(field(value, 'status'));
+    const rawContent = field(value, 'content');
     const content = typeof rawContent === 'string' ? text(rawContent, MAX_CONTENT) :
       siteObject(rawContent) ? identity(rawContent) : finite(rawContent);
     if ([key, user, messageTime, playerTime, type, status, content].includes(INVALID)) return null;
@@ -58,7 +65,7 @@ export function createSiteCapabilities(reader: ReactReader): SiteAdapter {
   };
   const snapshotEvent = (value: unknown): BlindEventSnapshot | null => {
     if (!siteObject(value)) return null;
-    const messageTime = time(data(value, 'messageTime')), userId = text(data(value, 'userId')), blindType = text(data(value, 'blindType'));
+    const messageTime = time(field(value, 'messageTime')), userId = text(field(value, 'userId')), blindType = text(field(value, 'blindType'));
     return [messageTime, userId, blindType].includes(INVALID) ? null : Object.freeze({ messageTime, userId, blindType }) as BlindEventSnapshot;
   };
   const messageFromRow = (row: Element): unknown => {
@@ -101,7 +108,18 @@ export function createSiteCapabilities(reader: ReactReader): SiteAdapter {
       if (data(controller, 'messageList') !== list || ownData(list, String(owner.index))?.value !== owner.raw) return null;
       try { Array.prototype.splice.call(list, owner.index, 1, replacement); } catch { return null; }
       const update = data(controller, 'notiUpdateMessageList');
-      if (typeof update === 'function') { try { Reflect.apply(update, controller, []); } catch { return null; } }
+      if (typeof update === 'function') {
+        let result: unknown;
+        try { result = Reflect.apply(update, controller, []); }
+        catch {
+          if (ownData(list, String(owner.index))?.value === replacement) try { Array.prototype.splice.call(list, owner.index, 1, owner.raw); } catch {}
+          return null;
+        }
+        if (thenable(result)) {
+          if (ownData(list, String(owner.index))?.value === replacement) try { Array.prototype.splice.call(list, owner.index, 1, owner.raw); } catch {}
+          return null;
+        }
+      }
       return snapshotAt(list, owner.index);
     };
     const port: ChatControllerPort = {
@@ -152,7 +170,15 @@ export function createSiteCapabilities(reader: ReactReader): SiteAdapter {
             if (candidate && candidate.time === eventSnapshot.messageTime && candidate.user === eventSnapshot.userId) { before = candidate; break; }
           }
           const result = Reflect.apply(original, this, [event, ...args]);
-          if (!owned.active || thenable(result) || !list || data(controller, 'messageList') !== list) return result;
+          if (!owned.active) return result;
+          if (thenable(result)) {
+            try { handler({ event: eventSnapshot, before, after: null, replaceAfterStatus: () => null }); } catch {}
+            return result;
+          }
+          if (!list || data(controller, 'messageList') !== list) {
+            try { handler({ event: eventSnapshot, before, after: null, replaceAfterStatus: () => null }); } catch {}
+            return result;
+          }
           let after: ChatMessageSnapshot | null = null;
           if (eventSnapshot) for (let index = 0; index < list.length; index++) {
             const candidate = snapshotAt(list, index);
@@ -175,7 +201,7 @@ export function createSiteCapabilities(reader: ReactReader): SiteAdapter {
     return port;
   };
   return {
-    discover: discoverSite,
+    discover: (document, route) => discoverSite(document, route, reader),
     chat: {
       readMessage: row => snapshotMessage(messageFromRow(row)),
       connect(container) {

@@ -10,8 +10,29 @@ function setup(t, html = playerHTML, url) {
     dom.window.close();
   });
   load(dom, 'web/runtime.js');
+  load(dom, 'web/site-adapter.js');
   return dom;
 }
+
+test('runtime stays useful without an adapter and late adapter reconciles exactly once', t => {
+  const dom = page(playerHTML), key = dom.window.Symbol.for('cheese-knife.runtime.v1');
+  t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
+  load(dom, 'web/runtime.js');
+  const knife = runtime(dom);
+  assert.equal(knife.route().kind, 'live');
+  assert.equal(knife.state.body, null);
+  assert.equal(knife.state.sidebar, null);
+  assert.equal(knife.state.player, null);
+  let reconciles = 0;
+  const reconcile = knife.reconcile;
+  knife.reconcile = () => { reconciles++; return reconcile(); };
+  load(dom, 'web/site-adapter.js');
+  assert.equal(reconciles, 1);
+  assert.equal(knife.state.player.video.tagName, 'VIDEO');
+  load(dom, 'web/site-adapter.js');
+  assert.equal(reconciles, 1);
+  assert.equal(Object.getOwnPropertyDescriptor(dom.window, key)?.value, knife);
+});
 
 test('runtime installs an own singleton instead of trusting an inherited symbol value', t => {
   const dom = page(playerHTML);
