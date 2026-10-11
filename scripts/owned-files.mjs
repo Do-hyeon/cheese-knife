@@ -4,6 +4,7 @@ import path from 'node:path';
 const ownedError = code => Object.assign(new Error(code), { code });
 const missingError = () => ownedError('ENOENT');
 const validTypes = new Set(['file', 'directory', 'missing-or-file', 'missing-or-directory', 'any']);
+const capabilities = new WeakMap();
 
 export function resolveOwnedPath(root, input) {
   if (typeof input !== 'string' || input.includes('\\') || path.posix.isAbsolute(input) || path.win32.isAbsolute(input)) {
@@ -135,6 +136,18 @@ export async function openOwnedRoot(directory) {
     await inspect(destinationRelative, 'file');
     return destination.path;
   }
+  async function copyFileFrom(source, sourceRelative, destinationRelative) {
+    const sourceState = capabilities.get(source);
+    if (!sourceState || sourceState.root === root || !destinationRelative) throw ownedError('owned-path-overlap');
+    const sourceFile = await sourceState.inspect(sourceRelative, 'file');
+    const destination = await inspect(destinationRelative, 'missing-or-file');
+    const parts = partsOf(destinationRelative);
+    if (!destination.exists && destination.missingAt !== parts.length - 1) throw missingError();
+    // Both independent capability roots reject links and type mismatches before this cross-root copy.
+    await fs.copyFile(sourceFile.path, destination.path); // eslint-disable-line security/detect-non-literal-fs-filename
+    await inspect(destinationRelative, 'file');
+    return destination.path;
+  }
   const inside = (parent, child) => {
     const relative = path.relative(parent, child);
     return !relative || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative));
@@ -163,5 +176,31 @@ export async function openOwnedRoot(directory) {
     return destinationPath;
   }
 
-  return { root, resolve, readFile, readdir, lstat, ensureDirectory, makeTempDirectory, writeFile, removeTree, copyFile, copyTree };
+  async function copyTreeFrom(source, sourceRelative, destinationRelative, { accept = () => true } = {}) {
+    const sourceState = capabilities.get(source);
+    if (!sourceState || sourceState.root === root || !sourceRelative || !destinationRelative || typeof accept !== 'function') {
+      throw ownedError(sourceState?.root === root ? 'owned-path-overlap' : 'owned-path-root-operation');
+    }
+    await sourceState.inspect(sourceRelative, 'directory');
+    const destinationPath = await ensureDirectory(destinationRelative);
+    async function visit(sourceFolder, destinationFolder) {
+      for (const entry of await source.readdir(sourceFolder, { withFileTypes: true })) {
+        const sourceChild = `${sourceFolder}/${entry.name}`;
+        const destinationChild = `${destinationFolder}/${entry.name}`;
+        const checked = await sourceState.inspect(sourceChild, 'any');
+        if (!checked.stat.isFile() && !checked.stat.isDirectory()) throw ownedError('owned-path-type');
+        if (!await accept(sourceChild, entry)) continue;
+        if (checked.stat.isDirectory()) {
+          await ensureDirectory(destinationChild);
+          await visit(sourceChild, destinationChild);
+        } else await copyFileFrom(source, sourceChild, destinationChild);
+      }
+    }
+    await visit(sourceRelative, destinationRelative);
+    return destinationPath;
+  }
+
+  const capability = { root, resolve, readFile, readdir, lstat, ensureDirectory, makeTempDirectory, writeFile, removeTree, copyFile, copyTree, copyFileFrom, copyTreeFrom };
+  capabilities.set(capability, { root, inspect });
+  return capability;
 }

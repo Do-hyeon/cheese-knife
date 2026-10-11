@@ -92,6 +92,7 @@ async function hashFiles(files, relativePaths) {
 }
 
 async function inventoryDirectory(files, relativeRoot) {
+  if (!await files.lstat(relativeRoot, { optional: true })) return [{ path: relativeRoot, missing: true }];
   const result = [];
   async function visit(folder) {
     const entries = await files.readdir(folder, { withFileTypes: true });

@@ -96,6 +96,33 @@ test('copyTree rejects overlap and copies accepted ordinary entries only', async
   assert.ok(seen.some(([relative]) => relative === 'source/nested/child.txt'));
 });
 
+test('copyTreeFrom copies between two guarded roots and rejects linked source entries', async t => {
+  const { openOwnedRoot } = await owned();
+  const { root, outside } = await fixture(t);
+  const destination = path.join(path.dirname(root), 'destination');
+  await fs.mkdir(path.join(root, 'source', 'nested'), { recursive: true });
+  await fs.mkdir(destination);
+  await fs.writeFile(path.join(root, 'source', 'keep.txt'), 'keep');
+  await fs.writeFile(path.join(root, 'source', 'nested', 'child.txt'), 'child');
+  const sourceFiles = await openOwnedRoot(root);
+  const destinationFiles = await openOwnedRoot(destination);
+  await destinationFiles.copyTreeFrom(sourceFiles, 'source', 'copied');
+  assert.equal(await destinationFiles.readFile('copied/keep.txt', 'utf8'), 'keep');
+  assert.equal(await destinationFiles.readFile('copied/nested/child.txt', 'utf8'), 'child');
+
+  await fs.writeFile(path.join(outside, 'foreign.txt'), 'foreign');
+  try { await fs.symlink(path.join(outside, 'foreign.txt'), path.join(root, 'source', 'foreign.txt'), 'file'); }
+  catch (error) {
+    if (process.platform === 'win32' && error.code === 'EPERM') {
+      t.diagnostic('environment-unverified: Windows file symlink creation requires an unavailable privilege');
+      return;
+    }
+    throw error;
+  }
+  await assert.rejects(destinationFiles.copyTreeFrom(sourceFiles, 'source', 'rejected'), { code: 'owned-path-link' });
+  assert.equal(await destinationFiles.lstat('rejected/foreign.txt', { optional: true }), null);
+});
+
 test('file symlinks are rejected when the environment permits creating them', async t => {
   const { openOwnedRoot } = await owned();
   const { root, outside } = await fixture(t);

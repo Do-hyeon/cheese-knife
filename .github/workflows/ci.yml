@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Check package
+        run: npm run check
+
+      - name: Check audio quality
+        run: node scripts/check-audio-quality.mjs
+
+      - name: Run installed-extension E2E
+        run: npm run test:e2e
+
+      - name: Run installed-extension negative control
+        run: npm run test:e2e:negative
+
+      - name: Upload E2E failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: installed-extension-e2e
+          path: |
+            output/playwright/installed-extension-*/
+            !output/playwright/installed-profile-*/
+          if-no-files-found: ignore
+          retention-days: 7

@@ -32,6 +32,13 @@ npm run build
 npm run check
 ```
 
+실제 설치 산출물의 설정·다중 창·수명주기 흐름을 선택적으로 검사하려면 bundled Chromium에서 다음 게이트를 실행합니다. 외부 치지직 요청은 닫힌 fixture로 대체되며 임시 프로필은 검사 뒤 제거됩니다.
+
+```powershell
+npm run test:e2e
+npm run test:e2e:negative
+```
+
 Chrome의 `chrome://extensions`에서 개발자 모드를 켜고 빌드된 `dist` 폴더를 압축해제된 확장 프로그램으로 불러온 뒤 치지직 탭을 새로고침합니다. 중복 동작을 피하려면 원본 확장과 복구판을 동시에 켜지 마세요. 서로 다른 확장 ID 사이에서 설정이 자동 이전되거나 공유된다고 가정하지 않습니다.
 
 ## 알려진 제한
@@ -51,9 +58,9 @@ Chrome의 `chrome://extensions`에서 개발자 모드를 켜고 빌드된 `dist
 
 ## 개발 방향
 
-새 기능보다 설치형 MV3 E2E, 명확한 모듈 경계와 점진적 TypeScript 전환을 먼저 진행합니다. 현재 동작을 자동 검증할 기반을 갖춘 뒤 기능 로드맵을 재개합니다.
+설치형 MV3 E2E 기반을 마련했으며, 다음 단계는 명확한 모듈 경계와 점진적 TypeScript 전환입니다. 기능 로드맵은 AF05 이행 종료 뒤 이 기반 위에서 재개합니다.
 
-[실행 계획](PLANS.md) · [검증 범위](docs/superpowers/validation/2026-10-11-recovery-release-gates.md) · [제3자 고지](THIRD_PARTY_NOTICES.md)
+[실행 계획](PLANS.md) · [AF00 검증 기록](docs/superpowers/validation/2026-10-11-af00-installed-extension-e2e.md) · [제3자 고지](THIRD_PARTY_NOTICES.md)
 
 변경을 제안하려면 [Issues](https://github.com/Do-hyeon/cheese-knife/issues)에 범위와 재현 절차를 먼저 공유해 주세요.
 
