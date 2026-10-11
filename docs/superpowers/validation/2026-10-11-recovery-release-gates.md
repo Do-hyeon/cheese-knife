@@ -51,11 +51,11 @@ P02 독립 검토 조치와 원장 내구성 검사까지 포함한 당시 HLS �
 | P03 / HLS | DONE-LOCAL | 독립 기능 검토 Important 8건을 TDD 보완. `p03finalfix20261011a` complete-pass/exit 0, 전용 97/97·전체 586/586, 두 격리 생성·보호 후보 일치, root `dist` 불변. HLS 전체 보안·실제 재생 합격은 아님 |
 | P02 / 도구 경고 | DONE-LOCAL | 기준선 75행 remediated, 공용 경계 7행 guarded-boundary, open/new 0. 최종 audit 종료1을 유지하며 G-SEC·취약점 없음 판정을 대신하지 않음 |
 | P06 / 설치본 | PASS | `audioheadroomfinal20261011a`의 객관 오디오·실제 설치 통합을 통과했다. 이후 라벨만 갱신한 `fitplayerlabel20261011a`와 root `dist` 58/58, package v2.13.3/20자원, 전체 회귀 종료0을 확인했고, 사용자가 새 `dist`의 `플레이어 영역 채우기` 표시와 기존 체크 상태 보존을 확인했다 |
-| G-REL / 공개 | DOING | 소스·최종 후보·root `dist` 동일성, fork `main`/열린 PR/공개 릴리즈와 스토어 게시본을 읽기 전용으로 재확인했다. 사용자가 공개 소스 commit·push·한글 PR을 승인했으며 병합·태그·릴리즈·스토어 교체는 제외했다 |
+| G-REL / 공개 | DOING | 소스·최종 후보·root `dist` 동일성을 확인한 제품 기준 커밋과 문서 정합성 커밋을 push하고 `main` 대상 [PR #2](https://github.com/Do-hyeon/cheese-knife/pull/2)를 열었다. 병합·태그·릴리즈·스토어 교체는 제외했다 |
 
 P01·P02·P03·P04와 정의된 G-SEC 범위는 DONE-LOCAL이다. P06의 무효 컨텍스트 오류는 자동·설치 재현을 통과했다. 컴프레서 전환의 250/750Hz dip과 극단 설정 full-scale 초과는 Chrome 155에서 소스·최종 격리 후보·root `dist`를 각각 직접 계측해 해결을 확인했다. 세 대상의 네 진입 파일 해시는 같고 개별 품질 실패와 안정 수치 비교 실패는 모두 0건이다. 전체 605/605, Astra max 최종 Critical/Important/Minor 0을 통과했다. 실제 방송 검사는 설치 통합 상태를 확인하며 사용자 청취는 품질 합격 근거가 아니다. 기존 root `dist`는 `p06-pre-audio-headroom-dist-20261011a`에 보존했고 최종 후보를 58/58 동일하게 승격해 package v2.13.3/20자원 검사를 통과했다.
 
-2026-10-11 읽기 전용 G-REL 확인에서 fork `main`은 `d5f268d84fa64b6fffbdf2c309235476fc89e6e7`, 열린 PR은 0건, 기존 GitHub 릴리즈는 prerelease `v2.13.2-community.1`이었다. 공개 Chrome 웹 스토어는 `2.13.2 community recovery preview`, 업데이트일 2026-10-09였다. 공개 설명은 해결 전 오디오 결함과 Firefox 미검증 문구를 아직 포함하고 사용 안내가 과거 브랜치를 가리키므로, 향후 별도 승인된 2.13.3 교체 시 객관 계측 결과·Chrome 전용 범위·`main` 문서 링크로 함께 갱신해야 한다. 현재 단계는 제품 기준 커밋과 문서 정합성 커밋을 push하고 한글 PR을 여는 것이며, 스토어 교체는 포함하지 않는다.
+2026-10-11 최초 읽기 전용 G-REL 확인에서 fork `main`은 `d5f268d84fa64b6fffbdf2c309235476fc89e6e7`, 열린 PR은 0건, 기존 GitHub 릴리즈는 prerelease `v2.13.2-community.1`이었다. 공개 Chrome 웹 스토어는 `2.13.2 community recovery preview`, 업데이트일 2026-10-09였다. 이후 승인 범위대로 브랜치를 push하고 한글 PR #2를 열었으며, 확인 시 GitHub 판정은 CLEAN/MERGEABLE이고 보고된 자동 검사는 없었다. 공개 설명은 해결 전 오디오 결함과 Firefox 미검증 문구를 아직 포함하고 사용 안내가 과거 브랜치를 가리키므로, 향후 별도 승인된 2.13.3 교체 시 객관 계측 결과·Chrome 전용 범위·`main` 문서 링크로 함께 갱신해야 한다. 스토어 교체는 이번 범위에 포함하지 않는다.
 
 같은 날 `화면 채우기`를 기능에 맞는 `플레이어 영역 채우기`, 영문 `Fill player area`로 바꿨다. 저장 키 `fit-player`, 기본 상태와 `styles/fit-player.css`는 변경하지 않았다. 기존 라벨을 잡는 RED 2건을 확인한 뒤 한국어·영어 UI 11/11, 전체 회귀 종료 코드 0, 격리 후보 `fitplayerlabel20261011a`와 root `dist` 58/58, package v2.13.3/20자원을 확인했다. 사용자가 새 설치본의 표시와 기존 체크 상태 보존을 확인해 P06을 다시 PASS로 닫았다.
 
