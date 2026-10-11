@@ -1,7 +1,7 @@
 # AF00 설치형 MV3 E2E 검증 기록
 
 - 검증일: 2026-10-12 / Asia-Seoul
-- 검증 대상: `dc11a91ee539dd24ea0077a7ef17b11a6cc9e9d8` (`codex/ai-foundation-design`)
+- 검증 대상: `c330155cbba6c23dda5fbdee7fbb59680087bff7` (`codex/ai-foundation-design`)
 - 환경: Windows, Node 24.19.0, Playwright 1.62.1, bundled Chromium 151.0.7922.34
 
 ## 결론
