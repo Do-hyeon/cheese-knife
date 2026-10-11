@@ -10,6 +10,7 @@
     "check:toolchain": "node scripts/check-toolchain.mjs",
     "check:runtime-js": "node scripts/check-runtime-inventory.mjs",
     "typecheck": "tsc -p tsconfig.af01.json",
+    "check:build-proof": "node scripts/check-build-proof.mjs",
     "test:e2e": "node scripts/check-installed-extension.mjs",
     "test:e2e:negative": "node scripts/check-installed-extension-negative.mjs",
     "audit:tools": "node scripts/tool-audit.mjs",
