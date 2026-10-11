@@ -4,9 +4,9 @@
 
 **Goal:** 게시된 Chrome 커뮤니티 복구판을 유지하면서, 설치된 MV3 산출물 E2E와 명시적 계약·타입·모듈 경계를 먼저 확립한 뒤 기능 로드맵을 재개한다.
 
-**Current stack:** Chrome MV3, JavaScript 제품 런타임, Node 24.19.0, Node test runner, Playwright 1.62.1, ESLint, npm audit, Gitleaks. AF01에서 TypeScript 7.0.2와 esbuild 0.28.2를 strict 계약·실행 문맥 proof에만 도입했으며 제품 `dist`는 기존 JavaScript 복사를 유지한다.
+**Current stack:** Chrome MV3, JavaScript 제품 런타임, Node 24.19.0, Node test runner, Playwright 1.62.1, ESLint, npm audit, Gitleaks. TypeScript 7.0.2와 esbuild 0.28.2로 설정 및 MAIN runtime·site adapter의 수기 원본을 strict TypeScript에 두고, 저장소 생성 JavaScript를 검증한 뒤 기존 `dist` 파일명으로 복사한다.
 
-**Core references:** [AI 친화적 유지보수 기반 장기 설계](docs/superpowers/specs/2026-10-11-ai-friendly-foundation-design.md), [AF01 타입·빌드 기반 상세 설계](docs/superpowers/specs/2026-10-12-af01-type-build-foundation-design.md), [AF01 구현 계획](docs/superpowers/plans/2026-10-12-af01-type-build-foundation.md), [AF01 검증 기록](docs/superpowers/validation/2026-10-12-af01-type-build-foundation.md), [AF02 계약 우선 TypeScript 전환 상세 설계](docs/superpowers/specs/2026-10-12-af02-contract-first-migration-design.md), [AF02 구현 계획](docs/superpowers/plans/2026-10-12-af02-contract-first-migration.md), [AF03 runtime·site adapter 상세 설계](docs/superpowers/specs/2026-10-12-af03-runtime-site-adapter-design.md), [AF03 구현 계획](docs/superpowers/plans/2026-10-12-af03-runtime-site-adapter.md), [AF00 설치형 E2E 구현 계획](docs/superpowers/plans/2026-10-11-af00-installed-extension-e2e.md), [AF00 검증 기록](docs/superpowers/validation/2026-10-11-af00-installed-extension-e2e.md), [최신 출시 게이트](docs/superpowers/validation/2026-10-11-recovery-release-gates.md), [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md).
+**Core references:** [AI 친화적 유지보수 기반 장기 설계](docs/superpowers/specs/2026-10-11-ai-friendly-foundation-design.md), [AF01 타입·빌드 기반 상세 설계](docs/superpowers/specs/2026-10-12-af01-type-build-foundation-design.md), [AF01 구현 계획](docs/superpowers/plans/2026-10-12-af01-type-build-foundation.md), [AF01 검증 기록](docs/superpowers/validation/2026-10-12-af01-type-build-foundation.md), [AF02 계약 우선 TypeScript 전환 상세 설계](docs/superpowers/specs/2026-10-12-af02-contract-first-migration-design.md), [AF02 구현 계획](docs/superpowers/plans/2026-10-12-af02-contract-first-migration.md), [AF03 runtime·site adapter 상세 설계](docs/superpowers/specs/2026-10-12-af03-runtime-site-adapter-design.md), [AF03 구현 계획](docs/superpowers/plans/2026-10-12-af03-runtime-site-adapter.md), [AF03 검증 기록](docs/superpowers/validation/2026-10-12-af03-runtime-site-adapter.md), [AF00 설치형 E2E 구현 계획](docs/superpowers/plans/2026-10-11-af00-installed-extension-e2e.md), [AF00 검증 기록](docs/superpowers/validation/2026-10-11-af00-installed-extension-e2e.md), [최신 출시 게이트](docs/superpowers/validation/2026-10-11-recovery-release-gates.md), [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md).
 
 작성일: 2026-10-11 / Asia-Seoul.
 
@@ -30,6 +30,7 @@
 - Chrome 웹 스토어 2.13.3 교체본은 사용자가 게시 완료를 확인했다. 새 설치·기존 설치 자동 업데이트와 설정 보존은 아직 완료로 가정하지 않는다.
 - 현재 기준 브랜치: `main` (`5060fb9`, AF02 상태 고정 PR #7 병합).
 - AF01은 PR #5로 병합됐고 최종 공개 CI run `38157976040`에서 Windows·Ubuntu foundation과 전체 verify가 통과했다. AF02는 PR #6의 공개 CI run `38161802432`와 PR #7의 공개 CI run `38162135577`를 통과해 `main`에 병합됐다.
+- AF03 로컬 검증 대상은 `f125daf4fc535fa6ce684c23be442d0387bcc593`이며, PR과 공개 CI 전 단계다.
 
 GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 상태는 사용자가 보고한 마지막 상태이며 P09에서 게시 후 다시 확인한다.
 
@@ -54,12 +55,12 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 상태�
 | AF00 | 설치된 MV3 산출물 E2E | 설계 승인 | DONE | 검증 기록과 CI 게이트 유지 |
 | AF01 | 타입·빌드 전환 기반 | AF00 | DONE | strict/build proof와 공개 CI 유지 |
 | AF02 | 계약 우선 TypeScript 전환 | AF01 | DONE | 생성·drift·strict·설치형 E2E 게이트 유지 |
-| AF03 | MAIN runtime·site adapter 분리 | AF02 | PLAN-REVIEW | 구현 계획 사용자 검토·실행 방식 확정 |
+| AF03 | MAIN runtime·site adapter 분리 | AF02 | DOING | 한글 PR·Windows/Ubuntu 공개 CI |
 | AF04 | 기능별 모듈 이전 | AF03 | BLOCKED | audio/player/preview/chat/sidebar 순차 이전 |
 | AF05 | 이행 종료·공개 게이트 | AF04, P09 | BLOCKED | 설치·업데이트·롤백과 정책 정합성 확인 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **AF03 구현 계획 사용자 검토**. 계획과 실행 방식 승인을 받은 뒤에만 제품 코드를 변경한다.
+현재 커서: **AF03 로컬 구현·검증 완료**. 한글 PR과 공개 CI를 통과한 뒤 병합·상태 고정한다.
 
 ## 5. P09 — 스토어 게시 후 고정
 
@@ -144,13 +145,13 @@ P09의 게시 뒤 설치·업데이트 수용 검사는 AF02의 내부 계약 �
 - [x] runtime·site adapter 상세 명세 작성과 자체 공격 검토.
 - [x] 작성된 상세 명세 사용자 검토·승인.
 - [x] 정확한 파일·테스트·명령·커밋 단위의 구현 계획 작성·자체 검토.
-- [ ] 구현 계획 사용자 검토·승인과 실행 방식 확정.
-- [ ] route, scope, status, bridge 수명주기 모듈화.
-- [ ] React fiber·webpack·DOM selector를 site adapter로 제한.
-- [ ] 사이트 내부 값은 `unknown`에서 validator를 통과하도록 고정.
-- [ ] 파일 로드 순서 대신 import graph로 의존성 표현.
-- [ ] 생성 drift·strict·설치형 positive/negative E2E와 전체 공개 gate 검증.
-- [ ] 독립 코드 검토의 Critical/Important finding 보완.
+- [x] 구현 계획 사용자 검토·승인과 실행 방식 확정.
+- [x] route, scope, status, bridge 수명주기 모듈화.
+- [x] React fiber·webpack·DOM selector를 site adapter로 제한.
+- [x] 사이트 내부 값은 `unknown`에서 validator를 통과하도록 고정.
+- [x] 파일 로드 순서 대신 import graph로 의존성 표현.
+- [x] 생성 drift·strict·설치형 positive/negative E2E와 전체 공개 gate 검증.
+- [x] 독립 코드 검토의 Critical/Important finding 보완.
 - [ ] 한글 PR·공개 CI 통과·병합 뒤 validation과 현재 커서 고정.
 
 ### AF04 — 기능 모듈 이전
@@ -197,4 +198,4 @@ git -c core.safecrlf=false diff --check
 
 ## 10. 현재 사용자 개입 지점
 
-다음 사용자 개입은 [AF03 구현 계획](docs/superpowers/plans/2026-10-12-af03-runtime-site-adapter.md)의 검토·승인과 실행 방식 확정이다. 승인 전에는 제품 코드를 변경하지 않는다. 승인 뒤 사용자 개입이 필요하지 않은 구현과 검증을 선택한 방식으로 순차 진행한다. P09 설치 수용은 AF03과 별도로 재개한다.
+AF03은 승인된 범위에서 한글 PR 생성, 공개 CI 확인과 병합까지 사용자 개입 없이 이어간다. CI 실패, merge conflict, GitHub 인증 만료처럼 외부 결정이 필요한 경우에만 중지한다. P09 설치 수용은 AF03과 별도로 재개한다.
