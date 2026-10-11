@@ -32,7 +32,7 @@ function setup(t, suspended = false, manualClock = false, suppliedConfig = { com
       return compressor;
     }
   };
-  load(dom, 'web/runtime.js'); deliver(dom, suppliedConfig);
+  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom, suppliedConfig);
   let tick;
   if (manualClock) dom.window.setInterval = callback => { tick = callback; return 9001; };
   load(dom, 'web/audio.js');

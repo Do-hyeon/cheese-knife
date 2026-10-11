@@ -8,7 +8,7 @@ function setup(t) {
   const pending = [];
   dom.window.fetch = (_url, options) => new Promise(resolve => pending.push({ resolve, options }));
   for (const anchor of dom.window.document.querySelectorAll('a')) anchor.getBoundingClientRect = () => ({ left: 20, right: 120, top: 30, bottom: 50, width: 100, height: 20 });
-  load(dom, 'web/runtime.js'); deliver(dom, { preview: true, livePreview: false, previewWidth: 400, previewDelay: 0.1, previewVolume: 5 });
+  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom, { preview: true, livePreview: false, previewWidth: 400, previewDelay: 0.1, previewVolume: 5 });
   load(dom, 'web/preview.js');
   const response = image => ({ ok: true, json: async () => ({ code: 200, content: { status: 'OPEN', liveImageUrl: image, livePlaybackJson: '{}' } }) });
   return { dom, preview: runtime(dom).preview, pending, response, one: dom.window.document.getElementById('one'), two: dom.window.document.getElementById('two') };

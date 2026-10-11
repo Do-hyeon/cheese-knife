@@ -12,7 +12,7 @@ async function bridgePair(t) {
       const captured = structuredClone(saved); reads.push({ name, subscribers: changes.listeners.size });
       const gate = holds.get(name); if (gate) { holds.delete(name); gate.entered(); return gate.promise; } return captured;
     } } }, i18n: { getMessage: key => key }, runtime: { id: 'fixture-extension-id', onMessage: event() } };
-    load(dom, 'config.js'); load(dom, 'web/main.js'); load(dom, 'web/runtime.js');
+    load(dom, 'config.js'); load(dom, 'web/main.js'); load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
     return dom;
   }
   const A = open('A'), B = open('B');
