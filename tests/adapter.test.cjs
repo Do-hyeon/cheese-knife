@@ -19,3 +19,12 @@ test('optional site adapter does not evaluate throwing global getters', async t 
   assert.equal(await runtime(dom).adapter.getWebpackRequire(), null);
   assert.equal(getters, 0);
 });
+
+test('site adapter installs once and a duplicate bundle leaves the same adapter', async t => {
+  const dom = page();
+  t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
+  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
+  const first = runtime(dom).adapter;
+  load(dom, 'web/site-adapter.js');
+  assert.equal(runtime(dom).adapter, first);
+});

@@ -15,6 +15,7 @@
     "config.js",
     "style-schema.js",
     "src/settings/**/*.ts",
+    "src/main/**/*.ts",
     "build-proof/**/*.ts"
   ]
 }
