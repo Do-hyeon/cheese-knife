@@ -7,3 +7,4 @@ build-proof/*.ts text eol=lf
 src/main/**/*.ts text eol=lf
 web/runtime.js text eol=lf
 web/site-adapter.js text eol=lf
+web/audio.js text eol=lf

@@ -13,11 +13,19 @@ function setup(t, suspended = false, manualClock = false, suppliedConfig = { com
   let resolveResume;
   let context;
   let sources = 0;
+  let gains = 0;
   dom.window.AudioContext = class {
     constructor() { this.state = suspended ? 'suspended' : 'running'; this.destination = node('destination'); this.currentTime = 0; this.sampleRate = failures.sampleRate || 48000; context = this; }
-    resume() { return new Promise(resolve => { resolveResume = () => { this.state = 'running'; resolve(); }; }); }
+    resume() {
+      if (failures.resumeReject) return Promise.reject(new Error('resume unavailable'));
+      return new Promise(resolve => { resolveResume = () => { this.state = 'running'; resolve(); }; });
+    }
     createMediaElementSource(element) { assert.equal(element, video); sources++; return node('source'); }
-    createGain() { return Object.assign(node('gain'), { gain: parameter(1) }); }
+    createGain() {
+      gains++;
+      if (failures.gainAt === gains) throw new Error('gain unavailable');
+      return Object.assign(node('gain'), { gain: parameter(1) });
+    }
     createDelay(maxDelayTime) {
       if (failures.delay) throw new Error('delay unavailable');
       return Object.assign(node('delay'), { maxDelayTime, delayTime: parameter(0) });
@@ -27,16 +35,21 @@ function setup(t, suspended = false, manualClock = false, suppliedConfig = { com
       return Object.assign(node('limiter'), { curve: null, oversample: 'none' });
     }
     createDynamicsCompressor() {
+      if (failures.compressor) throw new Error('compressor unavailable');
       const compressor = Object.assign(node('compressor'), Object.fromEntries(['threshold','knee','ratio','attack','release'].map(key => [key, parameter(0)])));
       Object.defineProperty(compressor, 'foreignParameter', { enumerable: true, value: parameter(77) });
       return compressor;
     }
   };
   load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom, suppliedConfig);
+  const statusChanges = [];
+  const setStatus = runtime(dom).setStatus;
+  runtime(dom).setStatus = (...args) => { statusChanges.push(args); return setStatus(...args); };
+  if (failures.storage) Object.defineProperty(dom.window, 'localStorage', { configurable: true, get() { throw new Error('storage unavailable'); } });
   let tick;
   if (manualClock) dom.window.setInterval = callback => { tick = callback; return 9001; };
   load(dom, 'web/audio.js');
-  return { dom, video, audio: runtime(dom).audio, nodes, tick: () => tick(), sources: () => sources, resume: () => resolveResume(), context: () => context };
+  return { dom, video, audio: runtime(dom).audio, nodes, statusChanges, tick: () => tick(), sources: () => sources, resume: () => resolveResume(), context: () => context };
 }
 
 test('compressor applies only five explicit parameters with zero, bounds, and fallbacks', async t => {
@@ -146,6 +159,108 @@ test('limiter construction failure leaves native media unintercepted', async t =
   const { audio, video, sources } = setup(t, false, false, { compressorAttack: 0 }, { limiter: true });
   assert.equal(await audio.setEnabled(video, true), 'unavailable');
   assert.equal(sources(), 0);
+});
+
+test('audio preparation failure before source creation preserves the native path', async t => {
+  for (const failures of [{ gainAt: 1 }, { gainAt: 2 }, { delay: true }, { compressor: true }, { gainAt: 3 }, { limiter: true }]) {
+    await t.test(JSON.stringify(failures), async child => {
+      const { audio, video, sources, statusChanges } = setup(child, false, false, { compressorAttack: 0 }, failures);
+      assert.equal(await audio.setEnabled(video, true), 'unavailable');
+      assert.equal(sources(), 0);
+      assert.equal(statusChanges.every(([feature]) => feature === 'compressor'), true);
+    });
+  }
+});
+
+test('invalid or inaccessible gain storage falls back without blocking audio', async t => {
+  for (const storage of ['invalid', 'inaccessible']) {
+    await t.test(storage, async child => {
+      const { audio, video, dom, nodes } = setup(child, false, false, { compressorAttack: 0 }, { storage: storage === 'inaccessible' });
+      if (storage === 'invalid') dom.window.localStorage.setItem('knifeGain', 'not-a-number');
+      assert.equal(await audio.setEnabled(video, true), 'on');
+      assert.equal([...nodes.find(value => value.type === 'compressor').outputs][0].gain.value, 1);
+    });
+  }
+});
+
+test('audio entry does not publish a partial controller after startup failure', t => {
+  const dom = page(playerHTML);
+  t.after(() => dom.window.close());
+  load(dom, 'web/runtime.js');
+  const owner = runtime(dom);
+  owner.createScope = () => ({ interval() { throw new Error('interval unavailable'); }, on() {}, dispose() {} });
+  assert.throws(() => load(dom, 'web/audio.js'), /interval unavailable/);
+  assert.equal(Object.hasOwn(owner, 'audio'), false);
+});
+
+test('audio entry preserves an existing foreign controller', t => {
+  const dom = page(playerHTML);
+  t.after(() => dom.window.close());
+  load(dom, 'web/runtime.js');
+  const owner = runtime(dom);
+  const foreign = Object.freeze({ owner: 'foreign' });
+  owner.audio = foreign;
+  load(dom, 'web/audio.js');
+  assert.equal(owner.audio, foreign);
+});
+
+test('selected-video replacement during pending resume never intercepts the old media', async t => {
+  const { dom, audio, video, sources, resume, statusChanges } = setup(t, true);
+  const enabling = audio.setEnabled(video, true);
+  const replacement = video.cloneNode();
+  Object.defineProperty(replacement, 'currentSrc', { value: video.currentSrc });
+  video.replaceWith(replacement);
+  runtime(dom).reconcile();
+  resume();
+  assert.equal(await enabling, 'unavailable');
+  assert.equal(sources(), 0);
+  assert.equal(statusChanges.every(([feature]) => feature === 'compressor'), true);
+});
+
+test('one throwing audio subscriber cannot block another subscriber', async t => {
+  const { audio, video, statusChanges } = setup(t);
+  let initialized = false;
+  audio.subscribe(video, () => {
+    if (initialized) throw new Error('subscriber failed');
+    initialized = true;
+  });
+  const received = [];
+  audio.subscribe(video, state => received.push(state));
+  assert.equal(await audio.setEnabled(video, true), 'on');
+  assert.deepEqual(received, ['off', 'pending', 'on']);
+  assert.equal(statusChanges.every(([feature]) => feature === 'compressor'), true);
+});
+
+test('final pagehide is idempotent and a late retirement callback is inert', async t => {
+  const { dom, audio, video, nodes, tick, statusChanges } = setup(t, false, true);
+  await audio.setEnabled(video, true);
+  const source = nodes.find(value => value.type === 'source');
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
+  video.remove();
+  let now = 10000;
+  dom.window.Date.now = () => now;
+  tick(); now += 6000; tick();
+  assert.equal(source.outputs.size, 2);
+  assert.equal(audio.getState(video), 'off');
+  assert.equal(statusChanges.filter(([feature, state]) => feature === 'compressor' && state === 'disabled').length, 1);
+  assert.equal(statusChanges.every(([feature]) => feature === 'compressor'), true);
+});
+
+test('final pagehide blocks a pending resume and later enable calls', async t => {
+  for (const rejected of [false, true]) {
+    await t.test(rejected ? 'resume rejects' : 'resume resolves', async child => {
+      const { dom, audio, video, sources, resume, statusChanges } = setup(child, true, false, { compressorAttack: 0 }, { resumeReject: rejected });
+      const enabling = audio.setEnabled(video, true);
+      const beforeFinal = statusChanges.length;
+      dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
+      if (!rejected) resume();
+      assert.equal(await enabling, 'off');
+      assert.equal(await audio.setEnabled(video, true), 'off');
+      assert.equal(sources(), 0);
+      assert.equal(statusChanges.length, beforeFinal);
+    });
+  }
 });
 
 test('invalid stored gain is normalized before being applied to an audio graph', async t => {
