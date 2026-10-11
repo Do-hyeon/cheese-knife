@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Script } from 'node:vm';
 import { transform } from 'esbuild';
-import { inspectBrowserSource } from './check-build-proof.mjs';
+import {
+  CLASSIC_RUNTIME_OPTIONS, checkGeneratedRuntime, generatedFailure, validateClassicRuntime, writeGeneratedRuntime,
+} from './generated-runtime.mjs';
 import { openOwnedRoot } from './owned-files.mjs';
 
 export const SETTINGS_RUNTIME_ENTRIES = Object.freeze([
@@ -11,11 +12,20 @@ export const SETTINGS_RUNTIME_ENTRIES = Object.freeze([
   Object.freeze({ source: 'src/settings/client.ts', output: 'settings-client.js', global: 'createSettingsClient' }),
   Object.freeze({ source: 'src/settings/broker.ts', output: 'settings-broker.js', global: 'createSettingsBroker' }),
 ]);
-export const SETTINGS_RUNTIME_OPTIONS = Object.freeze({ loader: 'ts', target: 'chrome121', minify: false, sourcemap: false, legalComments: 'none' });
+export const SETTINGS_RUNTIME_OPTIONS = Object.freeze({
+  loader: 'ts', target: CLASSIC_RUNTIME_OPTIONS.target, minify: CLASSIC_RUNTIME_OPTIONS.minify,
+  sourcemap: CLASSIC_RUNTIME_OPTIONS.sourcemap, legalComments: CLASSIC_RUNTIME_OPTIONS.legalComments,
+});
 
-const fail = code => Object.assign(new Error(code), { code });
+const fail = generatedFailure;
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 const repositoryRoot = () => path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const generatedCodes = Object.freeze({
+  outputSet: 'settings-runtime-output-set', syntax: 'settings-runtime-source-module',
+  sourceMap: 'settings-runtime-source-map', forbidden: 'settings-runtime-source-module',
+  nondeterministic: 'settings-runtime-nondeterministic', drift: 'settings-runtime-drift',
+  writeCi: 'settings-runtime-write-ci',
+});
 const hasExpectedGlobal = (output, source) => {
   switch (output) {
     case 'settings-contract.js': return /^var\s+KnifeSettingsContract\b/.test(source);
@@ -47,12 +57,9 @@ export function validateSettingsRuntime(outputs, identities = []) {
     if (typeof source !== 'string') throw fail('settings-runtime-global');
     const marker = `// Generated from ${entry.source} by scripts/settings-runtime.mjs. Do not edit.\n`;
     const body = source.startsWith(marker) ? source.slice(marker.length) : source;
-    try { new Script(body); } catch { throw fail('settings-runtime-source-module'); }
-    if (/\brequire\s*\(/.test(body)) throw fail('settings-runtime-source-module');
     if (!hasExpectedGlobal(entry.output, body)) throw fail('settings-runtime-global');
-    if (/sourceMappingURL|sourceURL/.test(source)) throw fail('settings-runtime-source-map');
     const inspected = source.replace(/(\.origin\s*!==\s*)(["'])https:\/\/chzzk\.naver\.com\2/g, '$1$2$2');
-    inspectBrowserSource(inspected, identities);
+    validateClassicRuntime(inspected, identities, generatedCodes);
   }
 }
 
@@ -67,24 +74,11 @@ function report(outputs) {
 }
 
 export async function checkSettingsRuntime(root = repositoryRoot()) {
-  const first = await renderSettingsRuntime(root);
-  const second = await renderSettingsRuntime(root);
-  if (JSON.stringify(first) !== JSON.stringify(second)) throw fail('settings-runtime-nondeterministic');
-  const owned = await openOwnedRoot(root);
-  for (const entry of SETTINGS_RUNTIME_ENTRIES) {
-    let committed;
-    try { committed = await owned.readFile(entry.output, 'utf8'); } catch { throw fail('settings-runtime-drift'); }
-    if (committed !== first[entry.output]) throw fail('settings-runtime-drift');
-  }
-  return report(first);
+  return report(await checkGeneratedRuntime(root, SETTINGS_RUNTIME_ENTRIES, renderSettingsRuntime, generatedCodes));
 }
 
 export async function writeSettingsRuntime(root = repositoryRoot()) {
-  if (process.env.CI) throw fail('settings-runtime-write-ci');
-  const outputs = await renderSettingsRuntime(root);
-  const owned = await openOwnedRoot(root);
-  for (const entry of SETTINGS_RUNTIME_ENTRIES) await owned.writeFile(entry.output, outputs[entry.output], 'utf8');
-  return report(outputs);
+  return report(await writeGeneratedRuntime(root, SETTINGS_RUNTIME_ENTRIES, renderSettingsRuntime, generatedCodes));
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
