@@ -34,7 +34,7 @@ export async function checkDistributionFiles(directory) {
   }
   await visit();
   files.sort();
-  if (files.some(file => file.endsWith('.map') || file.startsWith('build-proof/') || file.startsWith('types/') || /^tsconfig.*\.json$/.test(file))) {
+  if (files.some(file => file.endsWith('.map') || file.endsWith('.ts') || file.startsWith('src/') || file.startsWith('build-proof/') || file.startsWith('types/') || /^tsconfig.*\.json$/.test(file))) {
     throw Object.assign(new Error('distribution-developer-file'), { code: 'distribution-developer-file' });
   }
   return { files };

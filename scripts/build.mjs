@@ -40,7 +40,14 @@ export async function build(directory = sourceRoot, output = path.join(directory
   return target;
 }
 
+export async function buildChecked(directory = sourceRoot, output = path.join(directory, 'dist'), browser = 'chrome') {
+  if (browser !== 'chrome') return build(directory, output, browser);
+  const { checkSettingsRuntime } = await import('./settings-runtime.mjs');
+  await checkSettingsRuntime(directory);
+  return build(directory, output, browser);
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   if (process.argv.length > 2) throw new Error('Chrome only: browser build options are not supported');
-  console.log(`Built ${await build(sourceRoot, path.join(sourceRoot, 'dist'))}`);
+  console.log(`Built ${await buildChecked(sourceRoot, path.join(sourceRoot, 'dist'))}`);
 }

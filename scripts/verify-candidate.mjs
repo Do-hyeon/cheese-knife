@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { openOwnedRoot } from './owned-files.mjs';
 import { build } from './build.mjs';
 import { checkPackage } from './check-package.mjs';
+import { checkSettingsRuntime } from './settings-runtime.mjs';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const slash = value => value.split(path.sep).join('/');
@@ -24,6 +25,7 @@ export async function verifyCandidate(id) {
   const repository = await openOwnedRoot(repositoryRoot);
   const candidateRelative = `output/tool-audit/p02-candidate-${candidateId}/chrome-candidate`;
   if (await repository.lstat(candidateRelative, { optional: true })) throw Object.assign(new Error('candidate-destination-exists'), { code: 'candidate-destination-exists' });
+  await checkSettingsRuntime(repositoryRoot);
   await repository.ensureDirectory(candidateRelative);
   try {
     const manifest = JSON.parse(await repository.readFile('manifest.json', 'utf8'));

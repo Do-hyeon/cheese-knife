@@ -12,7 +12,7 @@ const sha256 = value => createHash('sha256').update(value).digest('hex');
 
 export async function buildProof(proofRoot) {
   const entryPoints = Object.fromEntries(PROOF_CONTEXTS.map(name => [name, `${name}.ts`]));
-  const result = await build({ ...PROOF_OPTIONS, absWorkingDir: proofRoot, entryPoints, entryNames: '[name]', outdir: 'proof-output' });
+  const result = await build({ ...PROOF_OPTIONS, tsconfigRaw: {}, absWorkingDir: proofRoot, entryPoints, entryNames: '[name]', outdir: 'proof-output' });
   const outputs = Object.fromEntries(result.outputFiles.map(file => [path.basename(file.path), Buffer.from(file.contents).toString('utf8')]));
   return { outputs, metafile: result.metafile };
 }

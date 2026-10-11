@@ -22,6 +22,18 @@ async function fixture(t) {
   return root;
 }
 
+async function addSettingsRuntime(root) {
+  const entries = [
+    ['contract.ts', 'KnifeSettingsContract'],
+    ['client.ts', 'createSettingsClient'],
+    ['broker.ts', 'createSettingsBroker'],
+  ];
+  await fs.mkdir(path.join(root, 'src/settings'), { recursive: true });
+  for (const [file, global] of entries) await fs.writeFile(path.join(root, 'src/settings', file), `var ${global} = () => ${JSON.stringify(global)};\n`);
+  const { writeSettingsRuntime } = await import(pathToFileURL(path.resolve('scripts/settings-runtime.mjs')));
+  await writeSettingsRuntime(root);
+}
+
 // These exercise actual filesystem types and the real package checker. Each
 // reference lives on its own path, so testing HTML/worker dependencies cannot
 // accidentally pass because a manifest script rejected it first.
@@ -112,6 +124,25 @@ test('portable build contains referenced vendor and its license but not backups'
   assert.equal(await fs.readFile(path.join(root, 'dist/vendor/hls.light.private.js'), 'utf8'), '// fixture vendor');
   assert.equal(await fs.readFile(path.join(root, 'dist/vendor/hls.js.LICENSE'), 'utf8'), 'fixture license');
   await assert.rejects(fs.access(path.join(root, 'dist/web/inject.js.bak')));
+});
+
+test('checked build rejects settings drift before touching an existing dist', async t => {
+  const root = await fixture(t);
+  await addSettingsRuntime(root);
+  await fs.mkdir(path.join(root, 'dist'));
+  await fs.writeFile(path.join(root, 'dist/sentinel.txt'), 'unchanged');
+  await fs.appendFile(path.join(root, 'settings-client.js'), '// stale\n');
+  const { buildChecked } = await import(pathToFileURL(path.resolve('scripts/build.mjs')));
+  await assert.rejects(buildChecked(root, path.join(root, 'dist')), { code: 'settings-runtime-drift' });
+  assert.equal(await fs.readFile(path.join(root, 'dist/sentinel.txt'), 'utf8'), 'unchanged');
+});
+
+test('checked build accepts matching settings runtime and produces a portable dist', async t => {
+  const root = await fixture(t);
+  await addSettingsRuntime(root);
+  const { buildChecked } = await import(pathToFileURL(path.resolve('scripts/build.mjs')));
+  const target = await buildChecked(root, path.join(root, 'dist'));
+  assert.equal(await fs.readFile(path.join(target, 'settings-contract.js'), 'utf8'), await fs.readFile(path.join(root, 'settings-contract.js'), 'utf8'));
 });
 
 test('build accepts a root alias but rejects a linked dist without touching its target', async t => {
@@ -303,9 +334,9 @@ test('candidate verifier copies package inputs only and builds an isolated Chrom
   assert.equal(result.resources > 0, true);
 });
 
-test('distribution rejects proof, type, config and source-map developer files', async t => {
+test('distribution rejects proof, type, config, TypeScript and source-map developer files', async t => {
   const { checkDistributionFiles } = await import(pathToFileURL(path.resolve('scripts/check-package.mjs')));
-  for (const forbidden of ['build-proof/main.js', 'types/knife-settings.d.ts', 'tsconfig.af01.json', 'source.js.map']) {
+  for (const forbidden of ['build-proof/main.js', 'types/knife-settings.d.ts', 'tsconfig.af01.json', 'source.js.map', 'src/settings/contract.ts', 'nested/source.ts']) {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'cheese-dist-boundary-'));
     t.after(() => fs.rm(root, { recursive: true, force: true }));
     await fs.mkdir(path.dirname(path.join(root, forbidden)), { recursive: true });
@@ -315,11 +346,11 @@ test('distribution rejects proof, type, config and source-map developer files', 
 });
 
 test('production build preserves first-party runtime bytes and excludes developer files', async t => {
-  const { build } = await import(pathToFileURL(path.resolve('scripts/build.mjs')));
+  const { buildChecked } = await import(pathToFileURL(path.resolve('scripts/build.mjs')));
   const baseline = require('./fixtures/runtime-js-baseline.json');
-  const target = await build(path.resolve('.'), path.resolve('dist'));
+  const target = await buildChecked(path.resolve('.'), path.resolve('dist'));
   t.after(() => fs.rm(target, { recursive: true, force: true }));
   for (const file of baseline) assert.deepEqual(await fs.readFile(path.join(target, file)), await fs.readFile(file), file);
   const { files } = await (await import(pathToFileURL(path.resolve('scripts/check-package.mjs')))).checkDistributionFiles(target);
-  assert.equal(files.some(file => file.endsWith('.map') || file.startsWith('build-proof/') || file.startsWith('types/') || /^tsconfig.*\.json$/.test(file)), false);
+  assert.equal(files.some(file => file.endsWith('.map') || file.endsWith('.ts') || file.startsWith('src/') || file.startsWith('build-proof/') || file.startsWith('types/') || /^tsconfig.*\.json$/.test(file)), false);
 });
