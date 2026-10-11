@@ -4,6 +4,7 @@ import { openOwnedRoot } from './owned-files.mjs';
 import { build } from './build.mjs';
 import { checkPackage } from './check-package.mjs';
 import { checkSettingsRuntime } from './settings-runtime.mjs';
+import { checkMainRuntime } from './main-runtime.mjs';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const slash = value => value.split(path.sep).join('/');
@@ -20,12 +21,13 @@ export async function removeCandidate(id) {
   return repository.removeTree(`output/tool-audit/p02-candidate-${candidateId}`);
 }
 
-export async function verifyCandidate(id) {
+export async function verifyCandidate(id, directory = repositoryRoot) {
   const candidateId = validateCandidateId(id);
-  const repository = await openOwnedRoot(repositoryRoot);
+  const repository = await openOwnedRoot(directory);
   const candidateRelative = `output/tool-audit/p02-candidate-${candidateId}/chrome-candidate`;
   if (await repository.lstat(candidateRelative, { optional: true })) throw Object.assign(new Error('candidate-destination-exists'), { code: 'candidate-destination-exists' });
-  await checkSettingsRuntime(repositoryRoot);
+  await checkSettingsRuntime(repository.root);
+  await checkMainRuntime(repository.root);
   await repository.ensureDirectory(candidateRelative);
   try {
     const manifest = JSON.parse(await repository.readFile('manifest.json', 'utf8'));
