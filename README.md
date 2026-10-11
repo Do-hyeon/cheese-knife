@@ -82,7 +82,7 @@ npm 점검은 개발 의존성까지 포함하며 공개 npm 레지스트리에 
 
 2026-10-11 최초 도구 점검에서 npm 영향 패키지 경고는 16개(Critical 3), 정적 경고는 77개였습니다. 기존 범위 안의 개발 의존성 갱신과 `fx-runner`의 `shell-quote` 1.12.0 override, DOM SVG 구성·worker import 검사·webpack callback 명명 보완 뒤 각각 3개(Critical 0)와 74개가 남았습니다. npm 잔여 3개는 `web-ext → @devicefarmer/adbkit → node-forge` 경로이며 당시 공식 최신 node-forge 1.4.0도 권고 영향 범위였습니다. 자동으로 제안된 web-ext 5.1.0 다운그레이드는 적용하지 않았습니다. 정적 잔여는 객체 동적 접근 43건·동적 파일 경로 31건으로, 전부 오탐이라고 판단하거나 숨기지 않았습니다. Gitleaks 두 범위의 탐지는 0건이었지만 모든 종류의 비밀정보가 없다는 보장은 아닙니다. 이 결과는 날짜와 검사 범위가 한정된 기록입니다.
 
-Node 24 계열은 24.15.0 이상에서 `npm ci`, `npm test`, `npm run check`, `npm run build`를 실행합니다. 전체 테스트 명령에는 보류된 HLS 전용 검사도 포함되므로 위의 HLS 제외 회귀 결과와 구분하며, 해당 보류를 해제하는 명령으로 취급하지 않습니다. 배포에는 node_modules·테스트·백업 파일을 포함하지 않습니다. HLS 출처/라이선스는 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)에 있습니다.
+Node 24 계열은 24.15.0 이상에서 `npm ci`, `npm test`, `npm run check`, `npm run build`를 실행합니다. 전체 테스트 명령에는 HLS 전용 검사도 포함됩니다. P03은 해당 검사와 결정론적 재생성의 로컬 완료 및 남은 한계를 보안 인증·실제 스트림 수용과 구분해 기록합니다. 배포에는 node_modules·테스트·백업 파일을 포함하지 않습니다. HLS 출처/라이선스는 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)에 있습니다.
 
 후속 도구 실행의 `summary.json`에는 경고별 위치·규칙·npm 권고 출처와 미해결 상태를 보존한 `catalog`가 포함됩니다. 도구 경고를 자동으로 확정하거나 오탐으로 종결하지 않습니다. 자체 정적 코드·package.json·lockfile·검사 설정의 실행 전후 SHA-256 목록을 기록하고, 전후 내용이 다르면 종료 코드 2로 처리합니다. 이는 파일 잠금이나 저장소 전체의 원자적 스냅샷이 아니며, Gitleaks 대상 전체를 동결하는 것도 아닙니다. 입력 지문을 읽는 실행기 코드 자체에 동적 파일 경로 경고 1건이 추가되어 후속 정적 경고는 75건입니다. 이 경고도 숨기지 않습니다. Chrome·Firefox 빌드 계약에는 개발 의존성과 점검 보고서가 확장 산출물에 포함되지 않는 회귀 검사를 추가했습니다. node-forge 경고의 개발 도구 경로가 남아 있다는 사실과 확장 산출물에 해당 의존성을 넣지 않는 사실은 별도로 기록합니다.
 

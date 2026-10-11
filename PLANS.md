@@ -87,7 +87,7 @@
 - [x] **G-REL:** 저장소는 `Do-hyeon/cheese-knife`, 현재 작업 브랜치는 `codex/sidebar-preview-followup`, PR 대상은 `main`임을 확인했다. 사용자가 검증한 공개 파일의 commit·push·한글 PR을 승인했고 병합·태그·릴리즈·스토어 교체는 제외했다.
 - [x] **P08:** GitHub `main`/PR/릴리즈와 스토어 게시 버전을 2026-10-11에 조회했다. `main`은 `d5f268d84fa64b6fffbdf2c309235476fc89e6e7`, 열린 PR 0건, 공개 릴리즈는 prerelease `v2.13.2-community.1`, 스토어는 `2.13.2 community recovery preview`다.
 - [x] **P08:** 검증한 공개 묶음만 명시적으로 stage해 제품 기준 커밋 `c82841a`를 만들었다. private `output/**`와 ignored `dist`는 포함하지 않았다.
-- [ ] **P08:** 제품을 바꾸지 않는 문서 정합성 커밋을 만든 뒤 현재 브랜치를 push하고 `main` 대상 한글 PR을 연다.
+- [ ] **P08:** 제품을 바꾸지 않는 문서 정합성 변경과 독립 재검토를 최종 PR HEAD에 포함한 뒤 현재 브랜치를 push하고 `main` 대상 한글 PR을 연다.
 - [ ] **P08:** 병합·태그·GitHub 릴리즈·스토어 교체는 이번 승인 범위 밖이며 별도 승인 전 수행하지 않는다.
 - [ ] **P08:** 원본/보류/사용자 변경을 일괄 포함하지 않는다. 새 파일이나 버전이 생기면 해당 산출물을 다시 P06 검증한다.
 - [ ] **P08:** 개인정보처리방침 URL은 새 문서가 main에서 공개되고 접근 확인된 뒤에만 변경한다.
@@ -145,4 +145,4 @@ git -c core.safecrlf=false diff --check
 - `docs/superpowers/validation/`: 특정 시점의 재현 가능한 검증 결과와 한계를 보존한다.
 - `output/tool-audit/recovery-backlog/`: 공개하지 않는 원시 근거·원장·초안을 보존한다.
 
-현재 필요한 사용자 행동은 G-REL 외부 변경 범위 승인이다. 승인 전까지 커밋·push·PR·릴리즈·스토어 교체를 수행하지 않는다.
+현재 필요한 사용자 행동은 없다. 승인된 공개 소스 push와 `main` 대상 한글 PR은 독립 재검토가 닫히면 이어서 수행한다. 병합·태그·GitHub 릴리즈·스토어 교체에는 별도 승인이 필요하다.
