@@ -24,6 +24,13 @@ function companionNames() {
   };
 }
 
+function companionTargets(companions) {
+  return {
+    [companions.typescript]: process.platform === 'win32' ? 'lib/tsc.exe' : 'lib/tsc',
+    [companions.esbuild]: process.platform === 'win32' ? 'esbuild.exe' : 'bin/esbuild',
+  };
+}
+
 async function toolchainModule() {
   const url = pathToFileURL(path.resolve('scripts/check-toolchain.mjs')).href;
   const mod = await import(url).catch(error => {
@@ -58,7 +65,8 @@ async function fixture(t, mutate = () => {}) {
   addPackage(companions.typescript, expected.typescript.version, expected.typescript.license, { optional: true });
   addPackage(companions.esbuild, expected.esbuild.version, expected.esbuild.license, { optional: true });
   const lock = { name: 'fixture', version: '1.0.0', lockfileVersion: 3, requires: true, packages };
-  const state = { root, companions, packageJson, lock, missingExecutables: new Set() };
+  const nativeTargets = companionTargets(companions);
+  const state = { root, companions, nativeTargets, packageJson, lock, missingExecutables: new Set() };
   mutate(state);
   await fs.writeFile(path.join(root, 'package.json'), JSON.stringify(packageJson));
   await fs.writeFile(path.join(root, 'package-lock.json'), JSON.stringify(lock));
@@ -71,6 +79,12 @@ async function fixture(t, mutate = () => {}) {
     for (const [command, relative] of Object.entries(packageBins[packageName] || {})) {
       if (state.missingExecutables.has(command)) continue;
       const target = path.join(folder, ...relative.replace(/^\.\//, '').split('/'));
+      await fs.mkdir(path.dirname(target), { recursive: true });
+      await fs.writeFile(target, 'fixture');
+    }
+    const nativeTarget = nativeTargets[packageName];
+    if (nativeTarget) {
+      const target = path.join(folder, ...nativeTarget.split('/'));
       await fs.mkdir(path.dirname(target), { recursive: true });
       await fs.writeFile(target, 'fixture');
     }
@@ -91,6 +105,7 @@ test('complete exact toolchain reports direct packages, companions, and executab
   assert.deepEqual(Object.fromEntries(report.packages.map(row => [row.name, { version: row.version, license: row.license }])), expected);
   assert.deepEqual(report.companions.map(row => row.name).sort(), Object.values(state.companions).sort());
   assert.deepEqual(report.executables, ['esbuild', 'tsc']);
+  assert.deepEqual(report.nativeExecutables, ['esbuild', 'tsc']);
 });
 
 test('dependency ranges and incomplete lock metadata are rejected', async t => {
@@ -105,10 +120,21 @@ test('dependency ranges and incomplete lock metadata are rejected', async t => {
   }
 });
 
-test('missing native executable is a distinct incomplete installation', async t => {
+test('missing package launcher is a distinct incomplete installation', async t => {
   const { checkToolchain } = await toolchainModule();
   const state = await fixture(t, value => value.missingExecutables.add('esbuild'));
   await assert.rejects(checkToolchain(state.root), error => error?.code === 'toolchain-executable-missing');
+});
+
+test('missing companion native binaries are distinct incomplete installations', async t => {
+  const { checkToolchain } = await toolchainModule();
+  for (const parent of ['typescript', 'esbuild']) {
+    const state = await fixture(t);
+    const packageName = state.companions[parent];
+    const target = state.nativeTargets[packageName];
+    await fs.rm(path.join(state.root, 'node_modules', ...packageName.split('/'), ...target.split('/')));
+    await assert.rejects(checkToolchain(state.root), error => error?.code === 'toolchain-executable-missing');
+  }
 });
 
 test('package executable targets do not depend on npm shim file type', async t => {

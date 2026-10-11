@@ -24,6 +24,14 @@ function companionNames() {
   };
 }
 
+function companionTargets() {
+  const names = companionNames();
+  return {
+    [names.typescript]: { command: 'tsc', target: process.platform === 'win32' ? 'lib/tsc.exe' : 'lib/tsc' },
+    [names.esbuild]: { command: 'esbuild', target: process.platform === 'win32' ? 'esbuild.exe' : 'bin/esbuild' },
+  };
+}
+
 export async function inspectToolchain(root = process.cwd()) {
   const owned = await openOwnedRoot(root);
   const packageJson = JSON.parse(await owned.readFile('package.json', 'utf8'));
@@ -45,7 +53,13 @@ export async function inspectToolchain(root = process.cwd()) {
       if (await owned.resolve(`node_modules/${packageName}/${target}`, { type: 'file', optional: true })) executables.push(command);
     } catch {}
   }
-  return { packageJson, lock, packages, companions, executables };
+  const nativeExecutables = [];
+  for (const [packageName, { command, target }] of Object.entries(companionTargets())) {
+    try {
+      if (await owned.resolve(`node_modules/${packageName}/${target}`, { type: 'file', optional: true })) nativeExecutables.push(command);
+    } catch {}
+  }
+  return { packageJson, lock, packages, companions, executables, nativeExecutables: nativeExecutables.sort() };
 }
 
 export async function checkToolchain(root = process.cwd()) {
@@ -78,14 +92,15 @@ export async function checkToolchain(root = process.cwd()) {
   }
 
   if (invalid.length) throw fail('toolchain-contract-invalid', invalid.join('\n'));
-  if (report.executables.length !== 2) {
-    throw fail('toolchain-executable-missing', 'tsc and esbuild executables must both be installed');
+  if (report.executables.length !== 2 || report.nativeExecutables.length !== 2) {
+    throw fail('toolchain-executable-missing', 'tsc and esbuild launchers and native binaries must all be installed');
   }
 
   return {
     packages: report.packages.map(({ name, lock }) => ({ name, version: lock.version, license: lock.license })),
     companions: report.companions.map(({ parent, name, lock }) => ({ parent, name, version: lock.version, license: lock.license })),
     executables: report.executables,
+    nativeExecutables: report.nativeExecutables,
   };
 }
 
