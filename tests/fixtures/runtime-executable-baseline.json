@@ -1,0 +1,18 @@
+{
+  "background.js": "da1be486140371b22dd8e9aac4cf89e2a9ec01b4ba400f6023811ca313cf9458",
+  "config.js": "c04893d07c9c08fc2f34937c9da2fc0dd9345af7148881d8d0dd5730e1396374",
+  "permission.js": "f9d0947cd8650fbdb6cb2b324a36302b6828a3cddfcd3f8fbe198f5adf8521a9",
+  "popup.js": "19c17769262e250a2a1f1e560ee5caf6213f3c860f69c98fd106b4e646d9feff",
+  "settings-broker.js": "fc6924fa615ef7c96aadfd1f019320f62d318cc68b9fee78b52e4b81d6dfe27c",
+  "settings-client.js": "ba9469653ace0fb7ee874c24933ce830d68f0efb65150ccb4a68dc4f8cc0f983",
+  "settings-contract.js": "d8e91afdd745967f4a740ebd24789b3f1ce4e1f458df31f9add1bd48b2a2c08c",
+  "style-schema.js": "2eca52b03d282f97d21f143f267f86af86fcbb3ddb2c452edd7d2149df010ccc",
+  "styles.js": "de00954c4d397325f0af9ae4a3ef6ecd9d115d2106c7cce4218f85c7cbe956e6",
+  "web/audio.js": "19943c0b2828d50753943cf50357b522e81a18ecba71fc7ecda158eefea573ab",
+  "web/inject.js": "7d369cebcb6f43a1e39536a59122de9e27f55fc23d4b5b10ae713971a4005eaa",
+  "web/main.js": "22cd76c2a41743ca2886dee311a9a6431a013d0de2fd97bac4881d8b58ba4421",
+  "web/player.js": "c42a5b54ecfc031e3e14c2809e07fcba7c2d4c41139a31e183c5fec3794f562e",
+  "web/preview.js": "1678bcdddd455616676feb2e85b83ec729483e0f9fab532f17a1976cbf70a848",
+  "web/runtime.js": "c1555bff7da08945888e88592466679aaad8c047e83f69b6bd718c4dacf42f91",
+  "web/site-adapter.js": "8ec71905ce258cb1247de0edc4cc755f518b8e21eebc5941f7546d02d141fc55"
+}
