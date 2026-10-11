@@ -215,6 +215,38 @@ test('status replacement rolls back its exact slot when native publication fails
   assert.equal(original.status, 'NORMAL');
 });
 
+test('status replacement ignores a hostile length getter and replaces exactly one owned slot', t => {
+  const { dom, adapter } = setup(t), container = dom.window.document.createElement('aside');
+  const target = [message({ status: 'BLIND' })];
+  const fixture = controllerFixture({ messageList: new Proxy(target, { get(value, key, receiver) {
+    return key === 'length' ? Infinity : Reflect.get(value, key, receiver);
+  } }) });
+  attachState(container, fixture.controller);
+  const port = adapter.chat.connect(container), before = port.messages()[0];
+  const visible = port.replaceStatus(before, 'NORMAL');
+  assert.equal(visible.status, 'NORMAL');
+  assert.equal(target[0].status, 'NORMAL');
+  assert.equal(fixture.updates, 1);
+});
+
+test('status replacement rolls back the exact Proxy slot without reading its hostile length getter', t => {
+  const { dom, adapter } = setup(t), container = dom.window.document.createElement('aside');
+  const original = message({ status: 'BLIND' }), target = [original]; let lengthReads = 0;
+  const fixture = controllerFixture({
+    messageList: new Proxy(target, { get(value, key, receiver) {
+      if (key === 'length') { lengthReads++; return Infinity; }
+      return Reflect.get(value, key, receiver);
+    } }),
+    notiUpdateMessageList() { throw new Error('fixture-update'); },
+  });
+  attachState(container, fixture.controller);
+  const port = adapter.chat.connect(container), before = port.messages()[0];
+  assert.equal(port.replaceStatus(before, 'NORMAL'), null);
+  assert.equal(target[0], original);
+  assert.equal(target[0].status, 'BLIND');
+  assert.equal(lengthReads, 0);
+});
+
 test('blind listener reconnect unwraps only its exact copied callback', t => {
   const { dom, adapter } = setup(t), container = dom.window.document.createElement('aside');
   const fixture = controllerFixture(); attachState(container, fixture.controller);
@@ -248,6 +280,23 @@ test('blind listener reconnects when the same client replaces its event array', 
   second.dispose();
   assert.equal(freshEntry.listener, fixture.originalBlind);
   assert.equal(foreignEntry.listener, foreign);
+});
+
+test('blind listener disposal unwraps an exact callback copied into a replacement array', t => {
+  const { dom, adapter } = setup(t), container = dom.window.document.createElement('aside');
+  const fixture = controllerFixture(); attachState(container, fixture.controller);
+  const port = adapter.chat.connect(container), first = port.installBlindListener(() => {});
+  const copied = fixture.entry.listener, foreign = () => 'foreign';
+  const freshEntry = { listener: copied, once: false }, foreignEntry = { listener: foreign, once: false };
+  fixture.controller.chatClient._events.notiBlind = [foreignEntry, freshEntry];
+  assert.equal(first.active, false);
+  port.dispose();
+  assert.equal(freshEntry.listener, fixture.originalBlind);
+  assert.equal(foreignEntry.listener, foreign);
+  const next = adapter.chat.connect(container);
+  assert.notEqual(next, port);
+  assert.ok(next.installBlindListener(() => {}));
+  next.dispose();
 });
 
 test('blind listener contains thenables and stale list identity without overwriting foreign handlers', t => {

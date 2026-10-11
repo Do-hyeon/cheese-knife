@@ -4,8 +4,11 @@ import { ownData, type ReactReader } from './react';
 
 const discoverySelector = '#root, #layout-body, #sidebar, #live_player_layout, #player_layout, .pzp-pc, .pzp-pc__video, .pzp-pc__bottom-buttons-left, #license, aside[aria-label="사이드바"]';
 
-export function affectsSiteDiscovery(node: Element): boolean {
-  try { return node.matches(discoverySelector) || !!node.querySelector(discoverySelector) || !!node.closest('.pzp-pc__bottom-buttons-left'); }
+export function affectsSiteDiscovery(node: Element, target?: Element): boolean {
+  try {
+    return node.matches(discoverySelector) || !!node.querySelector(discoverySelector) ||
+      !!target?.closest('.pzp-pc__bottom-buttons-left, .pzp-pc__video, #license');
+  }
   catch { return false; }
 }
 

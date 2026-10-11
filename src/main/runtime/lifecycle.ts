@@ -69,13 +69,15 @@ export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvir
   const onMutations: MutationCallback = mutations => {
     if (runtime.state.player && !runtime.state.player.pzp.isConnected) { schedule(); return; }
     for (const mutation of mutations) {
+      const target = mutation.target.nodeType === 1 ? mutation.target as Element : mutation.target.parentElement;
+      if (target?.closest?.('.knife-owned')) continue;
       const changed = [...mutation.addedNodes, ...mutation.removedNodes];
       for (const node of changed) {
         if (node.nodeType !== 1) continue;
         const element = node as Element;
         if (element.classList?.contains('knife-owned') || element.closest?.('.knife-owned')) continue;
         let siteChange = false;
-        try { siteChange = runtime.adapter?.affectsDiscovery(element) === true; } catch {}
+        try { siteChange = runtime.adapter?.affectsDiscovery(element, target || undefined) === true; } catch {}
         if (siteChange || element.matches?.(interesting) || element.querySelector?.(interesting)) { schedule(); return; }
       }
     }

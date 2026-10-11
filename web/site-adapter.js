@@ -102,9 +102,9 @@
 
   // src/main/site-adapter/discovery.ts
   var discoverySelector = '#root, #layout-body, #sidebar, #live_player_layout, #player_layout, .pzp-pc, .pzp-pc__video, .pzp-pc__bottom-buttons-left, #license, aside[aria-label="사이드바"]';
-  function affectsSiteDiscovery(node) {
+  function affectsSiteDiscovery(node, target) {
     try {
-      return node.matches(discoverySelector) || !!node.querySelector(discoverySelector) || !!node.closest(".pzp-pc__bottom-buttons-left");
+      return node.matches(discoverySelector) || !!node.querySelector(discoverySelector) || !!target?.closest(".pzp-pc__bottom-buttons-left, .pzp-pc__video, #license");
     } catch {
       return false;
     }
@@ -274,28 +274,18 @@
           return null;
         }
         if (data(controller, "messageList") !== list || ownData(list, String(owner.index))?.value !== owner.raw) return null;
-        try {
-          Array.prototype.splice.call(list, owner.index, 1, replacement);
-        } catch {
-          return null;
-        }
+        if (!replaceOwnData(list, String(owner.index), owner.raw, replacement)) return null;
         const update = data(controller, "notiUpdateMessageList");
         if (typeof update === "function") {
           let result;
           try {
             result = Reflect.apply(update, controller, []);
           } catch {
-            if (ownData(list, String(owner.index))?.value === replacement) try {
-              Array.prototype.splice.call(list, owner.index, 1, owner.raw);
-            } catch {
-            }
+            replaceOwnData(list, String(owner.index), replacement, owner.raw);
             return null;
           }
           if (thenable(result)) {
-            if (ownData(list, String(owner.index))?.value === replacement) try {
-              Array.prototype.splice.call(list, owner.index, 1, owner.raw);
-            } catch {
-            }
+            replaceOwnData(list, String(owner.index), replacement, owner.raw);
             return null;
           }
         }
@@ -410,6 +400,11 @@
             () => {
               replaceOwnData(entry, "listener", replacement, original);
               replaceOwnData(controller, "notiBlindListener", replacement, original);
+              const current = boundedArray(data(data(data(controller, "chatClient"), "_events"), "notiBlind"), MAX_EVENTS);
+              if (current) for (let index = 0; index < current.length; index++) {
+                const candidate = ownData(current.value, String(index))?.value;
+                if (data(candidate, "listener") === replacement) replaceOwnData(candidate, "listener", replacement, original);
+              }
             }
           );
           blindBinding = owned;

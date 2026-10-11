@@ -140,6 +140,8 @@
         return;
       }
       for (const mutation of mutations) {
+        const target = mutation.target.nodeType === 1 ? mutation.target : mutation.target.parentElement;
+        if (target?.closest?.(".knife-owned")) continue;
         const changed = [...mutation.addedNodes, ...mutation.removedNodes];
         for (const node of changed) {
           if (node.nodeType !== 1) continue;
@@ -147,7 +149,7 @@
           if (element.classList?.contains("knife-owned") || element.closest?.(".knife-owned")) continue;
           let siteChange = false;
           try {
-            siteChange = runtime.adapter?.affectsDiscovery(element) === true;
+            siteChange = runtime.adapter?.affectsDiscovery(element, target || void 0) === true;
           } catch {
           }
           if (siteChange || element.matches?.(interesting) || element.querySelector?.(interesting)) {

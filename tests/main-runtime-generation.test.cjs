@@ -64,6 +64,8 @@ test('MAIN runtime validator rejects a raw adapter publication', async () => {
   assert.throws(() => mod.validateMainRuntime(unsafe), { code: 'main-runtime-raw-adapter' });
   const appended = { ...rendered, 'web/site-adapter.js': rendered['web/site-adapter.js'] + '\nruntime.adapter.fiberOf = () => ({});\n' };
   assert.throws(() => mod.validateMainRuntime(appended), { code: 'main-runtime-raw-adapter' });
+  const merged = { ...rendered, 'web/site-adapter.js': rendered['web/site-adapter.js'] + '\nObject.assign(runtime.adapter, { fiberOf: () => ({}) });\n' };
+  assert.throws(() => mod.validateMainRuntime(merged), { code: 'main-runtime-raw-adapter' });
 });
 
 test('generated MAIN runtime outputs are pinned to LF checkouts', async () => {

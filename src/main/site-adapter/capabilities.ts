@@ -117,17 +117,17 @@ export function createSiteCapabilities(reader: ReactReader): SiteAdapter {
       try { Object.defineProperties(replacement, descriptors); Object.defineProperty(replacement, 'status', { configurable: true, enumerable: true, writable: true, value: nextStatus }); }
       catch { return null; }
       if (data(controller, 'messageList') !== list || ownData(list, String(owner.index))?.value !== owner.raw) return null;
-      try { Array.prototype.splice.call(list, owner.index, 1, replacement); } catch { return null; }
+      if (!replaceOwnData(list, String(owner.index), owner.raw, replacement)) return null;
       const update = data(controller, 'notiUpdateMessageList');
       if (typeof update === 'function') {
         let result: unknown;
         try { result = Reflect.apply(update, controller, []); }
         catch {
-          if (ownData(list, String(owner.index))?.value === replacement) try { Array.prototype.splice.call(list, owner.index, 1, owner.raw); } catch {}
+          replaceOwnData(list, String(owner.index), replacement, owner.raw);
           return null;
         }
         if (thenable(result)) {
-          if (ownData(list, String(owner.index))?.value === replacement) try { Array.prototype.splice.call(list, owner.index, 1, owner.raw); } catch {}
+          replaceOwnData(list, String(owner.index), replacement, owner.raw);
           return null;
         }
       }
@@ -210,7 +210,15 @@ export function createSiteCapabilities(reader: ReactReader): SiteAdapter {
         };
         previousBlind = { original, replacement };
         owned = binding(() => data(controller, 'chatClient') === client && ownsEntry() && data(entry, 'listener') === replacement && data(controller, 'notiBlindListener') === replacement,
-          () => { replaceOwnData(entry, 'listener', replacement, original); replaceOwnData(controller, 'notiBlindListener', replacement, original); });
+          () => {
+            replaceOwnData(entry, 'listener', replacement, original);
+            replaceOwnData(controller, 'notiBlindListener', replacement, original);
+            const current = boundedArray(data(data(data(controller, 'chatClient'), '_events'), 'notiBlind'), MAX_EVENTS);
+            if (current) for (let index = 0; index < current.length; index++) {
+              const candidate = ownData(current.value, String(index))?.value;
+              if (data(candidate, 'listener') === replacement) replaceOwnData(candidate, 'listener', replacement, original);
+            }
+          });
         blindBinding = owned; return owned;
       },
       replaceStatus,

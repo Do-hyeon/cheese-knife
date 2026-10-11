@@ -107,13 +107,12 @@ test('late site layout divs trigger adapter discovery without leaking selectors 
 });
 
 test('late license anchor triggers one adapter-owned discovery reconciliation', async t => {
-  const dom = setup(t), knife = runtime(dom);
+  const dom = setup(t, playerHTML + '<div id="license"></div>'), knife = runtime(dom);
   let reconciles = 0;
   const reconcile = knife.reconcile;
   knife.reconcile = () => { reconciles++; return reconcile(); };
-  const license = dom.window.document.createElement('div');
-  license.id = 'license'; license.innerHTML = '<a href="/license">License</a>';
-  dom.window.document.body.append(license);
+  const anchor = dom.window.document.createElement('a'); anchor.href = '/license'; anchor.textContent = 'License';
+  dom.window.document.getElementById('license').append(anchor);
   await flush();
   assert.equal(reconciles, 1);
 });
