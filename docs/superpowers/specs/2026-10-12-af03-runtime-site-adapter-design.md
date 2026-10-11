@@ -2,7 +2,7 @@
 
 작성일: 2026-10-12 / Asia-Seoul
 기준점: `5060fb9e347ef6a5ea5575cfa6ebc073d294e9ae` (`main`, AF02 상태 고정)
-상태: 사용자 승인된 대화 설계를 문서화한 검토 대상
+상태: 상세 명세 사용자 승인 완료, 구현 계획 검토 단계
 
 ## 1. 목적과 성공 조건
 
@@ -196,6 +196,7 @@ adapter는 다음 범주의 작은 interface만 공개한다.
 - `chat.readMessage(row): ChatMessageSnapshot | null`: timestamp·type·status·content 식별에 필요한 primitive만 복사
 - `chat.connect(container): ChatControllerPort | null`: filter와 blind listener를 identity-aware operation으로 설치·동기화·해제하는 facade
 - `banner.closeHandler(node): (() => void) | null`: 검증하고 receiver를 보존한 호출 함수
+- `video.openDate(node): string | null`: 현재 카드 상태의 bounded `openDate` 문자열만 복사
 - `player.readMetrics(layout): Promise<SitePlayerMetrics | null>`: codec 등 검증된 primitive만 반환
 
 `ChatControllerPort`는 원본 controller나 message array를 반환하지 않는다. feature는 다음 operation만 사용한다.
@@ -232,6 +233,7 @@ adapter로 이동하는 것은 치지직 구현에 종속된 root/player/sidebar
 - timestamp row props → `adapter.chat.readMessage`
 - chat controller hook traversal → `adapter.chat.connect`
 - banner fiber close handler → `adapter.banner.closeHandler`
+- 방송 시작 시각 상태 탐색 → `adapter.video.openDate`
 
 `web/player.js`는 `getCorePlayer`와 `_currentCodecs` 직접 접근을 `adapter.player.readMetrics`로 치환한다. bitrate·latency처럼 현재 검증되지 않은 값은 계속 `알 수 없음`이며 새 수치를 추정하지 않는다.
 
