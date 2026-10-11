@@ -1,12 +1,17 @@
+/** @param {typeof chrome} chromeApi */
 var createSettingsBroker = chromeApi => {
   const contract = KnifeSettingsContract;
   const keys = ['config', 'styles', 'styleParameters', 'settingsRevision'];
-  const jobs = []; let running = false, boot, initFailure;
-  let css = { state: 'pending', code: null }, lastFailedCss;
+  const jobs = /** @type {KnifeJob[]} */ ([]); let running = false, /** @type {Promise<unknown> | undefined} */ boot, /** @type {unknown} */ initFailure;
+  let css = /** @type {KnifeCssState} */ ({ state: 'pending', code: null }), /** @type {string | undefined} */ lastFailedCss;
   let stylesDirty = false, stylesQueued = false, stylesRetry = false;
+  /** @param {string} stage @param {string} code @returns {KnifeCodedError} */
   const fault = (stage, code) => Object.assign(new Error(code), { stage, code });
-  const record = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  /** @param {unknown} value @returns {KnifeUnknownRecord} */
+  const record = value => value && typeof value === 'object' && !Array.isArray(value) ? /** @type {KnifeUnknownRecord} */ (value) : {};
+  /** @param {unknown} a @param {unknown} b */
   const equal = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  /** @param {() => Promise<unknown>} work */
   function enqueue(work) {
     if (running && jobs.length >= 64) return Promise.reject(fault('busy', 'settings-busy'));
     const result = new Promise((resolve, reject) => jobs.push({ work, resolve, reject }));
@@ -16,24 +21,28 @@ var createSettingsBroker = chromeApi => {
     if (running) return;
     running = true;
     while (jobs.length) {
-      const job = jobs.shift();
+      const job = /** @type {KnifeJob} */ (jobs.shift());
       try { job.resolve(await job.work()); } catch (error) { job.reject(error); }
       scheduleStyles();
     }
     running = false;
   }
+  /** @param {boolean} [includeLegacy] @returns {Promise<KnifeUnknownRecord>} */
   async function read(includeLegacy = false) {
-    try { return await chromeApi.storage.local.get(includeLegacy ? [...keys, 't'] : keys); }
+    try { return /** @type {KnifeUnknownRecord} */ (await chromeApi.storage.local.get(includeLegacy ? [...keys, 't'] : keys)); }
     catch { throw fault('read', 'storage-read-failed'); }
   }
+  /** @param {KnifeUnknownRecord} changes */
   async function write(changes) {
     try { await chromeApi.storage.local.set(changes); }
     catch { throw fault('write', 'storage-write-failed'); }
   }
+  /** @param {KnifeUnknownRecord} raw @param {boolean} [force] */
   async function applyStyles(raw, force = false) {
     const files = contract.cssFiles(raw.styles), fingerprint = JSON.stringify(files);
     try {
       const [existing] = await chromeApi.scripting.getRegisteredContentScripts({ ids: ['styles'] });
+      /** @type {chrome.scripting.RegisteredContentScript} */
       const desired = { id: 'styles', matches: [...KnifeHostPolicy.origins], css: files, runAt: 'document_start' };
       const matches = !files.length ? !existing : existing && equal(existing.css, files) &&
         equal(existing.matches, desired.matches) && existing.runAt === desired.runAt && !existing.js?.length;
@@ -65,6 +74,7 @@ var createSettingsBroker = chromeApi => {
       await applyStyles(raw, retry);
     }).catch(() => {}).finally(() => { stylesQueued = false; scheduleStyles(); });
   }
+  /** @param {{ retry?: boolean }} [options] */
   function invalidateStyles(options = {}) {
     stylesDirty = true;
     if (options.retry === true) stylesRetry = true;
@@ -93,11 +103,12 @@ var createSettingsBroker = chromeApi => {
     void boot.catch(error => { initFailure = error; });
     return boot;
   }
+  /** @param {KnifeSettingsRequest} request */
   async function execute(request) {
     const raw = await read();
     let revision;
     try { revision = contract.readRevision(raw.settingsRevision); }
-    catch (error) { throw fault('read', error.code); }
+    catch (error) { throw fault('read', /** @type {KnifeCodedError} */ (error).code); }
     if (request.action === 'get-snapshot') return { ok: true, requestId: request.requestId, snapshot: contract.makeSnapshot(raw, css) };
     if (request.action === 'patch') {
       const result = contract.mergeOperations(raw, request.operations);
@@ -112,7 +123,7 @@ var createSettingsBroker = chromeApi => {
     let tab;
     try { tab = await chromeApi.tabs.get(request.targetTabId); }
     catch { throw fault('target', 'target-missing'); }
-    try { if (new URL(tab.url).origin !== 'https://chzzk.naver.com') throw new Error(); }
+    try { if (new URL(/** @type {string} */ (tab.url)).origin !== 'https://chzzk.naver.com') throw new Error(); }
     catch { throw fault('target', 'target-origin-changed'); }
     if (tab.windowId !== request.targetWindowId) throw fault('target', 'target-window-changed');
     try { await chromeApi.tabs.reload(request.targetTabId); }
@@ -120,20 +131,27 @@ var createSettingsBroker = chromeApi => {
     return { ok: true, requestId: request.requestId, revision, reloaded: true,
       appliedStyles: contract.makeSnapshot(raw, css).styles, css: { ...css }, stage: null, code: null };
   }
+  /**
+   * @param {KnifeUnknownRecord | null | undefined} message
+   * @param {chrome.runtime.MessageSender} sender
+   * @param {(response: unknown) => void} respond
+   */
   function listener(message, sender, respond) {
     if (message?.namespace !== 'cheese-knife-settings') return false;
     const validated = contract.validateRequest(message, sender, chromeApi.runtime.id, path => chromeApi.runtime.getURL(path));
     const requestId = typeof message.requestId === 'string' && message.requestId.length <= 128 ? message.requestId : undefined;
     // The receiver may disappear after a durable commit. Never roll it back
     // or let a closed response channel become an unhandled worker failure.
+    /** @param {unknown} result */
     const deliver = result => { try { respond(result); } catch {} };
+    /** @param {string} stage @param {string} code */
     const replyError = (stage, code) => ({ ok: false, requestId, stored: false, reloaded: false, css: { ...css }, stage, code });
     if (!validated.ok) { deliver(replyError('validation', validated.code)); return true; }
     const ready = initialize();
     void enqueue(async () => {
-      try { await ready; } catch (error) { throw fault('initialization', error.code || 'initialization-failed'); }
+      try { await ready; } catch (error) { throw fault('initialization', /** @type {KnifeCodedError} */ (error).code || 'initialization-failed'); }
       return execute(validated.request);
-    }).then(deliver, error => deliver(replyError(error.stage || 'read', error.code || 'settings-operation-failed')));
+    }).then(deliver, error => deliver(replyError(/** @type {KnifeCodedError} */ (error).stage || 'read', /** @type {KnifeCodedError} */ (error).code || 'settings-operation-failed')));
     return true;
   }
   return { listener, initialize, invalidateStyles };

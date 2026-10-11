@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "useUnknownInCatchVariables": true,
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM"],
+    "types": ["chrome"]
+  },
+  "include": [
+    "config.js",
+    "style-schema.js",
+    "settings-contract.js",
+    "settings-client.js",
+    "settings-broker.js",
+    "types/**/*.d.ts",
+    "build-proof/**/*.ts"
+  ]
+}

@@ -1,12 +1,20 @@
 var KnifeSettingsContract = (() => {
+  /** @type {Map<string, KnifeConfigLeaf>} */
   const configFields = new Map(CONFIGS.flatMap(c => c.configs.flatMap(f => f.configs || [f])).map(f => [f.id, f]));
+  /** @type {Map<string, KnifeStyleField>} */
   const styleFields = new Map(STYLES.flatMap(c => c.styles).map(f => [f.id, f]));
-  const record = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  /** @param {unknown} value @returns {KnifeUnknownRecord} */
+  const record = value => value && typeof value === 'object' && !Array.isArray(value) ? /** @type {KnifeUnknownRecord} */ (value) : {};
+  /** @param {unknown} value @param {string[]} keys */
   const shape = (value, keys) => value && typeof value === 'object' && !Array.isArray(value) &&
     Object.keys(value).length === keys.length && keys.every(k => Object.hasOwn(value, k));
+  /** @param {string} code @returns {KnifeFailure} */
   const fail = code => ({ ok: false, code });
+  /** @param {string} code @returns {KnifeCodedError} */
   const error = code => Object.assign(new Error(code), { code });
+  /** @param {unknown} value @param {KnifeRangeConfig | KnifeRangeStyleField} field */
   const numeric = (value, field) => typeof value === 'number' && Number.isFinite(value) && value >= field.min && value <= field.max;
+  /** @param {unknown} operations @returns {KnifeOperationsResult} */
   function validateOperations(operations) {
     if (!Array.isArray(operations) || operations.length > 64) return fail('invalid-operations');
     for (const op of operations) {
@@ -25,6 +33,13 @@ var KnifeSettingsContract = (() => {
     }
     return { ok: true, operations: operations.map(op => ({ ...op })) };
   }
+  /**
+   * @param {KnifeUnknownRecord | null | undefined} message
+   * @param {chrome.runtime.MessageSender | null | undefined} sender
+   * @param {string} extensionId
+   * @param {(path: string) => string} getURL
+   * @returns {KnifeRequestResult}
+   */
   function validateRequest(message, sender, extensionId, getURL) {
     if (!sender || typeof extensionId !== 'string' || !extensionId || sender.id !== extensionId ||
       typeof sender.url !== 'string' || (sender.frameId !== undefined && sender.frameId !== 0)) return fail('invalid-sender');
@@ -43,23 +58,27 @@ var KnifeSettingsContract = (() => {
       if (!shape(message, [...keys, 'operations'])) return fail('invalid-request');
       const result = validateOperations(message.operations);
       if (!result.ok) return result;
-      return { ok: true, request: { ...message, operations: result.operations } };
+      return { ok: true, request: /** @type {KnifeSettingsRequest} */ ({ ...message, operations: result.operations }) };
     }
     if (message.action === 'reload-target') {
       if (!shape(message, [...keys, 'targetTabId', 'targetWindowId']) ||
-        ![message.targetTabId, message.targetWindowId].every(v => Number.isSafeInteger(v) && v >= 0)) return fail('invalid-request');
+        ![message.targetTabId, message.targetWindowId].every(v => Number.isSafeInteger(v) && /** @type {number} */ (v) >= 0)) return fail('invalid-request');
     } else if (message.action !== 'get-snapshot' || !shape(message, keys)) return fail('invalid-request');
-    return { ok: true, request: { ...message } };
+    return { ok: true, request: /** @type {KnifeSettingsRequest} */ ({ ...message }) };
   }
+  /** @param {unknown} value @returns {number} */
   function readRevision(value) {
     if (value === undefined) return 0;
-    if (!Number.isSafeInteger(value) || value < 0) throw error('revision-invalid');
+    if (!Number.isSafeInteger(value) || /** @type {number} */ (value) < 0) throw error('revision-invalid');
     if (value === Number.MAX_SAFE_INTEGER) throw error('revision-exhausted');
-    return value;
+    return /** @type {number} */ (value);
   }
+  /** @param {KnifeUnknownRecord} a @param {KnifeUnknownRecord} b */
   const sameRecord = (a, b) => Object.keys(a).length === Object.keys(b).length &&
     Object.entries(a).every(([key, value]) => Object.hasOwn(b, key) && Object.is(value, Object.getOwnPropertyDescriptor(b, key)?.value));
+  /** @param {unknown[]} a @param {unknown[]} b */
   const sameArray = (a, b) => a.length === b.length && a.every((value, index) => Object.is(value, b.at(index)));
+  /** @param {KnifeUnknownRecord} raw @param {KnifeSettingsOperation[]} operations */
   function mergeOperations(raw, operations) {
     const valid = validateOperations(operations);
     if (!valid.ok) throw error(valid.code);
@@ -68,6 +87,7 @@ var KnifeSettingsContract = (() => {
     const oldStyles = Array.isArray(raw.styles) ? raw.styles : [];
     const config = { ...oldConfig }, styleParameters = { ...oldParameters };
     let styles = [...oldStyles], stylesTouched = operations.length === 0;
+    /** @param {string} id @param {boolean} enabled */
     const setStyle = (id, enabled) => {
       if (enabled) { if (!styles.includes(id)) styles.push(id); }
       else styles = styles.filter(value => value !== id);
@@ -80,6 +100,7 @@ var KnifeSettingsContract = (() => {
         else { styleParameters[op.id] = op.value; setStyle(op.id, op.value !== 0); }
       }
     }
+    /** @type {KnifeUnknownRecord} */
     const changes = {};
     if (!sameRecord(config, oldConfig)) changes.config = config;
     if (!sameArray(styles, oldStyles)) changes.styles = styles;
@@ -87,12 +108,14 @@ var KnifeSettingsContract = (() => {
     if (Object.keys(changes).length) changes.settingsRevision = revision + 1;
     return { changes, revision: changes.settingsRevision ?? revision, stylesTouched };
   }
+  /** @param {unknown} styles */
   function cssFiles(styles) {
     const selected = new Set(Array.isArray(styles) ? styles : []);
     return [...styleFields.keys()].filter(id => selected.has(id)).map(id => `styles/${id}.css`);
   }
+  /** @param {KnifeUnknownRecord} raw @param {KnifeCssState} css @returns {KnifeSettingsSnapshot} */
   function makeSnapshot(raw, css) {
-    const source = record(raw.styleParameters), entries = [];
+    const source = record(raw.styleParameters), entries = /** @type {[string, number][]} */ ([]);
     for (const [id, field] of styleFields) {
       const value = Object.getOwnPropertyDescriptor(source, id)?.value;
       if (field.type === 'range' && numeric(value, field)) entries.push([id, value]);
