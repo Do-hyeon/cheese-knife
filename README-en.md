@@ -1,101 +1,64 @@
 # ![Logo](./icon48.png) Cheese Knife — Community Recovery
 
-> CHZZK Toolkit
+This is an unofficial community recovery of [Cheese Knife](https://github.com/jebibot/cheese-knife), a toolkit for watching CHZZK. It restores integration points that no longer matched the current CHZZK interface and is maintained for Chrome only. It is not an official successor approved by the original author, and Chrome Web Store distribution is intended to stop if the original author returns.
 
-[Current execution plan](PLANS.md) (Korean): the single entry point for task order, completion criteria, required user actions and publication gates, separate from historical validation records.
-
-[Current release gates and unverified boundaries](docs/superpowers/validation/2026-10-11-recovery-release-gates.md) (Korean) distinguish source, isolated candidates, installed files and store status. Defined installed acceptance is complete, but this is not proof of complete product integrity, absence of every vulnerability, or correct behavior in every environment.
-
-## Community recovery status
-
-The recovery supports **Google Chrome only**. Firefox is not supported; Firefox build, signing and automated publishing paths are no longer provided. Firefox results in earlier records describe historical work, not current support.
-
-The October 11 host-permission follow-up narrows extension host access and static/dynamic injection to `https://chzzk.naver.com/*`. It no longer requests HTTP or all CHZZK subdomains. Preview and stream-time requests to `api.chzzk.naver.com` still run from MAIN code on the CHZZK page, so no separate API host permission is declared; the API/media connections and possible use of the existing session disclosed in the Privacy Policy remain unchanged. A denied or failed permission request leaves the explanation page open for retry. A later grant triggers one retry of a previously failed style registration. Local regression for this change is not installed-extension, Chrome 121, store-review or complete security acceptance.
-
-On October 11, an existence-only package check accepted a directory as a JavaScript resource. The checker now requires regular referenced files and rejects linked internal path components before reading metadata or referenced resources. This applies to manifest/optional package metadata, HTML assets, literal worker dependencies and the default locale, while keeping package root aliases supported and distinguishing broken metadata links from absent optional files. Eleven of thirteen new cases failed before the fix; afterwards focused checks passed 33/33, non-HLS regression passed 413/413, and isolated Chrome package checks passed at v2.13.3 with 20 entry resources. An independent Astra max functional review reported no issues and reproduced 13/13. Actual directory junctions were tested; Windows file symlink creation failed with EPERM and was not tested. This checks references in a stable package tree, not atomic reads during concurrent file replacement or the entire build tree. Installed dist and held HLS files remain unchanged.
-
-That step's npm advisories and both Gitleaks scopes reported 0. At that point the static scan had 75 rows (43 dynamic-object accesses and 32 dynamic-file paths), including two new dynamic-path rows for `lstat` and `realpath`. No rules were weakened and no warnings were suppressed. Later remediation evidence and the seven remaining `guarded-boundary` rows are recorded separately in the current release gate. Counts such as 73 warnings and 400 tests below are historical stage records.
-
-On October 11, a controlled reproduction of the user's `web/main.js` error showed that `Extension context invalidated.` during final page teardown prevented later page-event cleanup. Both extension listener removals are now attempted independently and page events are always detached. Only the expected invalidation exception is tolerated; other failures remain observable individually or with both causes retained. BFCache freezing remains distinct from final disposal. Seven of eight new cases failed before the fix; afterwards the focused bridge/multi-page tests passed 26/26, non-HLS regression passed 400/400, Chrome synthetic video-filter checks passed 17/17, and isolated package checks passed. The actual trigger and updated install were pending at that stage; P06 later recorded installation/reload of the new candidate and no recurrence on Chrome's extension error page.
-
-An independent Astra max functional review of this cleanup change found no Critical or Important issue, but identified a Minor test gap: inert lifecycle callbacks did not prove actual listener removal. Only the tests were strengthened to record exact callback/capture pairs while forwarding to native DOM APIs. An in-memory mutation omitting both lifecycle removals passed all eight original cases but failed all eight strengthened cases; real product code passed the focused 26/26 and final non-HLS 400/400. The reviewer independently reproduced the distinction and closed the gap. This was not a security/HLS review and did not require another product-code change.
-
-After removing `web-ext` and its Firefox-only publishing dependency chain on October 11, npm reported 0 dependency warnings and both Gitleaks scopes reported 0 detections. Static warnings remain open: 43 dynamic-object accesses and 30 dynamic-file paths. Node-forge itself was not patched; its dependency path was removed from this project. Focused Chrome/retired-Firefox contracts passed 17/17 and non-HLS regression passed 392/392. The prior Firefox load test was retired and two CLI-rejection tests were added; test counts are not directly interchangeable with earlier runs. Held HLS files and the installed dist are unchanged. Publication and store updates remain on hold.
-
-The first isolated Chrome-only install retained maintenance/deprecation warnings for unsupported `eslint@9.39.4` and deprecated `whatwg-encoding@3.1.1`. The approved follow-up upgraded ESLint to 10.12.0 and jsdom to 30.1.2 one at a time; non-HLS regression passed 392/392 after each upgrade without changing rules, expectations or product code. A clean isolated `npm ci --ignore-scripts` installed 125 packages successfully without either deprecated warning, and the lockfile no longer includes `whatwg-encoding`. Verification used Node 24.19.0; the Node 24 line requires at least 24.15.0. Isolated Chrome build/package checks passed at v2.13.3 with 20 entry resources. npm advisories and both Gitleaks scopes reported 0, while all 73 static warnings remain at the same locations with the same messages. The installed dist, held HLS files and publication status are unchanged; this is not complete security acceptance.
-
-This unofficial community fork adds separate publishing identity and guide/support links to compatibility recovery based on upstream v2.13.1. The initial store-preparation baseline was 2.13.2 on `codex/community-store-preview`; the current follow-up branch is `codex/sidebar-preview-followup`, with manifest/package version 2.13.3. It is not an original-author-approved release or successor. Original copyright and MIT/HLS.js notices are retained. The compatibility recovery adds Vue-free controls/compression, cancelable HLS previews, scoped page lifecycles, and per-tab feature readiness.
-
-The user reported completed store registration and a pending review. This records that report, not a fresh confirmation of approval/publication or submission of all 2.13.3 follow-up changes. [Guide](https://github.com/Do-hyeon/cheese-knife/blob/main/README.md) and [Report issue](https://github.com/Do-hyeon/cheese-knife/issues) refer to this fork. New document links use main; existing `codex/community-store-preview` documents and URLs remain available for older versions. These follow-up changes do not update PR #81's `codex/chzzk-compatibility-recovery` or upstream/main. A new store item is separate from the original installation; avoid running both and do not assume automatic setting transfer.
-
-The [Privacy Policy / 개인정보처리방침](https://github.com/Do-hyeon/cheese-knife/blob/main/PRIVACY.md) explains local processing of chats, identifiers, addresses and interactions, CHZZK API/media connections, storage/deletion and Limited Use. Absence of transmission to a maintainer server does not mean absence of data processing. The store's policy URL must be updated separately from package links, after the updated document is publicly available and checked.
-
-The HLS change records the pinned upstream source SHA-256 and deterministic regeneration procedure, and adds length/repetition bounds at four parser boundaries. Two isolated regenerations, the guarded bundle and final candidate match; focused HLS tests passed 97/97 and the then-current full HLS-inclusive suite passed 586/586. The latest full regression is 605/605. The latest tool ledger connects the former 75 rows to remediation evidence and retains seven real system-call boundaries as `guarded-boundary`, so the final audit intentionally exits 1. npm advisories and both Gitleaks scopes report 0, but these results are not called a clean scan, security certification, or proof that every HLS vulnerability is absent.
-
-Initial store preparation passed Node169/native styles108/video filters17 and two synthetic ko/en popup layout checks. See [store preparation](docs/superpowers/validation/2026-10-08-community-store-preparation.md). As of October 11, the P03 HLS boundary/regeneration gate is DONE-LOCAL, P06 installed acceptance is PASS, and the latest full regression is 605/605. Package v2.13.3 with 20 entry resources and 58/58 final-candidate/root-`dist` identity were also checked. This is not acceptance of complete HLS security, every real MSE stream, every broadcast/GPU/network combination, or a store replacement. The 165-test and candidate/pending notes below are historical records.
-
-[Korean contribution PR #81](https://github.com/jebibot/cheese-knife/pull/81) is open against upstream. It discloses verified scope, unverified states and audio/environment limits, not full restoration or release approval. No store deployment or merge was performed. Historical candidate/pending notes below describe their respective stages; use the [latest readiness summary](docs/superpowers/validation/2026-10-08-contribution-readiness.md) for current status.
-
-165 automated tests passed; controlled real audio output and separate-browser public preview frame progression were also recorded. See the [independent implementation review](docs/superpowers/reviews/2026-10-08-implementation-review.md), [installed-Chrome VOD hold fix review](docs/superpowers/reviews/2026-10-08-vod-hold-review.md), and [whole-branch review and follow-up](docs/superpowers/reviews/2026-10-08-whole-branch-review.md). The [latest contribution-readiness summary](docs/superpowers/validation/2026-10-08-contribution-readiness.md) distinguishes installed acceptance, automated contracts and unverified boundaries across all 25 setting leaves and 25 styles. Earlier candidate/refresh-pending sections are historical records; full acceptance and release approval remain pending.
-
-The [follow-up readiness review](docs/superpowers/reviews/2026-10-08-final-readiness-review.md) found reused sidebar-link/VOD-tooltip and hold-OFF cancellation defects. One user-approved fix pass added fourteen tests: twelve RED→GREEN plus two protective characterizations; Node136/style91/filter17 passed at that stage. After the user refreshed the extension, [controlled installed reuse and trusted VOD input checks](docs/superpowers/validation/2026-10-08-restored-settings-and-runtime-checks.md) also passed. A guarded deleted-message candidate and current mission/blocked CSS were added later and submitted in the contribution PR without counting remaining actual-event/environment gaps as full restoration.
-
-The Gain slider is now 48px with an 8px end gap, checked in installed Chrome. [Synthetic audio-quality diagnostics](docs/superpowers/validation/2026-10-08-audio-quality-and-gain-spacing.md) document defaults and transition improvement candidates, not a subjective sound-quality guarantee. DSP is unchanged. Reproduce with `node scripts/check-audio-quality.mjs --chrome`; a fresh profile captures synthetic floating output while sending zeros to speakers, without recording broadcasts.
-
-The [follow-up Gain smoothing and preview-delay fix](docs/superpowers/validation/2026-10-08-gain-smoothing-follow-up.md) ramps updates over 10ms and overlaps loading with the hover delay. The user confirmed preview works normally. After the [full-feature audit](docs/superpowers/validation/2026-10-08-full-feature-audit.md), the left-chat live player collapse was fixed and installed live/VOD layout and chat resizing were checked. That stage's settings-race, preview-cancellation, popup-drag and status fixes required manual refresh; later installed results are recorded separately. Unverified [full-feature acceptance](docs/superpowers/plans/2026-10-08-full-feature-acceptance.md) boundaries remain distinct from the user-approved limited contribution PR.
-
-First confirm the approved test scope. The 2.13.3 follow-up passed the defined local tool, HLS and package gates plus installed acceptance. This is not security certification or acceptance of every runtime environment. Load only the verified `dist` at `chrome://extensions`, distinguish it from the store build, temporarily disable the old Cheese Knife extension to avoid duplicate injection, and reload CHZZK tabs. A local extension with a different ID does not automatically share store-extension settings. Do not delete the old extension or its settings.
-
-A guarded [live deleted-chat candidate](docs/superpowers/validation/2026-10-08-restored-settings-and-runtime-checks.md) preserves native content and other listeners without JSX, historical recovery or server lookup. The user confirmed installed readiness and original OFF restoration including the ownership fix, not an actual natural deletion event/label rendering. Current automated records are deleted29/full165/style108/filter17. Installed expanded mission hiding ON and original OFF restoration were checked; actual party/blocked targets were absent. Missing native contracts and VOD deletion remain limited. Native-button sidebar refresh/expansion passed basic installed checks, not every variant. Stats show resolution/measured FPS; unverified bitrate/latency are unknown. Compression requires an eligible same-origin blob source and may require a user gesture. For an already age-verified session, a preview is prepared only when the API supplies an HTTPS HLS URL; missing URLs or denied authentication, entitlement or DRM remain thumbnail-only/limited, and the extension does not bypass them. The latest 2.13.3 candidate passed the defined installed-Chrome acceptance, not every broadcast/GPU/network/account combination. Firefox is outside the supported recovery scope. See [validation](docs/superpowers/validation/2026-10-08-chzzk-compatibility.md), [design](docs/superpowers/specs/2026-10-08-chzzk-compatibility-design.md), and [third-party notices](THIRD_PARTY_NOTICES.md).
-
-Develop with Node 24.15.0 or newer in the Node 24 line: `npm ci`, `npm test`, `npm run check`, `npm run build`. The package excludes dependencies, tests and backup files. The full test command includes HLS-specific tests; P03 records their local completion and remaining limits separately from security certification and real-stream acceptance.
-
-The [new adapter/CSS review](docs/superpowers/reviews/2026-10-08-deleted-chat-and-style-review.md) identified stale retention after an external in-place hidden-status/content/identity change. The fix requires current NORMAL/type/identity/content ownership and retires mismatched records: seven RED→GREEN cases, deleted29/full165/style108/filter17 plus build/package checks passed. The refreshed installation's readiness and original OFF restoration were user-confirmed, with ordinary playback/chat preserved; actual natural deletion remains unverified. The earlier readiness report does not certify these later changes.
-
-Run explicit native CSS checks with `node scripts/check-styles.mjs --chrome`; these do not add a browser requirement to the Node test suite. [Installed preview timing and style audit](docs/superpowers/validation/2026-10-08-preview-timing-and-style-audit.md) records the configured one-second wait, temporary 100ms comparison, four scoped style candidates and remaining acceptance.
-
-The [toolbar layout follow-up](docs/superpowers/validation/2026-10-08-installed-follow-up-and-toolbar-design.md) records 33 native CSS cases and 7 actual viewport/sidebar combinations. Top navigation uses the toolbar at 1800px or wider with search separated from menus; narrower views retain the native sidebar. Auto-hide now handles the current sticky header and keyboard focus. Installed-Chrome checks passed for both enabled options, focus recovery and five viewports; full style acceptance remains incomplete.
-
-Run synthetic video filter diagnostics with `node scripts/check-video-filters.mjs --chrome`. Seventeen cases check actual CSS-filtered video pixels, reset, native PZP filter preservation and single application, but do not guarantee the user's GPU behavior or sharpening edge quality. The [installed-filter investigation](docs/superpowers/validation/2026-10-08-restored-settings-and-runtime-checks.md) distinguishes failures, regressions and pending installed acceptance.
-
-The [home recommendation hiding candidate](docs/superpowers/validation/2026-10-08-home-recommendation-recovery.md) hides only the ordinary home recommendation grid, preserving editorial promotions, following and recent VODs. The responsive fix passed Node 101 and native CSS 40 cases, followed by installed narrow/wide rerender, route cleanup/reapplication and stored-option OFF/ON restoration checks without temporary CSS. [Additional installed checks](docs/superpowers/validation/2026-10-08-installed-remaining-function-checks.md) include user-confirmed fullscreen/Esc operation and subsequent start-time selector recovery. Remaining full acceptance is still in progress.
-
-[Player-style checks](docs/superpowers/validation/2026-10-08-style-baseline-and-acceptance.md) confirmed button hiding, volume-label toggling and restoration, and identified a current VOD “Fill player area” regression caused by the legacy selector and inline height reservation. That change passed Node109, native CSS49 and actual temporary-rule VOD A/B checks. The refreshed extension's stored option ON passed basic normal/wide-mode checks without temporary CSS, followed by original OFF restoration. The option only relaxes the player container's vertical height limit; it does not enter fullscreen, zoom or crop video, or change quality. The scoped nickname-badge fix passed Node109, native CSS58 and actual temporary-rule live/VOD A/B checks; the refreshed extension also passed basic font8 badge, multi-badge and emote sizing without temporary CSS. Original chat-setting restoration, sidebar checks and remaining full acceptance are in progress. Account entitlement prevents actual time-machine verification, which is not counted as full acceptance.
-
-The [start-time follow-up](docs/superpowers/validation/2026-10-08-start-time-selector-recovery.md) adds current live/VOD targets while preserving existing lookup, cache, cancellation and URL guards. After manual refresh, basic installed display, reentry, route cleanup and replacement-card cache reuse were confirmed. VOD screenshot capture and all-mode/full-feature acceptance remain separate boundaries.
-
-[Guide](https://github.com/Do-hyeon/cheese-knife/blob/main/README.md) | [Report issue](https://github.com/Do-hyeon/cheese-knife/issues) | [Recovery source](https://github.com/Do-hyeon/cheese-knife/tree/main) | [Original project](https://github.com/jebibot/cheese-knife) | [Original website](https://www.chz.app/) | [Original Chrome store](https://chromewebstore.google.com/detail/nfkfgkkhgglkgnlppncolmpekidapkjh) | [Korean](./README.md)
+[Chrome Web Store](https://chromewebstore.google.com/detail/cgfddiiffponlciljlfbiecmlagflbpe) · [GitHub releases](https://github.com/Do-hyeon/cheese-knife/releases) · [Report an issue](https://github.com/Do-hyeon/cheese-knife/issues) · [Privacy Policy](PRIVACY.md) · [한국어](README.md)
 
 ![Screenshot](./images/en.png)
 
-[Sidebar follow-up](docs/superpowers/validation/2026-10-08-style-baseline-and-acceptance.md) confirmed original chat/sidebar setting restoration but found that ordinal hiding rules could hide general navigation during partial loading. Four current-DOM rules now use owned section identity markers while retaining scoped legacy rules. Node120, separate-profile browser84 (including production JS/CSS integration), build and package checks passed. Installed acceptance requires a manual extension refresh; full acceptance and PR creation remain pending.
-
 ## Features
 
-The refreshed extension preserved general navigation during cold loading, expanded hiding and basic SPA transitions. Actual collapse removes the entire service header; that input is now covered by a follow-up correction with Node122/browser84 passing. The refreshed follow-up retained hiding without temporary CSS during actual collapse, native compact-state restoration after reload and compact SPA transitions. Remaining toolbar/explore/profile setting checks, full acceptance and PR creation remain pending.
+- Sidebar live previews, periodic refresh and automatic expansion of followed channels
+- Floating popup players for watching multiple streams
+- Arrow-key seeking and press-and-hold 2× playback for VODs
+- Available playback information such as resolution, measured FPS and codec
+- Brightness, contrast, saturation, gamma and sharpening video filters
+- Audio compressor and Gain controls
+- Donation-message hiding and chat timestamp, width, font and left-side layout controls
+- Style options for recommendations, rankings, mission/party panels and other page elements
 
-Stored toolbar/explore/badge option inversion and basic responsive layout were checked. A two-selector CSS correction for missed live/VOD channel-info avatars passed Node122/browser91 and actual temporary-rule A/B checks. The refreshed extension subsequently preserved sizes and generic thumbnails while squaring those profiles; the original eight settings were restored. Blocked-broadcast hiding remains unverified without an actual blocked target and is not counted as full acceptance.
+Use the extension toolbar icon to enable or disable features. Open Style Settings from the CHZZK tab where the styles should be applied.
 
-An installed filter test reproduced native PZP CSS overriding the extension filter. A CSS candidate preserves the native video pipeline and applies the extension filter once to its source wrapper. Node122/style91/filter17 and actual VOD temporary application/removal passed. Actual live A/B remains unverified because of a diagnostic limitation; full new-CSS installed acceptance and neutral-setting restoration require manual extension refresh. Full acceptance, final review and PR creation remain pending.
+## Installation
 
-### Explore
+Most users should install the extension from the [Chrome Web Store](https://chromewebstore.google.com/detail/cgfddiiffponlciljlfbiecmlagflbpe). The latest GitHub release and the reviewed store version may differ while a store review is in progress.
 
-- **Live Preview:** Preview live by hovering over the channel.
-- **Refresh Sidebar:** Refresh the sidebar every 30 seconds.
-- **Popup Player:** View multiple lives in one window.
+To test local changes, use Node.js 24.15.0 or newer in the Node 24 line:
 
-### Player
+```powershell
+npm ci --ignore-scripts
+npm test
+npm run build
+npm run check
+```
 
-- **Stats Menu:** Select Stats from the right-click menu to view resolution, bitrate, FPS, latency, and codec.
-- **Seek with Arrow Keys:** Use the arrow keys to rewind a short amount of time.
-- **Video Filters:** Adjust video brightness, contrast, and gamma, and apply a sharpen filter.
-- **Audio Compressor:** Reduce loud sounds to adjust the dynamic range to make the sound more comfortable.
+Enable Developer mode at `chrome://extensions`, load the generated `dist` directory as an unpacked extension, and reload open CHZZK tabs. Do not enable the original extension and this recovery at the same time. Settings are not assumed to transfer or synchronize between different extension IDs.
 
-### Chat
+## Known limitations
 
-- **Hide Donation Messages:** Hide Cheese messages in the chat.
-- Adjust chat panel and font size
+- Google Chrome 121 or newer is supported. Firefox builds, signing and distribution are outside the recovery scope.
+- Live arrow-key seeking requires time-machine/DVR access for the stream and account.
+- The extension does not bypass age restrictions, authentication, viewing entitlements or DRM. A preview stays thumbnail-only or limited when the preview API does not provide a playable HLS URL.
+- Deleted-chat display is limited to new ordinary messages in supported live connections. It does not restore earlier hidden messages, Cleanbot messages or VOD deletion history.
+- Audio, previews and video filters depend on browser autoplay policy, media format, GPU and network conditions.
+- Correct operation is not guaranteed for every stream, advertisement, layout mode and setting combination. Report reproducible problems through [Issues](https://github.com/Do-hyeon/cheese-knife/issues).
 
-It also adds many other useful features and allows to customize styles.
+## Privacy and security
 
-> This extension is not affiliated with CHZZK, and related trademarks are the property of their respective owners. This extension is provided "as-is" without any warranties, and the developer assumes no responsibility for any issues, damages, or data loss resulting from its use.
+The extension may process settings and CHZZK page, API and media data inside the browser to provide its features. User data is not sent to a maintainer-operated server, but local processing still counts as data handling. See the [Privacy Policy](PRIVACY.md) for storage, connections, retention and deletion details.
+
+Security checks cover specific tools and scopes and are not proof that the product has no vulnerabilities.
+
+## Development direction
+
+Installed MV3 E2E coverage, explicit module boundaries and an incremental TypeScript transition take priority over new features. The feature roadmap will resume after current behavior has a reliable automated safety net.
+
+[Execution plan](PLANS.md) (Korean) · [Validation scope](docs/superpowers/validation/2026-10-11-recovery-release-gates.md) (Korean) · [Third-party notices](THIRD_PARTY_NOTICES.md)
+
+Before proposing a change, open an [Issue](https://github.com/Do-hyeon/cheese-knife/issues) with its scope and reproduction steps.
+
+## Upstream and license
+
+This repository is based on [jebibot/cheese-knife](https://github.com/jebibot/cheese-knife) and retains its copyright and MIT license. Bundled HLS.js and other third-party components are covered by [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+This extension is not affiliated with CHZZK. CHZZK and related trademarks are property of NAVER Corporation. The software is provided without warranty.
