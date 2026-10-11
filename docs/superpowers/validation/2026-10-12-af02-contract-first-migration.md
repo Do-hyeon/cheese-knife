@@ -81,7 +81,7 @@ AF02 계획의 `invalid/exhausted revision` 문구가 generic API key로 오인�
 - bundled headless Chromium의 unpacked in-place reload는 worker를 다시 시작하지 않아 fresh context startup으로 context invalidation 경계를 검사했다.
 - 실제 계정·쿠키·결제·연령 제한 콘텐츠, Chrome 웹 스토어 자동 업데이트와 장시간 사용은 AF02 proof 범위가 아니다.
 - 로컬 비공개 P02 warning ledger는 이전 source hash를 참조한다. 공개 checkout과 CI에는 이 원장이 없으며 제품 테스트 실패가 아니다.
-- Windows·Ubuntu 공개 CI와 GitHub PR 검토는 아직 실행하지 않았다.
+- 공개 CI run `38161802432`에서 Ubuntu foundation 13초, Windows foundation 40초, 전체 verify 2분 59초로 모두 통과했다.
 
 ## 독립 branch 검토
 
@@ -93,6 +93,13 @@ AF02 계획의 `invalid/exhausted revision` 문구가 generic API key로 오인�
 - 기본 생성 검사는 실행 환경의 사용자명 같은 우연한 문자열과 결합하지 않고, 환경 식별자 음성 검사는 명시 입력으로 유지했다 (`6d101d4`).
 
 보완 뒤 독립 재검토에서 남은 Critical/Important/Minor finding은 없었다. 이는 정적·결정적 검사 범위의 검토 결과이며 보안 인증을 뜻하지 않는다.
+
+## 공개 PR과 병합
+
+- 한글 PR: [#6 AF02: 설정 계약을 TypeScript 원본으로 이전](https://github.com/Do-hyeon/cheese-knife/pull/6)
+- 공개 CI: [run 38161802432](https://github.com/Do-hyeon/cheese-knife/actions/runs/38161802432), Ubuntu·Windows foundation과 전체 verify 통과
+- 병합 시각: 2026-10-12 03:01:38 KST
+- merge commit: `15fbfba912ae26ab9530d13fd35f9496bf75efac`
 
 ## 재현 명령
 
