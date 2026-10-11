@@ -8,7 +8,7 @@
   "settings-contract.js": "d8e91afdd745967f4a740ebd24789b3f1ce4e1f458df31f9add1bd48b2a2c08c",
   "style-schema.js": "2eca52b03d282f97d21f143f267f86af86fcbb3ddb2c452edd7d2149df010ccc",
   "styles.js": "de00954c4d397325f0af9ae4a3ef6ecd9d115d2106c7cce4218f85c7cbe956e6",
-  "web/audio.js": "4ee8a0ee4b72dfbbb446fcfff920b8fd77f3d103a5395f5c8a2ac6bfa13e1818",
+  "web/audio.js": "436401d2077add77ea22d150808680cc6225759f0084e59306d4ab534279ea1f",
   "web/inject.js": "da2fb147cde91953c7bd26f1d23e852185cb0d700d98104aefcaf6c1570237ee",
   "web/main.js": "22cd76c2a41743ca2886dee311a9a6431a013d0de2fd97bac4881d8b58ba4421",
   "web/player.js": "6170e6919a2613dd4b88b32b0b4ed024c7c92b92ad46b85e3f64271b936d728c",

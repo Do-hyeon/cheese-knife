@@ -62,7 +62,10 @@ export function installAudio(target: Window): AudioController | null {
   const announce = (entry: AudioEntry, state: AudioState, reason = ''): void => {
     entry.state = state;
     runtime.setStatus('compressor', state === 'on' ? 'ready' : state === 'off' ? 'disabled' : state === 'pending' ? 'pending' : 'limited', reason);
-    for (const callback of entry.listeners) callback(state, entry.gain);
+    for (const callback of entry.listeners) {
+      try { callback(state, entry.gain); }
+      catch {}
+    }
   };
   const ramp = (parameter: AudioParam, value: number): void => {
     const now = context!.currentTime;
