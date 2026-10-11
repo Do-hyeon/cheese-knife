@@ -6,11 +6,23 @@ import { checkPackage } from './check-package.mjs';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const slash = value => value.split(path.sep).join('/');
+const validateCandidateId = id => {
+  if (typeof id !== 'string' || !/^[A-Za-z0-9]+$/.test(id)) {
+    throw Object.assign(new Error('candidate-id-invalid'), { code: 'candidate-id-invalid' });
+  }
+  return id;
+};
+
+export async function removeCandidate(id) {
+  const candidateId = validateCandidateId(id);
+  const repository = await openOwnedRoot(repositoryRoot);
+  return repository.removeTree(`output/tool-audit/p02-candidate-${candidateId}`);
+}
 
 export async function verifyCandidate(id) {
-  if (typeof id !== 'string' || !/^[A-Za-z0-9]+$/.test(id)) throw Object.assign(new Error('candidate-id-invalid'), { code: 'candidate-id-invalid' });
+  const candidateId = validateCandidateId(id);
   const repository = await openOwnedRoot(repositoryRoot);
-  const candidateRelative = `output/tool-audit/p02-candidate-${id}/chrome-candidate`;
+  const candidateRelative = `output/tool-audit/p02-candidate-${candidateId}/chrome-candidate`;
   if (await repository.lstat(candidateRelative, { optional: true })) throw Object.assign(new Error('candidate-destination-exists'), { code: 'candidate-destination-exists' });
   await repository.ensureDirectory(candidateRelative);
   try {
