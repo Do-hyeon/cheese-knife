@@ -27,9 +27,9 @@
 - GitHub `main`: `2e2ee90be0f9ba402fe12bbd6cf1bd556b0a607e`.
 - PR #2 `2.13.3` 복구 변경, PR #3 README 간소화, PR #4 AF00 설치형 E2E 기반과 PR #5 AF01 타입·빌드 기반은 `main`에 병합됐다.
 - GitHub prerelease `v2.13.3-community.1`이 공개됐다.
-- Chrome 웹 스토어 2.13.3 교체본은 사용자가 제출했으며 마지막 확인 상태는 **심사 대기**다. 이 문서는 심사 통과나 실제 자동 업데이트를 완료로 가정하지 않는다.
+- Chrome 웹 스토어 2.13.3 교체본은 사용자가 게시 완료를 확인했다. 새 설치·기존 설치 자동 업데이트와 설정 보존은 아직 완료로 가정하지 않는다.
 - 현재 계획 브랜치: `codex/af02-contract-first-migration`.
-- AF01은 PR #5로 병합됐고 최종 공개 CI run `38157976040`에서 Windows·Ubuntu foundation과 전체 verify가 통과했다. 현재 브랜치는 승인된 AF02 상세 설계를 파일·테스트·명령·커밋 단위로 나눈 구현 계획 검토 단계다.
+- AF01은 PR #5로 병합됐고 최종 공개 CI run `38157976040`에서 Windows·Ubuntu foundation과 전체 verify가 통과했다. 현재 브랜치는 승인된 AF02 구현과 로컬 전체 검증을 완료했으며 독립 branch 검토를 앞두고 있다.
 
 GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 상태는 사용자가 보고한 마지막 상태이며 P09에서 게시 후 다시 확인한다.
 
@@ -50,27 +50,27 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 상태�
 | ID | 작업 묶음 | 선행 조건 | 상태 | 다음 게이트 |
 | --- | --- | --- | --- | --- |
 | P01–P08 | 복구·검증·2.13.3 GitHub 공개 | 기존 승인 | DONE | 상세는 archive/validation 참조 |
-| P09 | 스토어 2.13.3 게시·업데이트 기준 고정 | 외부 심사 통과 | WAITING-DEPENDENCY | 실제 게시·새 설치·업데이트·설정 보존 확인 |
+| P09 | 스토어 2.13.3 게시·업데이트 기준 고정 | 외부 심사 통과 | READY | 새 설치·업데이트·설정 보존 확인 |
 | AF00 | 설치된 MV3 산출물 E2E | 설계 승인 | DONE | 검증 기록과 CI 게이트 유지 |
 | AF01 | 타입·빌드 전환 기반 | AF00 | DONE | strict/build proof와 공개 CI 유지 |
-| AF02 | 계약 우선 TypeScript 전환 | AF01 | PLAN-REVIEW | 상세 설계 승인 뒤 구현 계획 작성 |
+| AF02 | 계약 우선 TypeScript 전환 | AF01 | DOING | 독립 검토 뒤 한글 PR·공개 CI |
 | AF03 | MAIN runtime·site adapter 분리 | AF02 | BLOCKED | 불안정한 치지직 경계 격리 |
 | AF04 | 기능별 모듈 이전 | AF03 | BLOCKED | audio/player/preview/chat/sidebar 순차 이전 |
 | AF05 | 이행 종료·공개 게이트 | AF04, P09 | BLOCKED | 설치·업데이트·롤백과 정책 정합성 확인 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **AF02 구현 계획 검토**. 구현 계획과 실행 방식을 승인하기 전에는 AF02 제품 이전을 시작하지 않는다.
+현재 커서: **AF02 독립 branch 검토**. Critical/Important finding이 없거나 모두 보완되면 한글 PR과 공개 CI로 이동한다.
 
 ## 5. P09 — 스토어 게시 후 고정
 
 - [x] 2.13.3 소스 PR 병합과 GitHub prerelease 공개.
 - [x] Chrome 웹 스토어 교체본 제출.
-- [ ] 스토어 공개 페이지에서 2.13.3 게시 상태와 설명·스크린샷·지원 링크 확인.
+- [x] 사용자가 스토어 공개 페이지의 2.13.3 게시 상태를 확인.
 - [ ] 새 설치가 게시 산출물을 받는지 확인.
 - [ ] 기존 2.13.2 설치가 2.13.3으로 업데이트되고 설정이 보존되는지 확인.
 - [ ] 배포 commit, version, ZIP SHA-256, 게시 시각, 검증 범위와 롤백 경로를 validation 문서에 고정.
 
-P09는 외부 심사 대기 중이지만 AF00의 격리된 계획·구현을 막지 않는다. AF05 공개 게이트 전에는 반드시 완료한다.
+P09의 게시 뒤 설치·업데이트 수용 검사는 AF02의 내부 계약 전환을 막지 않는다. AF05 공개 게이트 전에는 반드시 완료한다.
 
 ## 6. AF00 — 설치형 MV3 E2E
 
@@ -128,10 +128,15 @@ P09는 외부 심사 대기 중이지만 AF00의 격리된 계획·구현을 막
 - [x] 생성 JS drift, 타입 과신, module 전환, queue·storage 의미 변화에 대한 공격 검토를 상세 설계에 반영.
 - [x] 상세 설계 문서 사용자 검토·승인.
 - [x] 정확한 파일·테스트·명령·커밋 단위의 구현 계획 작성·자체 검토.
-- [ ] 구현 계획 사용자 검토·승인과 실행 방식 선택.
-- [ ] 설정 schema·validator·message union·revision 계약을 단일 근거로 정리.
-- [ ] background broker/client와 popup/styles 경계를 작은 단위로 TypeScript 이전.
-- [ ] 손상 storage, 오래된 revision, 잘못된 message의 정적·런타임 거부 확인.
+- [x] 구현 계획 사용자 검토·승인과 주 실행자 순차 실행 방식 선택.
+- [x] 설정 schema·validator·message union·revision 계약을 단일 TypeScript 근거로 정리.
+- [x] background broker/client와 popup/styles 경계를 기존 전역 ABI 그대로 TypeScript 이전.
+- [x] 손상 storage, 오래된 revision, 잘못된 message의 정적·런타임 거부 확인.
+- [x] 결정적 생성·drift·build/candidate/package 우회 방지와 LF 계약 확인.
+- [x] 공개 checkout 조건 전체 회귀·객관 오디오·설치형 positive/negative E2E 확인.
+- [x] npm·Gitleaks 0, AF02 신규 ESLint 관측 0과 기존 guarded observation 보존 확인.
+- [ ] 전체 branch 독립 검토와 Critical/Important finding 보완.
+- [ ] 한글 PR, Windows·Ubuntu 공개 CI와 병합 상태 고정.
 
 ### AF03 — runtime·adapter 분리
 
@@ -184,4 +189,4 @@ git -c core.safecrlf=false diff --check
 
 ## 10. 현재 사용자 개입 지점
 
-AF02 구현 계획과 실행 방식 승인에서만 사용자 판단이 필요하다. 승인된 구현 범위 안에서는 사용자 개입 없이 구현·검증·한글 PR·공개 CI와 승인 범위 내 병합을 이어간다. GitHub 인증·보호 규칙·CI 장애나 확장 새로고침처럼 외부 입력이 실제로 필요한 경우에만 요청한다. 스토어 심사가 끝나면 P09 설치 수용을 별도로 재개한다.
+AF02의 다음 단계는 독립 검토와 한글 PR·공개 CI다. 승인된 구현 범위 안에서는 사용자 개입 없이 이어가며 GitHub 인증·보호 규칙·CI 장애처럼 외부 입력이 실제로 필요한 경우에만 요청한다. P09 설치 수용은 AF02와 별도로 재개한다.

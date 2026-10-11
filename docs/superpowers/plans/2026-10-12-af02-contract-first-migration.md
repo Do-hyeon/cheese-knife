@@ -56,7 +56,7 @@
 - Consumes: `openOwnedRoot(directory)`; esbuild `transform(source, options)`; AF01의 browser artifact 금지 규칙.
 - Produces: `SETTINGS_RUNTIME_ENTRIES`, `SETTINGS_RUNTIME_OPTIONS`, `renderSettingsRuntime(root)`, `validateSettingsRuntime(outputs, identities?)`, `checkSettingsRuntime(root)`, `writeSettingsRuntime(root)`.
 
-- [ ] **Step 1: generator 계약의 실패 검사를 작성한다**
+- [x] **Step 1: generator 계약의 실패 검사를 작성한다**
 
 `tests/settings-runtime-generation.test.cjs`에 임시 owned root와 세 최소 global-script source를 만들고 다음을 단언한다.
 
@@ -79,19 +79,19 @@ await assert.rejects(mod.checkSettingsRuntime(root), { code: 'settings-runtime-d
 - `CI` 환경 write는 `settings-runtime-write-ci`로 거부
 - symlink input, source map marker, `eval`, `new Function`, remote URL, 절대 경로, 환경 식별자와 timestamp 거부
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `node --test tests/settings-runtime-generation.test.cjs tests/build-proof.test.cjs`
 
 Expected: FAIL because `scripts/settings-runtime.mjs` and shared source inspection export do not exist.
 
-- [ ] **Step 3: 기존 artifact 검사를 재사용 가능하게 만든다**
+- [x] **Step 3: 기존 artifact 검사를 재사용 가능하게 만든다**
 
 `scripts/check-build-proof.mjs`에서 한 output string의 `eval`, function constructor, remote URL/import, Windows/POSIX/temp path, environment identity와 timestamp를 검사하는 `inspectBrowserSource(source: string, identities?: string[]): void`를 export한다. 기존 `inspectProofRun`은 같은 함수를 호출하고 현재 `proof-*` error code와 baseline 결과를 유지한다.
 
 `tests/build-proof.test.cjs`는 기존 negative table이 그대로 통과하며 직접 `inspectBrowserSource` 호출도 같은 error code를 내는지 한 case로 고정한다.
 
-- [ ] **Step 4: 최소 generator/checker를 구현한다**
+- [x] **Step 4: 최소 generator/checker를 구현한다**
 
 `scripts/settings-runtime.mjs`에 다음 고정 계약을 구현한다.
 
@@ -104,13 +104,13 @@ writeSettingsRuntime(root?: string): Promise<{ files: string[]; hashes: Record<s
 
 각 source는 `loader: 'ts'`, `target: 'chrome121'`, `minify: false`, `sourcemap: false`, `legalComments: 'none'`으로 개별 transform한다. bundle과 format wrapper는 사용하지 않는다. output 앞에는 source 경로를 포함한 고정 generated marker 한 줄만 붙인다. check는 두 번 render해 결정성을 확인한 뒤 committed output과 byte 비교하고, write는 `CI`가 아닐 때만 `openOwnedRoot.writeFile`로 세 output을 쓴다. CLI는 무인수 check와 단일 `--write`만 허용한다.
 
-- [ ] **Step 5: generator와 기존 proof 회귀를 통과시킨다**
+- [x] **Step 5: generator와 기존 proof 회귀를 통과시킨다**
 
 Run: `node --test tests/settings-runtime-generation.test.cjs tests/build-proof.test.cjs tests/owned-files.test.cjs`
 
 Expected: PASS; temporary roots are removed and repository files are unchanged.
 
-- [ ] **Step 6: 커밋한다**
+- [x] **Step 6: 커밋한다**
 
 ```bash
 git add scripts/settings-runtime.mjs scripts/check-build-proof.mjs tests/settings-runtime-generation.test.cjs tests/build-proof.test.cjs
@@ -140,7 +140,7 @@ git commit -m "build: add deterministic settings generator"
 - Consumes: Task 1 generator; existing `CONFIGS`, `STYLES`, `normalizeConfig`, `KnifeHostPolicy` globals.
 - Produces: unchanged `KnifeSettingsContract.{validateOperations,validateRequest,readRevision,mergeOperations,makeSnapshot,cssFiles}`; unchanged `createSettingsClient(chromeApi)` and `createSettingsBroker(chromeApi)` factory APIs; package scripts `generate:settings`, `check:settings-runtime`, `typecheck`.
 
-- [ ] **Step 1: 새 source와 일반 TypeScript 설정을 요구하는 실패 검사를 작성한다**
+- [x] **Step 1: 새 source와 일반 TypeScript 설정을 요구하는 실패 검사를 작성한다**
 
 `tests/type-foundation.test.cjs`를 AF02 이름과 다음 assertion으로 바꾼다.
 
@@ -154,13 +154,13 @@ git commit -m "build: add deterministic settings generator"
 
 `tests/settings-runtime-generation.test.cjs`에는 repository root의 `checkSettingsRuntime()`가 통과하고 check 전후 `git` 대상 여섯 파일 byte가 같다는 test를 추가한다.
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `node --test tests/type-foundation.test.cjs tests/settings-runtime-generation.test.cjs`
 
 Expected: FAIL because `src/settings/*.ts` and `tsconfig.json` do not exist and old declaration files still exist.
 
-- [ ] **Step 3: 계약 타입과 구현을 `contract.ts`로 기계적으로 이동한다**
+- [x] **Step 3: 계약 타입과 구현을 `contract.ts`로 기계적으로 이동한다**
 
 `types/knife-settings.d.ts`의 settings 관련 type alias와 현재 `settings-contract.js` 구현을 `src/settings/contract.ts`에 합친다. namespace `cheese-knife-settings`, protocol `1`과 action type/validator를 같은 파일에 두되 새 공개 helper나 전역은 만들지 않는다. client의 기존 request literal은 유지하고 통합 테스트로 validator와의 일치를 고정한다. 허용 config/style ID와 range는 literal union으로 복제하지 않고 기존 `CONFIGS`/`STYLES`에서 계산한다.
 
@@ -175,7 +175,7 @@ makeSnapshot(raw: KnifeUnknownRecord, css: KnifeCssState): KnifeSettingsSnapshot
 cssFiles(styles: unknown): string[]
 ```
 
-- [ ] **Step 4: client와 broker를 제어 흐름 변경 없이 TypeScript로 이동한다**
+- [x] **Step 4: client와 broker를 제어 흐름 변경 없이 TypeScript로 이동한다**
 
 `settings-client.js`와 `settings-broker.js`를 각각 `src/settings/client.ts`, `src/settings/broker.ts`로 옮긴다. JSDoc type cast를 TypeScript annotation/narrowing으로 바꾸되 다음은 그대로 둔다.
 
@@ -184,7 +184,7 @@ cssFiles(styles: unknown): string[]
 
 새 helper, class, generic framework나 동작 개선은 추가하지 않는다.
 
-- [ ] **Step 5: 일반 TypeScript project와 LF 경계를 고정한다**
+- [x] **Step 5: 일반 TypeScript project와 LF 경계를 고정한다**
 
 `tsconfig.af01.json`을 `tsconfig.json`으로 교체하고 세 TS source를 global-script로 함께 검사한다. `types/knife-settings.d.ts`는 삭제한다. `package.json`은 다음 script만 변경/추가한다.
 
@@ -196,13 +196,13 @@ cssFiles(styles: unknown): string[]
 
 `.gitattributes`에 `src/settings/*.ts`와 세 generated root JS를 `text eol=lf`로 고정한다.
 
-- [ ] **Step 6: 생성 JS를 명시적으로 갱신한다**
+- [x] **Step 6: 생성 JS를 명시적으로 갱신한다**
 
 Run: `node scripts/settings-runtime.mjs --write`
 
 Expected: exactly `settings-contract.js`, `settings-client.js`, `settings-broker.js` change; no source map or additional output exists.
 
-- [ ] **Step 7: contract·client·broker의 집중 회귀를 순서대로 실행한다**
+- [x] **Step 7: contract·client·broker의 집중 회귀를 순서대로 실행한다**
 
 Run:
 
@@ -214,13 +214,13 @@ node --test tests/settings-broker.test.cjs tests/settings-style-apply.test.cjs t
 
 Expected: all PASS. 특히 malformed request/reply, inherited key, invalid/exhausted revision, stale read/ack, queue overflow, closed response channel, CSS retry와 target reload case가 유지된다.
 
-- [ ] **Step 8: 타입·생성·실행 hash를 검증한다**
+- [x] **Step 8: 타입·생성·실행 hash를 검증한다**
 
 Run: `npm run typecheck && npm run check:settings-runtime && npm run check:runtime-js && node --test tests/type-foundation.test.cjs tests/settings-runtime-generation.test.cjs tests/runtime-inventory.test.cjs`
 
 Expected: PASS; runtime JS 파일 목록은 기존 16개이고 세 생성 파일의 normalized executable hash는 AF01 기준과 동일하다. hash가 다르면 baseline을 바로 갱신하지 말고 생성 전후 실행 코드를 비교해 의미 변화 원인을 제거하거나 설계를 다시 검토한다.
 
-- [ ] **Step 9: 커밋한다**
+- [x] **Step 9: 커밋한다**
 
 ```bash
 git add .gitattributes package.json tsconfig.json src/settings settings-contract.js settings-client.js settings-broker.js tests/type-foundation.test.cjs tests/settings-runtime-generation.test.cjs
@@ -241,7 +241,7 @@ git commit -m "refactor: move settings contracts to TypeScript"
 - Consumes: Task 1 `checkSettingsRuntime(root)`; existing `build(directory, output, browser)` copy builder.
 - Produces: `buildChecked(directory, output, browser)` for repository CLI builds; candidate pre-copy drift gate; distribution `.ts` rejection; Windows/Ubuntu foundation drift check.
 
-- [ ] **Step 1: 배포 경로 우회 실패 검사를 작성한다**
+- [x] **Step 1: 배포 경로 우회 실패 검사를 작성한다**
 
 `tests/package.test.cjs`에 다음을 추가한다.
 
@@ -250,13 +250,13 @@ git commit -m "refactor: move settings contracts to TypeScript"
 - `checkDistributionFiles`가 `src/settings/contract.ts`를 `distribution-developer-file`로 거부
 - 실제 `verifyCandidate` 성공 전에 repository `checkSettingsRuntime`가 통과하며 결과 `dist`에는 `.ts`, `src/`, `types/`, source map이 없음
 
-- [ ] **Step 2: 실패를 확인한다**
+- [x] **Step 2: 실패를 확인한다**
 
 Run: `node --test tests/package.test.cjs`
 
 Expected: FAIL because `buildChecked`, candidate drift gate and `.ts` distribution rejection do not exist.
 
-- [ ] **Step 3: checked repository build와 candidate gate를 연결한다**
+- [x] **Step 3: checked repository build와 candidate gate를 연결한다**
 
 `scripts/build.mjs`에 다음 wrapper를 추가하고 CLI가 이를 호출하게 한다.
 
@@ -268,11 +268,11 @@ buildChecked(directory?: string, output?: string, browser?: 'chrome'): Promise<s
 
 `scripts/verify-candidate.mjs`는 repository 파일을 후보로 복사하기 전에 `checkSettingsRuntime(repositoryRoot)`를 호출한다. candidate에 `src/`, generator 또는 node_modules를 복사하지 않는다.
 
-- [ ] **Step 4: TypeScript source가 배포물에 들어가지 않게 한다**
+- [x] **Step 4: TypeScript source가 배포물에 들어가지 않게 한다**
 
 `scripts/check-package.mjs`의 `checkDistributionFiles`가 모든 `.ts` 파일과 `src/` tree를 `distribution-developer-file`로 거부하도록 한다. 기존 `.map`, `build-proof/`, `types/`, `tsconfig*.json` 거부를 유지한다.
 
-- [ ] **Step 5: 공개 foundation CI에 drift 검사를 추가한다**
+- [x] **Step 5: 공개 foundation CI에 drift 검사를 추가한다**
 
 `.github/workflows/ci.yml`의 Windows/Ubuntu offline foundation command를 다음 순서로 고정한다.
 
@@ -282,7 +282,7 @@ npm run check:toolchain && npm run check:runtime-js && npm run typecheck && npm 
 
 publish workflow는 기존 `npm run build`가 `buildChecked`를 호출하므로 별도 중복 step을 추가하지 않는다.
 
-- [ ] **Step 6: package와 foundation 집중 검증을 통과시킨다**
+- [x] **Step 6: package와 foundation 집중 검증을 통과시킨다**
 
 Run:
 
@@ -299,7 +299,7 @@ npm run check
 
 Expected: all PASS; `dist`에는 generated JS만 있고 TS source/developer files는 없다.
 
-- [ ] **Step 7: 커밋한다**
+- [x] **Step 7: 커밋한다**
 
 ```bash
 git add scripts/build.mjs scripts/verify-candidate.mjs scripts/check-package.mjs tests/package.test.cjs .github/workflows/ci.yml
@@ -316,7 +316,7 @@ git commit -m "build: gate settings artifacts before packaging"
 - Consumes: Tasks 1–3의 최종 branch와 기존 AF01/AF00 검증 명령.
 - Produces: AF02 code evidence commit, validation 기록, 갱신된 장기 커서와 review-ready 한글 PR 범위.
 
-- [ ] **Step 1: clean working tree 후보에서 전체 자동 회귀를 실행한다**
+- [x] **Step 1: clean working tree 후보에서 전체 자동 회귀를 실행한다**
 
 Run:
 
@@ -338,7 +338,7 @@ git -c core.safecrlf=false diff --check
 
 Expected: all required product gates PASS. `tool-audit`는 기존 guarded observation을 clean으로 위장하지 않고 AF02 신규 finding 0을 별도로 판정한다.
 
-- [ ] **Step 2: 제품·정책 diff를 고정한다**
+- [x] **Step 2: 제품·정책 diff를 고정한다**
 
 AF02 기준점 `2e2ee90`과 비교해 다음을 확인한다.
 
@@ -348,13 +348,13 @@ AF02 기준점 `2e2ee90`과 비교해 다음을 확인한다.
 - runtime JS 파일 목록 변화 0, 세 파일의 생성 provenance와 source→dist byte 일치
 - 실제 계정·쿠키·결제·연령 제한 자료가 commit/output에 없음
 
-- [ ] **Step 3: validation과 PLANS를 증거에 맞게 갱신한다**
+- [x] **Step 3: validation과 PLANS를 증거에 맞게 갱신한다**
 
 `docs/superpowers/validation/2026-10-12-af02-contract-first-migration.md`에 code evidence commit, Node/Chrome/tool version, test 수, 생성 hash, Windows/Ubuntu 예정 CI gate, installed E2E 결과, 정책 불변성, 알려진 한계와 rollback을 기록한다.
 
 `PLANS.md`는 실제 증거가 있는 AF02 checklist만 완료하고 현재 커서를 한글 PR/CI 또는 다음 미완료 gate로 이동한다. 이번 내부 전환은 사용자 사용법과 공개 기능을 바꾸지 않으므로 README는 수정하지 않는다.
 
-- [ ] **Step 4: 문서와 branch diff를 자체 검토한다**
+- [x] **Step 4: 문서와 branch diff를 자체 검토한다**
 
 Run:
 
@@ -366,7 +366,7 @@ git diff 2e2ee90...HEAD -- manifest.json popup.html styles.html background.js
 
 Expected: whitespace clean; 마지막 command의 제품 진입점 diff는 empty; 변경은 승인된 source/generator/test/build/docs에 한정된다.
 
-- [ ] **Step 5: 검증 문서를 커밋한다**
+- [x] **Step 5: 검증 문서를 커밋한다**
 
 ```bash
 git add PLANS.md docs/superpowers/validation/2026-10-12-af02-contract-first-migration.md
