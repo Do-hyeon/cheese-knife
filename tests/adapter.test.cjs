@@ -7,7 +7,8 @@ test('optional site adapter survives absent webpack and React', async t => {
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
   load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
   assert.equal(await runtime(dom).adapter.getCorePlayer(dom.window.document.body), null);
-  assert.equal(await runtime(dom).adapter.getWebpackRequire(), null);
+  assert.equal(runtime(dom).adapter.getWebpackRequire, undefined);
+  assert.equal(runtime(dom).adapter.contextOf, undefined);
 });
 
 test('optional site adapter does not evaluate throwing global getters', async t => {
@@ -16,7 +17,7 @@ test('optional site adapter does not evaluate throwing global getters', async t 
   Object.defineProperty(dom.window, 'webpackChunkglive_fe_pc', { get() { getters++; throw new Error('unexpected getter'); } });
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
   load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
-  assert.equal(await runtime(dom).adapter.getWebpackRequire(), null);
+  assert.equal(runtime(dom).adapter.getWebpackRequire, undefined);
   assert.equal(getters, 0);
 });
 
