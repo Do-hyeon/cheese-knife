@@ -130,6 +130,7 @@ export function installAudio(target: Window): AudioController | null {
 
   const controller: AudioController = {
     async setEnabled(video, enabled) {
+      if (scope.disposed) return 'off';
       const entry = entryFor(video);
       const generation = ++entry.generation;
       entry.wanted = enabled === true;
@@ -151,6 +152,7 @@ export function installAudio(target: Window): AudioController | null {
             ]);
           } finally { if (timer !== undefined) target.clearTimeout(timer); }
         }
+        if (scope.disposed) { entry.wanted = false; entry.state = 'off'; return entry.state; }
         if (generation !== entry.generation || !entry.wanted) return entry.state;
         if (context.state !== 'running' || runtime.selectPlayer()?.video !== video || !eligible(video)) throw new Error('audio-not-ready');
         if (!entry.source) {
@@ -167,6 +169,7 @@ export function installAudio(target: Window): AudioController | null {
         ramp(entry.dry!.gain, 0); ramp(entry.wet!.gain, 1);
         announce(entry, 'on');
       } catch (error: unknown) {
+        if (scope.disposed) { entry.wanted = false; entry.state = 'off'; return entry.state; }
         if (generation !== entry.generation || !entry.wanted) return entry.state;
         if (entry.source) {
           try { connect(entry); bypassEntry(entry); }

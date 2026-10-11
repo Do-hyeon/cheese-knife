@@ -16,7 +16,10 @@ function setup(t, suspended = false, manualClock = false, suppliedConfig = { com
   let gains = 0;
   dom.window.AudioContext = class {
     constructor() { this.state = suspended ? 'suspended' : 'running'; this.destination = node('destination'); this.currentTime = 0; this.sampleRate = failures.sampleRate || 48000; context = this; }
-    resume() { return new Promise(resolve => { resolveResume = () => { this.state = 'running'; resolve(); }; }); }
+    resume() {
+      if (failures.resumeReject) return Promise.reject(new Error('resume unavailable'));
+      return new Promise(resolve => { resolveResume = () => { this.state = 'running'; resolve(); }; });
+    }
     createMediaElementSource(element) { assert.equal(element, video); sources++; return node('source'); }
     createGain() {
       gains++;
@@ -242,6 +245,22 @@ test('final pagehide is idempotent and a late retirement callback is inert', asy
   assert.equal(audio.getState(video), 'off');
   assert.equal(statusChanges.filter(([feature, state]) => feature === 'compressor' && state === 'disabled').length, 1);
   assert.equal(statusChanges.every(([feature]) => feature === 'compressor'), true);
+});
+
+test('final pagehide blocks a pending resume and later enable calls', async t => {
+  for (const rejected of [false, true]) {
+    await t.test(rejected ? 'resume rejects' : 'resume resolves', async child => {
+      const { dom, audio, video, sources, resume, statusChanges } = setup(child, true, false, { compressorAttack: 0 }, { resumeReject: rejected });
+      const enabling = audio.setEnabled(video, true);
+      const beforeFinal = statusChanges.length;
+      dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
+      if (!rejected) resume();
+      assert.equal(await enabling, 'off');
+      assert.equal(await audio.setEnabled(video, true), 'off');
+      assert.equal(sources(), 0);
+      assert.equal(statusChanges.length, beforeFinal);
+    });
+  }
 });
 
 test('invalid stored gain is normalized before being applied to an audio graph', async t => {

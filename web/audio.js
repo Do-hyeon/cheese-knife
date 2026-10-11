@@ -129,6 +129,7 @@
     };
     const controller = {
       async setEnabled(video, enabled) {
+        if (scope.disposed) return "off";
         const entry = entryFor(video);
         const generation = ++entry.generation;
         entry.wanted = enabled === true;
@@ -160,6 +161,11 @@
               if (timer !== void 0) target.clearTimeout(timer);
             }
           }
+          if (scope.disposed) {
+            entry.wanted = false;
+            entry.state = "off";
+            return entry.state;
+          }
           if (generation !== entry.generation || !entry.wanted) return entry.state;
           if (context.state !== "running" || runtime.selectPlayer()?.video !== video || !eligible(video)) throw new Error("audio-not-ready");
           if (!entry.source) {
@@ -184,6 +190,11 @@
           ramp(entry.wet.gain, 1);
           announce(entry, "on");
         } catch (error) {
+          if (scope.disposed) {
+            entry.wanted = false;
+            entry.state = "off";
+            return entry.state;
+          }
           if (generation !== entry.generation || !entry.wanted) return entry.state;
           if (entry.source) {
             try {
