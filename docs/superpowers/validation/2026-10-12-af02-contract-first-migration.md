@@ -1,7 +1,7 @@
 # AF02 계약 우선 TypeScript 전환 검증 기록
 
 - 검증일: 2026-10-12 / Asia-Seoul
-- 검증 코드 대상: `181f829f89de0fb724cceeda9116e403d12fa6fc` (`codex/af02-contract-first-migration`)
+- 검증 코드 대상: `6d101d4502360122e3f31c95fe5d7e87f96e276d` (`codex/af02-contract-first-migration`)
 - 증거 결속: 아래 전체 회귀·Chrome 검사·도구 감사는 이 코드 커밋에서 실행했으며, 이후 커밋은 이 검증 기록과 계획 상태만 갱신한다.
 - 기준점: `2e2ee90be0f9ba402fe12bbd6cf1bd556b0a607e` (`main`, PR #5 병합)
 - 환경: Windows x64, Node 24.19.0, Playwright 1.62.1, bundled Chromium 155.0.8059.39
@@ -26,7 +26,8 @@ AF02의 로컬 구현·수용 조건을 충족했다. `settings-contract.js`, `s
 | 게이트 | 결과 |
 | --- | --- |
 | 현재 작업 폴더 전체 Node 테스트 | 671 tests, 670 passed, 1 failed; 실패는 코드와 무관한 로컬 비공개 P02 원장의 이전 source hash |
-| 공개 checkout 조건 전체 Node 테스트 | 로컬 임시 clone에서 671 tests, 670 passed, 0 failed, 1 skipped |
+| CI 집중 회귀 | `CI=true`에서 settings 생성·package 41 tests, 41 passed |
+| 공개 checkout 조건 전체 Node 테스트 | `CI=true` 로컬 임시 clone에서 671 tests, 670 passed, 0 failed, 1 skipped |
 | private 감사 증거 검사 | 공개 checkout에 없는 비공개 원장은 의도대로 1 skipped |
 | TypeScript strict | 통과, `any`/`@ts-ignore`/emit 없음 |
 | settings 생성 검사 | 세 파일 결정성·drift·read-only·CI write 거부 통과 |
@@ -35,7 +36,7 @@ AF02의 로컬 구현·수용 조건을 충족했다. `settings-contract.js`, `s
 | build·package | `dist` build, v2.13.3, manifest 참조 20개 통과; TS·`src`·source map 미포함 |
 | source→`dist` | 모든 제품 JavaScript byte 동일 |
 | 객관 오디오 | Chromium 155, full-scale 초과 0, 스트레스 peak 0.980000019, 250/750/1000Hz 전환 기준선 일치 |
-| positive 설치 E2E | 모든 report section passed, 64,849ms |
+| positive 설치 E2E | 모든 report section passed, 63,054ms |
 | negative 설치 E2E | 예상 오류 `main-runtime-missing`만 관측 |
 | 도구 감사 | npm 0, Gitleaks 현재/Git 0, AF02 신규 ESLint 관측 0 |
 | whitespace | `git -c core.safecrlf=false diff --check` 통과 |
@@ -68,9 +69,9 @@ AF02의 로컬 구현·수용 조건을 충족했다. `settings-contract.js`, `s
 
 ## 도구 감사 경계
 
-최신 비공개 감사 보고서는 `output/tool-audit/run-2026-10-11T17-36-56-388Z-kqEdPH`에 있다. npm audit와 Gitleaks의 현재 파일·전체 Git 이력은 0건이다. ESLint 관측 7개는 AF01부터 유지한 `scripts/owned-files.mjs`의 동적 파일 시스템 capability 경계이며, containment·link·type 검사를 한 곳에 모은 설계상 관측이다. 종료 상태 1은 이를 clean으로 위장하지 않는 기존 계약이다.
+최신 비공개 감사 보고서는 `output/tool-audit/run-2026-10-11T17-55-46-738Z-wbpgCH`에 있다. npm audit와 Gitleaks의 현재 파일·전체 Git 이력은 0건이다. ESLint 관측 7개는 AF01부터 유지한 `scripts/owned-files.mjs`의 동적 파일 시스템 capability 경계이며, containment·link·type 검사를 한 곳에 모은 설계상 관측이다. 종료 상태 1은 이를 clean으로 위장하지 않는 기존 계약이다.
 
-AF02 계획의 `invalid/exhausted revision` 문구가 generic API key로 오인된 항목은 `regexTarget = "line"`과 정확한 문구 하나로만 제외했다. 파일·경로·규칙 전체를 제외하지 않으며, 변경 뒤 Gitleaks 현재 파일과 전체 Git 이력은 모두 0건이다.
+AF02 계획의 `invalid/exhausted revision` 문구가 generic API key로 오인된 항목은 `generic-api-key` 규칙에서 정확히 `invalid/exhausted` secret에만 일치하도록 제외했다. 파일·경로·규칙 전체를 제외하지 않으며, 같은 줄에 가짜 토큰을 추가한 음성 대조군은 탐지된다. 변경 뒤 Gitleaks 현재 파일과 전체 Git 이력은 모두 0건이다.
 
 도구 감사 자체는 exploit 재현이나 모델 보안 검사를 하지 않고, locally patched HLS를 dependency advisory로 분석하지 않는다. HLS 경계·vendoring·실제 bundle 검사는 별도 전체 Node 회귀에서 통과했다.
 
@@ -80,7 +81,18 @@ AF02 계획의 `invalid/exhausted revision` 문구가 generic API key로 오인�
 - bundled headless Chromium의 unpacked in-place reload는 worker를 다시 시작하지 않아 fresh context startup으로 context invalidation 경계를 검사했다.
 - 실제 계정·쿠키·결제·연령 제한 콘텐츠, Chrome 웹 스토어 자동 업데이트와 장시간 사용은 AF02 proof 범위가 아니다.
 - 로컬 비공개 P02 warning ledger는 이전 source hash를 참조한다. 공개 checkout과 CI에는 이 원장이 없으며 제품 테스트 실패가 아니다.
-- Windows·Ubuntu 공개 CI와 PR 검토는 아직 실행하지 않았다.
+- Windows·Ubuntu 공개 CI와 GitHub PR 검토는 아직 실행하지 않았다.
+
+## 독립 branch 검토
+
+전체 `main..AF02` diff를 독립 검토했고, 발견된 Important 항목은 모두 구현 커밋에서 보완한 뒤 전체 게이트를 다시 실행했다.
+
+- `CI=true`에서 fixture 생성까지 막던 충돌은 fixture가 render 결과를 직접 기록하도록 고쳐, 제품용 write 금지 계약을 유지했다 (`9eb26b2`).
+- 생성기가 숨은 IIFE/global, inline export, `import.meta`, 생성된 `require`를 허용할 수 있던 경계를 고정된 global 시작점·classic-script 구문 검사·금지 토큰 검사로 닫았다 (`6d101d4`).
+- CHZZK origin masking과 Gitleaks 제외 범위를 필요한 정확한 비교·secret으로 줄였다 (`6d101d4`).
+- 기본 생성 검사는 실행 환경의 사용자명 같은 우연한 문자열과 결합하지 않고, 환경 식별자 음성 검사는 명시 입력으로 유지했다 (`6d101d4`).
+
+보완 뒤 독립 재검토에서 남은 Critical/Important/Minor finding은 없었다. 이는 정적·결정적 검사 범위의 검토 결과이며 보안 인증을 뜻하지 않는다.
 
 ## 재현 명령
 

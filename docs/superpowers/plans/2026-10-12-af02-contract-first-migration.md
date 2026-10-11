@@ -373,7 +373,7 @@ git add PLANS.md docs/superpowers/validation/2026-10-12-af02-contract-first-migr
 git commit -m "docs: record AF02 validation"
 ```
 
-- [ ] **Step 6: 전체 branch를 독립 검토에 넘긴다**
+- [x] **Step 6: 전체 branch를 독립 검토에 넘긴다**
 
 가장 최신 `main`과 AF02 HEAD의 immutable diff를 대상으로 correctness, runtime validation, generated artifact drift, Windows/Ubuntu line endings, build/candidate bypass, permission/data/store-policy 변화와 rollback을 검토한다. Critical/Important finding은 구현 commit에서 보완하고 Task 4 전체 게이트를 다시 실행한다.
 
