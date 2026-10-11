@@ -67,7 +67,7 @@ manifest, HTML, background 등록, 권한, host permission, 외부 통신과 사
 
 ## 감사 경계
 
-최신 비공개 감사 보고서는 `output/tool-audit/run-2026-10-11T16-39-18-163Z-925TVk`에 있다. ESLint 관측 7개는 기존 `scripts/owned-files.mjs`의 동적 파일 시스템 capability 경계이며, 각 호출 앞의 containment·link·type 검사를 유지한다. 감사 종료 상태 1은 이 guarded observation을 clean으로 위장하지 않기 위한 기존 계약이다.
+최신 비공개 감사 보고서는 `output/tool-audit/run-2026-10-11T16-47-20-932Z-bY2Vso`에 있다. ESLint 관측 7개는 기존 `scripts/owned-files.mjs`의 동적 파일 시스템 capability 경계이며, 각 호출 앞의 containment·link·type 검사를 유지한다. 감사 종료 상태 1은 이 guarded observation을 clean으로 위장하지 않기 위한 기존 계약이다.
 
 비공개 warning ledger는 이전 source hash를 참조하므로 현재 작업 트리의 선택적 private 테스트에는 맞지 않는다. 공개 checkout과 CI에는 이 원장을 포함하지 않으며, AF01 코드가 새 경고를 추가하지 않았다는 판단은 최신 raw report와 변경 경로 대조에 한정한다.
 

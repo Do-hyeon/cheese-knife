@@ -39,10 +39,6 @@ function environmentIdentities() {
   return [...new Set(values.filter(value => typeof value === 'string' && value.length > 0))];
 }
 
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 function containsEnvironmentIdentity(source, identities) {
   const literals = source.match(/(["'`])(?:\\.|[^\\\r\n])*?\1/g) || [];
   return identities.some(identity => literals.some(raw => {
@@ -51,7 +47,15 @@ function containsEnvironmentIdentity(source, identities) {
       try { value = JSON.parse(raw); } catch {}
     }
     if (identity.length > 2) return value.includes(identity);
-    return new RegExp(`(^|[^A-Za-z0-9_-])${escapeRegExp(identity)}($|[^A-Za-z0-9_-])`).test(value);
+    let offset = value.indexOf(identity);
+    while (offset !== -1) {
+      const left = offset === 0 || !/[A-Za-z0-9_-]/.test(value.charAt(offset - 1));
+      const rightOffset = offset + identity.length;
+      const right = rightOffset === value.length || !/[A-Za-z0-9_-]/.test(value.charAt(rightOffset));
+      if (left && right) return true;
+      offset = value.indexOf(identity, offset + 1);
+    }
+    return false;
   }));
 }
 
