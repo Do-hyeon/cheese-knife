@@ -98,7 +98,14 @@ Chrome 121 정규화 실행 SHA-256:
 
 ## 공개 PR과 병합
 
-한글 PR, 공개 Windows/Ubuntu CI와 병합 정보는 아직 없다. 이 문서는 로컬 수용 증거를 먼저 고정하며, 공개 CI 통과·병합 뒤 후속 문서 커밋으로 PR 번호, CI run과 merge commit을 기록한다.
+- 한글 PR: [#8 AF03: MAIN 런타임과 사이트 어댑터 분리](https://github.com/Do-hyeon/cheese-knife/pull/8)
+- 공개 CI: [run 38168282370](https://github.com/Do-hyeon/cheese-knife/actions/runs/38168282370), 전체 결론 `success`
+  - Windows foundation: 39초, 통과
+  - Ubuntu foundation: 모든 step 통과, workflow 전체 성공으로 종료
+  - 전체 verify: 3분 13초, Node tests·build·package·객관 오디오·설치형 positive/negative E2E 통과
+- 병합: 2026-10-12 04:35:18 KST, merge commit `275b9a679209949b06673f8e309b7dc13f33b2e1`
+
+공개 CI와 병합은 로컬 수용 결과를 변경하지 않았다. PR #8 병합 뒤 `main`을 AF04의 새 기준점으로 고정한다.
 
 ## 재현 명령
 
@@ -123,4 +130,4 @@ git diff --check
 
 ## 롤백
 
-병합 전에는 기준점 `5060fb9` 이후 AF03 커밋을 새 revert 커밋으로 역적용하고 검증한다. 병합 뒤에는 AF03 merge commit을 최신 `main` 기반 복구 브랜치에서 `git revert -m 1 <merge-commit>`으로 되돌린다. 강제 reset은 사용하지 않으며 manifest, 사용자 storage와 기존 스토어 배포물을 직접 수정하지 않는다.
+AF03을 되돌릴 때는 최신 `main` 기반 복구 브랜치에서 `git revert -m 1 275b9a679209949b06673f8e309b7dc13f33b2e1`을 실행하고 전체 게이트를 다시 검증한다. 강제 reset은 사용하지 않으며 manifest, 사용자 storage와 기존 스토어 배포물을 직접 수정하지 않는다.

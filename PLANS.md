@@ -24,13 +24,12 @@
 
 ## 2. 현재 공개·저장소 상태
 
-- GitHub `main`: `5060fb9e347ef6a5ea5575cfa6ebc073d294e9ae`.
-- PR #2 `2.13.3` 복구 변경, PR #3 README 간소화, PR #4 AF00 설치형 E2E 기반, PR #5 AF01 타입·빌드 기반, PR #6 AF02 계약 우선 전환과 PR #7 AF02 상태 고정은 `main`에 병합됐다.
+- GitHub `main`: `275b9a679209949b06673f8e309b7dc13f33b2e1`.
+- PR #2 `2.13.3` 복구 변경, PR #3 README 간소화, PR #4 AF00 설치형 E2E 기반, PR #5 AF01 타입·빌드 기반, PR #6 AF02 계약 우선 전환, PR #7 AF02 상태 고정과 PR #8 AF03 runtime·site adapter 분리는 `main`에 병합됐다.
 - GitHub prerelease `v2.13.3-community.1`이 공개됐다.
 - Chrome 웹 스토어 2.13.3 교체본은 사용자가 게시 완료를 확인했다. 새 설치·기존 설치 자동 업데이트와 설정 보존은 아직 완료로 가정하지 않는다.
-- 현재 기준 브랜치: `main` (`5060fb9`, AF02 상태 고정 PR #7 병합).
-- AF01은 PR #5로 병합됐고 최종 공개 CI run `38157976040`에서 Windows·Ubuntu foundation과 전체 verify가 통과했다. AF02는 PR #6의 공개 CI run `38161802432`와 PR #7의 공개 CI run `38162135577`를 통과해 `main`에 병합됐다.
-- AF03 로컬 검증 대상은 `f125daf4fc535fa6ce684c23be442d0387bcc593`이며, PR과 공개 CI 전 단계다.
+- 현재 기준 브랜치: `main` (`275b9a6`, AF03 PR #8 병합).
+- AF01은 PR #5로 병합됐고 최종 공개 CI run `38157976040`에서 Windows·Ubuntu foundation과 전체 verify가 통과했다. AF02는 PR #6의 공개 CI run `38161802432`와 PR #7의 공개 CI run `38162135577`를 통과해 `main`에 병합됐다. AF03은 검증 코드 `f125daf`를 PR #8의 공개 CI run `38168282370`에서 검증하고 merge commit `275b9a6`으로 병합했다.
 
 GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 상태는 사용자가 보고한 마지막 상태이며 P09에서 게시 후 다시 확인한다.
 
@@ -55,12 +54,12 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 상태�
 | AF00 | 설치된 MV3 산출물 E2E | 설계 승인 | DONE | 검증 기록과 CI 게이트 유지 |
 | AF01 | 타입·빌드 전환 기반 | AF00 | DONE | strict/build proof와 공개 CI 유지 |
 | AF02 | 계약 우선 TypeScript 전환 | AF01 | DONE | 생성·drift·strict·설치형 E2E 게이트 유지 |
-| AF03 | MAIN runtime·site adapter 분리 | AF02 | DOING | 한글 PR·Windows/Ubuntu 공개 CI |
-| AF04 | 기능별 모듈 이전 | AF03 | BLOCKED | audio/player/preview/chat/sidebar 순차 이전 |
+| AF03 | MAIN runtime·site adapter 분리 | AF02 | DONE | 생성·strict·설치형 E2E·공개 CI 유지 |
+| AF04 | 기능별 모듈 이전 | AF03 | PLAN-REVIEW | 기능 순서·격리 계약을 설계·계획으로 먼저 고정 |
 | AF05 | 이행 종료·공개 게이트 | AF04, P09 | BLOCKED | 설치·업데이트·롤백과 정책 정합성 확인 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **AF03 로컬 구현·검증 완료**. 한글 PR과 공개 CI를 통과한 뒤 병합·상태 고정한다.
+현재 커서: **AF04 설계·계획 검토**. audio/player/preview/chat/sidebar/style을 한 번에 옮기지 않고, 기능 순서와 공통 `mount`/dispose/status 경계를 먼저 설계·승인한 뒤 구현한다.
 
 ## 5. P09 — 스토어 게시 후 고정
 
@@ -152,7 +151,7 @@ P09의 게시 뒤 설치·업데이트 수용 검사는 AF02의 내부 계약 �
 - [x] 파일 로드 순서 대신 import graph로 의존성 표현.
 - [x] 생성 drift·strict·설치형 positive/negative E2E와 전체 공개 gate 검증.
 - [x] 독립 코드 검토의 Critical/Important finding 보완.
-- [ ] 한글 PR·공개 CI 통과·병합 뒤 validation과 현재 커서 고정.
+- [x] 한글 PR #8, 공개 CI run `38168282370`과 merge commit `275b9a6`으로 상태 고정.
 
 ### AF04 — 기능 모듈 이전
 
@@ -198,4 +197,4 @@ git -c core.safecrlf=false diff --check
 
 ## 10. 현재 사용자 개입 지점
 
-AF03은 승인된 범위에서 한글 PR 생성, 공개 CI 확인과 병합까지 사용자 개입 없이 이어간다. CI 실패, merge conflict, GitHub 인증 만료처럼 외부 결정이 필요한 경우에만 중지한다. P09 설치 수용은 AF03과 별도로 재개한다.
+AF04는 상세 설계와 구현 계획을 먼저 작성·공격 검토하고, 기능 이전 순서와 공통 계약을 사용자에게 한 번에 승인받은 뒤 구현한다. 아직 승인되지 않은 기능 분할·동작 변경은 선행하지 않는다. P09 설치 수용은 AF04와 별도로 재개한다.
