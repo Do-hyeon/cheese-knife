@@ -14,6 +14,14 @@ async function runtimeModule() {
   return import(pathToFileURL(path.resolve('scripts/settings-runtime.mjs')));
 }
 
+async function withCi(value, callback) {
+  const previous = process.env.CI;
+  if (value === undefined) delete process.env.CI; else process.env.CI = value;
+  try { return await callback(); } finally {
+    if (previous === undefined) delete process.env.CI; else process.env.CI = previous;
+  }
+}
+
 async function fixture(t) {
   await fs.mkdir('output', { recursive: true });
   const root = await fs.mkdtemp(path.resolve('output/af02-settings-'));
@@ -42,7 +50,7 @@ test('render is deterministic and write creates exactly the checked runtime file
   assert.deepEqual(Object.keys(first).sort(), entries.map(entry => entry.output).sort());
   for (const entry of entries) assert.match(first[entry.output], new RegExp(`\\bvar ${entry.global}\\b`));
   await assert.rejects(mod.checkSettingsRuntime(root), { code: 'settings-runtime-drift' });
-  await mod.writeSettingsRuntime(root);
+  await withCi(undefined, () => mod.writeSettingsRuntime(root));
   assert.deepEqual((await fs.readdir(root)).sort(), ['settings-broker.js', 'settings-client.js', 'settings-contract.js', 'src']);
   const report = await mod.checkSettingsRuntime(root);
   assert.deepEqual(report.files, entries.map(entry => entry.output));
@@ -96,13 +104,7 @@ test('module sources, linked inputs, and invalid generated artifacts are rejecte
 test('write is forbidden in CI', async t => {
   const mod = await runtimeModule();
   const root = await fixture(t);
-  const previous = process.env.CI;
-  process.env.CI = '1';
-  try {
-    await assert.rejects(mod.writeSettingsRuntime(root), { code: 'settings-runtime-write-ci' });
-  } finally {
-    if (previous === undefined) delete process.env.CI; else process.env.CI = previous;
-  }
+  await withCi('1', () => assert.rejects(mod.writeSettingsRuntime(root), { code: 'settings-runtime-write-ci' }));
 });
 
 test('repository generated settings runtime is current and check is read-only', async () => {

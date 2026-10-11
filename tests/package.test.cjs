@@ -30,8 +30,8 @@ async function addSettingsRuntime(root) {
   ];
   await fs.mkdir(path.join(root, 'src/settings'), { recursive: true });
   for (const [file, global] of entries) await fs.writeFile(path.join(root, 'src/settings', file), `var ${global} = () => ${JSON.stringify(global)};\n`);
-  const { writeSettingsRuntime } = await import(pathToFileURL(path.resolve('scripts/settings-runtime.mjs')));
-  await writeSettingsRuntime(root);
+  const { renderSettingsRuntime } = await import(pathToFileURL(path.resolve('scripts/settings-runtime.mjs')));
+  for (const [file, source] of Object.entries(await renderSettingsRuntime(root))) await fs.writeFile(path.join(root, file), source);
 }
 
 // These exercise actual filesystem types and the real package checker. Each
