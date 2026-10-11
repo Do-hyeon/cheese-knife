@@ -119,7 +119,7 @@ P09는 외부 심사 대기 중이지만 AF00의 격리된 계획·구현을 막
 - [x] clean archive 전체 회귀·객관 오디오·설치형 positive/negative E2E.
 - [x] npm·ESLint·Gitleaks 감사에서 AF01 신규 관측 0 확인.
 - [x] pre-merge 검토의 POSIX npm bin·companion native binary, 전체 배포 JS inventory, reply 타입 과신, POSIX 경로와 복합 환경 식별자 누출 지적 보완.
-- [ ] 한글 PR에서 Windows·Ubuntu 공개 CI와 변경 diff 검토.
+- [x] 한글 PR #5에서 Windows·Ubuntu 공개 CI와 변경 diff 검토.
 - [ ] AF01 병합 뒤 기준 commit·CI URL·최종 상태 고정.
 
 ### AF02 — 계약 우선 이전

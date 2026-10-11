@@ -10,7 +10,7 @@
 
 AF01의 로컬 구현·수용 조건을 충족했다. TypeScript와 esbuild는 제품 런타임 전환이 아닌 strict 계약 및 Chrome 실행 문맥 proof에만 도입했다. 16개 첫 번째 당사자 런타임 JavaScript는 source에서 `dist`로 byte 그대로 복사되며, pre-merge 검토에서 발견된 외부 reply 타입 과신을 닫기 위해 `settings-client.js`만 malformed-response validator를 추가하고 실행 hash를 명시적으로 전진시켰다. 나머지 15개 실행 hash와 정상 broker 응답 동작은 유지된다.
 
-manifest, HTML, background 등록, 권한, host permission, 외부 통신과 사용자 데이터 계약은 변경하지 않았다. 공개 CI의 Windows·Ubuntu 결과는 pull request에서 별도로 확인해야 하며, 이 문서는 아직 GitHub-hosted 결과를 통과로 간주하지 않는다.
+manifest, HTML, background 등록, 권한, host permission, 외부 통신과 사용자 데이터 계약은 변경하지 않았다. [PR #5](https://github.com/Do-hyeon/cheese-knife/pull/5)의 [GitHub Actions run 38157669495](https://github.com/Do-hyeon/cheese-knife/actions/runs/38157669495)에서 Windows·Ubuntu foundation과 Ubuntu 전체 verify가 모두 통과했다.
 
 ## 도구 계약
 
@@ -29,6 +29,8 @@ manifest, HTML, background 등록, 권한, host permission, 외부 통신과 사
 | clean archive 전체 Node 테스트 | Git archive와 물리적 `node_modules` 복사 환경에서 660 tests, 659 passed, 0 failed, 1 skipped |
 | cold-start 회귀 보완 | CLI 인수를 Playwright import 전에 검증하고 병렬 suite의 프로세스 기동 guard만 5초에서 15초로 조정; 독립 실행과 clean archive 전체 suite 모두 통과 |
 | private 감사 증거 검사 | 공개 checkout에 없는 비공개 원장 때문에 1 skipped; 공개 CI와 동일한 의도된 동작 |
+| 공개 foundation CI | Ubuntu 19초, Windows 38초 모두 통과 |
+| 공개 전체 verify CI | Ubuntu 3분 6초, 통과 |
 | TypeScript strict proof | passed, `any`/`@ts-ignore`/emit 없음 |
 | esbuild 실행 문맥 proof | 네 entry hash와 논리 graph hash 기준선 일치 |
 | runtime JavaScript inventory | root·`web`·`styles`·`_locales`의 16개 파일 목록과 실행 토큰 hash 기준선 일치 |
