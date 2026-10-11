@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Script } from 'node:vm';
 import { transform } from 'esbuild';
 import { inspectBrowserSource } from './check-build-proof.mjs';
 import { openOwnedRoot } from './owned-files.mjs';
@@ -17,9 +18,9 @@ const sha256 = value => createHash('sha256').update(value).digest('hex');
 const repositoryRoot = () => path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const hasExpectedGlobal = (output, source) => {
   switch (output) {
-    case 'settings-contract.js': return /\bvar\s+KnifeSettingsContract\b/.test(source);
-    case 'settings-client.js': return /\bvar\s+createSettingsClient\b/.test(source);
-    case 'settings-broker.js': return /\bvar\s+createSettingsBroker\b/.test(source);
+    case 'settings-contract.js': return /^var\s+KnifeSettingsContract\b/.test(source);
+    case 'settings-client.js': return /^var\s+createSettingsClient\b/.test(source);
+    case 'settings-broker.js': return /^var\s+createSettingsBroker\b/.test(source);
     default: return false;
   }
 };
@@ -37,15 +38,20 @@ export async function renderSettingsRuntime(root = repositoryRoot()) {
   return outputs;
 }
 
-export function validateSettingsRuntime(outputs, identities) {
+export function validateSettingsRuntime(outputs, identities = []) {
   const names = Object.keys(outputs).sort();
   const expected = SETTINGS_RUNTIME_ENTRIES.map(entry => entry.output).sort();
   if (JSON.stringify(names) !== JSON.stringify(expected)) throw fail('settings-runtime-output-set');
   for (const entry of SETTINGS_RUNTIME_ENTRIES) {
     const source = outputs[entry.output];
-    if (typeof source !== 'string' || !hasExpectedGlobal(entry.output, source)) throw fail('settings-runtime-global');
+    if (typeof source !== 'string') throw fail('settings-runtime-global');
+    const marker = `// Generated from ${entry.source} by scripts/settings-runtime.mjs. Do not edit.\n`;
+    const body = source.startsWith(marker) ? source.slice(marker.length) : source;
+    try { new Script(body); } catch { throw fail('settings-runtime-source-module'); }
+    if (/\brequire\s*\(/.test(body)) throw fail('settings-runtime-source-module');
+    if (!hasExpectedGlobal(entry.output, body)) throw fail('settings-runtime-global');
     if (/sourceMappingURL|sourceURL/.test(source)) throw fail('settings-runtime-source-map');
-    const inspected = source.replace(/(["'])https:\/\/chzzk\.naver\.com\1/g, '$1$1');
+    const inspected = source.replace(/(\.origin\s*!==\s*)(["'])https:\/\/chzzk\.naver\.com\2/g, '$1$2$2');
     inspectBrowserSource(inspected, identities);
   }
 }

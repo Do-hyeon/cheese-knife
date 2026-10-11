@@ -9,5 +9,5 @@ paths = ['''(^|[/\\])(node_modules|dist|dist-firefox|output|\.git|\.superpowers|
 
 [[allowlists]]
 description = "AF02 protocol state terminology, not a credential"
-regexTarget = "line"
-regexes = ['''invalid/exhausted revision''']
+targetRules = ["generic-api-key"]
+regexes = ['''^invalid/exhausted$''']

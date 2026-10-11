@@ -72,6 +72,10 @@ test('module sources, linked inputs, and invalid generated artifacts are rejecte
   const root = await fixture(t);
   await fs.writeFile(path.join(root, entries[0].source), 'export const value = 1;\n');
   await assert.rejects(mod.renderSettingsRuntime(root), { code: 'settings-runtime-source-module' });
+  await fs.writeFile(path.join(root, entries[0].source), 'var KnifeSettingsContract = {}; export { KnifeSettingsContract };\n');
+  await assert.rejects(mod.renderSettingsRuntime(root), { code: 'settings-runtime-source-module' });
+  await fs.writeFile(path.join(root, entries[0].source), 'var KnifeSettingsContract = {}; import helper = require("./helper");\n');
+  await assert.rejects(mod.renderSettingsRuntime(root), { code: 'settings-runtime-source-module' });
 
   const linkedSettings = path.join(root, 'linked-settings');
   await fs.mkdir(linkedSettings);
@@ -96,9 +100,26 @@ test('module sources, linked inputs, and invalid generated artifacts are rejecte
   const identityOutputs = { ...clean, [entries[0].output]: `${clean[entries[0].output]}const host = "runner-host";\n` };
   assert.throws(() => mod.validateSettingsRuntime(identityOutputs, ['runner-host']), { code: 'proof-environment-identity' });
   const firstParty = { ...clean, [entries[0].output]: `${clean[entries[0].output]}const origin = "https://chzzk.naver.com";\n` };
-  assert.doesNotThrow(() => mod.validateSettingsRuntime(firstParty, ['runner-host']));
+  assert.throws(() => mod.validateSettingsRuntime(firstParty, ['runner-host']), { code: 'proof-remote-url' });
+  const originCheck = { ...clean, [entries[0].output]: `${clean[entries[0].output]}if (new URL(value).origin !== "https://chzzk.naver.com") throw new Error();\n` };
+  assert.doesNotThrow(() => mod.validateSettingsRuntime(originCheck, ['runner-host']));
+  const remoteImport = { ...clean, [entries[0].output]: `${clean[entries[0].output]}import("https://chzzk.naver.com");\n` };
+  assert.throws(() => mod.validateSettingsRuntime(remoteImport, ['runner-host']), { code: 'proof-remote-import' });
+  const hiddenGlobal = { ...clean, [entries[0].output]: '(() => { var KnifeSettingsContract = 1; })();\n' };
+  assert.throws(() => mod.validateSettingsRuntime(hiddenGlobal, ['runner-host']), { code: 'settings-runtime-global' });
+  const importMeta = { ...clean, [entries[0].output]: `${clean[entries[0].output]}console.log(import.meta.url);\n` };
+  assert.throws(() => mod.validateSettingsRuntime(importMeta, ['runner-host']), { code: 'settings-runtime-source-module' });
   assert.throws(() => mod.validateSettingsRuntime({}), { code: 'settings-runtime-output-set' });
   assert.throws(() => mod.validateSettingsRuntime({ ...clean, [entries[0].output]: 'var WrongGlobal = 1;\n' }), { code: 'settings-runtime-global' });
+
+  const previousUsername = process.env.USERNAME;
+  process.env.USERNAME = 'styles';
+  try {
+    const ordinarySource = { ...clean, [entries[0].output]: `${clean[entries[0].output]}const section = "styles";\n` };
+    assert.doesNotThrow(() => mod.validateSettingsRuntime(ordinarySource));
+  } finally {
+    if (previousUsername === undefined) delete process.env.USERNAME; else process.env.USERNAME = previousUsername;
+  }
 });
 
 test('write is forbidden in CI', async t => {
