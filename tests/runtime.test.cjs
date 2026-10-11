@@ -10,8 +10,29 @@ function setup(t, html = playerHTML, url) {
     dom.window.close();
   });
   load(dom, 'web/runtime.js');
+  load(dom, 'web/site-adapter.js');
   return dom;
 }
+
+test('runtime stays useful without an adapter and late adapter reconciles exactly once', t => {
+  const dom = page(playerHTML), key = dom.window.Symbol.for('cheese-knife.runtime.v1');
+  t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
+  load(dom, 'web/runtime.js');
+  const knife = runtime(dom);
+  assert.equal(knife.route().kind, 'live');
+  assert.equal(knife.state.body, null);
+  assert.equal(knife.state.sidebar, null);
+  assert.equal(knife.state.player, null);
+  let reconciles = 0;
+  const reconcile = knife.reconcile;
+  knife.reconcile = () => { reconciles++; return reconcile(); };
+  load(dom, 'web/site-adapter.js');
+  assert.equal(reconciles, 1);
+  assert.equal(knife.state.player.video.tagName, 'VIDEO');
+  load(dom, 'web/site-adapter.js');
+  assert.equal(reconciles, 1);
+  assert.equal(Object.getOwnPropertyDescriptor(dom.window, key)?.value, knife);
+});
 
 test('runtime installs an own singleton instead of trusting an inherited symbol value', t => {
   const dom = page(playerHTML);
@@ -75,6 +96,27 @@ test('delayed root and video replacement are reconciled without duplicate runtim
   assert.notEqual(runtime(dom).state.player.video, first);
 });
 
+test('late site layout divs trigger adapter discovery without leaking selectors into runtime', async t => {
+  const dom = setup(t, '<div id="root"></div>');
+  assert.equal(runtime(dom).state.body, null);
+  const body = dom.window.document.createElement('div');
+  body.id = 'layout-body';
+  dom.window.document.getElementById('root').append(body);
+  await flush();
+  assert.equal(runtime(dom).state.body, body);
+});
+
+test('late license anchor triggers one adapter-owned discovery reconciliation', async t => {
+  const dom = setup(t, playerHTML + '<div id="license"></div>'), knife = runtime(dom);
+  let reconciles = 0;
+  const reconcile = knife.reconcile;
+  knife.reconcile = () => { reconciles++; return reconcile(); };
+  const anchor = dom.window.document.createElement('a'); anchor.href = '/license'; anchor.textContent = 'License';
+  dom.window.document.getElementById('license').append(anchor);
+  await flush();
+  assert.equal(reconciles, 1);
+});
+
 test('config accepts current same-window response and rejects null, foreign, stale messages', t => {
   const dom = setup(t);
   dom.window.dispatchEvent(new dom.window.MessageEvent('message', { data: null }));
@@ -104,4 +146,113 @@ test('same-route runtimes keep window-local configuration and scopes', async t =
   const scopeA = runtime(a).createScope(), scopeB = runtime(b).createScope(); let calls = 0;
   scopeB.on(b.window, 'local-sample', () => calls++); scopeA.dispose();
   b.window.dispatchEvent(new b.window.Event('local-sample')); assert.equal(calls, 1); scopeB.dispose();
+});
+
+test('startup failure rolls back only its own registry and resources', t => {
+  for (const replaceRegistry of [false, true]) {
+    const dom = page(playerHTML), key = dom.window.Symbol.for('cheese-knife.runtime.v1'), foreign = { foreign: true };
+    const listeners = new Set();
+    const add = dom.window.addEventListener.bind(dom.window), remove = dom.window.removeEventListener.bind(dom.window);
+    dom.window.addEventListener = (type, listener, options) => { listeners.add(listener); add(type, listener, options); };
+    dom.window.removeEventListener = (type, listener, options) => { listeners.delete(listener); remove(type, listener, options); };
+    dom.window.MutationObserver = class {
+      observe() { if (replaceRegistry) Object.defineProperty(dom.window, key, { configurable: true, value: foreign }); throw new Error('fixture-startup'); }
+      disconnect() {}
+    };
+    t.after(() => dom.window.close());
+    assert.throws(() => load(dom, 'web/runtime.js'), /fixture-startup/);
+    assert.equal(Object.getOwnPropertyDescriptor(dom.window, key)?.value, replaceRegistry ? foreign : undefined);
+    assert.equal(listeners.size, 0);
+  }
+});
+
+test('scope cleanup is reverse ordered and one cleanup failure does not stop the rest', t => {
+  const dom = setup(t), calls = [];
+  const scope = runtime(dom).createScope();
+  scope.add(() => calls.push('first'));
+  scope.add(() => { calls.push('second'); throw new Error('fixture-cleanup'); });
+  scope.add(() => calls.push('third'));
+  scope.dispose(); scope.dispose();
+  assert.deepEqual(calls, ['third', 'second', 'first']);
+  assert.equal(scope.signal.aborted, true);
+});
+
+test('persisted pagehide freezes one pulse and pageshow resumes it once', t => {
+  const dom = page(playerHTML);
+  const active = new Set(); let next = 0;
+  dom.window.setInterval = () => { const id = ++next; active.add(id); return id; };
+  dom.window.clearInterval = id => active.delete(id);
+  t.after(() => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); dom.window.close(); });
+  load(dom, 'web/runtime.js');
+  assert.equal(active.size, 1);
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide', { persisted: true }));
+  assert.equal(active.size, 0);
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow', { persisted: true }));
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow', { persisted: true }));
+  assert.equal(active.size, 1);
+});
+
+test('configuration retry owns one timeout across repeated pageshow and teardown', t => {
+  const dom = page(playerHTML);
+  const active = new Map(); let next = 0;
+  dom.window.setTimeout = callback => { const id = ++next; active.set(id, callback); return id; };
+  dom.window.clearTimeout = id => active.delete(id);
+  t.after(() => dom.window.close());
+  load(dom, 'web/runtime.js');
+  assert.equal(active.size, 1);
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow', { persisted: true }));
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow', { persisted: true }));
+  assert.equal(active.size, 1);
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide', { persisted: true }));
+  assert.equal(active.size, 0);
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow', { persisted: true }));
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow', { persisted: true }));
+  assert.equal(active.size, 1);
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
+  assert.equal(active.size, 0);
+});
+
+test('final pagehide removes owned listeners observer timers and registry', t => {
+  const dom = page(playerHTML), key = dom.window.Symbol.for('cheese-knife.runtime.v1');
+  const active = new Set(), listeners = new Set(), ownedTypes = new Set(['message', 'visibilitychange', 'popstate', 'pageshow', 'pagehide']);
+  let next = 0, disconnected = 0;
+  dom.window.setInterval = () => { const id = ++next; active.add(id); return id; };
+  dom.window.clearInterval = id => active.delete(id);
+  for (const target of [dom.window, dom.window.document]) {
+    const add = target.addEventListener.bind(target), remove = target.removeEventListener.bind(target);
+    target.addEventListener = (type, listener, options) => { if (ownedTypes.has(type)) listeners.add(listener); add(type, listener, options); };
+    target.removeEventListener = (type, listener, options) => { if (ownedTypes.has(type)) listeners.delete(listener); remove(type, listener, options); };
+  }
+  const NativeObserver = dom.window.MutationObserver;
+  dom.window.MutationObserver = class extends NativeObserver { disconnect() { disconnected++; super.disconnect(); } };
+  t.after(() => dom.window.close());
+  load(dom, 'web/runtime.js');
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
+  assert.equal(Object.getOwnPropertyDescriptor(dom.window, key), undefined);
+  assert.equal(active.size, 0);
+  assert.equal(listeners.size, 0);
+  assert.equal(disconnected, 1);
+});
+
+test('bridge copies config and i18n own data descriptors and rejects accessors prototypes and stale revisions', t => {
+  const dom = setup(t), knife = runtime(dom); let getters = 0;
+  deliver(dom, { arrowSeek: false }, 1);
+  const accessorConfig = {};
+  Object.defineProperty(accessorConfig, 'arrowSeek', { enumerable: true, get() { getters++; return true; } });
+  dom.window.dispatchEvent(new dom.window.MessageEvent('message', { source: dom.window, origin: dom.window.location.origin,
+    data: { namespace: 'cheese-knife', protocol: 1, type: 'config', requestId: knife.requestId,
+      revision: 2, config: accessorConfig, i18n: {} } }));
+  const inheritedConfig = Object.create({ arrowSeek: true });
+  dom.window.dispatchEvent(new dom.window.MessageEvent('message', { source: dom.window, origin: dom.window.location.origin,
+    data: { namespace: 'cheese-knife', protocol: 1, type: 'config', requestId: knife.requestId,
+      revision: 3, config: inheritedConfig, i18n: {} } }));
+  const accessorI18n = {};
+  Object.defineProperty(accessorI18n, 'fastForward', { enumerable: true, get() { getters++; return 'unsafe'; } });
+  dom.window.dispatchEvent(new dom.window.MessageEvent('message', { source: dom.window, origin: dom.window.location.origin,
+    data: { namespace: 'cheese-knife', protocol: 1, type: 'config', requestId: knife.requestId,
+      revision: 4, config: { arrowSeek: true }, i18n: accessorI18n } }));
+  assert.equal(getters, 0);
+  assert.equal(knife.config.arrowSeek, false);
+  deliver(dom, { arrowSeek: true }, 2);
+  assert.equal(knife.config.arrowSeek, true);
 });

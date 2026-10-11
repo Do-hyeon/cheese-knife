@@ -75,6 +75,18 @@ test('channel button is unique and generic nonchannel tablists remain unchanged'
   assert.equal(dom.window.document.querySelectorAll('.knife-channel-chat').length, 0);
 });
 
+test('banner close capability preserves its native receiver', t => {
+  let receiver;
+  const html = playerHTML.replace('</main>', '<div class="band_banner_container__fixture"></div></main>');
+  const dom = setup(t, html, undefined, dom => {
+    const banner = dom.window.document.querySelector('[class^="band_banner_container__"]');
+    receiver = { calls: 0, closeHandler() { assert.equal(this, receiver); this.calls++; } };
+    banner.__reactFiber$fixture = { return: { memoizedProps: receiver } };
+  });
+  dom.window.document.querySelector('[class^="band_banner_container__"] > button').click();
+  assert.equal(receiver.calls, 1);
+});
+
 test('chat discovery recovers after bounded timeout and controller replacement', async t => {
   const dom = setup(t, playerHTML.replace('</main>', '<aside><div role="log"></div></aside></main>'));
   deliver(dom, { hideDonation: true }, 2);
@@ -118,6 +130,12 @@ test('timestamp capability remains pending until supported message rows are obse
   runtime(dom).reconcile(); await flush();
   assert.equal(runtime(dom).statuses.chatTimestamp.state, 'pending');
   const root = dom.window.document.querySelector('[role="log"]');
+  const pending = dom.window.document.createElement('div'); pending.className = '_item_pending';
+  pending.innerHTML = '<span class="_chatting_message_pending"></span>';
+  pending.__reactProps$test = { chatMessage: {} };
+  root.append(pending); await flush();
+  assert.equal(runtime(dom).statuses.chatTimestamp.state, 'pending');
+  assert.equal(pending.firstElementChild.dataset.timestamp, undefined);
   const row = dom.window.document.createElement('div'); row.className = '_item_test';
   row.innerHTML = '<span class="_chatting_message_test"></span>';
   row.__reactProps$test = { chatMessage: { time: '2026-10-08T01:02:00Z' } };

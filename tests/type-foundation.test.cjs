@@ -9,12 +9,12 @@ const contractFiles = ['src/settings/contract.ts', 'src/settings/client.ts', 'sr
 const generatedFiles = ['settings-contract.js', 'settings-client.js', 'settings-broker.js'];
 const requiredTrue = ['allowJs', 'checkJs', 'noEmit', 'strict', 'noUncheckedIndexedAccess', 'exactOptionalPropertyTypes', 'useUnknownInCatchVariables'];
 
-test('AF02 tsconfig has the strict no-emit contract and narrow include', async () => {
+test('AF03 tsconfig has the strict no-emit contract and narrow include', async () => {
   const config = JSON.parse(await fs.readFile('tsconfig.json', 'utf8'));
   for (const option of requiredTrue) assert.equal(config.compilerOptions[option], true, `${option} must be true`);
   assert.equal(Object.hasOwn(config.compilerOptions, 'skipLibCheck'), false);
   assert.deepEqual(config.compilerOptions.types, ['chrome']);
-  assert.deepEqual(config.include, ['config.js', 'style-schema.js', 'src/settings/**/*.ts', 'build-proof/**/*.ts']);
+  assert.deepEqual(config.include, ['config.js', 'style-schema.js', 'src/settings/**/*.ts', 'src/main/**/*.ts', 'build-proof/**/*.ts']);
   await assert.rejects(fs.access('tsconfig.af01.json'));
   await assert.rejects(fs.access('types/knife-settings.d.ts'));
 });
@@ -47,7 +47,7 @@ test('the independent strict checkJs negative control fails', async t => {
   assert.match(result.stdout + result.stderr, /TS2322|TS2352/);
 });
 
-test('AF02 typecheck passes without diagnostics', () => {
+test('AF03 typecheck passes without diagnostics', () => {
   const result = spawnSync(process.execPath, [path.resolve('node_modules/typescript/bin/tsc'), '-p', 'tsconfig.json'], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stdout + result.stderr);
 });

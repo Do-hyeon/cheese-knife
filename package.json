@@ -11,6 +11,8 @@
     "check:runtime-js": "node scripts/check-runtime-inventory.mjs",
     "generate:settings": "node scripts/settings-runtime.mjs --write",
     "check:settings-runtime": "node scripts/settings-runtime.mjs",
+    "generate:main": "node scripts/main-runtime.mjs --write",
+    "check:main-runtime": "node scripts/main-runtime.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "check:build-proof": "node scripts/check-build-proof.mjs",
     "test:e2e": "node scripts/check-installed-extension.mjs",
