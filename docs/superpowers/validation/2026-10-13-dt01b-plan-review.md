@@ -19,7 +19,25 @@
 
 ## Astra max 공격적 계획 검토
 
-고정된 계획 checkpoint에 단일 fresh Astra max read-only 검토를 요청한다. 현재 검토 대기이며 등급0건/실행 가능 판정을 미리 주장하지 않는다. 실제 결과·코드 대조·주 실행자 보완·제외 범위 판단을 이 절에 기록한다.
+One fresh `gpt-6-astra`/max reviewed base `b1b7b70980c30e25aafa0c87d5b2e92f643f422e` to checkpoint `a1d5a697df9929d444ed2740c203c87bc0ac7828`, read-only. Verdict: **With fixes**, **Critical0 / Important1 / Minor1**. This is a plan review, not implemented-code or security certification.
+
+### Findings and author amendments
+
+1. **Important: the stated profile-retention guarantee exceeded the existing runner.** Verified `check-installed-extension.mjs` finally still attempts profile/candidate removal after close failure, harness may hide a secondary close error, and negative accepts the retained primary main-runtime-missing error. Task2 now distinguishes executor cleanup from unchanged runner-internal cleanup. It retains clone/report roots on observed abnormal termination, discloses possible earlier deletion of disposable runner profiles, and requires that residual limitation in Native approval. Negative PASS is not termination/cleanup evidence. No runner redesign or stronger guarantee is claimed.
+2. **Minor: weak-alias sensitivity and compiler cost were ambiguous.** Chosen resolution: direct alias-call misuse plus exact per-line assertions are inspected structurally; no executed weak-alias mutation is promised. The four steady-state compiler invocations remain positive/negative/internal-clean/internal-mutant. Wrong typed-variable initialization may not substitute for a target alias-call diagnostic. Nullable spectral proof uses a known summary tuple instead of an unchecked case-array index.
+
+The reviewer matched13 base/threshold/coercion cases and the proposed summary consumer in RAM; the peak-only change matched12 values plus3 changing-getter sequences. A virtual TypeScript overlay accepted the normal-to-partial alias assignment but still had30 optional/nullability diagnostics before the planned local annotations. This is not a complete annotated-gate PASS. No files, index, HEAD, browser or external state changed.
+
+The author separately checked12 equal/below/above boundaries for signal RMS, transition envelope, step, stress peak and alignment frames against the actual unchanged gate; all outputs matched the planned literals. Related4 documents had50 valid local links, no missing targets, clean language/diff checks. Root dist58-file inventory remained `d01bd672ff9bb9ffab808099432129b9429f5baa2fbf256e612531e358086c60`. These results are not new implementation tests.
+
+Amendments are author-verified; there was no second independent review. Do not report amended-text independent zero findings or implemented strict success.
+
+### Rulings on excluded review scope
+
+- Complete4-file checker, all controls, golden implementation and measured cost: mandatory future implementation evidence; not completed.
+- Browser/calibration, installed execution, full regressions, audits and public CI: not executed by the reviewer. Retain their implementation/public gates.
+- Native public acceptance, DT01-C/S, NUM01, compressor correctness and security certification: remain separate scope and incomplete.
+- Existing runner termination/profile retention: explicitly limited in approval and reports; do not expand a functional negative result into a cleanup guarantee.
 
 ## 남은 게이트
 

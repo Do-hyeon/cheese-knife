@@ -98,7 +98,7 @@ assert.deepEqual(audioQualityFailures(report), []);
 | null 확인 없이 thdPercent 산술 | TS2531 / TS18047 |
 | report의 nonexistentField | TS2339 |
 
-  해당 식마다 다른 정상 필드는 유지하여 잘못된 준비 fixture가 목표 오용을 가리지 않게 한다. 정상 alias를 unknown/any/무타입으로 느슨하게 만들었을 때 음성 proof의 요구 진단이 사라져 test가 실패해야 한다.
+  해당 식마다 다른 정상 필드는 유지한다. alias 계약의 음성 식은 잘못된 값/누락 필드를 alias의 직접 호출 인자에 넣고, 별도의 잘못된 QualityReport 변수 선언에서 발생한 오류로 대체하지 않는다. 누락된 목표 줄의 진단은 반드시 test 실패다. nullable 산술은 known summary tuple의 채널을 사용하여 case 배열의 undefined index 오류와 섞지 않는다. weak-alias 민감도는 이 직접 호출·per-line assertion을 읽어 구조적으로 확인한다. alias를 약화한 별도 compile 실행은 이번 계획에서 요구하지 않으며 steady-state4회 예산 밖의5번째 control을 몰래 추가하지 않는다.
 
   **실제 구현의 내부 negative control:** 테스트가 읽은 실제 audio-metrics source를 owned temp 폴더에 복사한다. copy의 `./audio-signal.mjs` import/JSDoc 경로만 `../../scripts/audio-signal.mjs`로 바꾸고, 수정 없는 copy를 독립 config로 먼저 compile하여 진단0을 확인한다. actual gate의 case·case channel·enabled transition·stress channel·alignment의5곳에 `if (item/channel) item/channel.__dt01b_missing`을 넣는다. 각 unique 기존 anchor(enabledSignals++, enabledTransitions++, case/stress RMS check, frames 선언)가 정확히1곳인지 확인하고 원래 source는 쓰지 않는다. 변형 copy는5곳 모두 그 위치의 TS2339가 있어야 하며 다른 진단은 거부한다. 하나라도 any라서 진단이 빠지면 실패다. 공통 helper/TypeScript compiler API 의존 graph를 새로 만들지 않는다.
 
@@ -146,11 +146,17 @@ node scripts/check-installed-extension-negative.mjs
 
   실행 전 dt01bCandidate의 목적 경로가 없음을 확인하고, 존재하면 새 영숫자 ID를 선택한다. audit의 exit0 clean/1 findings/2 tool error를 실제 report와 대조하고 기존 ESLint7을0으로 표시하지 않는다. npm/Gitleaks unavailable은 미검증이다. clean tracked clone의 기존 private-evidence-absent skip1은 이유를 기록하고 새 skip/fail은 미완료로 남긴다. P02 원본/역사 hash를 갱신하지 않는다.
 - [ ] **6. 합성 CLI를 실행한다.** candidate 결과의 실제 dist로 `node scripts/check-audio-quality.mjs --root <absolute-candidate-dist-in-clone> --label dt01b-candidate`를 실행한다. fresh bundled Chromium/headless·synthetic·silent sink만 사용한다. 14 cases/18 transitions/12 alignments, qualityFailures[], 측정 대상 full-scale count0, sources1, 첫 RMS0.34–0.36, 기본값·stress profile·report 저장을 확인한다. 실측 byte 일치 대신 기존 threshold와 literal 계약을 적용한다. 사용자 Chrome·--chrome·기존 profile은 사용하지 않는다.
-- [ ] **7. 비용·증거·보호를 기록하고 커밋한다.** 전후 checker cold1회/warm5회 median·extendedDiagnostics, typedef/국소 주석의 위치·근거, actual graph, raw/negative/전체 suite/도구/합성/installed 결과를 validation에 기록한다. 동기 compiler 자식은30초 timeout, 긴 CLI는 비동기로 yield하여 진행 상황을 전달한다. 새 proof는 positive/negative/internal clean/internal mutant의4회로 묶는다. root dist58files/ZIP/frozen2파일/버전2.13.3·보호 branch/profile을 전후 대조한다. 소유한 정확한 temp/candidate의 절대 목적 경로를 검증한 후에만 정리하고 private output에 증거를 보존한다. 종료 미확인 browser/profile은 삭제하지 않고 기존 runner의 cleanup 한계를 기록한다.
+- [ ] **7. 비용·증거·보호를 기록하고 커밋한다.** 전후 checker cold1회/warm5회 median·extendedDiagnostics, typedef/국소 주석의 위치·근거, actual graph, raw/negative/전체 suite/도구/합성/installed 결과를 validation에 기록한다. 동기 compiler 자식은30초 timeout, 긴 CLI는 비동기로 yield하여 진행 상황을 전달한다. 새 proof의 정규 compiler 실행은 positive/negative/internal clean/internal mutant의4회다. root dist58files/ZIP/frozen2파일/버전2.13.3·보호 branch/profile을 전후 대조한다. 소유한 정확한 temp/candidate의 절대 목적 경로를 검증한 후에만 정리하고 private output에 증거를 보존한다. 실행자 정리는 기존 runner의 내부 정리와 구분한다. 종료 미확인 시 실행자가 clone/report root를 추가 삭제하지 않는다. 아래 잔여 한계를 승인 범위와 검증 결과에 명시한다.
 - [ ] **8. 최종 독립 검토·공개 통합을 진행한다.** Native 구현 후 fresh Astra max whole-branch1회. 제외 항목의 판단을 기록하고 유효한 Critical/Important를 보완한다. 한글 PR을 fork main에 생성/attach하고 최종 head의 Windows/Ubuntu foundation·verify 성공 후 승인 범위에서 병합한다. main 포함·open PR·worktree·URL 의존성·remote SHA를 확인한 뒤 이번 branch만 정리한다. 다음 커서는 B2 정합성 재확인이며 DT01-C·P09/AF05 전체·기능 동결 해제로 확대하지 않는다.
 
 ## 자체 대조와 실행 방식
 
 spec §4/5는 Task1 Interfaces/Step4, §6은 Step1/2, §7은 Step3/5/6과 Task2 연결/격리 검사, §8은 Global Constraints와 Task2 Step7/8에 대응한다. internal any control·partial1채널·metadata·getter/coercion·독립 기대값의 효과를 각각 확인한다.
 
-권장은 **Native(주 실행자의2task 순차 구현) + 최종 Astra max 검토**다. 하나의 순수 계약과 실제 CLI 연결이므로 task별 구현 agent를 추가하지 않는다. 계획 검토/보완 후 이 계획·Native 방식·격리 로컬 검증을 한 번에 승인받는다. 승인 전 source/test/config 변경·clone/browser/도구 점검을 실행하지 않는다. 공개 문서 PR/CI는 구현 승인이나 새 구현의 PASS가 아니다.
+권장은 **Native(주 실행자의2task 순차 구현) + 최종 Astra max 검토**다. 하나의 순수 계약과 실제 CLI 연결이므로 task별 구현 agent를 추가하지 않는다. 계획 검토/보완 후 이 계획·Native 방식·격리 로컬 검증과 아래 기존 runner 한계를 한 번에 승인받는다. 승인 전 source/test/config 변경·clone/browser/도구 점검을 실행하지 않는다. 공개 문서 PR/CI는 구현 승인이나 새 구현의 PASS가 아니다.
+
+### 기존 설치형 runner의 잔여 한계
+
+기존 직접 runner는 context.close 실패를 기억한 후에도 자기 disposable profile/candidate 삭제를 시도한다. harness는 worker discovery 실패 시 close 오류를 보존하지 않을 수 있고, negative는 최초 main-runtime-missing을 수용하므로 negative PASS가 종료/프로필 보존 증거는 아니다. 이번 DT01-B에서 runner나 process framework를 재설계하지 않는다.
+
+새 synthetic 전용 owned profile만 사용하고 실제 시청/native 기준 profile은 접근하지 않는다. 원래 보호 대상의 불변과 runner 내부 disposable profile의 조건부 보존은 서로 다른 주장이다. 종료 이상이 관측되면 남은 clone/report root를 유지하고 추가 phase/실행자 cleanup을 중지하며, 임시 browser의 수동 종료가 필요하면 사용자 개입 단계로 보고한다. 이미 runner가 삭제한 profile의 보존을 주장하지 않는다. 정상/negative 기능 결과와 cleanup/종료 확인 상태를 별도 기록하고 전체 안전 종료 검증으로 합산하지 않는다.
