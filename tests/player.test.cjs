@@ -65,6 +65,42 @@ test('player labels use own supported translations and ignore inherited values',
   assert.equal(dom.window.document.querySelector('.knife-comp button').getAttribute('aria-label'), 'Own compressor label');
 });
 
+test('player installation is single-owner and preserves a foreign controller', async t => {
+  const duplicate = setup(t);
+  const installed = runtime(duplicate).player;
+  load(duplicate, 'web/player.js');
+  assert.equal(runtime(duplicate).player, installed);
+  assert.equal(duplicate.window.document.querySelectorAll('.knife-ff').length, 1);
+
+  const foreign = page(playerHTML);
+  t.after(async () => { foreign.window.dispatchEvent(new foreign.window.PageTransitionEvent('pagehide')); await flush(); foreign.window.close(); });
+  load(foreign, 'web/runtime.js'); load(foreign, 'web/site-adapter.js'); deliver(foreign);
+  const owner = { foreign: true };
+  runtime(foreign).player = owner;
+  load(foreign, 'web/player.js');
+  assert.equal(runtime(foreign).player, owner);
+  assert.equal(foreign.window.document.querySelector('.knife-ff'), null);
+});
+
+test('player startup failure does not publish a partial controller', async t => {
+  const dom = page(playerHTML);
+  t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
+  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom);
+  runtime(dom).subscribe = () => { throw new Error('subscribe unavailable'); };
+  assert.doesNotThrow(() => load(dom, 'web/player.js'));
+  assert.equal(runtime(dom).player, undefined);
+  assert.equal(dom.window.document.querySelector('.knife-ff'), null);
+});
+
+test('throwing player label accessors fall back without invocation', t => {
+  let reads = 0;
+  const dom = setup(t, false, current => {
+    Object.defineProperty(runtime(current).i18n, 'fastForward', { enumerable: true, get() { reads++; throw new Error('label getter'); } });
+  });
+  assert.equal(reads, 0);
+  assert.equal(dom.window.document.querySelector('.knife-ff').getAttribute('aria-label'), 'Live edge');
+});
+
 test('live seeking clamps gaps and supports finite live duration', t => {
   const dom = setup(t);
   const video = dom.window.document.querySelector('video');
@@ -271,6 +307,19 @@ test('another pointer cannot end the active hold or consume its click token', as
   send('pointerup');
   assert.equal(send('click', undefined, 1, 8).defaultPrevented, false);
   assert.equal(send('click').defaultPrevented, true);
+});
+
+test('a simultaneous pointer replaces the active hold without leaving speed or capture behind', async t => {
+  const { dom, video, send } = nativeVOD(t, false);
+  video.playbackRate = 1.5;
+  send('pointerdown', undefined, 0, 7); await new Promise(resolve => setTimeout(resolve, 550));
+  assert.equal(video.playbackRate, 2);
+  send('pointerdown', undefined, 0, 8);
+  assert.equal(video.playbackRate, 1.5);
+  assert.equal(dom.window.document.querySelector('.knife-ff-indicator'), null);
+  send('pointerup', undefined, 0, 7);
+  send('pointerup', undefined, 0, 8);
+  assert.equal(video.playbackRate, 1.5);
 });
 
 test('unused completed-hold click token expires without intercepting a later activation', async t => {

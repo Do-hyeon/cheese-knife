@@ -10,6 +10,7 @@ export const MAIN_RUNTIME_ENTRIES = Object.freeze([
   Object.freeze({ source: 'src/main/runtime/entry.ts', output: 'web/runtime.js', kind: 'runtime' }),
   Object.freeze({ source: 'src/main/site-adapter/entry.ts', output: 'web/site-adapter.js', kind: 'adapter' }),
   Object.freeze({ source: 'src/main/features/audio/entry.ts', output: 'web/audio.js', kind: 'feature-audio' }),
+  Object.freeze({ source: 'src/main/features/player/entry.ts', output: 'web/player.js', kind: 'feature-player' }),
 ]);
 export const MAIN_RUNTIME_OPTIONS = Object.freeze({
   bundle: true, format: 'iife', platform: 'browser', target: CLASSIC_RUNTIME_OPTIONS.target,
@@ -68,12 +69,16 @@ export function validateMainRuntime(outputs, identities = []) {
   if (!outputs['web/audio.js'].includes('cheese-knife.runtime.v1') || !outputs['web/audio.js'].includes('runtime.audio')) {
     throw generatedFailure('main-runtime-audio-abi');
   }
+  if (!outputs['web/player.js'].includes('cheese-knife.runtime.v1') || !outputs['web/player.js'].includes('runtime.player')) {
+    throw generatedFailure('main-runtime-player-abi');
+  }
 }
 
 export async function renderMainRuntime(root = repositoryRoot()) {
   const { outputs, graphs } = await buildGraphs(root);
   if (graphs.adapter.some(file => /src\/main\/runtime\/(?:entry|lifecycle)\.ts$/.test(file))) throw generatedFailure('main-runtime-adapter-graph');
   if (graphs['feature-audio'].some(file => !file.startsWith('src/main/features/audio/'))) throw generatedFailure('main-runtime-audio-graph');
+  if (graphs['feature-player'].some(file => !file.startsWith('src/main/features/player/'))) throw generatedFailure('main-runtime-player-graph');
   validateMainRuntime(outputs);
   return outputs;
 }
