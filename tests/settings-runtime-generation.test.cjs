@@ -5,9 +5,16 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 const entries = [
+  { source: 'src/settings/config.ts', output: 'config.js', global: 'KnifeHostPolicy' },
+  { source: 'src/settings/style-schema.ts', output: 'style-schema.js', global: 'STYLES' },
   { source: 'src/settings/contract.ts', output: 'settings-contract.js', global: 'KnifeSettingsContract' },
   { source: 'src/settings/client.ts', output: 'settings-client.js', global: 'createSettingsClient' },
   { source: 'src/settings/broker.ts', output: 'settings-broker.js', global: 'createSettingsBroker' },
+  { source: 'src/settings/background.ts', output: 'background.js', global: null },
+  { source: 'src/settings/permission.ts', output: 'permission.js', global: null },
+  { source: 'src/settings/popup.ts', output: 'popup.js', global: null },
+  { source: 'src/settings/styles.ts', output: 'styles.js', global: null },
+  { source: 'src/settings/bridge.ts', output: 'web/main.js', global: 'initStyleParameters' },
 ];
 
 async function runtimeModule() {
@@ -27,8 +34,9 @@ async function fixture(t) {
   const root = await fs.mkdtemp(path.resolve('output/af02-settings-'));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   await fs.mkdir(path.join(root, 'src/settings'), { recursive: true });
+  await fs.mkdir(path.join(root, 'web'));
   for (const entry of entries) {
-    await fs.writeFile(path.join(root, entry.source), `var ${entry.global} = () => ${JSON.stringify(entry.global)};\n`);
+    await fs.writeFile(path.join(root, entry.source), entry.global ? `var ${entry.global} = () => ${JSON.stringify(entry.global)};\n` : '(() => { document.title = "fixture"; })();\n');
   }
   return root;
 }
@@ -48,10 +56,10 @@ test('render is deterministic and write creates exactly the checked runtime file
   const second = await mod.renderSettingsRuntime(root);
   assert.deepEqual(first, second);
   assert.deepEqual(Object.keys(first).sort(), entries.map(entry => entry.output).sort());
-  for (const entry of entries) assert.match(first[entry.output], new RegExp(`\\bvar ${entry.global}\\b`));
+  for (const entry of entries) if (entry.global) assert.match(first[entry.output], new RegExp(`\\bvar ${entry.global}\\b`));
   await assert.rejects(mod.checkSettingsRuntime(root), { code: 'settings-runtime-drift' });
   await withCi(undefined, () => mod.writeSettingsRuntime(root));
-  assert.deepEqual((await fs.readdir(root)).sort(), ['settings-broker.js', 'settings-client.js', 'settings-contract.js', 'src']);
+  assert.deepEqual((await fs.readdir(root)).sort(), [...entries.map(entry => entry.output).filter(file => !file.includes('/')), 'src', 'web'].sort());
   const report = await mod.checkSettingsRuntime(root);
   assert.deepEqual(report.files, entries.map(entry => entry.output));
   assert.deepEqual(Object.keys(report.hashes).sort(), entries.map(entry => entry.output).sort());
@@ -72,19 +80,19 @@ test('module sources, linked inputs, and invalid generated artifacts are rejecte
   const root = await fixture(t);
   await fs.writeFile(path.join(root, entries[0].source), 'export const value = 1;\n');
   await assert.rejects(mod.renderSettingsRuntime(root), { code: 'settings-runtime-source-module' });
-  await fs.writeFile(path.join(root, entries[0].source), 'var KnifeSettingsContract = {}; export { KnifeSettingsContract };\n');
+  await fs.writeFile(path.join(root, entries[0].source), `var ${entries[0].global} = {}; export { ${entries[0].global} };\n`);
   await assert.rejects(mod.renderSettingsRuntime(root), { code: 'settings-runtime-source-module' });
-  await fs.writeFile(path.join(root, entries[0].source), 'var KnifeSettingsContract = {}; import helper = require("./helper");\n');
+  await fs.writeFile(path.join(root, entries[0].source), `var ${entries[0].global} = {}; import helper = require("./helper");\n`);
   await assert.rejects(mod.renderSettingsRuntime(root), { code: 'settings-runtime-source-module' });
 
   const linkedSettings = path.join(root, 'linked-settings');
   await fs.mkdir(linkedSettings);
-  for (const entry of entries) await fs.writeFile(path.join(linkedSettings, path.basename(entry.source)), `var ${entry.global} = 1;\n`);
+  for (const entry of entries) await fs.writeFile(path.join(linkedSettings, path.basename(entry.source)), entry.global ? `var ${entry.global} = 1;\n` : '(() => {})();\n');
   await fs.rm(path.join(root, 'src/settings'), { recursive: true });
   await fs.symlink(linkedSettings, path.join(root, 'src/settings'), process.platform === 'win32' ? 'junction' : 'dir');
   await assert.rejects(mod.renderSettingsRuntime(root), { code: 'owned-path-link' });
 
-  const clean = Object.fromEntries(entries.map(entry => [entry.output, `var ${entry.global} = 1;\n`]));
+  const clean = Object.fromEntries(entries.map(entry => [entry.output, entry.global ? `var ${entry.global} = 1;\n` : '(() => {})();\n']));
   for (const [code, source] of [
     ['settings-runtime-source-map', '//# sourceMappingURL=runtime.js.map'],
     ['proof-eval', 'eval("x")'],
@@ -105,6 +113,12 @@ test('module sources, linked inputs, and invalid generated artifacts are rejecte
   assert.doesNotThrow(() => mod.validateSettingsRuntime(originCheck, ['runner-host']));
   const remoteImport = { ...clean, [entries[0].output]: `${clean[entries[0].output]}import("https://chzzk.naver.com");\n` };
   assert.throws(() => mod.validateSettingsRuntime(remoteImport, ['runner-host']), { code: 'proof-remote-import' });
+  const hostPolicy = { ...clean, 'config.js': 'var KnifeHostPolicy = Object.freeze({ origins: Object.freeze(["https://chzzk.naver.com/*"]) });\n' };
+  assert.doesNotThrow(() => mod.validateSettingsRuntime(hostPolicy, ['runner-host']));
+  assert.throws(() => mod.validateSettingsRuntime({ ...hostPolicy, 'config.js': hostPolicy['config.js'] + 'fetch("https://chzzk.naver.com/*");\n' }, ['runner-host']), { code: 'proof-remote-url' });
+  const svg = { ...clean, 'web/main.js': 'const initStyleParameters = () => document.createElementNS("http://www.w3.org/2000/svg", "svg");\n' };
+  assert.doesNotThrow(() => mod.validateSettingsRuntime(svg, ['runner-host']));
+  assert.throws(() => mod.validateSettingsRuntime({ ...svg, 'web/main.js': svg['web/main.js'] + 'fetch("http://www.w3.org/2000/svg");\n' }, ['runner-host']), { code: 'proof-remote-url' });
   const hiddenGlobal = { ...clean, [entries[0].output]: '(() => { var KnifeSettingsContract = 1; })();\n' };
   assert.throws(() => mod.validateSettingsRuntime(hiddenGlobal, ['runner-host']), { code: 'settings-runtime-global' });
   const importMeta = { ...clean, [entries[0].output]: `${clean[entries[0].output]}console.log(import.meta.url);\n` };
