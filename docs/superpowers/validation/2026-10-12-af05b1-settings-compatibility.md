@@ -33,7 +33,7 @@
 | --- | --- |
 | 초기환경기준 | sandbox:835개/740pass/95fail(주로temp realpath EPERM). 일반환경:835개/833pass/2fail(P02 역사hash+temp rename EPERM). PASS로표시하지않음. rename검사단독재실행1/1,이후전체에서도통과 |
 | 집중·연결 | 최초191/191,추가도구회귀후새출처6+호환성72=78/78,최종집중192/192·실패/skip0. 최종전체에도동일검사포함 |
-| 원래폴더전체(68569f2) | 912개/911pass/1fail/skip0. `P02 warning ledger closes every baseline row and preserves every latest guarded observation`의기존background.js 역사hash 불일치. 원장/skip 규칙미변경 |
+| 원래폴더전체최종(b81debd 이후동일코드) | 913개/912pass/1fail/skip0. `P02 warning ledger closes every baseline row and preserves every latest guarded observation`의기존background.js 역사hash 불일치. 원장/skip 규칙미변경 |
 | 새tracked clone 최종(b81debd) | 913개/912pass/fail0/기존private-evidence-absent skip1. 제외옵션없음;의존성물리복사·고정commit 명시fetch. Windows file-symlink privilege 미검증diagnostic2개는유지하며Linux CI에서별도확인 |
 | strict/생성/도구체인 | check:toolchain·check:runtime-js·typecheck·typecheck:development·typecheck:audio-tools·check:settings-runtime·check:main-runtime·check:build-proof 모두exit0 |
 | 격리build/package | 새clone에서만build, v2.13.3/entry resources20 검사통과. 원래root dist에build하지않음 |
@@ -53,5 +53,6 @@
 - 제공brief parser를위해Task1/2 heading을Task 1/2로정규화하고미번역표제만수정했다;구현범위는같다.
 - 기존역사P02 불일치는원장을고쳐지우지않음. 제외없는새tracked 조건전체검사를별도로유지했다.
 - 집중검사후코드checkpoint를먼저commit해immutable tracked clone을만들고전체게이트/문서commit을이어갔다;중간commit은출시승인이아니다.
-- Astra max whole-branch 최종검토·필요보완·한글PR 최종CI/병합은아직대기다. 이절은검토결과를받은뒤갱신한다.
+- Astra max는 `46eb672..b29fc0b8124074295132f088a2d6bf2f0c8b74c4`의whole-branch를한번검토했다. **Critical0·Important0·Minor0, 최종공개CI 통과후병합권고**다. 수정요청은없다. 독립호환성72/72·실제메모리내size/EOL/cleanup hold/미처리요청/accessor/held callback 반례와네후보hash를확인했고HEAD/파일을변경하지않았다. 전체suite/build/audio/설치/audit를독립재실행한것은아니며주실행자의보존log를대조했다.
+- 한글PR의최종head 공개CI·병합은대기다. 검토0건판정을native/출시/보안인증으로확대하지않는다.
 - B2 전체payload/background/구UI/설치전환·native preflight/실제update·플랫폼rollback·과거미검증수용승인은별도미완료다. B1만으로P09/AF05-B를닫거나F00–F05 동결을해제하지않는다.
