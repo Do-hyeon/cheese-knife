@@ -93,7 +93,14 @@ Astra max는 `origin/main...e1e359b`의 player diff뿐 아니라 runtime·audio 
 
 ## 공개 PR과 병합
 
-로컬 수용과 독립 검토가 완료됐다. 한글 PR과 공개 Windows·Ubuntu foundation, 전체 verify가 모두 통과하기 전에는 병합하지 않는다. 공개 PR·CI·merge 정보는 상태 고정 커밋에서 이 절에 추가한다.
+- 한글 PR: [#15 AF04-B: 플레이어 런타임을 TypeScript 모듈로 이전](https://github.com/Do-hyeon/cheese-knife/pull/15)
+- 공개 CI: [run 38187819147](https://github.com/Do-hyeon/cheese-knife/actions/runs/38187819147), 최종 결론 `success`
+  - Ubuntu foundation: 12초, 통과
+  - Windows foundation: 45초, 통과
+  - 전체 verify 재실행: 3분 23초, Node tests·build·package·객관 오디오·설치형 positive/negative E2E 통과
+- 병합: 2026-10-12 09:32:02 KST, merge commit `5e6e54123d561753fbd8a1f7c2805063409eb6d6`
+
+최초 verify는 1분 51초에 객관 오디오의 `250Hz/on/rms` 단일 표본이 기준 대비 약 91%로 측정돼 실패했다. 같은 Chromium 151의 AF04-A 공개 CI와 AF04-B 로컬 재측정은 기존 값으로 통과했고 audio/config 제품 diff가 없었다. 기준을 낮추거나 코드를 바꾸지 않고 실패한 작업만 한 번 재실행했으며, 객관 오디오와 나머지 전체 게이트가 통과했다. 공개 CI와 병합은 로컬 수용 결과를 변경하지 않았고, AF04-C의 기준점은 위 merge commit이다.
 
 ## 재현 명령
 
@@ -116,4 +123,4 @@ git -c core.safecrlf=false diff --check
 
 ## 롤백
 
-제품 범위는 `cbdc64b..e1e359b`다. 공개 병합 뒤에는 최신 `main` 기반 복구 브랜치에서 해당 merge commit을 `git revert -m 1`로 되돌리고 전체 게이트를 다시 검증한다. 강제 reset은 사용하지 않으며 manifest, 사용자 storage와 기존 스토어 배포물을 직접 수정하지 않는다.
+제품 범위는 `cbdc64b..e1e359b`다. AF04-B를 되돌릴 때는 최신 `main` 기반 복구 브랜치에서 `git revert -m 1 5e6e54123d561753fbd8a1f7c2805063409eb6d6`을 실행하고 전체 게이트를 다시 검증한다. 강제 reset은 사용하지 않으며 manifest, 사용자 storage와 기존 스토어 배포물을 직접 수정하지 않는다.

@@ -26,12 +26,12 @@
 
 ## 2. 현재 공개·저장소 상태
 
-- AF04-A 제품 기준 merge commit: `5d28c481b4d2b693eb08d504140c72cc99412cb1`.
-- PR #2 `2.13.3` 복구 변경, PR #3 README 간소화, PR #4 AF00 설치형 E2E 기반, PR #5 AF01 타입·빌드 기반, PR #6 AF02 계약 우선 전환, PR #7 AF02 상태 고정, PR #8 AF03 runtime·site adapter 분리, PR #9 AF03 상태 고정, PR #12 AF04 설계, PR #13 AF04-A audio 이전과 PR #14 AF04-A 상태 고정은 `main`에 병합됐다.
+- AF04-B 제품 기준 merge commit: `5e6e54123d561753fbd8a1f7c2805063409eb6d6`.
+- PR #2 `2.13.3` 복구 변경, PR #3 README 간소화, PR #4 AF00 설치형 E2E 기반, PR #5 AF01 타입·빌드 기반, PR #6 AF02 계약 우선 전환, PR #7 AF02 상태 고정, PR #8 AF03 runtime·site adapter 분리, PR #9 AF03 상태 고정, PR #12 AF04 설계, PR #13 AF04-A audio 이전, PR #14 AF04-A 상태 고정과 PR #15 AF04-B player 이전은 `main`에 병합됐다.
 - GitHub prerelease `v2.13.3-community.1`이 공개됐다.
 - Chrome 웹 스토어 2.13.3 교체본은 사용자가 게시 완료를 확인했다. 새 설치·기존 설치 자동 업데이트와 설정 보존은 아직 완료로 가정하지 않는다.
 - 현재 기준 브랜치: 포크의 `origin/main`. 움직이는 최신 문서 merge SHA나 PR 번호 상한은 기준점으로 기록하지 않는다.
-- AF01은 PR #5로 병합됐고 최종 공개 CI run `38157976040`에서 Windows·Ubuntu foundation과 전체 verify가 통과했다. AF02는 PR #6의 공개 CI run `38161802432`와 PR #7의 공개 CI run `38162135577`를 통과해 `main`에 병합됐다. AF03은 검증 코드 `f125daf`를 PR #8의 공개 CI run `38168282370`에서 검증하고 merge commit `275b9a6`으로 병합했으며, PR #9의 공개 CI run `38168743332`로 상태 문서를 고정했다. AF04-A는 PR #13의 공개 CI run `38185697240`에서 검증하고 merge commit `5d28c48`로 병합했다.
+- AF01은 PR #5로 병합됐고 최종 공개 CI run `38157976040`에서 Windows·Ubuntu foundation과 전체 verify가 통과했다. AF02는 PR #6의 공개 CI run `38161802432`와 PR #7의 공개 CI run `38162135577`를 통과해 `main`에 병합됐다. AF03은 검증 코드 `f125daf`를 PR #8의 공개 CI run `38168282370`에서 검증하고 merge commit `275b9a6`으로 병합했으며, PR #9의 공개 CI run `38168743332`로 상태 문서를 고정했다. AF04-A는 PR #13의 공개 CI run `38185697240`에서 검증하고 merge commit `5d28c48`로 병합했다. AF04-B는 PR #15의 공개 CI run `38187819147`을 통과하고 merge commit `5e6e541`로 병합했다.
 
 GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 상태는 사용자가 보고한 마지막 상태이며 P09에서 게시 후 다시 확인한다.
 
@@ -57,11 +57,11 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 상태�
 | AF01 | 타입·빌드 전환 기반 | AF00 | DONE | strict/build proof와 공개 CI 유지 |
 | AF02 | 계약 우선 TypeScript 전환 | AF01 | DONE | 생성·drift·strict·설치형 E2E 게이트 유지 |
 | AF03 | MAIN runtime·site adapter 분리 | AF02 | DONE | 생성·strict·설치형 E2E·공개 CI 유지 |
-| AF04 | 기능별 모듈 이전 | AF03 | DOING | AF04-B player 공개 PR·CI·merge |
+| AF04 | 기능별 모듈 이전 | AF03 | DOING | AF04-C preview 구현·검증·공개 PR |
 | AF05 | 이행 종료·공개 게이트 | AF04, P09 | BLOCKED | 설치·업데이트·롤백과 정책 정합성 확인 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **AF04-B player module 공개 PR·CI**. 로컬 구현·전체 게이트·Astra max 독립 검토는 완료했으며, 공개 Windows·Ubuntu foundation과 전체 verify가 모두 통과할 때만 병합한다. AF04-C는 AF04-B 병합 뒤 시작한다.
+현재 커서: **AF04-C preview module 구현**. AF04-B는 로컬 전체 게이트·Astra max 독립 검토·공개 Windows/Ubuntu foundation·전체 verify를 통과하고 병합됐다. 승인된 [AF04-C 구현 계획](docs/superpowers/plans/2026-10-12-af04c-preview-module.md)에 따라 다음 단계를 진행한다.
 
 ## 5. P09 — 스토어 게시 후 고정
 
@@ -169,7 +169,7 @@ P09의 게시 뒤 설치·업데이트 수용 검사는 AF02의 내부 계약 �
 - [x] AF04-A audio typed source graph 로컬 구현·전체 검증·독립 검토 완료.
 - [x] AF04-A audio를 typed source graph로 이전하고 PR #13·공개 CI run `38185697240`·merge commit `5d28c48`로 완료.
 - [x] AF04-B player typed source graph 로컬 구현·전체 검증·Astra max 독립 검토 완료.
-- [ ] AF04-B player를 typed source graph로 이전하고 공개 CI·merge 완료.
+- [x] AF04-B player를 typed source graph로 이전하고 PR #15·공개 CI run `38187819147`·merge commit `5e6e541`로 완료.
 - [ ] AF04-C preview를 typed source graph로 이전하고 공개 CI·merge 완료.
 - [ ] AF04-D inject를 기능별 module로 분리하고 공개 CI·merge 완료.
 - [ ] 각 기능의 mount/dispose/status, 실패 격리, 다중 창과 설치형 positive/negative E2E 확인.
@@ -213,4 +213,4 @@ git -c core.safecrlf=false diff --check
 
 ## 10. 현재 사용자 개입 지점
 
-AF04-B 한글 PR을 열고 공개 CI를 확인한다. 모든 필수 check가 통과하면 승인된 범위에서 병합하고 상태를 고정한 뒤 AF04-C preview 계획으로 이동한다. 현재 승인 범위 밖의 동작 변경이나 권한·데이터 확대가 발견될 때만 중지한다. P09 설치 수용은 AF04와 별도로 재개한다.
+AF04-C preview 계획을 순차 실행한다. 현재 승인 범위 밖의 동작 변경이나 권한·데이터 확대가 발견될 때만 중지한다. P09 설치 수용은 AF04와 별도로 재개한다.
