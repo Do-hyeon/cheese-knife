@@ -222,7 +222,8 @@ AF05-B 공개 수용 — P09와 차기 AF 배포에 의존:
 - [x] **B1 / 상세 계획:** [게시 설정 계약 호환성 구현 계획](docs/superpowers/plans/2026-10-12-af05b1-settings-compatibility.md). Git/배포 hash를 고정한4파일과 같은fixture 저장 old→new→old·독립golden·fault/negative control. background/구 UI/native/전체58파일은 검증 범위 밖.
 - [x] **B1 / 독립 검토:** Astra max Critical0·Important3·Minor0와주실행자보완. 예약작업gap의settle epoch·전체게시schema/bounds·저장후completion/response실패oracle 반영. [검토 기록](docs/superpowers/validation/2026-10-12-af05b1-plan-review.md). 수정후독립0건/새검사PASS 아님; 구현·CI fetch 변경은미실행.
 - [x] **B1 / 구현 승인:** 사용자2026-10-12 계획·Native 실행·최종Astra max 검토 승인. 이 승인만으로 과거 미검증 수용·P09/AF05 완료 기준을 바꾸지 않음.
-- [ ] **B1 / 구현·검증:** 출처reader → fixture/compatibility → 전체 기존 게이트 → 최종 검토·CI·병합. 제품2.13.3·root dist·ZIP·프로필·frozen 원장은 보존.
+- [x] **B1 / 구현·로컬 검증:** 출처reader6·두세대호환성72,고정schema/golden·동일저장old→new→old·fault/negative control. 새tracked 조건913개/912pass/기존private자료부재skip1/실패0,strict8·후보오디오14/18/12·설치positive/negative 통과. 원래폴더의P02 역사hash실패·기존도구경고7 유지,새경고0. [검증 기록](docs/superpowers/validation/2026-10-12-af05b1-settings-compatibility.md). 제품2.13.3·dist·ZIP·프로필·frozen 원장미변경.
+- [ ] **B1 / 최종 검토·공개 CI·병합:** Astra max whole-branch 검토·필요보완·한글PR의최종head checks 확인. 로컬검사를native update 수용으로표시하지않음.
 - [ ] **B2 / 후속 상세 계획·승인:** 전체58파일 payload·실제background/구 UI·bundled Chromium의 동일 프로필/ID 전환·격리 rollback. B1 PASS를B2/native PASS로 합산하지 않음.
 - [ ] **후속 / native preflight·공개 준비:** 관측/설치·제품 버전·스토어 제출·게시 각각 별도 승인. 상세 계획은 앞 단계 근거를 확인한 뒤 작성.
 - [ ] 새 설치·기존 설치 업데이트·설정 보존·롤백 설치 수용.

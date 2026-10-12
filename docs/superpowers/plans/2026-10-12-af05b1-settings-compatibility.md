@@ -65,7 +65,7 @@
 - Produces `readPublishedWorkerSources(): WorkerSources`. module URL에서repository root를 고정하고 각file을 `execFileSync('git', ['show', sourceCommit + ':' + file], {cwd: root, timeout: 15000, maxBuffer: 1048576})`로raw Buffer로 읽어 위validator에 넘긴다. 임의repo/URL/commit 인자·shell·자동fetch는 제공하지 않는다.
 - Errors `.code`: `published-baseline-input`, `published-baseline-size`, `published-baseline-git-hash`, `published-baseline-payload-hash`, `published-baseline-unavailable`. exact own keys4개·Buffer·각1MiB/합계2MiB 이하를 요구한다. git absent/timeout/nonzero exit는unavailable, 입력hash 일치 후 고정EOL 복원output 불일치는payload-hash다.
 
-- [ ] **Step1 — failing provenance tests**: 위exact API를import하고 실제Git blobs를 원본으로 보존한다. 다음test명과assert를 고정한다.
+- [x] **Step1 — failing provenance tests**: 위exact API를import하고 실제Git blobs를 원본으로 보존한다. 다음test명과assert를 고정한다.
 
 ```js
 // published baseline bytes match the attested submission entries
@@ -79,10 +79,10 @@ assert.deepEqual(blobs, beforeValidation);
 
 다른entry3개도 표의hash와 완전히 일치시킨다. missing/extra/non-Buffer는input, 1MiB+1/합계2MiB+1은size다. 입력hash 자체를 바꿔 허용하는test용metadata 인자는 추가하지 않는다. metadata의config ranges와 정확한byte 결과를assert하고, 전체LF→CRLF의hash가`26c0db7bccbb73e305b75db01003bf9ec97eb7a012f62f6ab2409101685f10f7`여서 틀린 결과임을 확인한다.
 
-- [ ] **Step2 — RED**: `node --test tests/published-settings-baseline.test.cjs`. 미작성module의import 실패로RED. git objects 누락을RED의 대체로 삼지 않는다.
-- [ ] **Step3 — reader 구현**: 고정4파일과Node 표준crypto/child_process만으로 위API를 구현한다. metadata는 같은module에 두고 중복JS fixture나 범용archive reader를 만들지 않는다.
-- [ ] **Step4 — CI preparation과absent-object test**: verify의Run tests 직전에 `git fetch --no-tags --depth=1 origin fb15f9675f9ea910e98363635155bc4ff9eb1d2f`를 명시한다. foundation/check offline은 변경하지 않는다. fresh owned temp의empty Git repo에module만 복사하고child import로reader를 호출해object 누락에서`.code === 'published-baseline-unavailable'`·nonzero exit를 확인한다. child timeout20초, finally에서 자신의 새temp만 삭제하고 기존 경로를 인수하지 않는다. 로컬object가 있다는 이유로skip하지 않는다.
-- [ ] **Step5 — GREEN/commit**: `node --test tests/published-settings-baseline.test.cjs` PASS, `git diff --check` 0을 확인하고Task1의3파일만commit한다. 원본ZIP/private output 없이 실행되는test임을 확인한다.
+- [x] **Step2 — RED**: `node --test tests/published-settings-baseline.test.cjs`. 미작성module의import 실패로RED. git objects 누락을RED의 대체로 삼지 않는다.
+- [x] **Step3 — reader 구현**: 고정4파일과Node 표준crypto/child_process만으로 위API를 구현한다. metadata는 같은module에 두고 중복JS fixture나 범용archive reader를 만들지 않는다.
+- [x] **Step4 — CI preparation과absent-object test**: verify의Run tests 직전에 `git fetch --no-tags --depth=1 origin fb15f9675f9ea910e98363635155bc4ff9eb1d2f`를 명시한다. foundation/check offline은 변경하지 않는다. fresh owned temp의empty Git repo에module만 복사하고child import로reader를 호출해object 누락에서`.code === 'published-baseline-unavailable'`·nonzero exit를 확인한다. child timeout20초, finally에서 자신의 새temp만 삭제하고 기존 경로를 인수하지 않는다. 로컬object가 있다는 이유로skip하지 않는다.
+- [x] **Step5 — GREEN/commit**: `node --test tests/published-settings-baseline.test.cjs` PASS, `git diff --check` 0을 확인하고Task1의3파일만commit한다. 원본ZIP/private output 없이 실행되는test임을 확인한다.
 
 ## Task 2: 같은 저장 상태에서 두 세대를 실행
 
@@ -97,7 +97,7 @@ assert.deepEqual(blobs, beforeValidation);
 - `saved`와`registrations`의identity를 유지한다. worker별style invalidation listener는 교대 때 해제하고 이전DOM을 닫는다. 초기seed 외에storage 재주입·clone 교체를 하지 않는다. 기존default harness의zero-argument restart 동기 계약은 바꾸지 않는다.
 - `client()/openUi()`는 계속current files만 사용한다. B1은 직접`patch('popup'|'styles', operations)`를 사용한다. sender명이 두 종류라도 두 실제UI를 검증한 것은 아니다.
 
-- [ ] **Step1 — failing version-switch tests**: `tests/settings-compatibility.test.cjs`에 다음test를 추가한다.
+- [x] **Step1 — failing version-switch tests**: `tests/settings-compatibility.test.cjs`에 다음test를 추가한다.
 
 ```js
 // old new old keeps the same raw storage and registration identities
@@ -125,9 +125,9 @@ assert.equal(h.changes.listeners.size, 1);
 `versioned switch rejects queued invalidation before any boundary`: initialized/settled 상태에서`h.invalidate({retry:true})` 직후boundary 추가0이어도switch는busy. 이후settle→switch→새initialize/settle는성공한다. 이전worker의storage/scripting/tabs/permissions API 함수들을검사용wrapper로감싸퇴역 이후호출수를세고0회임을assert한다. DOM.close만으로취소됐다고판정하지않는다.
 `default fixture and zero-argument restart remain compatible`: 기존settings/background/client/UI 검사를 변경 없이 재실행한다.
 
-- [ ] **Step2 — RED**: `node --test tests/settings-compatibility.test.cjs`. source 선택 미구현으로old worker가 실행되지 않는 검출assert 또는 미지원switch assert로 실패시킨다. 먼저old/current worker global 함수의source 문자열이 각 공급source에서eval되었음을 확인해 내용 비교만으로 우연히PASS하는 것을 막는다.
-- [ ] **Step3 — fixture 구현**: 위optional source 입력·versioned 교대 검증·pendingrequest/activeboundary 계수와activity/settled epoch를 기존fixture에 추가한다. versioned 작업은계수/epoch를관리하는fixture 메서드로시작한다; raw broker 참조는진단용이다. timer 연장으로busy를 숨기지 않고reject/throw에도finally로 계수를 복원한다. default callers를 새API로 일괄 변경하지 않는다.
-- [ ] **Step4 — independent goldens/differential**: 아래named tests를old/new의 독립context에서 실행한다. snapshot의cross-realm값은JSON으로plain화, raw는structuredClone 비교를 사용한다. code에서default 기대값을 생성하지 않는다.
+- [x] **Step2 — RED**: `node --test tests/settings-compatibility.test.cjs`. source 선택 미구현으로old worker가 실행되지 않는 검출assert 또는 미지원switch assert로 실패시킨다. 먼저old/current worker global 함수의source 문자열이 각 공급source에서eval되었음을 확인해 내용 비교만으로 우연히PASS하는 것을 막는다.
+- [x] **Step3 — fixture 구현**: 위optional source 입력·versioned 교대 검증·pendingrequest/activeboundary 계수와activity/settled epoch를 기존fixture에 추가한다. versioned 작업은계수/epoch를관리하는fixture 메서드로시작한다; raw broker 참조는진단용이다. timer 연장으로busy를 숨기지 않고reject/throw에도finally로 계수를 복원한다. default callers를 새API로 일괄 변경하지 않는다.
+- [x] **Step4 — independent goldens/differential**: 아래named tests를old/new의 독립context에서 실행한다. snapshot의cross-realm값은JSON으로plain화, raw는structuredClone 비교를 사용한다. code에서default 기대값을 생성하지 않는다.
 
 | test명/입력 | literal assertion/순서 |
 | --- | --- |
@@ -148,8 +148,8 @@ valid seeds의빈값/비기본/unknown/migration마다old→new→old 연속 저
 
 `all published field descriptors and bounds are fixed`의고정schema: 게시worker의`CONFIGS.flatMap(g => g.configs.flatMap(f => f.configs || [f]))`를선언순서대로 `{id,type:f.type || 'boolean',defaultValue,...(f.type==='range'?{min,max,step}:{})}`에projection하고`{config:fields,styles:plain(STYLES)}`를JSON.stringify한다. config25개·style group7개와SHA-256 `b5b80219c2554520640d060c73e1d9de4ce7670637fe22d9338c58d8528ca823`을literal로assert한다. 주실행자가고정Git 게시소스에서읽기전용으로계산한값이다. 후보의동일projection은게시schema와deepEqual이어야한다. 검사입력은후보schema가아닌위hash를통과한게시fields에서만생성한다: range good=min/max/default, bad=min-1/max+1/NaN/Infinity/'0'/null/false, boolean good=false/true 및bad=0/1/'true'/null. plain style은true/false만허용하고range style은parameter의min/max/0/2.5를허용·min-1/max+1을거부한다; range id에style toggle은거부한다. 각config의빈snapshot default도게시default와같아야한다. 기존literal golden은그대로유지한다.
 
-- [ ] **Step5 — negative controls/GREEN**: `compatibility oracle rejects seeded data loss`에서fresh harness용newSources의broker 앞에test 전용 `void chrome.storage.local.set({config:{}});`를 추가하고old가 저장한arrowSeek=false/futureFlag를 잃는candidate를 실제eval한다. 초기화/settle 후raw 손실을확인하고정상과 같은assertion 경로가해당field의AssertionError를 내는 것을assert rejects한다. `schema oracle rejects widened previewVolume bound`는별도fresh candidate worker의CONFIGS previewVolume.max를100→101로바꾸고동일schema assertion이실패하며게시contract는101거부/변형candidate는101허용임을assert한다. 두control은normal sources/on-disk files를 변경하지 않는다; baseline mutation의hash 거부와도 별개다. `node --test tests/published-settings-baseline.test.cjs tests/settings-compatibility.test.cjs tests/settings-contract.test.cjs tests/settings-broker.test.cjs tests/settings-client.test.cjs tests/background.test.cjs tests/settings-ui.test.cjs tests/settings-multi-ui.test.cjs tests/settings-style-apply.test.cjs`를 모두PASS시킨다. test명은`rg --files tests`로 확인했고 누락을skip으로 숨기지 않는다.
-- [ ] **Step6 — full gates/record/commit**: 아래 검증을 실행하고 결과·후보SHA/hash·미검사 범위를validation과PLANS에 기록한다. Task2의fixture/tests/doc만commit한다.
+- [x] **Step5 — negative controls/GREEN**: `compatibility oracle rejects seeded data loss`에서fresh harness용newSources의broker 앞에test 전용 `void chrome.storage.local.set({config:{}});`를 추가하고old가 저장한arrowSeek=false/futureFlag를 잃는candidate를 실제eval한다. 초기화/settle 후raw 손실을확인하고정상과 같은assertion 경로가해당field의AssertionError를 내는 것을assert rejects한다. `schema oracle rejects widened previewVolume bound`는별도fresh candidate worker의CONFIGS previewVolume.max를100→101로바꾸고동일schema assertion이실패하며게시contract는101거부/변형candidate는101허용임을assert한다. 두control은normal sources/on-disk files를 변경하지 않는다; baseline mutation의hash 거부와도 별개다. `node --test tests/published-settings-baseline.test.cjs tests/settings-compatibility.test.cjs tests/settings-contract.test.cjs tests/settings-broker.test.cjs tests/settings-client.test.cjs tests/background.test.cjs tests/settings-ui.test.cjs tests/settings-multi-ui.test.cjs tests/settings-style-apply.test.cjs`를 모두PASS시킨다. test명은`rg --files tests`로 확인했고 누락을skip으로 숨기지 않는다.
+- [x] **Step6 — full gates/record/commit**: 아래 검증을 실행하고 결과·후보SHA/hash·미검사 범위를validation과PLANS에 기록한다. Task2의fixture/tests/doc만commit한다.
 
 ## 구현 후 검증과 공개 문서 게이트
 
