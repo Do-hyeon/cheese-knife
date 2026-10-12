@@ -4,6 +4,12 @@ const fs = require('node:fs/promises');
 const { ESLint } = require('eslint');
 const { page, load, runtime, deliver, playerHTML, flush } = require('./helpers.cjs');
 
+test('preview autoplay proof loads the production site adapter boundary', async () => {
+  const source = await fs.readFile('scripts/check-preview-autoplay.mjs', 'utf8');
+  assert.match(source, /readFile\('web\/site-adapter\.js'/);
+  assert.match(source, /test-site-adapter\.js/);
+});
+
 test('player controls use DOM SVG construction without an unsafe HTML assignment warning', async t => {
   const lint = new ESLint({ overrideConfigFile: 'eslint.security.config.mjs' });
   const result = await lint.lintFiles(['web/player.js']);

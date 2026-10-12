@@ -278,7 +278,8 @@
         complete();
       } catch (error) {
         if (!currentAudio()) return;
-        if (!manual && startUnmuted && !desiredMuted && !fallbackUsed && own(error, "name") === "NotAllowedError") {
+        const name = error instanceof target.DOMException ? error.name : own(error, "name");
+        if (!manual && startUnmuted && !desiredMuted && !fallbackUsed && name === "NotAllowedError") {
           fallbackUsed = true;
           policyBlockRevision = audioRevision;
           desiredMuted = true;

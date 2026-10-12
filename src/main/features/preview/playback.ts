@@ -174,7 +174,8 @@ export function createPlayback(runtime: KnifeRuntime, panel: PreviewPanel, inten
     try { await video.play(); complete(); }
     catch (error: unknown) {
       if (!currentAudio()) return;
-      if (!manual && startUnmuted && !desiredMuted && !fallbackUsed && own(error, 'name') === 'NotAllowedError') {
+      const name = error instanceof target.DOMException ? error.name : own(error, 'name');
+      if (!manual && startUnmuted && !desiredMuted && !fallbackUsed && name === 'NotAllowedError') {
         fallbackUsed = true; policyBlockRevision = audioRevision; desiredMuted = true; video.muted = true;
         try { await video.play(); complete(); }
         catch { if (currentAudio()) fail(); }
