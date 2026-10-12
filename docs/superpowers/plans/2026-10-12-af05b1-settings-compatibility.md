@@ -1,6 +1,6 @@
 # AF05-B1 — 게시 설정 계약 호환성 구현 계획
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. 구현 계획 승인 전에는 아래 코드를 작성하지 않는다. 권장 실행은 Native이며 최종 whole-branch 검토는 Astra max다.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. 사용자가2026-10-12 B1 계획·Native 실행·최종 Astra max whole-branch 검토를 승인했다. 전체 AF05-B 수용 기준 변경이나 공개 실행 승인은 아니다.
 
 **Goal:** 게시된2.13.3과 현재 AF 코드의 설정 계약을 객관적으로 비교하고, 하나의 모의 저장소에서 old→new→old 처리 중 값 손실을 검출한다.
 
@@ -54,7 +54,7 @@
 
 `config.js`의 정확한 변환: Git LF source를`\n`으로 분할하고, 1-based line ranges `[1,12]`, `[21,49]`, `[52,220]`에만 끝에`\r`을 추가해`\n`으로 결합한다. 다른 행/문자/파일은 변환하지 않는다. Git5506 bytes→ZIP5716 bytes, LF254·CRLF210을2026-10-12 원본 ZIP과 대조해 byte 일치를 확인했다. 전체LF→CRLF나 느슨한 줄바꿈 정규화는 사용하지 않는다. 구현 metadata에는 각 entry의input/output hash와config의 고정ranges를 넣는다. 이 재구성은4파일만의 출처 근거이며 전체58파일ZIP의 대체가 아니다.
 
-## Task1: 고정된 게시 설정 소스를 읽는 검사 경계
+## Task 1: 고정된 게시 설정 소스를 읽는 검사 경계
 
 **Files:** Create `scripts/published-settings-baseline.mjs`, `tests/published-settings-baseline.test.cjs`; Modify `.github/workflows/ci.yml`의verify/test 준비.
 
@@ -84,7 +84,7 @@ assert.deepEqual(blobs, beforeValidation);
 - [ ] **Step4 — CI preparation과absent-object test**: verify의Run tests 직전에 `git fetch --no-tags --depth=1 origin fb15f9675f9ea910e98363635155bc4ff9eb1d2f`를 명시한다. foundation/check offline은 변경하지 않는다. fresh owned temp의empty Git repo에module만 복사하고child import로reader를 호출해object 누락에서`.code === 'published-baseline-unavailable'`·nonzero exit를 확인한다. child timeout20초, finally에서 자신의 새temp만 삭제하고 기존 경로를 인수하지 않는다. 로컬object가 있다는 이유로skip하지 않는다.
 - [ ] **Step5 — GREEN/commit**: `node --test tests/published-settings-baseline.test.cjs` PASS, `git diff --check` 0을 확인하고Task1의3파일만commit한다. 원본ZIP/private output 없이 실행되는test임을 확인한다.
 
-## Task2: 같은 저장 상태에서 두 세대를 실행
+## Task 2: 같은 저장 상태에서 두 세대를 실행
 
 **Files:** Modify `tests/settings-fixture.cjs`의worker 로드 경계·request/boundary 계수; Create `tests/settings-compatibility.test.cjs`, `docs/superpowers/validation/2026-10-12-af05b1-settings-compatibility.md`; Modify `PLANS.md`.
 
@@ -129,7 +129,7 @@ assert.equal(h.changes.listeners.size, 1);
 - [ ] **Step3 — fixture 구현**: 위optional source 입력·versioned 교대 검증·pendingrequest/activeboundary 계수와activity/settled epoch를 기존fixture에 추가한다. versioned 작업은계수/epoch를관리하는fixture 메서드로시작한다; raw broker 참조는진단용이다. timer 연장으로busy를 숨기지 않고reject/throw에도finally로 계수를 복원한다. default callers를 새API로 일괄 변경하지 않는다.
 - [ ] **Step4 — independent goldens/differential**: 아래named tests를old/new의 독립context에서 실행한다. snapshot의cross-realm값은JSON으로plain화, raw는structuredClone 비교를 사용한다. code에서default 기대값을 생성하지 않는다.
 
-| test名/入力 | literal assertion/順序 |
+| test명/입력 | literal assertion/순서 |
 | --- | --- |
 | `defaults and unknown storage remain separate` | 빈storage→snapshot arrowSeek=true/previewWidth=400/previewVolume=5/revision=0, 초기화commit/remove0. unknown config/style/parameter/top-level은raw 보존, snapshot에는 비공개; CSS는chat-font-size→left-chat 고정 순서 |
 | `fractional field patch and no-op preserve the rest` | brightness1.225/futureFlag/revision4에arrowSeek=false→raw 해당field 추가만/revision5. 재저장은write 없음/revision5 |
@@ -166,5 +166,5 @@ valid seeds의빈값/비기본/unknown/migration마다old→new→old 연속 저
 - [x] Review Focus5건에test를 배정. 저장projection의 독립golden과 실행negative를 함께 요구했다.
 - [x] 구현 단위는 출처reader와fixture/compatibility의2개. 새 기능·ZIP 추상화·DT 전체 타입화를 추가하지 않는다.
 - [x] Astra max 독립 계획 검토 Critical0·Important3·Minor0. 예약작업gap·전체schema oracle·post-commit/response 실패를주실행자가보완했다. [기록](../validation/2026-10-12-af05b1-plan-review.md). 수정후독립0건판정/새B1 PASS를주장하지않는다.
-- [ ] 사용자B1 계획·실행 방식 승인. Native 권장: 두 작은 단계가 같은fixture 입력 계약에 의존하고 사용자profile/제품을 변경하지 않기 때문이다.
+- [x] 사용자B1 계획·Native 실행 방식 승인. 주 실행자가순차구현한후Astra max 최종검토를진행한다. 과거미검증수용·전체AF05-B/실제배포승인은포함하지않는다.
 - [ ] 승인 후Task1→Task2→최종whole-branch 검토→CI/merge. B1 합격만으로P09/AF05-B 완료·로드맵 동결 해제를 선언하지 않는다.

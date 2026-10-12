@@ -221,7 +221,7 @@ AF05-B 공개 수용 — P09와 차기 AF 배포에 의존:
 - [ ] written-spec 승인: 과거 native2.13.2 경로의 미검증 수용 및 격리 rollback/미실행 플랫폼 rollback의 완료 기준 분리 포함. 승인 전 P09/AF05 완료 기준은 바꾸지 않음.
 - [x] **B1 / 상세 계획:** [게시 설정 계약 호환성 구현 계획](docs/superpowers/plans/2026-10-12-af05b1-settings-compatibility.md). Git/배포 hash를 고정한4파일과 같은fixture 저장 old→new→old·독립golden·fault/negative control. background/구 UI/native/전체58파일은 검증 범위 밖.
 - [x] **B1 / 독립 검토:** Astra max Critical0·Important3·Minor0와주실행자보완. 예약작업gap의settle epoch·전체게시schema/bounds·저장후completion/response실패oracle 반영. [검토 기록](docs/superpowers/validation/2026-10-12-af05b1-plan-review.md). 수정후독립0건/새검사PASS 아님; 구현·CI fetch 변경은미실행.
-- [ ] **B1 / 구현 승인:** 사용자 계획·실행 방식 선택. Native+최종Astra max 권장. 이 승인만으로 과거 미검증 수용·P09/AF05 완료 기준을 바꾸지 않음.
+- [x] **B1 / 구현 승인:** 사용자2026-10-12 계획·Native 실행·최종Astra max 검토 승인. 이 승인만으로 과거 미검증 수용·P09/AF05 완료 기준을 바꾸지 않음.
 - [ ] **B1 / 구현·검증:** 출처reader → fixture/compatibility → 전체 기존 게이트 → 최종 검토·CI·병합. 제품2.13.3·root dist·ZIP·프로필·frozen 원장은 보존.
 - [ ] **B2 / 후속 상세 계획·승인:** 전체58파일 payload·실제background/구 UI·bundled Chromium의 동일 프로필/ID 전환·격리 rollback. B1 PASS를B2/native PASS로 합산하지 않음.
 - [ ] **후속 / native preflight·공개 준비:** 관측/설치·제품 버전·스토어 제출·게시 각각 별도 승인. 상세 계획은 앞 단계 근거를 확인한 뒤 작성.
