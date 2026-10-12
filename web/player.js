@@ -337,6 +337,7 @@
     if (!runtime.adapter) runtime.setStatus("player", "pending", "site-adapter-unavailable");
     let current = null;
     let unsubscribe = null;
+    let disposed = false;
     const disposeCurrent = () => {
       current?.scope.dispose();
       current = null;
@@ -382,20 +383,36 @@
       event.stopImmediatePropagation();
       controller.seek(event.key === "ArrowLeft");
     };
+    const dispose = () => {
+      if (disposed) return;
+      disposed = true;
+      disposeCurrent();
+      unsubscribe?.();
+      unsubscribe = null;
+      target.removeEventListener("keydown", onKeyDown);
+      target.removeEventListener("pagehide", onPageHide);
+      if (runtime.player === controller) Reflect.deleteProperty(runtime, "player");
+    };
     const onPageHide = (event) => {
-      if (!event.persisted) disposeCurrent();
+      if (!event.persisted) dispose();
+    };
+    const onState = (state) => {
+      if (disposed) return;
+      try {
+        reconcile(state);
+      } catch {
+        disposeCurrent();
+        runtime.setStatus("player", "failed", "feature-initialization");
+      }
     };
     try {
-      unsubscribe = runtime.subscribe(reconcile);
+      unsubscribe = runtime.subscribe(onState);
       target.addEventListener("keydown", onKeyDown);
       target.addEventListener("pagehide", onPageHide);
       runtime.player = controller;
       return controller;
     } catch {
-      disposeCurrent();
-      unsubscribe?.();
-      target.removeEventListener("keydown", onKeyDown);
-      target.removeEventListener("pagehide", onPageHide);
+      dispose();
       return null;
     }
   }

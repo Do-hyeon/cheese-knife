@@ -192,6 +192,81 @@ test('native replacement of control children automatically restores owned contro
   assert.equal(dom.window.document.querySelectorAll('.knife-ff').length, 1);
 });
 
+test('player identity changes bypass only a replaced video', async t => {
+  const dom = setup(t);
+  const rt = runtime(dom);
+  const bypassed = [];
+  rt.audio = { bypass: video => bypassed.push(video), configure() {}, eligible: () => false,
+    getState: () => 'off', setEnabled: async () => false, setGain() {}, subscribe: () => () => {} };
+  const layout = dom.window.document.getElementById('live_player_layout');
+  const original = layout.querySelector('video');
+  const replacement = dom.window.document.createElement('div');
+  replacement.className = 'pzp-pc';
+  replacement.innerHTML = '<div class="pzp-pc__video"></div><div class="pzp-pc__bottom-buttons-left"><button class="pzp-pc__playback-switch"></button><div class="pzp-pc__volume-control"></div></div>';
+  replacement.querySelector('.pzp-pc__video').append(original);
+  layout.querySelector('.pzp-pc').replaceWith(replacement);
+  rt.reconcile();
+  assert.deepEqual(bypassed, [], 'same-video UI replacement keeps the audio graph');
+  const next = dom.window.document.createElement('video');
+  original.replaceWith(next);
+  rt.reconcile();
+  assert.deepEqual(bypassed, [original], 'selected-video replacement retires the old audio graph');
+  assert.equal(dom.window.document.querySelectorAll('.knife-ff').length, 1);
+});
+
+test('persisted pagehide keeps controls but final pagehide removes global shortcuts once', t => {
+  const dom = setup(t);
+  const rt = runtime(dom);
+  const video = dom.window.document.querySelector('video');
+  Object.defineProperty(video, 'seekable', { value: ranges([[0, 100]]) });
+  let seeks = 0;
+  rt.player.seek = () => { seeks++; return true; };
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide', { persisted: true }));
+  dom.window.document.body.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+  assert.equal(seeks, 1);
+  assert.equal(dom.window.document.querySelectorAll('.knife-ff').length, 1);
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
+  dom.window.document.body.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+  assert.equal(seeks, 1, 'final disposal must not leave a stale key listener');
+  assert.equal(dom.window.document.querySelector('.knife-ff'), null);
+});
+
+test('a player callback failure is owned and unrelated subscribers still run', t => {
+  const dom = setup(t);
+  const rt = runtime(dom);
+  const changes = [];
+  const setStatus = rt.setStatus;
+  rt.setStatus = (...args) => { changes.push(args); setStatus(...args); };
+  let unrelated = 0;
+  rt.subscribe(() => { unrelated++; });
+  unrelated = 0;
+  const pzp = dom.window.document.querySelector('.pzp-pc');
+  const querySelector = pzp.querySelector.bind(pzp);
+  let fail = true;
+  pzp.querySelector = selector => {
+    if (fail) { fail = false; throw new Error('owned player failure'); }
+    return querySelector(selector);
+  };
+  rt.notify();
+  assert.equal(unrelated, 1);
+  assert.ok(changes.some(([feature, state]) => feature === 'player' && state === 'failed'));
+  assert.equal(changes.some(([feature]) => feature === 'runtime'), false);
+});
+
+test('late metrics resolution cannot write after its overlay is disposed', async t => {
+  let resolveMetrics;
+  const dom = setup(t, false, current => {
+    current.window.document.querySelector('.pzp-pc').insertAdjacentHTML('beforeend', '<div id="license"><button>License</button></div>');
+    runtime(current).adapter.player.readMetrics = () => new Promise(resolve => { resolveMetrics = resolve; });
+  });
+  dom.window.document.querySelector('#knife-stats button').click();
+  dom.window.document.querySelector('.knife-stats-overlay button').click();
+  resolveMetrics({ codec: 'late-codec' });
+  await flush();
+  assert.equal(dom.window.document.querySelector('.knife-stats-overlay'), null);
+});
+
 function nativeVOD(t, initiallyPaused) {
   const dom = setup(t, true, dom => {
     const video = dom.window.document.querySelector('video');
