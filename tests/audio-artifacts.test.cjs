@@ -38,6 +38,12 @@ test('audio quality CLI rejects unknown arguments before starting browser work',
   assert.match(`${result.stdout}\n${result.stderr}`, /audio-argument-invalid/);
 });
 
+test('audio CLI selects the strict normal alias without a wrapper', async () => {
+  const source = await fs.readFile('scripts/check-audio-quality.mjs', 'utf8');
+  assert.match(source, /import \{audioQualityReportFailures as audioQualityFailures\} from '\.\/audio-metrics\.mjs';/);
+  assert.match(source, /audioQualityFailures\(report\)/);
+});
+
 test('artifact description hashes every production audio entry file', async t => {
   const { AUDIO_ARTIFACT_FILES, describeAudioArtifact } = await load();
   const root = await artifactFixture(t);
