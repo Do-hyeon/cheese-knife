@@ -42,7 +42,8 @@ No candidate-generated oracle or new runtime validation was used.
 
 All three findings are addressed in the spec. This is an author amendment after
 one independent review, **not a second independent zero-finding verdict**.
-The current gate is the user's written-spec review; implementation remains pending.
+The subsequent user follow-up accepted the amended written spec for planning.
+Implementation-plan review and execution approval remain pending; no code PASS.
 
 ## Declined-to-judge decisions
 
@@ -69,10 +70,11 @@ The current gate is the user's written-spec review; implementation remains pendi
 The user approved the architectural direction/design review and explicitly
 chose maintenance completion before AF05-B. Preserve the B2 document and its
 implementation/acceptance gates. Do not claim C alone closes all maintenance.
-The user also reinforced **no documentation-only or tiny per-step PRs**.
-Accumulate related approved implementation/tests/verification with these local
-documents into a meaningful bundle; do not expand code without approval merely
-to make a PR larger. A risk/rollback split needs explicit scope approval.
+At the review checkpoint, the user had reinforced no documentation-only or tiny
+per-step PRs. The later correction supersedes those integration rules: **do not
+push or create any PR without an explicit user instruction**. Local work approval
+is not publication permission. Preserve local results until instructed; no PR
+size or documentation-only criterion authorizes an automatic public action.
 
 Source, products, version2.13.3, root dist, ZIP, frozen evidence and profiles were
 not changed by this documentation work. Written-spec approval precedes the

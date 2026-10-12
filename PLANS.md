@@ -40,7 +40,7 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어는 같�
 
 상태는 `DONE`, `READY`, `PLAN-REVIEW`, `DOING`, `WAITING-USER`, `WAITING-DEPENDENCY`, `BLOCKED`, `BACKLOG-BLOCKED`를 사용한다.
 
-1. 각 AF 단계는 설계·구현 계획·구현·검증·한글 PR의 독립 단위로 진행한다.
+1. 각 AF 단계는 설계·구현 계획·구현·검증 단위로 진행한다. push·PR은 사용자 명시 지시가 있을 때만 별도로 수행한다.
 2. 실패 검사→최소 구현→집중 회귀→전체 게이트 순서를 지킨다.
 3. private `output/**`, 브라우저 프로필, trace, screenshot, root `dist`와 실제 사용자 세션 자료를 커밋하지 않는다.
 4. 실제 설치 산출물, 소스 주입 검사, jsdom 검사와 실제 사이트 smoke의 증거를 섞지 않는다.
@@ -48,7 +48,7 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어는 같�
 6. 구현 중 현재 단계의 권한·데이터·제품 동작 범위가 넓어지면 중지하고 설계를 다시 승인받는다.
 7. 사용자 개입이 필요하지 않은 승인 범위의 작업은 순차적으로 이어간다. 확장 새로고침, 스토어 심사·게시, 외부 계정 조작처럼 사용자가 해야 하는 단계에서만 최소 행동을 요청한다.
 8. 사용자 시험판의 root `dist`는 테스트·감사·회귀의 임시 출력이나 cleanup 대상으로 사용하지 않는다. 명시적인 시험판 업데이트/복원 승인 없이는 이 경로에 `npm run build`를 실행하지 않으며 후보/임시 복제에서 검사한다.
-9. 관련된 승인 구현·테스트·검증·문서·상태 갱신은 의미 있는 작업 묶음의 한 브랜치/PR에 모은다. 작은 단계나 세부 항목마다 PR을 나누지 않으며 docs/문서만으로 PR을 생성하지 않는다. 설계·검토·중간 상태는 로컬 커밋으로 남기고 실제 구현 묶음에 함께 포함한다. 독립적인 위험·롤백 경계 때문에 분리가 필요하면 사유와 범위를 제시하고 별도 승인받는다. 병합 후 main 포함·열린 PR·worktree·현재 URL 의존성을 확인해 불필요한 로컬/포크 브랜치를 정리한다. 미병합 고유 커밋·원본 PR·원본 저장소 브랜치는 자동 삭제하지 않는다.
+9. 사용자 명시 지시 없이는 push 및 PR 생성을 하지 않는다. 작업·설계·구현·검증 승인이나 완료를 push/PR 지시로 해석하지 않으며 이전의 포괄적 공개 작업 승인을 자동 전용하지 않는다. 작업은 로컬에서 유지하고, 지시가 있을 때 요청된 범위만 공개한다. PR 크기·문서 여부를 별도의 자동 공개 기준으로 삼지 않는다. 병합 후 정리에도 해당 승인 범위와 main 포함·열린 PR·worktree·URL 의존성을 확인하며, 미병합 고유 커밋·원본 PR·원본 저장소 브랜치는 자동 삭제하지 않는다.
 
 ## 4. 순서와 현재 커서
 
@@ -66,10 +66,10 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어는 같�
 | AF05-A | 내부 원본 종료·검증 | AF04 | DONE | 생성·strict·전체 회귀·공개 CI 유지 |
 | AF05-B | 공개 설치·업데이트·롤백 수용 | P09, 차기 AF 배포 준비 | DEFERRED-MAINTENANCE | B1 완료, B2 문서·승인 게이트 보존; 테스트·개발 도구 타입 강화 후속 마무리 후 복귀. 전체 수용 기준·실제 배포 미승인 |
 | DT01-B | 오디오 quality report 타입 계약 | DT01-A 완료·설계/실행 승인 | DONE | 구현·격리 검증·Astra max·PR #40 공개 CI 확인; 최종 head checks·병합 상태는 해당 PR 기준 |
-| DT01-C | artifact description·부분 report 비교 계약 | DT01-A/B 완료·설계 방향 승인 | WAITING-USER | 상세 설계·Astra max 검토/보완 완료 → written-spec 승인; 구현 계획·실행 승인 별도 |
+| DT01-C | artifact description·부분 report 비교 계약 | DT01-A/B 완료·보완 설계 후속 진행 요청 | PLAN-REVIEW | 상세 구현 계획 작성·Astra max 검토 → 계획·Native/격리 실행 승인 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **DT01-C 보완된 written-spec 사용자 검토**. 사용자2026-10-13 core/읽기 경계 분리 방향 승인. [상세 설계](docs/superpowers/specs/2026-10-13-dt01c-artifact-contract-design.md)와 Astra max 독립 검토(Critical0·Important1·Minor2)를 대조/보완했다. 수정 후 독립0건·구현 PASS가 아니며 written-spec·구현 계획/실행 승인은 구분한다. 사용자가 독립 유지보수 후속의 테스트·개발 도구 타입 강화 작업을 마무리한 뒤 AF05-B로 복귀하도록 순서를 지정했다. B2 계획과 기존 공개 수용 기준은 보존한다. 문서만의 PR/push 없이 같은 작업 브랜치의 로컬 커밋으로 보관한다.
+현재 커서: **DT01-C 상세 구현 계획·Astra max 검토**. 보완된 [상세 설계](docs/superpowers/specs/2026-10-13-dt01c-artifact-contract-design.md) 제시 후 사용자의 후속 진행 요청에 따라 [구현 계획](docs/superpowers/plans/2026-10-13-dt01c-artifact-contracts.md)을 작성한다. 설계 최초 검토 Critical0·Important1·Minor2 보완과 계획 검토·실행 승인은 구분하며 구현 PASS가 아니다. Native 2개 작업·격리 전체 검증·최종 Astra max를 권장하되 계획/실행 승인은 별도다. 독립 타입 강화 유지보수 후속을 마무리한 뒤 AF05-B로 복귀하며 B2·기존 공개 수용 기준을 보존한다. 로컬 커밋으로 보관하고 사용자 명시 지시 없이 push/PR을 하지 않는다.
 
 B1은 PR #36 최종 CI run `38255250513`과 merge `b38ec388`로 완료했다. B2 설계·계획은 PR #37로 병합됐으며 최초 Astra max Critical0·Important3·Minor1 보완 기록과 구현·실행 승인 게이트를 보존한다. 수정 후 독립0건/실제전환PASS/native update 수용은 아니다. P09의 게시2.13.3·격리 신규 설치 기준은 보존하며 과거 업데이트·실제 롤백 수용은 미검증이다. AF05 전체와 기능 로드맵 동결은 유지한다.
 
@@ -278,9 +278,12 @@ AF05-B 공개 수용 — P09와 차기 AF 배포에 의존:
 - [x] **DT01-C / 선행 상태·현행 경계 조사:** DT01-A/B 완료, 사용자 착수 요청. 기존 artifact export·실제 CLI·검사·부분 report 비교·malformed 반환/예외·owned-files import graph 대조. 읽기 전용 strict 조회의 artifact23/owned-files42 진단은 타입 정보 부족이며 버그 수가 아님. 제품·테스트·config는 변경하지 않음.
 - [x] **DT01-C / 설계 방향 승인·상세 설계 작성:** 사용자2026-10-13 core/읽기 경계 분리 방향 승인. [설계](docs/superpowers/specs/2026-10-13-dt01c-artifact-contract-design.md)에 기존 공개 API·5파일·허용치·부분 report/오류·실제 reader·6파일 graph·감사 이전·정적/실행 oracle·보호/한계를 명시. 임의 declaration facade·전체 cast 금지, provider/CLI 전체 타입화 미주장.
 - [x] **DT01-C / Astra max 독립 검토·보완:** 최초 Critical0·Important1·Minor2. Reader 메서드의 좁은 경로 허용을 함수형 프로퍼티 계약으로 보완, nullable alignment 허용·동일 baseline의 nonfinite 비교 생략을 정확히 명시. TypeScript7 RAM 계약 대조와 원본 API 결과를 확인. [검토 기록](docs/superpowers/validation/2026-10-13-dt01c-design-review.md). 새 core 구현/graph/검사 PASS·수정 후 독립0건은 아님.
-- [ ] **DT01-C / written-spec 승인:** 사용자가 보완된 [설계](docs/superpowers/specs/2026-10-13-dt01c-artifact-contract-design.md)를 검토. 방향 승인을 구현 승인으로 전용하지 않음.
-- [ ] **DT01-C / 구현 계획·Native 실행 승인:** 설계 승인 후 정확한 계약·독립 oracle·정적 오용 검사·감사 목록 이전·격리 실행/보호 경계를 작성·검토하고 승인받음. DT01-B 승인 자동 전용 금지.
-- [ ] **DT01-C / 구현·검증·최종 검토·통합:** 승인 이후 기존 결과/오류·실제 파일 읽기 연결·strict graph·전체 gate·최종 Astra max 확인. 설계·검토 문서만의 PR은 금지하고 관련된 승인 타입 강화 구현·테스트·검증을 의미 있는 묶음으로 모은 뒤 문서와 함께 PR/공개 CI/통합을 진행. 단계/작은 항목별 PR은 생성하지 않음.
+- [x] **DT01-C / written-spec 후속 진행:** 보완된 [설계](docs/superpowers/specs/2026-10-13-dt01c-artifact-contract-design.md) 제시 후 사용자가 권장 후속 진행을 요청하여 구현 계획 단계로 이동. 구현·실행 승인은 아님.
+- [x] **DT01-C / 상세 구현 계획 작성·자체 검토:** [계획](docs/superpowers/plans/2026-10-13-dt01c-artifact-contracts.md)에 Native 2개 작업·정확한 부분 계약·독립 raw/hash oracle·4회 compiler/9개 내부 목표·실제 owned-root 연결·감사/격리 검증·보호/한계를 반영.
+- [ ] **DT01-C / Astra max 계획 검토·보완:** fresh 독립 검토로 실제 연결 파일과 계약·검증 계획을 대조하고 유효 지적을 반영. 설계 검토로 대체하지 않음.
+- [ ] **DT01-C / 구현 계획·Native 실행 승인:** 완성된 계획과 격리 candidate·합성·설치 positive/negative·최종 Astra max 실행 범위를 승인받음. DT01-B 승인 자동 전용 금지.
+- [ ] **DT01-C / 구현·검증·최종 검토:** 승인 이후 기존 결과/오류·실제 파일 읽기 연결·strict graph·전체 로컬 gate·최종 Astra max 확인. 결과와 문서는 로컬에서 유지한다.
+- [ ] **DT01-C / 공개 작업:** 사용자의 push/PR 명시 지시가 있을 때만 요청된 범위를 공개하고 해당 CI/통합 게이트를 확인한다. 구현 완료를 공개 지시로 간주하지 않음.
 - [ ] **DT01-S / BACKLOG-BLOCKED:** settings fixture/reply는 별도 유지보수 후보로 보류하며 오디오 작업에 함께 끌어오지 않는다.
 - [ ] **NUM01 / PLAN-REVIEW:** rmsEnvelope의 NaN sampleRate/windowMs 입력에서 NaN·Infinity 결과가 남는 기존 한계 확인. 타입 이전과 분리한 숫자 입력 오류 정책·회귀 설계 후보이며 제품 결함/보안 취약점으로 확대 해석하지 않는다.
 - [ ] **DT02 / WAITING-DEPENDENCY:** JSDoc보다 명확한 이점이 입증된 파일만 native `.mts`/`.cts` 검토. 실행 경로·테스트 발견·기존 감사 대상의 inventory·snapshot·ESLint·provenance 누락 방지와 별도 strict 검사를 함께 확보. 기존 감사 제외 범위를 확대하지 않는다.
@@ -309,7 +312,7 @@ git -c core.safecrlf=false diff --check
 
 INC01은 사용자 재등록·설정 유지 확인과 PR #30·공개 CI·main 병합으로 종료했다. 원래 dist의58파일과 현재 시험판·설정은 계속 보존한다. 이 수용을 모든 방송 기능·기존 스토어 버전 업데이트 검사로 확대하지 않는다.
 
-DT01-B는 완료했고 DT01-C 상세 설계·독립 검토/보완도 완료했다. 현재 사용자 개입은 보완된 written-spec 검토다. brainstorming의 아키텍처 승인 단계에 따라 그 승인 후 구현 계획을 작성하며, 계획/실행 범위 승인은 별도로 구분한다. 제품/source/test/config 구현·빌드·설치·신규 도구·시청 Chrome/native 기준 profile·스토어는 건드리지 않는다. 기존 runner의 종료/임시 profile 한계와 root dist 보호는 유지한다. 문서만의 PR은 생성하지 않고 관련된 승인 타입 강화 구현·테스트·검증과 함께 의미 있는 묶음으로 통합한다. AF05-B는 독립 타입 강화 유지보수 후속 마무리까지 보류하며 B2의 기존 승인 게이트는 보존한다.
+DT01-B와 DT01-C 상세 설계 검토/보완은 완료했다. 사용자의 후속 진행 요청에 따라 C 구현 계획 작성·자체/독립 검토를 진행하며, 완료 후 계획·Native 2개 작업·격리 실행·최종 Astra max 승인을 요청한다. 그 전까지 source/test/config 구현·빌드·설치·신규 도구·시청 Chrome/native 기준 profile·스토어는 건드리지 않는다. 기존 runner의 종료/임시 profile 한계와 root dist 보호는 유지한다. 결과는 로컬에서 유지하며 사용자 명시 지시 없이는 push/PR을 하지 않는다. AF05-B는 독립 타입 강화 유지보수 후속 마무리까지 보류하며 B2의 기존 승인 게이트는 보존한다.
 
 게시 완료 알림의14:55는 표시 시각이고 실제 처리 시각·시간대·초는 미확정이다. 추가 시각 자료 요청은 종료했다. 실제 롤백·차기 설치/업데이트·스토어 제출/게시에는 각각 별도 승인이 필요하다. B2 승인은 새 private bundled 프로필·UI 저장·손실 control·cleanup을 포함하며 종료 미확인 시 root 보존/수동 종료가 필요할 수 있다. 승인 전 reader/fixture/runner/CI 구현이나 browser 실행을 하지 않는다. native/공개 실행·과거 미검증 수용·AF05-B 전체 완료 기준 변경은 별도 게이트다.
 

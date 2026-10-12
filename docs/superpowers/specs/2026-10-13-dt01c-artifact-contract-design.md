@@ -2,7 +2,8 @@
 
 Date: 2026-10-13 Asia/Seoul. Base: `9b8640fc004888ebd9e65106046b4b8795d62ca2`.
 The user approved the core/read-boundary direction and design review, not an
-implementation plan or browser execution. This written spec still needs review.
+implementation plan or browser execution. The subsequent user instruction to
+continue accepted the amended written spec for implementation planning only.
 
 ## 1. Intent and sequencing
 
@@ -22,13 +23,11 @@ AF05-B2 documentation stays intact; its implementation/acceptance approval is
 not consumed here. This sequencing decision does not rewrite the release or
 native-acceptance criteria. F00–F05 remain frozen.
 
-DT01-C design, implementation and validation share a branch. Related approved
-type-maintenance implementation/tests/verification are accumulated into a
-meaningful PR, with documentation included. Local checkpoints may separate work;
-no design/docs/status-only PR or tiny per-step/per-item PR is permitted. If an
-independent risk/rollback boundary justifies splitting, obtain explicit approval
-for the proposed scope first; do not invent unapproved implementation to bulk
-up a PR.
+DT01-C design, implementation and validation remain local. The user's latest
+instruction supersedes the earlier PR-size/document-only rules: **do not push or
+create a PR without an explicit user instruction**. Design/implementation/test
+approval or completion is not publication permission; previous blanket approvals
+are not automatically reused. Publish only the requested scope when instructed.
 
 ## 2. Current boundary and selected approach
 
@@ -237,9 +236,10 @@ does not freeze buffers/objects. Cyclic/accessor/proxy safety is not asserted.
    compiler subprocess timeout30s/bounded output, checker cold1/warm5 cost and
    original dist/ZIP/frozen/version/branch/profile protection. Planned evidence
    is not implementation PASS; browser producer/provider remain unchecked.
-8. Fresh Astra max final whole-branch correctness review of the final meaningful
-   approved implementation bundle, one Korean PR including documentation, exact
-   final-head Windows/Ubuntu CI before approved merge and own-branch cleanup.
+8. Fresh Astra max final whole-branch correctness review of approved local work.
+   Only after an explicit push/PR instruction, carry out the requested public
+   workflow; a Korean PR, if requested, requires exact final-head Windows/Ubuntu
+   CI before separately authorized integration/cleanup.
    This design review does not replace implementation review or security audit.
 
 ## 7. Protection, approvals and completion
@@ -252,10 +252,11 @@ operation, store submission, extension reload or native update/rollback.
 This phase writes/reviews the spec and updates PLANS only. Written-spec approval
 permits the implementation plan; plan/Native/isolated execution approval still
 precedes code/tests/config/browser work. Design-stage commits stay local in this
-branch for the eventual meaningful implementation PR. Do not open a doc-only PR.
+branch. Do not push or open any PR without an explicit user instruction.
 
-DT01-C completes only after implementation, genuine misuse rejection,
-compatibility/integration, final review and CI/integration evidence. Afterwards
+DT01-C local work completes only after implementation, genuine misuse rejection,
+compatibility/integration tests and final review. Public CI/integration is a
+separate instruction-gated step, not implicit publication authorization. Afterwards
 resolve the remaining maintenance list explicitly; AF05-B resumes only after
 that maintenance-closeout decision, not merely after C. Remaining candidates
 are neither silently implemented nor silently declared unnecessary/completed.
@@ -272,4 +273,5 @@ not compilation of a not-yet-written core or implementation PASS.
 
 [Review and scope decisions](../validation/2026-10-13-dt01c-design-review.md).
 Amendments are author corrections, not a second independent zero-finding review.
-The written spec is now ready for the user's review before implementation planning.
+The user subsequently requested the recommended next step: implementation
+planning and its review. Plan/Native/isolated execution approval remains separate.
