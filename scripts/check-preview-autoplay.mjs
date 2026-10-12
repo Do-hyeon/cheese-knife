@@ -23,6 +23,7 @@ const browser = await chromium.launch({ headless: true, channel: 'chrome' });
 try {
   const reports = [];
   const runtimeSource = await files.readFile('web/runtime.js', 'utf8');
+  const siteAdapterSource = await files.readFile('web/site-adapter.js', 'utf8');
   const previewSource = await files.readFile('web/preview.js', 'utf8');
   const css = await files.readFile('web/main.css', 'utf8');
   for (const [locale, interact] of [['ko', false], ['en', false], ['ko', true]]) {
@@ -38,7 +39,7 @@ try {
         r.Hls={isSupported:()=>false};window.fetch=async()=>({ok:true,json:async()=>({code:200,content:{status:'OPEN',adult:false,livePlaybackJson:JSON.stringify({media:[{mediaId:'HLS',path:${JSON.stringify(streamURL)}}]})}})});`;
       const start = `const begin=()=>{const a=document.querySelector('#target');window[Symbol.for('cheese-knife.runtime.v1')].preview.show(a.href,a,true);};
         ${interact ? "document.querySelector('#activate').addEventListener('click',begin);" : 'setTimeout(begin,0);'}`;
-      const html = `<html><head><meta charset="utf-8"><style>${css}</style></head><body><button id="activate">Synthetic interaction</button><aside id="sidebar"><a id="target" href="/live/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" style="display:block;width:180px;height:40px;margin:40px">Synthetic preview</a></aside><script src="/test-runtime.js"></script><script>${bootstrap}</script><script src="/test-preview.js"></script><script>${start}</script></body></html>`;
+      const html = `<html><head><meta charset="utf-8"><style>${css}</style></head><body><button id="activate">Synthetic interaction</button><aside id="sidebar"><a id="target" href="/live/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" style="display:block;width:180px;height:40px;margin:40px">Synthetic preview</a></aside><script src="/test-runtime.js"></script><script src="/test-site-adapter.js"></script><script>${bootstrap}</script><script src="/test-preview.js"></script><script>${start}</script></body></html>`;
       // Fulfill every allowed request locally; abort all unrelated traffic.
       await context.route('**/*', route => route.request().url() === rootURL
         ? route.fulfill({ contentType: 'text/html; charset=utf-8', body: html })
@@ -46,8 +47,10 @@ try {
           ? route.fulfill({ contentType: 'audio/wav', body: wave })
           : route.request().url() === 'https://chzzk.naver.com/test-runtime.js'
             ? route.fulfill({ contentType: 'text/javascript; charset=utf-8', body: runtimeSource })
-            : route.request().url() === 'https://chzzk.naver.com/test-preview.js'
-              ? route.fulfill({ contentType: 'text/javascript; charset=utf-8', body: previewSource }) : route.abort());
+            : route.request().url() === 'https://chzzk.naver.com/test-site-adapter.js'
+              ? route.fulfill({ contentType: 'text/javascript; charset=utf-8', body: siteAdapterSource })
+              : route.request().url() === 'https://chzzk.naver.com/test-preview.js'
+                ? route.fulfill({ contentType: 'text/javascript; charset=utf-8', body: previewSource }) : route.abort());
       const page = await context.newPage(); const errors = [];
       page.on('pageerror', error => errors.push(error.message));
       await page.goto(rootURL);
