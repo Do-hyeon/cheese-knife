@@ -22,6 +22,8 @@
 
 최종 독립 whole-branch 검토와 Windows·Ubuntu 공개 CI는 PR의 마지막 커밋 기준으로 판정한다. 로컬 수치를 공개 CI나 실제 사이트 계정 검증으로 대체하지 않는다.
 
+독립 Astra max 검토는 제품 변경 없는 `6371d3f..9070b2e`를 대상으로 Critical/Important/Minor0, 최종 CI 통과 조건부 병합 가능으로 판정했다. 검토자가 개발 checker 진단0, helper/bridge10/10, 설정·CI·positive compiler3/3과 실제 compiler 파일 inventory를 재확인했다. 전체 회귀·negative proof·브라우저 E2E를 검토자가 다시 실행한 것은 아니다.
+
 ## 계약 오용 검출과 RED → GREEN
 
 - 설정/CI 추가 전 45개 중 42개 통과, 3개 실패: 개발 설정·명령 부재와 deliver의 old TypeError/새 ERR_ASSERTION 차이. 기존38과 새 raw 입력·시계 의미 검사는 통과했다.
@@ -56,3 +58,13 @@
 ## 후속 판단
 
 DT00의 제한된 계약 검사는 유지할 가치가 있다. 그러나 전체 fixture/tests/tools 이전은 정당화하지 않는다. DT01은 settings reply 또는 오디오 report 경계를 **하나씩 별도 설계**하며, DT02 native TS 실행은 아직 필요성이 입증되지 않았다. P09·AF05-B와 기능 동결 조건은 유지한다.
+
+주 실행자의 범위 판단과 비용:
+
+- Windows에서는 Bash 원장 스크립트 대신 동일 plan-scoped 원장을 직접 관리했다. 위험은 절차 bookkeeping 차이이며 실제 Git·검사 결과를 근거로 삼았다.
+- 과거 private P02 입력-hash assertion은 제외하고 원본 증거를 보존했다. 비용은 그 역사적 한 assertion의 재검증 부재다.
+- 전체 Chrome fake·jsdom 동적 global·다른 test/tool 타입화는 DT00 밖으로 유지했다. 비용은 남은 동적 타입 사각이다.
+- fixture clock의 함수 callback 한계를 유지했다. 문자열 callback을 포함한 완전한 브라우저 타이머 동작을 검증하지 못한다.
+- Windows hosted 전체 runtime 회귀 job을 추가하지 않았다. 기존 CI split을 유지하므로 Windows runtime 증거는 로컬, hosted 전체 검증은 Ubuntu에 의존한다.
+
+이 변경의 공개 검사·병합 상태는 [PR #26](https://github.com/Do-hyeon/cheese-knife/pull/26)의 마지막 커밋과 checks를 기준으로 확인한다.

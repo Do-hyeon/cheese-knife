@@ -68,7 +68,7 @@
   - config/revision을 `unknown`으로 전달하는 대조 파일은 허용한다. 실패를 무관한 missing-module 진단으로 대신하지 않는다. 임시 설정은 include를 빈 배열로 override해 선택한 파일만 추가하며 공용 helper도 실제 검사한다.
 - [x] **8. CI 연결:** npm script `typecheck:development`는 `tsc -p tsconfig.development.json`. foundation의 기존 `npm run typecheck` 직후에 추가하고 package 순서 검사를 반영한다. 기존 runtime/build proof·설치형 E2E·테스트 glob은 유지한다. 기존 보안 감사 설정은 변경하지 않는다.
 - [x] **9. 집중·전체 검증:** 개발·제품 타입 검사, 새 두 검사+bridge+multi-page+following+type-foundation+package 회귀, 공개-checkout 전체 테스트, 격리 후보 build/package와 설치형 positive/negative E2E를 수행한다. 생성 JS16개 diff0·root dist 불변·제품 권한 불변을 확인한다. 기존 private P02 evidence를 다시 생성하거나 덮어쓰지 않는다.
-- [ ] **10. 실효성 기록·검토:** 전후 checker 소요 시간, 직접·transitive 의존성, 주석/단언 위치·남은 동적 경계, 오용 진단과 유지한 raw 입력·기존38개 결과를 validation에 기록한다. 광범위한 ignore/단언·대형 fake 재작성 없이는 통과 못하면 실험을 멈추고 결과와 작은 대안을 기록한다. 주 실행자 순차 구현 뒤 Astra max 독립 whole-branch 검토 한 번으로 확인한다.
+- [x] **10. 실효성 기록·검토:** 전후 checker 소요 시간, 직접·transitive 의존성, 주석/단언 위치·남은 동적 경계, 오용 진단과 유지한 raw 입력·기존38개 결과를 validation에 기록한다. 광범위한 ignore/단언·대형 fake 재작성 없이는 통과 못하면 실험을 멈추고 결과와 작은 대안을 기록한다. 주 실행자 순차 구현 뒤 Astra max 독립 whole-branch 검토 한 번으로 확인한다.
 - [ ] **11. 이력·공개 CI:** 집중 검증 후 커밋하고 한글 PR을 생성·연결한다. 최종 Windows·Ubuntu foundation과 전체 verify 통과 후 기존 승인 범위에서 병합한다. DT01 확대 여부는 실효성 근거로 결정하고 언어 비율을 이유로 자동 확대하지 않는다.
 
 ## 승인·실행 방식
