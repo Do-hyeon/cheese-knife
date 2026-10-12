@@ -77,6 +77,38 @@ test('live seeking clamps gaps and supports finite live duration', t => {
   assert.equal(video.currentTime, 39.95);
 });
 
+test('player range arithmetic preserves gaps, edges, fallbacks, and end reserve', async t => {
+  const cases = [
+    { name: 'empty seekable and buffered', seekable: [], buffered: [], current: 5, backward: false, result: false, expected: 5 },
+    { name: 'empty seekable falls back to buffered', seekable: [], buffered: [[1, 9]], current: 2, backward: false, result: true, expected: 7 },
+    { name: 'invalid and reversed seekable ranges are rejected', seekable: [[NaN, 5], [8, 8], [10, 9]], buffered: [[0, 100]], current: 2, backward: false, result: false, expected: 2 },
+    { name: 'forward gap clamps to next range start', seekable: [[10, 20], [30, 40]], buffered: [], current: 24.5, backward: false, result: true, expected: 30 },
+    { name: 'backward gap clamps to previous range reserve', seekable: [[10, 20], [30, 40]], buffered: [], current: 25.5, backward: true, result: true, expected: 19.95 },
+    { name: 'before first range clamps to first start', seekable: [[10, 20]], buffered: [], current: 10, backward: true, result: true, expected: 10 },
+    { name: 'after last range keeps point zero five reserve', seekable: [[10, 20]], buffered: [], current: 19, backward: false, result: true, expected: 19.95 },
+  ];
+  for (const scenario of cases) {
+    await t.test(scenario.name, child => {
+      const dom = setup(child);
+      const video = dom.window.document.querySelector('video');
+      Object.defineProperty(video, 'seekable', { value: ranges(scenario.seekable) });
+      Object.defineProperty(video, 'buffered', { value: ranges(scenario.buffered) });
+      video.currentTime = scenario.current;
+      assert.equal(runtime(dom).player.seek(scenario.backward), scenario.result);
+      assert.equal(video.currentTime, scenario.expected);
+    });
+  }
+
+  await t.test('finite live duration reaches the reserved live edge', child => {
+    const dom = setup(child);
+    const video = dom.window.document.querySelector('video');
+    Object.defineProperty(video, 'seekable', { value: ranges([[0, 40]]) });
+    Object.defineProperty(video, 'duration', { value: 40 });
+    runtime(dom).player.liveEdge();
+    assert.equal(video.currentTime, 39.95);
+  });
+});
+
 test('editable descendants and sliders retain arrow keys', t => {
   const dom = setup(t);
   const video = dom.window.document.querySelector('video');

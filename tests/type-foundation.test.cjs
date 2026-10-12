@@ -30,6 +30,27 @@ test('audio runtime contract is explicit and typechecked', async () => {
   assert.equal(result.status, 0, result.stdout + result.stderr);
 });
 
+test('player runtime contract is explicit and typechecked', async () => {
+  const player = await fs.readFile('src/main/features/player/contracts.ts', 'utf8');
+  for (const signature of [
+    'resolution: string | null;',
+    'bitrate: string | null;',
+    'latency: string | null;',
+    'codec: string | null;',
+    'seek(backward: boolean): boolean;',
+    'liveEdge(): void;',
+    'ranges(video: HTMLVideoElement): readonly [number, number][];',
+    'readStats(video: HTMLVideoElement, metrics: SitePlayerMetrics | null): PlayerStats;',
+  ]) assert.ok(player.includes(signature), signature);
+
+  const runtime = await fs.readFile('src/main/runtime/contracts.ts', 'utf8');
+  assert.match(runtime, /import type \{ PlayerController \} from '\.\.\/features\/player\/contracts';/);
+  assert.match(runtime, /player\?: PlayerController;/);
+
+  const result = spawnSync(process.execPath, [path.resolve('node_modules/typescript/bin/tsc'), '-p', 'tsconfig.json'], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
 test('AF03 tsconfig has the strict no-emit contract and narrow include', async () => {
   const config = JSON.parse(await fs.readFile('tsconfig.json', 'utf8'));
   for (const option of requiredTrue) assert.equal(config.compilerOptions[option], true, `${option} must be true`);
