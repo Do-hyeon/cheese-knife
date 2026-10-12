@@ -4,7 +4,8 @@ Date: 2026-10-13 Asia/Seoul. Approved Native execution, two sequential tasks,
 one final Astra max whole-branch review, and one implementation PR.
 Base: `997c5b411f329f24b331c047bb0fe6963980570e`.
 Code checkpoints: `8169037` (contracts) and `d37a25a` (CLI connection).
-Final review and public integration are pending in this record.
+Final review checkpoint: `fea2c52ad51b925783d1b87ec5d3bae4646ff8ea`.
+Public integration is pending final-head CI.
 
 ## Scope and actual guarantees
 
@@ -101,7 +102,18 @@ sources1, first-channel RMS0.3535495743240479. Compressor defaults remain
 threshold-50/knee40/ratio12/attack0/release0.25; stress profile remains
 `threshold0/knee0/ratio1/gain2`. Fresh bundled Chromium and a silent sink were
 used; no broadcast, speaker or user profile was captured.
-Final review is pending; no release claim is made yet.
+No release claim is made.
+
+## Final independent review
+
+Fresh GPT-6 Astra max reviewed `997c5b4..fea2c52` and connected code:
+**Critical0 / Important0 / Minor0; ready to merge after final-head CI**.
+No fix pass or repeat review was needed. The reviewer independently established
+the identical gate blob at original spec, fixture and branch baselines, inspected
+direct-call diagnostic targeting, all five internal mutation sites and the
+retained same-code logs/reports. It did not rerun tests/builds/browsers/scans.
+All 138 synthetic measured channels have full-scale count0. Subsequent changes
+are documentation only; public CI remains the final integration gate.
 
 ## Checker cost
 
@@ -126,10 +138,23 @@ bounded compiler calls (positive, batched negative, internal clean and mutant).
    TypeScript7 reports the four missing required fields at that exact proof line.
    Cost if wrong: the focused test fails rather than accepting unrelated errors.
    Missing stress is separately pinned to the observed TS2741 allowed by the plan.
+2. Keep the approved unchanged installed-runner cleanup behavior: DT01-B does
+   not redesign that runner and its limitation is documented separately from
+   functional outcomes. Cost if wrong: an abnormal close may lose its disposable
+   profile; the executor retains clone/reports and does not promise retention.
+3. Preserve raw-input and NUM01 policies: compatibility is the requirement,
+   not a new rejection/normalization policy. Cost if wrong: previously accepted
+   malformed values/coercions still remain, pending a separately approved policy.
+4. Keep browser producer assembly outside the checked graph: the alias, pure
+   gate, checked consumer and actual import are proved without importing browser
+   capabilities. Cost if wrong: browser assembly misuse is not statically caught.
+5. Do not infer native audio acceptance, security certification or B2/C/S
+   completion from these tests: source and synthetic guarantees remain scoped.
+   Cost if wrong: those separate acceptance/implementation gates remain open.
 
 ## Deferred minors
 
-Pending final review; no final-review verdict yet.
+None. The final reviewer reported no Minor findings.
 
 ## Preserved boundaries
 
