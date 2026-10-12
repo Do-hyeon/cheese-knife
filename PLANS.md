@@ -223,7 +223,9 @@ P09·AF05-B의 현재 커서는 유지한다. 아래 작업은 기능 로드맵�
 - [x] **DT00 / 구현·검토:** 의도적 계약 오용5종의 컴파일 거부와 정상/raw 대조, 기존 생성 JS 실행 검사 유지. 집중53/53·공개조건 전체815/815·설치형 positive/negative·Astra max 검토 통과. [검증 기록](docs/superpowers/validation/2026-10-12-dt00-helper-contracts.md)에 의존성·단언·비용·제외 범위 고정. 공개 CI·병합은 [PR #26](https://github.com/Do-hyeon/cheese-knife/pull/26)의 마지막 커밋 기준으로 확인한다.
 - [x] **DT00 / 판단:** 제한된 공용 계약 검사는 유지한다. 전체 변환으로 자동 확대하지 않으며 DT01은 별도 작은 설계 단위로 진행한다.
 - [x] **DT01 / 설계·검토:** [순수 오디오 수치·파형 요약 상세 설계](docs/superpowers/specs/2026-10-12-dt01-audio-contract-design.md) 작성·Astra max 검토와 Important1 보완. 기존 명시적 lint 목록 이전·old-export 검사 graph·frequency 생략/undefined/null·DT00 CI 순서 보존 반영. 기준 metrics/artifacts19/19·기존 lint1/1 확인이며 새 구현을 검증한 것은 아니다.
-- [ ] **DT01-A / PLAN-REVIEW:** 설계의 사용자 검토 후 상세 구현 계획 작성·승인. 기존 수치3개+실제 Node 요약 소비자부터 검사하며 full report·browser capture·파일 capability를 typed라고 주장하지 않는다. 코드·의존성·제품 산출물 변경 전 승인 게이트 유지.
+- [x] **DT01-A / 설계 승인:** 사용자가 written-spec 승인. 순수 수치3개+실제 Node 요약 소비자 범위와 full report/browser/file capability 제외 유지.
+- [x] **DT01-A / 구현 계획·검토:** [상세 구현 계획](docs/superpowers/plans/2026-10-12-dt01a-audio-signal-contracts.md) 작성·자체 대조·Astra max 공격적 검토(Critical0·Important0·Minor1 보완). 무음 tone의 정합 조건을 정확한 입력으로 고정. 순수 모듈 proof와 구 API/CLI/감사 연결의 두 순차 단위·명령·커밋·제외 범위 명시.
+- [ ] **DT01-A / WAITING-APPROVAL:** 상세 계획과 Native(주 실행자 순차 구현)+최종 Astra max 검토의 사용자 승인 대기. 신규 구현·compiler proof·전체 회귀는 아직 미실행이며 승인 전 코드·의존성·제품 산출물을 변경하지 않는다.
 - [ ] **DT01-B / WAITING-DEPENDENCY:** 정상/partial/raw quality report gate·transition 계약은 DT01-A 효과 확인 뒤 독립 상세 설계. 기존 실패 입력·독립 기대값·오류/측정 의미 보존.
 - [ ] **DT01-C / WAITING-DEPENDENCY:** artifact 부분 report projection·comparison과 owned-files 연결은 별도 설계. 기존 부분 report 허용·비교 허용치·감사 대상 보존.
 - [ ] **DT01-S / BACKLOG-BLOCKED:** settings fixture/reply는 별도 유지보수 후보로 보류하며 오디오 작업에 함께 끌어오지 않는다.
@@ -251,4 +253,4 @@ git -c core.safecrlf=false diff --check
 
 ## 10. 현재 사용자 개입 지점
 
-AF05 내부 작업은 완료됐다. P09는 심사 중이며 게시 후 새 설치·기존 설치 업데이트·설정 보존과 배포 증거를 확인한다. AF 변경 후보는 별도 차기 버전으로 설치·업데이트·롤백 수용을 기록한다. 현재는 추가 사용자 조작이 필요 없으며, 실제 공개 설치·차기 배포·로드맵 동결 해제에 필요한 행동이나 결정만 요청한다.
+AF05 내부 작업은 완료됐다. P09는 심사 중이며 게시 후 새 설치·기존 설치 업데이트·설정 보존과 배포 증거를 확인한다. AF 변경 후보는 별도 차기 버전으로 설치·업데이트·롤백 수용을 기록한다. 현재 DT01-A 상세 구현 계획과 실행 방식의 사용자 승인이 필요하다. 승인 후 내부 구현·합성/설치형 검증에는 확장 새로고침이나 사용자 계정 조작을 요청하지 않는다. 실제 공개 설치·차기 배포·로드맵 동결 해제에 필요한 별도 결정은 유지한다.
