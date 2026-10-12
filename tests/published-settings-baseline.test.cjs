@@ -84,3 +84,11 @@ test('published baseline missing Git objects fails without current-source fallba
   assert.equal(result.status, 1, result.stdout + result.stderr);
   assert.equal(result.stderr.trim(), 'published-baseline-unavailable');
 });
+
+test('published baseline source passes the existing static tool boundary', () => {
+  const result = spawnSync(process.execPath, ['node_modules/eslint/bin/eslint.js', '--config', 'eslint.security.config.mjs',
+    '--no-inline-config', '--max-warnings=0', '--format=json', 'scripts/published-settings-baseline.mjs'],
+  { encoding: 'utf8', timeout: 20000 });
+  assert.equal(result.error, undefined);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});

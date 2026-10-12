@@ -33,18 +33,18 @@ export function validatePublishedWorkerBlobs(blobs) {
   if (!values.every(value => Buffer.isBuffer(value))) throw fail('published-baseline-input');
   if (values.some(value => value.length > 1048576) ||
     values.reduce((total, value) => total + value.length, 0) > 2097152) throw fail('published-baseline-size');
-  const sources = {};
-  for (const [index, file] of files.entries()) {
-    const entry = PUBLISHED_SETTINGS_BASELINE.files[file], value = values[index];
+  const sources = [];
+  for (const [index, [file, entry]] of Object.entries(PUBLISHED_SETTINGS_BASELINE.files).entries()) {
+    const value = values.at(index);
     if (sha256(value) !== entry.gitSha256) throw fail('published-baseline-git-hash');
     let source = value.toString('utf8');
     // The attested config entry has mixed EOLs; general normalization loses its exact identity.
     if (entry.crlfLineRanges) source = source.split('\n').map((line, i) =>
       entry.crlfLineRanges.some(([first, last]) => i + 1 >= first && i + 1 <= last) ? line + '\r' : line).join('\n');
     if (sha256(source) !== entry.publishedSha256) throw fail('published-baseline-payload-hash');
-    sources[file] = source;
+    sources.push([file, source]);
   }
-  return Object.freeze(sources);
+  return Object.freeze(Object.fromEntries(sources));
 }
 
 /** @returns {WorkerSources} */
