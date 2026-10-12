@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const { Script } = require('node:vm');
 const { pathToFileURL } = require('node:url');
 
@@ -95,11 +96,14 @@ test('MAIN runtime validator rejects a raw adapter publication', async () => {
   assert.throws(() => mod.validateMainRuntime(merged), { code: 'main-runtime-raw-adapter' });
 });
 
-test('generated MAIN runtime outputs are pinned to LF checkouts', async () => {
-  const attributes = await fs.readFile('.gitattributes', 'utf8');
-  const lines = new Set(attributes.split(/\r?\n/));
-  for (const file of ['src/main/**/*.ts', 'web/runtime.js', 'web/site-adapter.js', 'web/audio.js', 'web/player.js', 'web/preview.js', 'web/inject.js']) {
-    assert.equal(lines.has(`${file} text eol=lf`), true);
+test('generated MAIN runtime outputs are pinned to LF checkouts', () => {
+  const files = ['src/main/runtime/entry.ts', 'web/runtime.js', 'web/site-adapter.js', 'web/audio.js', 'web/player.js', 'web/preview.js', 'web/inject.js'];
+  const result = spawnSync('git', ['check-attr', 'text', 'eol', '--', ...files], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  const lines = new Set(result.stdout.trim().split(/\r?\n/));
+  for (const file of files) {
+    assert.ok(lines.has(`${file}: text: set`), file);
+    assert.ok(lines.has(`${file}: eol: lf`), file);
   }
 });
 
