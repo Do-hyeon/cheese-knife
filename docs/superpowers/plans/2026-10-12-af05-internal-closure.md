@@ -46,4 +46,4 @@ Files: AF05 validation, PLANS.md, 필요한 README 개발 설명.
 - [x] 기존 package·CSP·권한·Chrome 전용·라이선스·방침/설명 계약을 대조. 정책 최신 문서는 공식 원문 확인.
 - [x] 전체 회귀800/800·객관 오디오·pixels17/17·격리 설치형 positive/negative E2E와 도구 audit 실행. 기존 guarded 7행을 clean으로 표기하지 않음.
 - [x] 현재 후보와 공개/심사 패키지의 commit·version을 분리하고 롤백 경로 준비. 실제 스토어 설치 수용은 미완료로 유지.
-- [ ] fresh whole-branch review, 한글 PR·공개 CI·승인된 병합. P09·AF05 최종 완료와 F00–F05 동결 해제는 체크하지 않음.
+- [x] Astra max fresh whole-branch review, 한글 PR #22·공개 CI run `38198182595`·merge commit `39558c4`. P09·AF05 최종 완료와 F00–F05 동결 해제는 체크하지 않음.
