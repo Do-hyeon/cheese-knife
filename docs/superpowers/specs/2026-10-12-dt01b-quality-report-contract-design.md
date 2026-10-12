@@ -1,6 +1,6 @@
 # DT01-B — 오디오 quality report 계약 상세 설계
 
-작성 시작: 2026-10-12 / 검토·보완: 2026-10-13 / Asia-Seoul. 상태: written-spec 승인 대기. 구현 계획·구현·브라우저 실행은 아직 승인하지 않았다.
+작성 시작: 2026-10-12 / 검토·보완: 2026-10-13 / Asia-Seoul. 사용자2026-10-13 written-spec 승인. 상세 구현 계획 작성·검토를 진행하며 구현·브라우저 실행 승인은 별도다.
 
 ## 1. 목적과 순서
 
@@ -122,4 +122,4 @@ alias 오용만으로 완료하지 않는다. 실제 gate의 guarded 배열 반�
 
 설계 완료는 범위/계약/oracle/제외 범위와 검토 반영이다. DT01-B 전체 완료는 승인된 구현·compiler proof·기존 동작/CLI·전체 게이트·최종 검토·CI/통합 확인 뒤만 표시한다. 기존 P02 역사 hash 실패와 ESLint7 경고를 해결했다고 표시하거나 감사 대상을 축소하지 않는다.
 
-직접 확인과 독립 검토는 [검토 기록](../validation/2026-10-12-dt01b-quality-contract-review.md)에 둔다. written-spec 승인 뒤에만 상세 구현 계획을 작성한다.
+직접 확인과 독립 설계 검토는 [검토 기록](../validation/2026-10-12-dt01b-quality-contract-review.md)에 둔다. 사용자 승인에 따라 [상세 구현 계획](../plans/2026-10-13-dt01b-quality-report-contracts.md)·공격적 계획 검토를 진행한다. 계획·실행 승인 전에는 구현하지 않는다.
