@@ -92,7 +92,8 @@ assert.deepEqual(blobs, beforeValidation);
 
 - Consumes Task1 `readPublishedWorkerSources(): WorkerSources`. 후보4파일은 현재 생성JS의fixed filenames만read한다. `check:settings-runtime`의drift gate를 먼저 통과시키고 후보HEAD/file hash를validation에 기록한다.
 - Extends `settingsHarness(t, stored = {}, workerSources?: WorkerSources)`. undefined는 기존CWD 로드를 유지한다. explicit 입력은exact4 own keys/nonempty strings를 검증하고 전체4개를 고정 순서로eval한다. 부분 입력을current source로 보충하지 않는다.
-- Extends `restartBroker(nextWorkerSources?: WorkerSources): void`. 생략하면 현재 선택된source를 유지한다. explicit 입력 검증은old worker 제거 전에 한다. versioned harness 교대 시 미응답request/실행 중boundary가 있으면 `fixture-worker-busy`로throw하고 저장/worker를 변경하지 않는다. 전체request reply와`settle()`를 기다리고gate를release한 후에만 교체한다.
+- Extends `restartBroker(nextWorkerSources?: WorkerSources): void`. 생략하면 현재 선택된source를 유지한다. explicit 입력 검증은old worker 제거 전에 한다. versioned harness 교대에는 **마지막 작업 이후 안정화된settle 완료**가 필요하다. 아래epoch 조건을 만족하지 않거나 미응답request/실행 중boundary가 있으면 `fixture-worker-busy`로throw하고 저장/worker를 변경하지 않는다. 전체request reply와`settle()`를 기다리고gate를release한 후에만 교체한다.
+- versioned 모드의 `activityEpoch`는 initialize/send/runtime.sendMessage/invalidate의 진입, storage event에서style 갱신을 예약하는signal, 모든boundary 진입에서 증가한다. 기존 `settle(): Promise<void>`의 첫flush 뒤epoch를 캡처하고 둘째flush 뒤epoch 불변·pendingRequests0·activeBoundaries0일 때만 `settledEpoch`를 그 값으로 기록한다. 조건이 안 되면기존 표시를 무효화하며settle 자체는 기존처럼resolve한다. 교대는 `settledEpoch === activityEpoch`를 요구하고 성공 시표시를 다시 무효화한다. `invalidate→즉시 교대`의microtask gap도 epoch가 먼저 바뀌므로 거부된다. product broker에idle API나 새scheduler를 추가하지 않는다.
 - `saved`와`registrations`의identity를 유지한다. worker별style invalidation listener는 교대 때 해제하고 이전DOM을 닫는다. 초기seed 외에storage 재주입·clone 교체를 하지 않는다. 기존default harness의zero-argument restart 동기 계약은 바꾸지 않는다.
 - `client()/openUi()`는 계속current files만 사용한다. B1은 직접`patch('popup'|'styles', operations)`를 사용한다. sender명이 두 종류라도 두 실제UI를 검증한 것은 아니다.
 
@@ -121,10 +122,11 @@ assert.equal(h.changes.listeners.size, 1);
 
 `versioned switch refuses incomplete input without retiring current worker`: missing key→assert throws·old worker identity 불변·다음patch 성공.
 `versioned switch rejects in-flight commit and response`: commit/write-result/response gate별로pending patch를hold하고busy throw·identity 불변, release/await/settle 후 동일switch 성공. CSS와event hold도 검사한다. queued job도 전체reply 전에는 교대하지 않는다.
+`versioned switch rejects queued invalidation before any boundary`: initialized/settled 상태에서`h.invalidate({retry:true})` 직후boundary 추가0이어도switch는busy. 이후settle→switch→새initialize/settle는성공한다. 이전worker의storage/scripting/tabs/permissions API 함수들을검사용wrapper로감싸퇴역 이후호출수를세고0회임을assert한다. DOM.close만으로취소됐다고판정하지않는다.
 `default fixture and zero-argument restart remain compatible`: 기존settings/background/client/UI 검사를 변경 없이 재실행한다.
 
 - [ ] **Step2 — RED**: `node --test tests/settings-compatibility.test.cjs`. source 선택 미구현으로old worker가 실행되지 않는 검출assert 또는 미지원switch assert로 실패시킨다. 먼저old/current worker global 함수의source 문자열이 각 공급source에서eval되었음을 확인해 내용 비교만으로 우연히PASS하는 것을 막는다.
-- [ ] **Step3 — fixture 구현**: 위optional source 입력·versioned 교대 검증·pendingrequest/activeboundary 계수를 기존fixture에 추가한다. timer 연장으로busy를 숨기지 않고reject/throw에도finally로 계수를 복원한다. default callers를 새API로 일괄 변경하지 않는다.
+- [ ] **Step3 — fixture 구현**: 위optional source 입력·versioned 교대 검증·pendingrequest/activeboundary 계수와activity/settled epoch를 기존fixture에 추가한다. versioned 작업은계수/epoch를관리하는fixture 메서드로시작한다; raw broker 참조는진단용이다. timer 연장으로busy를 숨기지 않고reject/throw에도finally로 계수를 복원한다. default callers를 새API로 일괄 변경하지 않는다.
 - [ ] **Step4 — independent goldens/differential**: 아래named tests를old/new의 독립context에서 실행한다. snapshot의cross-realm값은JSON으로plain화, raw는structuredClone 비교를 사용한다. code에서default 기대값을 생성하지 않는다.
 
 | test名/入力 | literal assertion/順序 |
@@ -134,15 +136,19 @@ assert.equal(h.changes.listeners.size, 1);
 | `parameter zero removes membership not the raw value` | chat-font-size8→style 추가/revision+1, 0→known style만 제거/parameter0 보존, unknown style/parameter 보존 |
 | `legacy cleanup is committed once` | own t=0 + resizeChat=true→sharpness0/chat-resize/resizeChat 제거/commit 후remove t. t=null/'invalid' cleanup-only는commit 없이도remove. resizeChat=false는보존. 재초기화commit/remove 증가 없음 |
 | `corrupt revision never resets unrelated values` | null/-1/1.5/'1'/NaN/Infinity→revision-invalid, MAX_SAFE_INTEGER→revision-exhausted; patch 거부·raw unknown 키/revision 불변. legacy 없는 독립seed 사용 |
-| `field shape bounds are unchanged` | brightness1.225 허용, font -6/16/2.5 허용·-7/17 거부, operations64 허용/65 거부, unknown/prototype-reserved id·extra property·잘못된형 거부, validation 전storage/CSS/reload0 |
+| `field shape bounds are unchanged` | 아래고정게시schema의모든config/style id·type·default·min/max·step를대조하고그게시범위의동일입력을두context에서실행. brightness1.225 허용, font -6/16/2.5 허용·-7/17 거부, operations64 허용/65 거부, unknown/prototype-reserved id·extra property·잘못된형 거부, validation 전storage/CSS/reload0 |
 | `two senders merge without whole-object overwrite` | popup arrowSeek=false와styles previewVolume25를 병렬patch→두값 보존/revision2/maxConcurrentWrites1. same-field 후착 우선/no-op 보존; snapshot은held write 완료 전에resolve하지 않음 |
 | `migration faults block patches until a fresh worker` | read/commit/remove failure 각각initialize reject/patch stage initialization, fresh worker로 회복. remove failure 전에commit되었다면 값을undo하지 않음; commit 전실패면remove 없음 |
+| `post-commit completion failure keeps the durable fields` | raw config={futureFlag:'keep'},revision4에서arrowSeek=false 저장 중write-result를실제fail. reply stored=false/stage='write'지만raw config={futureFlag:'keep',arrowSeek:false}/revision5. 다음previewVolume25 patch→두필드/unknown 보존/revision6. 실패뒤settle→same-source restart→initialize/settle 성공 |
+| `lost response never rolls storage back` | 같은seed/patch에서response를실제fail→reply undefined지만raw field/revision5 보존. 다음patch가merge해revision6, settle→교대성공. pending계수유출/초기화undo 없음 |
 | `durable write and CSS result are not the same` | initialized left-chat→css-update failure를hold/fail하고hide-studio patch. stored=true/ok=false/css.state=failed, raw 변경/revision+1, 등록은left-chat. retry로CSS만 회복·추가commit/reload 없음 |
 | `reload only touches the original target` | 7/window9→tab-reload7, closed/tab-window mismatch는reload0. 잘못된protocol/sender/frame은storage/CSS/reload0 |
 
 valid seeds의빈값/비기본/unknown/migration마다old→new→old 연속 저장도 실행한다. 기대raw/snapshot·필요CSS 등록값·commit/remove/reload 중요 순서를literal로 먼저 확인하고 그projection을old/new에서 비교한다. requestId/timing/cross-realmprototype은 비교 대상에서 제외한다. 의미 없는read 횟수까지 계약화하는boundary log 전체 배열 일치는 요구하지 않는다.
 
-- [ ] **Step5 — negative controls/GREEN**: `compatibility oracle rejects seeded data loss`에서fresh harness용newSources의broker 앞에test 전용 `void chrome.storage.local.set({config:{}});`를 추가하고old가 저장한arrowSeek=false/futureFlag를 잃는candidate를 실제eval한다. 정상과 같은assertion 경로가AssertionError를 내는 것을assert rejects한다. normal sources/on-disk files는 변경하지 않는다; baseline mutation의hash 거부와는 별도test다. `node --test tests/published-settings-baseline.test.cjs tests/settings-compatibility.test.cjs tests/settings-contract.test.cjs tests/settings-broker.test.cjs tests/settings-client.test.cjs tests/background.test.cjs tests/settings-ui.test.cjs tests/settings-multi-ui.test.cjs`를 모두PASS시킨다. test명은`rg --files tests`로 확인했고 누락을skip으로 숨기지 않는다.
+`all published field descriptors and bounds are fixed`의고정schema: 게시worker의`CONFIGS.flatMap(g => g.configs.flatMap(f => f.configs || [f]))`를선언순서대로 `{id,type:f.type || 'boolean',defaultValue,...(f.type==='range'?{min,max,step}:{})}`에projection하고`{config:fields,styles:plain(STYLES)}`를JSON.stringify한다. config25개·style group7개와SHA-256 `b5b80219c2554520640d060c73e1d9de4ce7670637fe22d9338c58d8528ca823`을literal로assert한다. 주실행자가고정Git 게시소스에서읽기전용으로계산한값이다. 후보의동일projection은게시schema와deepEqual이어야한다. 검사입력은후보schema가아닌위hash를통과한게시fields에서만생성한다: range good=min/max/default, bad=min-1/max+1/NaN/Infinity/'0'/null/false, boolean good=false/true 및bad=0/1/'true'/null. plain style은true/false만허용하고range style은parameter의min/max/0/2.5를허용·min-1/max+1을거부한다; range id에style toggle은거부한다. 각config의빈snapshot default도게시default와같아야한다. 기존literal golden은그대로유지한다.
+
+- [ ] **Step5 — negative controls/GREEN**: `compatibility oracle rejects seeded data loss`에서fresh harness용newSources의broker 앞에test 전용 `void chrome.storage.local.set({config:{}});`를 추가하고old가 저장한arrowSeek=false/futureFlag를 잃는candidate를 실제eval한다. 초기화/settle 후raw 손실을확인하고정상과 같은assertion 경로가해당field의AssertionError를 내는 것을assert rejects한다. `schema oracle rejects widened previewVolume bound`는별도fresh candidate worker의CONFIGS previewVolume.max를100→101로바꾸고동일schema assertion이실패하며게시contract는101거부/변형candidate는101허용임을assert한다. 두control은normal sources/on-disk files를 변경하지 않는다; baseline mutation의hash 거부와도 별개다. `node --test tests/published-settings-baseline.test.cjs tests/settings-compatibility.test.cjs tests/settings-contract.test.cjs tests/settings-broker.test.cjs tests/settings-client.test.cjs tests/background.test.cjs tests/settings-ui.test.cjs tests/settings-multi-ui.test.cjs tests/settings-style-apply.test.cjs`를 모두PASS시킨다. test명은`rg --files tests`로 확인했고 누락을skip으로 숨기지 않는다.
 - [ ] **Step6 — full gates/record/commit**: 아래 검증을 실행하고 결과·후보SHA/hash·미검사 범위를validation과PLANS에 기록한다. Task2의fixture/tests/doc만commit한다.
 
 ## 구현 후 검증과 공개 문서 게이트
@@ -159,6 +165,6 @@ valid seeds의빈값/비기본/unknown/migration마다old→new→old 연속 저
 - [x] fixed4file signatures와optional fixture 인자를 같은 이름으로 통일. source 취득에private ZIP을 요구하지 않는다.
 - [x] Review Focus5건에test를 배정. 저장projection의 독립golden과 실행negative를 함께 요구했다.
 - [x] 구현 단위는 출처reader와fixture/compatibility의2개. 새 기능·ZIP 추상화·DT 전체 타입화를 추가하지 않는다.
-- [ ] Astra max 독립 계획 검토와 필요한 주 실행자 보완.
+- [x] Astra max 독립 계획 검토 Critical0·Important3·Minor0. 예약작업gap·전체schema oracle·post-commit/response 실패를주실행자가보완했다. [기록](../validation/2026-10-12-af05b1-plan-review.md). 수정후독립0건판정/새B1 PASS를주장하지않는다.
 - [ ] 사용자B1 계획·실행 방식 승인. Native 권장: 두 작은 단계가 같은fixture 입력 계약에 의존하고 사용자profile/제품을 변경하지 않기 때문이다.
 - [ ] 승인 후Task1→Task2→최종whole-branch 검토→CI/merge. B1 합격만으로P09/AF05-B 완료·로드맵 동결 해제를 선언하지 않는다.
