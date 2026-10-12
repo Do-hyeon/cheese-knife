@@ -222,7 +222,12 @@ P09·AF05-B의 현재 커서는 유지한다. 아래 작업은 기능 로드맵�
 - [x] **DT00 / 계획:** [공용 helper·bridge 계약 검사 상세 계획](docs/superpowers/plans/2026-10-12-dt00-helper-contracts.md) 작성·자체 대조와 사용자 승인 완료.
 - [x] **DT00 / 구현·검토:** 의도적 계약 오용5종의 컴파일 거부와 정상/raw 대조, 기존 생성 JS 실행 검사 유지. 집중53/53·공개조건 전체815/815·설치형 positive/negative·Astra max 검토 통과. [검증 기록](docs/superpowers/validation/2026-10-12-dt00-helper-contracts.md)에 의존성·단언·비용·제외 범위 고정. 공개 CI·병합은 [PR #26](https://github.com/Do-hyeon/cheese-knife/pull/26)의 마지막 커밋 기준으로 확인한다.
 - [x] **DT00 / 판단:** 제한된 공용 계약 검사는 유지한다. 전체 변환으로 자동 확대하지 않으며 DT01은 별도 작은 설계 단위로 진행한다.
-- [ ] **DT01 / WAITING-DEPENDENCY:** DT00 효과 확인 후 settings fixture/reply 경계 또는 오디오 report producer·consumer를 별도 작은 단위로 강화. 부분 report·잘못된 입력·독립 기대값·시간/오류 의미 보존.
+- [x] **DT01 / 설계·검토:** [순수 오디오 수치·파형 요약 상세 설계](docs/superpowers/specs/2026-10-12-dt01-audio-contract-design.md) 작성·Astra max 검토와 Important1 보완. 기존 명시적 lint 목록 이전·old-export 검사 graph·frequency 생략/undefined/null·DT00 CI 순서 보존 반영. 기준 metrics/artifacts19/19·기존 lint1/1 확인이며 새 구현을 검증한 것은 아니다.
+- [ ] **DT01-A / PLAN-REVIEW:** 설계의 사용자 검토 후 상세 구현 계획 작성·승인. 기존 수치3개+실제 Node 요약 소비자부터 검사하며 full report·browser capture·파일 capability를 typed라고 주장하지 않는다. 코드·의존성·제품 산출물 변경 전 승인 게이트 유지.
+- [ ] **DT01-B / WAITING-DEPENDENCY:** 정상/partial/raw quality report gate·transition 계약은 DT01-A 효과 확인 뒤 독립 상세 설계. 기존 실패 입력·독립 기대값·오류/측정 의미 보존.
+- [ ] **DT01-C / WAITING-DEPENDENCY:** artifact 부분 report projection·comparison과 owned-files 연결은 별도 설계. 기존 부분 report 허용·비교 허용치·감사 대상 보존.
+- [ ] **DT01-S / BACKLOG-BLOCKED:** settings fixture/reply는 별도 유지보수 후보로 보류하며 오디오 작업에 함께 끌어오지 않는다.
+- [ ] **NUM01 / PLAN-REVIEW:** rmsEnvelope의 NaN sampleRate/windowMs 입력에서 NaN·Infinity 결과가 남는 기존 한계 확인. 타입 이전과 분리한 숫자 입력 오류 정책·회귀 설계 후보이며 제품 결함/보안 취약점으로 확대 해석하지 않는다.
 - [ ] **DT02 / WAITING-DEPENDENCY:** JSDoc보다 명확한 이점이 입증된 파일만 native `.mts`/`.cts` 검토. 실행 경로·테스트 발견·기존 감사 대상의 inventory·snapshot·ESLint·provenance 누락 방지와 별도 strict 검사를 함께 확보. 기존 감사 제외 범위를 확대하지 않는다.
 
 완료 기준은 계약 오용 검출과 기존 증거의 보존이다. 타입 단언·ignore로 진단만 없애거나 테스트/감사 대상을 줄이면 완료하지 않는다. HLS 자식 프로세스·고정 해시 검증 가족은 첫 실험에서 제외하고, 이후 변경 필요 시 별도 계획으로 다룬다.
