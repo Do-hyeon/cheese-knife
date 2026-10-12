@@ -454,7 +454,10 @@
         button.className = "knife-owned";
         button.textContent = "×";
         owner.on(button, "click", () => {
-          close();
+          try {
+            close();
+          } catch {
+          }
         });
         banner.append(button);
         owner.add(() => button.remove());
@@ -491,86 +494,109 @@
       open(href, left, top, labels) {
         const url = liveURL(target, href);
         if (!url) return null;
-        const popup = browser.document.createElement("div");
-        const scope = runtime.createScope();
-        popup.classList.add("knife-popup");
-        popup.style.left = `${left}px`;
-        popup.style.top = `${top}px`;
-        popup.style.zIndex = `${zIndex++}`;
-        const player = browser.document.createElement("iframe");
-        player.classList.add("knife-popup-player");
-        player.src = url.href;
-        player.allowFullscreen = true;
-        player.allow = "autoplay; encrypted-media; picture-in-picture";
-        player.scrolling = "no";
-        popup.append(player);
-        const dragArea = browser.document.createElement("div");
-        dragArea.classList.add("knife-popup-drag-area");
-        popup.append(dragArea);
-        let x = 0, y = 0, stopDrag = () => {
-        };
-        const finishDrag = () => stopDrag();
-        scope.add(() => finishDrag());
-        scope.on(target, "blur", finishDrag);
-        scope.on(target, "pagehide", finishDrag);
-        scope.on(dragArea, "mousedown", (raw) => {
-          const event = raw;
-          if (event.button !== 0) return;
-          event.preventDefault();
-          stopDrag();
-          popup.style.zIndex = `${zIndex++}`;
-          x = event.clientX;
-          y = event.clientY;
-          const move = (rawMove) => {
-            const moveEvent = rawMove;
-            if (!(moveEvent.buttons & 1)) {
-              stopDrag();
-              return;
-            }
-            moveEvent.preventDefault();
-            browser.document.body.classList.add("knife-dragging");
-            const dx = moveEvent.clientX - x, dy = moveEvent.clientY - y;
-            x = moveEvent.clientX;
-            if (popup.offsetTop + dy < 0) popup.style.top = "0";
-            else {
-              y = moveEvent.clientY;
-              popup.style.top = `${popup.offsetTop + dy}px`;
-            }
-            popup.style.left = `${popup.offsetLeft + dx}px`;
+        let popup = null, player = null, scope = null;
+        try {
+          const createdPopup = popup = browser.document.createElement("div");
+          const createdScope = scope = runtime.createScope();
+          createdPopup.classList.add("knife-popup");
+          createdPopup.style.left = `${left}px`;
+          createdPopup.style.top = `${top}px`;
+          createdPopup.style.zIndex = `${zIndex++}`;
+          const createdPlayer = player = browser.document.createElement("iframe");
+          createdPlayer.classList.add("knife-popup-player");
+          createdPlayer.src = url.href;
+          createdPlayer.allowFullscreen = true;
+          createdPlayer.allow = "autoplay; encrypted-media; picture-in-picture";
+          createdPlayer.scrolling = "no";
+          createdPopup.append(createdPlayer);
+          createdScope.add(() => {
+            createdPlayer.src = "about:blank";
+            createdPopup.remove();
+            popups.delete(createdPopup);
+          });
+          const dragArea = browser.document.createElement("div");
+          dragArea.classList.add("knife-popup-drag-area");
+          createdPopup.append(dragArea);
+          let x = 0, y = 0, stopDrag = () => {
           };
-          const up = () => {
-            browser.document.removeEventListener("mousemove", move);
-            browser.document.removeEventListener("mouseup", up);
-            browser.document.body.classList.remove("knife-dragging");
-            stopDrag = () => {
+          const finishDrag = () => stopDrag();
+          createdScope.add(() => finishDrag());
+          createdScope.on(target, "blur", finishDrag);
+          createdScope.on(target, "pagehide", finishDrag);
+          createdScope.on(dragArea, "mousedown", (raw) => {
+            const event = raw;
+            if (event.button !== 0) return;
+            event.preventDefault();
+            stopDrag();
+            createdPopup.style.zIndex = `${zIndex++}`;
+            x = event.clientX;
+            y = event.clientY;
+            const move = (rawMove) => {
+              const moveEvent = rawMove;
+              if (!(moveEvent.buttons & 1)) {
+                stopDrag();
+                return;
+              }
+              moveEvent.preventDefault();
+              browser.document.body.classList.add("knife-dragging");
+              const dx = moveEvent.clientX - x, dy = moveEvent.clientY - y;
+              x = moveEvent.clientX;
+              if (createdPopup.offsetTop + dy < 0) createdPopup.style.top = "0";
+              else {
+                y = moveEvent.clientY;
+                createdPopup.style.top = `${createdPopup.offsetTop + dy}px`;
+              }
+              createdPopup.style.left = `${createdPopup.offsetLeft + dx}px`;
             };
-          };
-          stopDrag = up;
-          browser.document.addEventListener("mousemove", move);
-          browser.document.addEventListener("mouseup", up);
-        });
-        const close = browser.document.createElement("button");
-        close.classList.add("knife-popup-close-button");
-        close.title = labels.close || "";
-        close.textContent = "X";
-        scope.on(close, "click", () => scope.dispose());
-        popup.append(close);
-        scope.add(() => {
-          player.src = "about:blank";
-          popup.remove();
-          popups.delete(popup);
-        });
-        popups.set(popup, scope);
-        return popup;
+            const up = () => {
+              browser.document.removeEventListener("mousemove", move);
+              browser.document.removeEventListener("mouseup", up);
+              browser.document.body.classList.remove("knife-dragging");
+              stopDrag = () => {
+              };
+            };
+            stopDrag = up;
+            browser.document.addEventListener("mousemove", move);
+            browser.document.addEventListener("mouseup", up);
+          });
+          const close = browser.document.createElement("button");
+          close.classList.add("knife-popup-close-button");
+          close.title = labels.close || "";
+          close.textContent = "X";
+          createdScope.on(close, "click", () => createdScope.dispose());
+          createdPopup.append(close);
+          popups.set(createdPopup, createdScope);
+          return createdPopup;
+        } catch {
+          try {
+            scope?.dispose();
+          } catch {
+          }
+          if (player) player.src = "about:blank";
+          popup?.remove();
+          return null;
+        }
       },
       retireDetached() {
-        for (const [popup, scope] of popups) if (!popup.isConnected) scope.dispose();
+        for (const [popup, scope] of popups) if (!popup.isConnected) {
+          try {
+            scope.dispose();
+          } catch {
+            popups.delete(popup);
+          }
+        }
       },
       dispose() {
         for (const [popup, scope] of [...popups]) {
           const player = popup.querySelector("iframe");
-          if (player instanceof browser.HTMLIFrameElement) disposePopup(popup, player, scope);
-          else scope.dispose();
+          try {
+            if (player instanceof browser.HTMLIFrameElement) disposePopup(popup, player, scope);
+            else scope.dispose();
+          } catch {
+            if (player instanceof browser.HTMLIFrameElement) player.src = "about:blank";
+            popup.remove();
+            popups.delete(popup);
+          }
         }
       }
     };
@@ -858,9 +884,19 @@
         anchors.add(anchor);
         anchor.draggable = true;
         owner.on(anchor, "mouseenter", () => {
-          if (config.preview === true) void preview()?.show(anchor.href, anchor, true);
+          if (config.preview !== true) return;
+          try {
+            void preview()?.show(anchor.href, anchor, true).catch(() => {
+            });
+          } catch {
+          }
         });
-        owner.on(anchor, "mouseleave", () => preview()?.hide(anchor.href));
+        owner.on(anchor, "mouseleave", () => {
+          try {
+            preview()?.hide(anchor.href);
+          } catch {
+          }
+        });
         owner.on(anchor, "dragstart", (raw) => {
           const event = raw;
           if (!config.popupPlayer || !event.dataTransfer || !validLive(anchor.href)) return;
@@ -940,49 +976,68 @@
     const sidebar = createSidebarFeature(runtime, target, adapter, () => runtime.preview);
     const page = createPageFeature(runtime, target, adapter, popups);
     let owner = null, ownerGeneration = -1, unsubscribe = null, disposed = false;
+    const status = (feature) => {
+      try {
+        runtime.setStatus(feature, "failed", "feature-initialization");
+      } catch {
+      }
+    };
     const fail = (feature, action) => {
       try {
         action();
       } catch {
-        runtime.setStatus(feature, "failed", "feature-initialization");
+        status(feature);
       }
+    };
+    const retireOwner = () => {
+      const previous = owner;
+      owner = null;
+      ownerGeneration = -1;
+      if (previous) fail("runtime", () => previous.dispose());
     };
     const reconcile = (state) => {
       if (disposed) return;
       const config = runtime.config, labels = runtime.i18n;
       fail("popupPlayer", () => popups.retireDetached());
       if (!runtime.configReady || state.route?.kind === "excluded") {
-        owner?.dispose();
-        owner = null;
-        ownerGeneration = -1;
+        retireOwner();
         if (state.route?.kind === "excluded") fail("popupPlayer", () => popups.dispose());
         return;
       }
       if (!owner || ownerGeneration !== runtime.generation) {
-        owner?.dispose();
-        owner = runtime.createScope();
-        ownerGeneration = runtime.generation;
+        retireOwner();
+        try {
+          owner = runtime.createScope();
+          ownerGeneration = runtime.generation;
+        } catch {
+          status("runtime");
+          return;
+        }
       }
       const activeOwner = owner;
       fail("startTime", () => page.mountOwner(state, activeOwner, config, labels));
       fail("sidebarRefresh", () => sidebar.reconcile(state.sidebar || null, state, activeOwner, config));
       fail("channelChat", () => page.reconcileChannel(state, activeOwner));
       const routeKind = state.route?.kind;
-      const container = state.body && (routeKind === "live" || routeKind === "vod") ? adapter.chat.findContainer(state.body, routeKind) : null;
-      fail("donationChat", () => chat.reconcile(container, routeKind === "live", activeOwner, config));
+      fail("donationChat", () => {
+        const container = state.body && (routeKind === "live" || routeKind === "vod") ? adapter.chat.findContainer(state.body, routeKind) : null;
+        chat.reconcile(container, routeKind === "live", activeOwner, config);
+      });
       fail("bannerClose", () => page.reconcileBanner(state, activeOwner));
     };
     const dispose = () => {
       if (disposed) return;
       disposed = true;
-      unsubscribe?.();
+      const stop = unsubscribe;
       unsubscribe = null;
-      owner?.dispose();
-      owner = null;
-      chat.dispose();
-      sidebar.dispose();
-      page.dispose();
-      popups.dispose();
+      if (stop) fail("runtime", () => {
+        stop();
+      });
+      retireOwner();
+      fail("donationChat", () => chat.dispose());
+      fail("sidebarRefresh", () => sidebar.dispose());
+      fail("startTime", () => page.dispose());
+      fail("popupPlayer", () => popups.dispose());
     };
     runtime.coordinatorStarted = true;
     try {

@@ -135,3 +135,88 @@ test('route owner moves home and channel decorations without retaining foreign r
   f.dom.reconfigure({ url: 'https://chzzk.naver.com/following' }); knife.reconcile();
   assert.equal(document.querySelector('.knife-channel-chat'), null); assert.equal(body.dataset.knifeHome, undefined);
 });
+
+test('chat discovery and status-reporting failures do not block later feature reconciliation', async t => {
+  await t.test('chat discovery', t => {
+    const f = setup(t); const knife = runtime(f.dom); let banners = 0;
+    knife.adapter.chat.findContainer = () => { throw new Error('fixture-chat'); };
+    const close = knife.adapter.banner.closeHandler.bind(knife.adapter.banner);
+    knife.adapter.banner.closeHandler = node => { banners++; return close(node); };
+    assert.doesNotThrow(() => f.start());
+    assert.equal(banners, 1); assert.equal(knife.statuses.donationChat?.state, 'failed');
+  });
+  await t.test('status reporting', t => {
+    const f = setup(t); const knife = runtime(f.dom); let banners = 0;
+    knife.adapter.sidebar.sections = () => { throw new Error('fixture-sidebar'); };
+    const setStatus = knife.setStatus.bind(knife);
+    knife.setStatus = (feature, ...args) => { if (feature === 'sidebarRefresh') throw new Error('fixture-status'); return setStatus(feature, ...args); };
+    const close = knife.adapter.banner.closeHandler.bind(knife.adapter.banner);
+    knife.adapter.banner.closeHandler = node => { banners++; return close(node); };
+    assert.doesNotThrow(() => f.start()); assert.equal(banners, 1);
+  });
+});
+
+test('owner disposal failure cannot prevent the replacement generation from binding', async t => {
+  const f = setup(t); const knife = runtime(f.dom), document = f.dom.window.document;
+  const createScope = knife.createScope.bind(knife); let first = true;
+  knife.createScope = () => {
+    const scope = createScope();
+    if (first) {
+      first = false; const dispose = scope.dispose.bind(scope);
+      scope.dispose = () => { dispose(); throw new Error('fixture-dispose'); };
+    }
+    return scope;
+  };
+  f.start();
+  const oldBody = document.getElementById('layout-body'), replacement = document.createElement('div');
+  replacement.innerHTML = bodyHTML('replacement'); const nextBody = replacement.firstElementChild;
+  attachOwnedState(f.dom, nextBody); oldBody.replaceWith(nextBody);
+  assert.doesNotThrow(() => knife.reconcile());
+  assert.equal(document.querySelectorAll('.knife-resize-handle').length, 1);
+  assert.equal(nextBody.querySelector('[class^="band_banner_container__"] > .knife-owned')?.isConnected, true);
+});
+
+test('preview and popup callback failures stay inside their feature boundaries', async t => {
+  const f = setup(t, { config: { preview: true, popupPlayer: true } }); const knife = runtime(f.dom), errors = [];
+  knife.preview = { diagnostics: {}, show() { throw new Error('fixture-preview'); }, hide() {} };
+  f.dom.window.addEventListener('error', event => { errors.push(event.error); event.preventDefault(); });
+  f.start();
+  f.dom.window.document.getElementById('live-anchor').dispatchEvent(new f.dom.window.MouseEvent('mouseenter', { bubbles: true }));
+  const create = f.dom.window.document.createElement.bind(f.dom.window.document);
+  f.dom.window.document.createElement = name => { if (name === 'div') throw new Error('fixture-popup'); return create(name); };
+  assert.equal(drop(f.dom, '/live/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb').defaultPrevented, false);
+  f.dom.window.document.createElement = create;
+  assert.deepEqual(errors, []);
+  assert.equal(f.dom.window.document.querySelectorAll('.knife-popup').length, 0);
+});
+
+test('one popup disposer failure cannot retain sibling popups on excluded navigation', async t => {
+  const f = setup(t, { config: { popupPlayer: true } }); f.start(); const knife = runtime(f.dom), document = f.dom.window.document;
+  const createScope = knife.createScope.bind(knife); let first = true;
+  knife.createScope = () => {
+    const scope = createScope();
+    if (first) {
+      first = false; const dispose = scope.dispose.bind(scope);
+      scope.dispose = () => { dispose(); throw new Error('fixture-popup-dispose'); };
+    }
+    return scope;
+  };
+  drop(f.dom, '/live/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
+  drop(f.dom, '/live/cccccccccccccccccccccccccccccccc');
+  assert.equal(document.querySelectorAll('.knife-popup').length, 2);
+  f.dom.reconfigure({ url: 'https://chzzk.naver.com/settings/profile' }); knife.reconcile();
+  assert.equal(document.querySelectorAll('.knife-popup').length, 0);
+});
+
+test('foreign coordinator ownership is untouched and final disposal is idempotent', async t => {
+  await t.test('foreign owner', t => {
+    const f = setup(t); const knife = runtime(f.dom); knife.coordinatorStarted = true;
+    f.start(); assert.equal(f.monitor.subscriptions(), 0); assert.equal(f.dom.window.document.querySelector('.knife-resize-handle'), null);
+  });
+  await t.test('repeated final pagehide', t => {
+    const f = setup(t); f.start(); const knife = runtime(f.dom), event = () => new f.dom.window.PageTransitionEvent('pagehide');
+    f.dom.window.dispatchEvent(event()); f.dom.window.dispatchEvent(event()); knife.notify();
+    assert.equal(f.monitor.observers.size, 0); assert.equal(f.monitor.intervals.size, 0);
+    assert.equal(f.dom.window.document.querySelector('.knife-resize-handle'), null);
+  });
+});

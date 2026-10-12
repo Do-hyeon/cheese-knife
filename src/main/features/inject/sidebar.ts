@@ -181,8 +181,11 @@ export function createSidebarFeature(runtime: KnifeRuntime, target: Window, adap
     const attach = (anchor: HTMLAnchorElement): void => {
       if (!validLive(anchor.href) || anchors.has(anchor)) return;
       anchors.add(anchor); anchor.draggable = true;
-      owner.on(anchor, 'mouseenter', () => { if (config.preview === true) void preview()?.show(anchor.href, anchor, true); });
-      owner.on(anchor, 'mouseleave', () => preview()?.hide(anchor.href));
+      owner.on(anchor, 'mouseenter', () => {
+        if (config.preview !== true) return;
+        try { void preview()?.show(anchor.href, anchor, true).catch(() => {}); } catch {}
+      });
+      owner.on(anchor, 'mouseleave', () => { try { preview()?.hide(anchor.href); } catch {} });
       owner.on(anchor, 'dragstart', raw => {
         const event = raw as DragEvent;
         if (!config.popupPlayer || !event.dataTransfer || !validLive(anchor.href)) return;

@@ -128,7 +128,7 @@ export function createPageFeature(runtime: KnifeRuntime, target: Window, adapter
       if (!close) return;
       const button = browser.document.createElement('button');
       button.type = 'button'; button.className = 'knife-owned'; button.textContent = '×';
-      owner.on(button, 'click', () => { close(); }); banner.append(button); owner.add(() => button.remove());
+      owner.on(button, 'click', () => { try { close(); } catch {} }); banner.append(button); owner.add(() => button.remove());
     },
     dispose() { mounted = null; config = {}; labels = {}; cache.clear(); },
   };

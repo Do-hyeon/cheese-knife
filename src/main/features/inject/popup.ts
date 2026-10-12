@@ -26,33 +26,36 @@ export function createPopupRegistry(runtime: KnifeRuntime, target: Window): Popu
     open(href, left, top, labels) {
       const url = liveURL(target, href);
       if (!url) return null;
-      const popup = browser.document.createElement('div');
-      const scope = runtime.createScope();
-      popup.classList.add('knife-popup');
-      popup.style.left = `${left}px`;
-      popup.style.top = `${top}px`;
-      popup.style.zIndex = `${zIndex++}`;
+      let popup: HTMLElement | null = null, player: HTMLIFrameElement | null = null, scope: ResourceScope | null = null;
+      try {
+      const createdPopup = popup = browser.document.createElement('div');
+      const createdScope = scope = runtime.createScope();
+      createdPopup.classList.add('knife-popup');
+      createdPopup.style.left = `${left}px`;
+      createdPopup.style.top = `${top}px`;
+      createdPopup.style.zIndex = `${zIndex++}`;
 
-      const player = browser.document.createElement('iframe');
-      player.classList.add('knife-popup-player');
-      player.src = url.href;
-      player.allowFullscreen = true;
-      player.allow = 'autoplay; encrypted-media; picture-in-picture';
-      player.scrolling = 'no';
-      popup.append(player);
+      const createdPlayer = player = browser.document.createElement('iframe');
+      createdPlayer.classList.add('knife-popup-player');
+      createdPlayer.src = url.href;
+      createdPlayer.allowFullscreen = true;
+      createdPlayer.allow = 'autoplay; encrypted-media; picture-in-picture';
+      createdPlayer.scrolling = 'no';
+      createdPopup.append(createdPlayer);
+      createdScope.add(() => { createdPlayer.src = 'about:blank'; createdPopup.remove(); popups.delete(createdPopup); });
 
       const dragArea = browser.document.createElement('div');
       dragArea.classList.add('knife-popup-drag-area');
-      popup.append(dragArea);
+      createdPopup.append(dragArea);
       let x = 0, y = 0, stopDrag = (): void => {};
       const finishDrag = (): void => stopDrag();
-      scope.add(() => finishDrag());
-      scope.on(target, 'blur', finishDrag);
-      scope.on(target, 'pagehide', finishDrag);
-      scope.on(dragArea, 'mousedown', raw => {
+      createdScope.add(() => finishDrag());
+      createdScope.on(target, 'blur', finishDrag);
+      createdScope.on(target, 'pagehide', finishDrag);
+      createdScope.on(dragArea, 'mousedown', raw => {
         const event = raw as MouseEvent;
         if (event.button !== 0) return;
-        event.preventDefault(); stopDrag(); popup.style.zIndex = `${zIndex++}`;
+        event.preventDefault(); stopDrag(); createdPopup.style.zIndex = `${zIndex++}`;
         x = event.clientX; y = event.clientY;
         const move = (rawMove: Event): void => {
           const moveEvent = rawMove as MouseEvent;
@@ -60,9 +63,9 @@ export function createPopupRegistry(runtime: KnifeRuntime, target: Window): Popu
           moveEvent.preventDefault(); browser.document.body.classList.add('knife-dragging');
           const dx = moveEvent.clientX - x, dy = moveEvent.clientY - y;
           x = moveEvent.clientX;
-          if (popup.offsetTop + dy < 0) popup.style.top = '0';
-          else { y = moveEvent.clientY; popup.style.top = `${popup.offsetTop + dy}px`; }
-          popup.style.left = `${popup.offsetLeft + dx}px`;
+          if (createdPopup.offsetTop + dy < 0) createdPopup.style.top = '0';
+          else { y = moveEvent.clientY; createdPopup.style.top = `${createdPopup.offsetTop + dy}px`; }
+          createdPopup.style.left = `${createdPopup.offsetLeft + dx}px`;
         };
         const up = (): void => {
           browser.document.removeEventListener('mousemove', move);
@@ -79,20 +82,31 @@ export function createPopupRegistry(runtime: KnifeRuntime, target: Window): Popu
       close.classList.add('knife-popup-close-button');
       close.title = labels.close || '';
       close.textContent = 'X';
-      scope.on(close, 'click', () => scope.dispose());
-      popup.append(close);
-      scope.add(() => { player.src = 'about:blank'; popup.remove(); popups.delete(popup); });
-      popups.set(popup, scope);
-      return popup;
+      createdScope.on(close, 'click', () => createdScope.dispose());
+      createdPopup.append(close);
+      popups.set(createdPopup, createdScope);
+      return createdPopup;
+      } catch {
+        try { scope?.dispose(); } catch {}
+        if (player) player.src = 'about:blank'; popup?.remove();
+        return null;
+      }
     },
     retireDetached() {
-      for (const [popup, scope] of popups) if (!popup.isConnected) scope.dispose();
+      for (const [popup, scope] of popups) if (!popup.isConnected) {
+        try { scope.dispose(); } catch { popups.delete(popup); }
+      }
     },
     dispose() {
       for (const [popup, scope] of [...popups]) {
         const player = popup.querySelector('iframe');
-        if (player instanceof browser.HTMLIFrameElement) disposePopup(popup, player, scope);
-        else scope.dispose();
+        try {
+          if (player instanceof browser.HTMLIFrameElement) disposePopup(popup, player, scope);
+          else scope.dispose();
+        } catch {
+          if (player instanceof browser.HTMLIFrameElement) player.src = 'about:blank';
+          popup.remove(); popups.delete(popup);
+        }
       }
     },
   };
