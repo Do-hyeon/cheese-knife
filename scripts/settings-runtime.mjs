@@ -34,7 +34,7 @@ const generatedCodes = Object.freeze({
   writeCi: 'settings-runtime-write-ci',
 });
 const hasExpectedGlobal = (entry, source) => entry.global
-  ? new RegExp(`^(?:var|const|let)\\s+${entry.global}\\b`).test(source)
+  ? source.match(/^(?:var|const|let)\s+([A-Za-z_$][\w$]*)\b/)?.[1] === entry.global
   : /^\(\(\) => \{/.test(source);
 
 export async function renderSettingsRuntime(root = repositoryRoot()) {
@@ -69,7 +69,7 @@ export function validateSettingsRuntime(outputs, identities = []) {
 
 function report(outputs) {
   const files = SETTINGS_RUNTIME_ENTRIES.map(entry => entry.output);
-  const hashes = Object.fromEntries(files.map(file => [file, sha256(outputs[file])]));
+  const hashes = Object.fromEntries(Object.entries(outputs).map(([file, source]) => [file, sha256(source)]));
   return { files, hashes };
 }
 
