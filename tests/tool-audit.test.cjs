@@ -115,7 +115,17 @@ test('static scan scope includes owned code but excludes HLS, dependencies, outp
   assert.ok(files.includes('web/preview.js'));
   assert.ok(files.includes('settings-broker.js'));
   assert.ok(files.includes('scripts/build.mjs'));
+  assert.ok(files.includes('scripts/audio-signal.mjs'));
   assert.equal(files.some(file => /(?:^vendor\/|^node_modules\/|^output\/|^tests\/|^dist(?:\/|-)|^scripts\/(?:hls-hardening|vendor-hls)\.mjs$)/.test(file)), false);
+});
+
+test('audio numeric source snapshot records the actual module hash', async () => {
+  const { snapshotInput } = await auditModule();
+  const snapshot = await snapshotInput(process.cwd());
+  const expected = createHash('sha256').update(await fs.readFile('scripts/audio-signal.mjs')).digest('hex');
+  assert.deepEqual(snapshot.find(item => item.file === 'scripts/audio-signal.mjs'), {
+    file: 'scripts/audio-signal.mjs', sha256: expected,
+  });
 });
 
 test('source walk skips internal directory links and audit output rejects linked roots', async t => {

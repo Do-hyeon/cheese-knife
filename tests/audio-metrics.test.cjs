@@ -4,6 +4,14 @@ const metrics = () => import('../scripts/audio-metrics.mjs');
 const tone = (n, harmonic = 0) => Float64Array.from({length:n}, (_, i) =>
   0.5 * Math.sin(2 * Math.PI * 1000 * i / 48000) + harmonic * Math.sin(2 * Math.PI * 3000 * i / 48000));
 
+test('numeric API keeps the same function identity through the old module path', async () => {
+  const old = await metrics();
+  const current = await import('../scripts/audio-signal.mjs');
+  assert.equal(old.measureSignal, current.measureSignal);
+  assert.equal(old.channelDifferenceRms, current.channelDifferenceRms);
+  assert.equal(old.rmsEnvelope, current.rmsEnvelope);
+});
+
 test('waveform summary reports peak, RMS and samples outside floating full scale', async () => {
   const {measureSignal} = await metrics();
   const report = measureSignal([-1.2,0,1.2], 48000);
