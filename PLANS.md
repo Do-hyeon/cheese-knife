@@ -223,7 +223,7 @@ P09·AF05-B의 현재 커서는 유지한다. 아래 작업은 기능 로드맵�
 - [ ] **DT00:** 의도적 오용의 컴파일 거부, 정상·raw 실패 입력, 기존 생성 JS 실행 검사를 유지하는 제한된 실험. Windows·Ubuntu 회귀와 주석·의존성·검사 비용 기록.
 - [ ] **DT00:** 실험 결과에 따라 확대·유지·중단 결정. 의미 있는 검출 없이 전면 변환을 계속하지 않는다.
 - [ ] **DT01 / WAITING-DEPENDENCY:** DT00 효과 확인 후 settings fixture/reply 경계 또는 오디오 report producer·consumer를 별도 작은 단위로 강화. 부분 report·잘못된 입력·독립 기대값·시간/오류 의미 보존.
-- [ ] **DT02 / WAITING-DEPENDENCY:** JSDoc보다 명확한 이점이 입증된 파일만 native `.mts`/`.cts` 검토. 실행 경로·테스트 발견·감사 inventory·snapshot·ESLint·provenance 누락 방지와 별도 strict 검사를 함께 확보.
+- [ ] **DT02 / WAITING-DEPENDENCY:** JSDoc보다 명확한 이점이 입증된 파일만 native `.mts`/`.cts` 검토. 실행 경로·테스트 발견·기존 감사 대상의 inventory·snapshot·ESLint·provenance 누락 방지와 별도 strict 검사를 함께 확보. 기존 감사 제외 범위를 확대하지 않는다.
 
 완료 기준은 계약 오용 검출과 기존 증거의 보존이다. 타입 단언·ignore로 진단만 없애거나 테스트/감사 대상을 줄이면 완료하지 않는다. HLS 자식 프로세스·고정 해시 검증 가족은 첫 실험에서 제외하고, 이후 변경 필요 시 별도 계획으로 다룬다.
 
