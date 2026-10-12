@@ -14,6 +14,17 @@ function setup(t) {
   return { dom, preview: runtime(dom).preview, pending, response, one: dom.window.document.getElementById('one'), two: dom.window.document.getElementById('two') };
 }
 
+test('duplicate install preserves an existing preview controller', t => {
+  const dom = page(playerHTML + '<aside id="sidebar"></aside>');
+  t.after(() => dom.window.close());
+  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom, { preview: true });
+  const existing = { diagnostics: { events: [] }, show: async () => {}, hide: () => {} };
+  runtime(dom).preview = existing;
+  load(dom, 'web/preview.js');
+  assert.equal(runtime(dom).preview, existing);
+  assert.equal(dom.window.document.querySelector('.knife-preview'), null);
+});
+
 test('late hover A cannot replace newer hover B even when abort is ignored', async t => {
   const { dom, preview, pending, response, one, two } = setup(t);
   const first = preview.show(one.href, one, true);
@@ -38,6 +49,20 @@ test('same anchor changing URL invalidates an earlier request', async t => {
   pending[0].resolve(response('https://images.invalid/a.jpg')); await first;
   assert.equal(dom.window.document.querySelector('.knife-preview')?.hidden ?? true, true);
 });
+
+for (const invalidation of ['route', 'sidebar-owner']) {
+  test(`displayed preview closes when its ${invalidation} identity changes`, async t => {
+    const { dom, preview, pending, response, one } = setup(t);
+    const showing = preview.show(one.href, one, true);
+    pending[0].resolve(response('https://images.invalid/a.jpg')); await showing;
+    await new Promise(resolve => setTimeout(resolve, 150));
+    assert.equal(dom.window.document.querySelector('.knife-preview').hidden, false);
+    if (invalidation === 'route') dom.window.history.pushState({}, '', '/live/dddddddddddddddddddddddddddddddd');
+    else runtime(dom).state.sidebar = dom.window.document.createElement('aside');
+    runtime(dom).notify();
+    assert.equal(dom.window.document.querySelector('.knife-preview').hidden, true);
+  });
+}
 
 test('untrusted hrefs do not request an API or create media', async t => {
   const { preview, pending, one } = setup(t);
