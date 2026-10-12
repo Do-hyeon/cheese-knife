@@ -182,9 +182,18 @@ P09는 AF05 내부 작업의 시작 조건이 아니다. AF05 최종 공개 게�
 
 실행 계획: [AF05 내부 종료 계획](docs/superpowers/plans/2026-10-12-af05-internal-closure.md).
 
-- [ ] 수기 런타임 JS 원본을 TypeScript로 이전하고 임시 전역 shim 제거 여부 확인. 배포용 생성 JS와 필요한 classic-script 연결 계약은 유지.
-- [ ] `any`, ignore와 예외 원장을 0건 또는 승인된 근거로 고정.
-- [ ] source→dist 재현 가능성, CSP, 권한, 라이선스와 스토어 설명 정합성 확인.
+검증 기록: [AF05 내부 검증](docs/superpowers/validation/2026-10-12-af05-internal-closure.md).
+
+AF05-A 내부 작업 — P09와 독립:
+
+- [x] 수기 런타임 JS 7개를 TypeScript로 이전. 제품 JS16개 전체 생성 경로와 strict TS-only 검사 확보. 필요한 classic-script 연결은 계약으로 유지.
+- [x] explicit `any`·ignore 0, DOM/검증 경계 단언과 필요한 전역 연결 원장 고정.
+- [x] source→dist 두 격리 build58/58 해시 일치, CSP·권한·라이선스·현재 기능 설명의 로컬 정합성 확인. 실제 스토어 필드는 공개 수용에서 확인.
+- [x] 전체 공개-checkout 회귀800/800, 객관 오디오·pixels·설치형 positive/negative·도구 감사·Astra max 검토.
+- [ ] 한글 PR·공개 CI·병합 완료.
+
+AF05-B 공개 수용 — P09와 차기 AF 배포에 의존:
+
 - [ ] 새 설치·기존 설치 업데이트·설정 보존·롤백 설치 수용.
 - [ ] F00–F05 동결 해제 여부 사용자 승인.
 

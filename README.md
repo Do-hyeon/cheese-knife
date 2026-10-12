@@ -58,7 +58,7 @@ Chrome의 `chrome://extensions`에서 개발자 모드를 켜고 빌드된 `dist
 
 ## 개발 방향
 
-설치형 MV3 E2E 기반을 마련했으며, 다음 단계는 명확한 모듈 경계와 점진적 TypeScript 전환입니다. 기능 로드맵은 AF05 이행 종료 뒤 이 기반 위에서 재개합니다.
+제품 런타임의 원본은 strict TypeScript로 관리하고, Chrome에 필요한 JavaScript를 검증·생성합니다. 현재는 AF05의 이행 종료·배포 수용 검증을 진행하며, 완료 후 기능 로드맵을 재개합니다.
 
 [실행 계획](PLANS.md) · [AF00 검증 기록](docs/superpowers/validation/2026-10-11-af00-installed-extension-e2e.md) · [제3자 고지](THIRD_PARTY_NOTICES.md)
 
