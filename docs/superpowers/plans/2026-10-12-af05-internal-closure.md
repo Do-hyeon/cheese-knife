@@ -8,7 +8,7 @@
 
 **Tech Stack:** 기존 TypeScript 7.0.2, esbuild 0.28.2, Node test runner, 설치형 MV3 E2E.
 
-**Spec:** [장기 기반 설계 AF05](../specs/2026-10-11-ai-friendly-foundation-design.md#AF05--이행-종료와-공개-게이트).
+**Spec:** [장기 기반 설계 AF05](../specs/2026-10-11-ai-friendly-foundation-design.md#af05--이행-종료와-공개-게이트).
 
 ## 고정 범위와 판단
 
