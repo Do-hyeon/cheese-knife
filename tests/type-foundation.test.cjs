@@ -79,6 +79,29 @@ test('preview runtime contract is explicit and typechecked', async () => {
   assert.equal(result.status, 0, result.stdout + result.stderr);
 });
 
+test('inject runtime contracts are explicit and typechecked', async () => {
+  const inject = await fs.readFile('src/main/features/inject/contracts.ts', 'utf8');
+  for (const signature of [
+    'open(url: string, left: number, top: number, labels: PopupLabels): HTMLElement | null;',
+    'retireDetached(): void;',
+    'reconcile(container: Element | null, isLive: boolean, owner: ResourceScope, config: RuntimeConfig): void;',
+    'reconcile(root: Element | null, state: RuntimeState, owner: ResourceScope, config: RuntimeConfig): void;',
+    'mountOwner(state: RuntimeState, owner: ResourceScope, config: RuntimeConfig, labels: RuntimeLabels): void;',
+    'reconcileChannel(state: RuntimeState, owner: ResourceScope): void;',
+    'reconcileBanner(state: RuntimeState, owner: ResourceScope): void;',
+    'dispose(): void;',
+  ]) assert.ok(inject.includes(signature), signature);
+
+  const coordinator = await fs.readFile('src/main/features/inject/coordinator.ts', 'utf8');
+  assert.match(coordinator, /export function startCoordinator\(target: Window\): boolean/);
+
+  const runtime = await fs.readFile('src/main/runtime/contracts.ts', 'utf8');
+  assert.match(runtime, /coordinatorStarted\?: boolean;/);
+
+  const result = spawnSync(process.execPath, [path.resolve('node_modules/typescript/bin/tsc'), '-p', 'tsconfig.json'], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
 test('AF03 tsconfig has the strict no-emit contract and narrow include', async () => {
   const config = JSON.parse(await fs.readFile('tsconfig.json', 'utf8'));
   for (const option of requiredTrue) assert.equal(config.compilerOptions[option], true, `${option} must be true`);
