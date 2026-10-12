@@ -1,6 +1,6 @@
 # AF05-B2 — 격리 설치본 코드 전환·복귀 상세 설계
 
-2026-10-12 / Asia-Seoul. 상태: **설계·계획 작성 및 독립 검토 대상, 구현 미승인**. 사용자가 이번 설계·계획·Astra max 검토를 함께 요청했다. 따라서 두 문서를 승인용 묶음으로 작성하되 구현을 시작하지 않는다. [상위 AF05-B 설계](2026-10-12-af05b-release-acceptance-design.md)의 과거 업데이트 미검증 수용·플랫폼 롤백 완료 기준 변경은 여전히 별도 승인 대상이다.
+2026-10-12 / Asia-Seoul. 상태: **독립 검토 후 주 실행자 보완, 사용자 구현 승인 대기**. 사용자가 이번 설계·계획·Astra max 검토를 함께 요청했다. 따라서 두 문서를 승인용 묶음으로 작성하되 구현을 시작하지 않는다. [상위 AF05-B 설계](2026-10-12-af05b-release-acceptance-design.md)의 과거 업데이트 미검증 수용·플랫폼 롤백 완료 기준 변경은 여전히 별도 승인 대상이다.
 
 ## 1. 목적·성공 기준·비목표
 
@@ -58,7 +58,7 @@ T/R은 **TEST ONLY**이며 제품/출시 번호가 아니다. private 복사본�
 
 ## 5. 연속 저장·UI·CSS oracle
 
-각 case의 seed phase에서 빈 storage를 확인한 후 **초기 seed를 한 번만** `chrome.storage.local.set`으로 넣는다. `futureTop.runNonce`에는 run별 random128bit 값을 넣고 이후 모든 phase에 그 값을 기대한다. 즉시 raw 값 확인→페이지 전부 close→context close→old 재기동으로 startup migration을 관찰한다. 이후 writes는 실제 UI 조작뿐이다. storage 재주입·repair·직접 broker 호출로 저장을 대체하지 않는다. popup UI는 packaged `popup.html`/JS/client, styles는 packaged `styles.html`/JS/client다.
+각 case의 seed phase에서 실제 원본 popup의 ready·get-snapshot 응답을 읽기 전용 fence로 기다려 최초 broker boot 완료를 확인하고 **raw storage가 여전히 빈 것을 재확인한 뒤 초기 seed를 한 번만** `chrome.storage.local.set`으로 넣는다. 이 fence는 UI 저장/repair를 하지 않는다. `futureTop.runNonce`에는 run별 random128bit 값을 넣고 이후 모든 phase에 그 값을 기대한다. 즉시 raw 값 확인→페이지 전부 close→context close→old 재기동으로 startup migration을 관찰한다. 이후 writes는 실제 UI 조작뿐이다. storage 재주입·repair·직접 broker 호출로 저장을 대체하지 않는다. popup UI는 packaged `popup.html`/JS/client, styles는 packaged `styles.html`/JS/client다.
 
 공통 초기값: config `{futureFlag:'keep',brightness:1.25}`, styles `['future-style']`, styleParameters `{future:9}`, revision4, futureTop `{runNonce:<nonce>,untouched:true}`. UI range step과 맞는 brightness1.25를 사용한다. B1의 fractional1.225 계약 검사는 별도로 유지한다.
 
@@ -68,7 +68,7 @@ T/R은 **TEST ONLY**이며 제품/출시 번호가 아니다. private 복사본�
 | legacy-valid | config.resizeChat=true, own t=0 추가 seed → resizeChat 제거·sharpness0·chat-resize append·revision5·t 제거 | 초기화는 no-op, unknown/nonce 보존·revision5. font0 등 정상 UI 상태 관측 |
 | legacy-null | resizeChat=false, own t=null → t만 제거·revision4·resizeChat=false raw 보존 | 초기화 반복 no-op, unknown/nonce 보존 |
 | legacy-invalid | resizeChat=false, own t='invalid' → t만 제거·revision4 | 위와 동일. invalid t를 보존한다고 주장하지 않음 |
-| damaged-revision | settingsRevision='invalid-b2' → seed raw 전체 불변, popup/styles repair-required·쓰기 control disabled | 임의 repair/reset하지 않음. MAIN은 configReady=false와 configuration limited/config-unavailable을 관찰하며 정상 ready 조건으로 기다리지 않음 |
+| damaged-revision | settingsRevision='invalid-b2' → seed raw 전체 불변, popup/styles repair-required·쓰기 control disabled·owned CSS 등록 없음 | 임의 repair/reset하지 않음. MAIN은 별도 getConfig 경계이므로 configReady=true/configuration ready와 정상 normalized known config를 관찰 |
 
 valid-ui의 순차 저장:
 
@@ -78,23 +78,27 @@ valid-ui의 순차 저장:
 
 각 단계의 expected raw는 위 literal 값·정확한 revision으로 구성한다. 두 구현의 결과를 비교하는 것만으로 합격시키지 않는다. revision은 storage 전용이며 MAIN bridge의 request/revision 카운터와 같은 수치라고 가정하지 않는다.
 
-각 정상 phase에서 새 fixture page 두 개를 만들고 styles URL의 targetTabId/targetWindowId를 실제 첫 page metadata로 지정한다. owned CSS ID `styles`의 files/matches/runAt/js를 API에서 확인한다. matches는 `['https://chzzk.naver.com/*']`, runAt은 `document_start`, js는 absent/빈 배열이다. valid font8에서는 `['styles/chat-font-size.css','styles/hide-ranking.css']`, font0에서는 `['styles/hide-ranking.css']`, legacy-valid에서는 `['styles/chat-resize.css']`, 다른 case에서는 owned registration이 없다. unrelated registration은 수정하지 않는다.
+각 phase에서 첫 fixture page 하나를 먼저 열어 그 URL의 tab이 한 개일 때 실제 tab/window ID를 취득한 뒤 두 번째 page를 만든다. styles URL의 targetTabId/targetWindowId에는 보존한 첫 page metadata를 지정한다. 두 page를 먼저 열어 같은 URL의 tab을 추정하지 않는다. owned CSS ID `styles`의 files/matches/runAt/js를 API에서 확인한다. matches는 `['https://chzzk.naver.com/*']`, runAt은 `document_start`, js는 absent/빈 배열이다. valid font8에서는 `['styles/chat-font-size.css','styles/hide-ranking.css']`, font0에서는 `['styles/hide-ranking.css']`, legacy-valid에서는 `['styles/chat-resize.css']`, 다른 case에서는 owned registration이 없다. unrelated registration은 수정하지 않는다.
 
-valid-ui에서 styles 저장 후 reload 버튼을 눌러 target의 `window.__knifeFixture.loads`만 +1, 두 번째 page는 불변, ranking display='none'을 확인한다. font8/0의 `--knife-chat-size-1/2/10/20`도 기대 px와 대조한다. MAIN symbol registry의 ready/config가 raw의 알려진 설정과 일치하고 중복 owned control·pageerror가 없어야 한다. legacy/손상 case의 알려진 제한 상태는 정상 기능 성공과 구분한다. 실제 방송 기능 전체의 재검증은 기존 E2E/오디오/전체 gate가 소유한다.
+valid-ui에서 styles 저장 후 reload 버튼을 눌러 target의 `window.__knifeFixture.loads`만 +1, 두 번째 page는 불변, ranking display='none'을 확인한다. font8/0의 `--knife-chat-size-1/2/10/20`도 기대 px와 대조한다. MAIN symbol registry의 ready/config가 raw의 알려진 설정과 일치하고 중복 owned control·pageerror가 없어야 한다. 손상 case에서도 MAIN은 revision을 검증하지 않는 `getConfig(true)`로 config/styleParameters를 읽으므로 ready다. brightness1.25·arrowSeek=true·previewVolume5 등 고정 게시 schema의 known default+seed만 전달되고 futureFlag/resizeChat는 MAIN config에서 제외된다. UI repair-required를 MAIN timeout으로 오인하지 않는다. 손상 case의 쓰기 제한 성공은 정상 UI 저장 성공과 구분한다. 실제 방송 기능 전체의 재검증은 기존 E2E/오디오/전체 gate가 소유한다.
+
+startup 순서는 실행 provenance→기본 ready/repair 상태→raw/UI/CSS/MAIN 관측→literal oracle다. **보존해야 할 필드 값과 같아질 때까지 먼저 기다리지 않는다.** 값이 손실되더라도 실제 관측을 얻어 preservation code로 거부해야 하며 단순 timeout으로 바뀌면 control 실패다. Task2 실패는 captured observation·case/phase/step/stage/code를 bounded failure record로 붙여 throw하고, child는 이 record를 parent에 IPC로 전송한 뒤 close를 수행한다. negative의 허용 stage는 case valid-ui/phase new/step startup의 `candidate-init`뿐이다. observation.raw가 없거나 실제 own config 삭제가 관찰되지 않으면 같은 code만으로 합격하지 않는다.
 
 fixture HTTP(S)는 기존3개 고정 URL만 fulfill, 다른 application 요청은 abort·기록한다. WebSocket은 차단한다. context observers를 설치한 뒤에만 검사 page를 연다. phase 종료 전 page를 모두 닫아 이전 fixture page의 다음 launch 자동 복원을 방지한다. 브라우저 내부 네트워크 전체가 OS 수준에서 차단됐다고 주장하지 않는다.
 
 ## 6. 설치 경계의 negative control
 
-정상 positive와 다른 새 root/profile/extension에서 valid-ui를 실행한다. new 시험 복사본의 background.js만 `chrome.storage.local.remove('config').then(() => { <원래 background IIFE> });`로 감싸, 삭제 완료 뒤 실제 broker/UI가 기동하도록 한다. 정상·원본·제품 파일은 바꾸지 않는다. 이 변형 background hash는 **negative phase의 별도 기대 inventory**에만 반영한다.
+정상 positive와 다른 새 root/profile/extension에서 valid-ui를 실행한다. new 시험 복사본의 **settings-broker.js**에서 initialize의 기존 `boot = enqueue(async () => {` callback 안, 첫 `const raw = await read(true), revision = contract.readRevision(raw.settingsRevision);` 바로 앞에 `await chromeApi.storage.local.remove('config');` 한 줄만 삽입한다. 정확한 insertion point가 한 개임을 먼저 검사하며 0/복수면 control-preparation 실패다. original background의 동기 importScripts/listener 등록은 그대로다. 삭제 완료 뒤 실제 broker boot가 raw를 읽으므로 삭제와 read의 경쟁을 만들지 않는다. remove 실패도 별도 control 실패다. 정상·원본·제품 파일은 바꾸지 않는다. 이 변형 broker hash/function source는 **negative phase의 별도 기대 inventory/provenance**에만 반영한다.
 
 old raw/revision8 저장 성공과 정상 종료 후 new를 실행하고, 같은 preservation oracle가 candidate-init 단계의 **`transition-storage-preservation`**으로 거부해야 한다. 실제 raw에서 config 손실도 확인한다. inventory 실패·MAIN/worker timeout·브라우저 부재·cleanup 실패를 기대 실패로 인정하지 않는다. negative 보고서의 `ok:true`는 control 탐지 합격이지 positive 전환 합격이 아니다. 정상 positive와 기존 MAIN-missing negative도 각각 실행한다.
 
 ## 7. 실패·종료·증거 경계
 
-phase 동작은15000ms wait, phase 전체120000ms, 브라우저 close10000ms; 각 positive/negative CLI 전체600000ms. timeout은 FAIL이다. parent CLI가 같은 runner의 child를 실행·감시해 단순 Promise.race 뒤 작업을 계속하는 형태를 피한다. deadline 시 소유한 child/process tree만 종료하고5초 안에 종료 확인 후 owned cleanup한다. Windows는 생성한 child PID에만 taskkill `/T /F`, Unix는 생성한 전용 process group만 종료한다. 사용자 Chrome·기존 profile/process는 대상이 아니다. 종료를 확인하지 못하면 작업 directory를 보존하고 cleanup-failed를 보고하며 PASS로 종료하지 않는다.
+phase 동작은15000ms wait, phase 전체120000ms, 브라우저 close10000ms; 각 positive/negative CLI 전체600000ms. timeout은 FAIL이다. parent CLI가 같은 runner의 child를 실행·감시해 단순 Promise.race 뒤 작업을 계속하는 형태를 피한다. **Playwright의 Unix Chromium은 detached process group이므로 runner 종료가 browser 종료 증거가 아니다.** 새 launch마다 child가 launch-intent(case/phase/launchId/owned relative root)를 보내고 parent의 ACK를 받은 뒤에만 harness를 호출한다. context.close가 정상 완료한 경우에만 같은 launchId의 close-success를 전송한다. 정상 launch 실패·harness 내부에서 close 오류를 삼킨 실패도 close-success 없이는 종료 확인으로 취급하지 않는다.
 
-첫 실패 code·phase를 유지하고 cleanupErrors는 별도로 남긴다. 성공 후 close/remove/trace/summary 실패도 최종 FAIL이다. positive/negative의 정상/실패 finally는 context→작업 root(profile·설치 복사본·trace·bundled Chrome)→후보 순서로 각각 끝낸다. 후보/작업 root 생성 중 일부 실패도 인계된 소유권에 따라 정리한다. 이미 존재한 artifact/cache/후보 경로를 인수하거나 삭제하지 않는다.
+deadline/예상치 못한 child exit 시 소유한 runner만 종료한다. Windows는 생성한 child PID의 taskkill `/T /F`, Unix는 생성한 runner 전용 process group만 종료하고5초 내 runner 종료를 확인한다. 이 조작으로 detached Chromium까지 종료됐다고 주장하지 않는다. **미확인 launch가 하나라도 있으면 affected work/profile/extension/trace directory를 보존**하고 `cleanup-unconfirmed`를 남기며 nonzero로 끝낸다. 다음 phase/negative PASS/그 directory 삭제는 금지다. 다른 정상 종료가 확인된 root와 browser가 사용하지 않은 후보만 정리한다. OS/private Playwright API의 일반 process 탐색·임의 PID kill은 만들지 않는다. 사용자 Chrome·기존 profile/process는 대상이 아니다. 실패한 private 시험 프로세스의 수동 종료가 필요할 수 있음을 승인 묶음의 한계로 고지한다.
+
+첫 실패 code·phase·stage·관측 record를 유지하고 cleanupErrors는 별도로 남긴다. 성공 후 close/remove/trace/summary 실패도 최종 FAIL이다. 최종 PASS는 모든 launch-intent에 대응하는 close-success, child 정상 종료, 필요한 hash/cleanup/report 완료까지 parent가 확인해야 한다. positive/negative의 정상/종료 확인된 실패 finally는 context→작업 root(profile·설치 복사본·trace·bundled Chrome)→후보 순서다. **종료 미확인 root는 삭제하지 않는 fail-closed 예외**이며 complete cleanup으로 기록하지 않는다. 후보/작업 root 생성 중 일부 실패도 인계된 소유권과 close ACK에 따라 정리한다. 이미 존재한 artifact/cache/후보 경로를 인수하거나 삭제하지 않는다.
 
 보존 artifact는 `output/playwright/installed-extension-transition-<runId>/summary.json`(1MiB 이하), 실패 screenshot1개(8MiB 이하), 실패 trace1개(32MiB 이하)다. tracing은 sources/video/screenshots 없이 고정 fixture에만 수행하며 성공 후 transient trace는 삭제한다. 크기 초과 artifact는 보존하지 않고 artifact-limit로 FAIL한다. 이 상한은 최종 보존 파일 상한이며 기록 중 임시 디스크의 엄격한 quota가 아니다. error 목록은32개×240자, 각 summary는 case/phase·relative 경로·ID·version·hash·검사용 raw/UI/CSS·한계만 포함한다. 소유 profile·브라우저 복사·개인 자료는 upload 대상이 아니다.
 
@@ -102,7 +106,7 @@ phase 동작은15000ms wait, phase 전체120000ms, 브라우저 close10000ms; �
 
 - B2 로컬 완료: reader provenance·상한/부재·pure oracle/runner faults·실제5case 전환·실제 저장 손실 negative·strict8·전체 Node·기존 E2E positive/negative·합성 audio·패키지·현재 도구 감사·보호 파일 전후 hash·최종 독립 품질 검토·최종 head 공개 CI가 모두 근거를 남김.
 - 전체 Node는 clean tracked clone에서 제외 없는 실행. 원래 폴더의 P02 역사 실패와 기존 guarded 도구 경고를 숨기거나 frozen 자료를 변경하지 않음. 새 경고·대상 부재·cleanup/환경 실패는 별도 보완 없이 합격시키지 않음.
-- B2 설계/계획 승인 시 새 bundled fixture 프로필·시험용 T/R payload·negative 복사본·owned cleanup이 필요한 로컬 동작임을 함께 제시한다. Native 또는 subagent 실행 방식과 구현 후 최종 Astra max 검토도 승인 묶음에 포함해 받는다. 이는 실제 시청/native 프로필·제품 버전·스토어 조작 승인이 아니다.
+- B2 설계/계획 승인 시 새 bundled fixture 프로필·시험용 T/R payload·negative 복사본·owned cleanup이 필요한 로컬 동작임을 함께 제시한다. 종료 미확인 시 실패/프로필 보존과 private 시험 browser의 수동 종료 필요 가능성도 고지한다. Native 또는 subagent 실행 방식과 구현 후 최종 Astra max 검토도 승인 묶음에 포함해 받는다. 이는 실제 시청/native 프로필·제품 버전·스토어 조작 승인이 아니다.
 - 전체 AF05-B spec의 waiver/rollback 수용 기준, 성공한 native2.13.3 runtime/seeded storage preflight, 공개 버전, 스토어 upload/심사/게시, 실제 update/new install/플랫폼 rollback은 별도 미완료다. B2만으로 P09/AF05-B DONE·F00 동결 해제를 선언하지 않음.
 
 설계의 플랫폼 근거: [Playwright extension guide](https://playwright.dev/docs/chrome-extensions), [persistent context API](https://playwright.dev/docs/api/class-browsertype#browser-type-launch-persistent-context). bundled Chromium과 persistent profile을 사용하고 시청 Chrome을 연결하지 않는다. 구현·현재 환경 실행으로 실제 성립 여부를 검증할 때까지 예상 동작을 PASS라고 부르지 않는다.
