@@ -24,6 +24,25 @@
 
 독립 Astra max whole-branch 검토와 마지막 커밋의 Windows·Ubuntu foundation/전체 verify는 별도 확인한다. 현재 표는 로컬 결과이며 새 보안 인증이나 실제 방송 검증이 아니다.
 
+## 최종 독립 검토
+
+Astra max가 `36cf380..12218c6` 전체를 검토했다. Critical0·Important0·Minor0이며 최종 공개 CI 통과 조건으로 병합 가능 판정이다. 코드 수정 요청은 없다.
+
+검토자는 기준 버전과2,286개 numeric/summary 호출의 결과·오류를 대조하여 일치를 확인했다. 실제 graph2파일·정상/오용 compiler proof·구 export identity·gate 본문 보존을 확인했고 집중77/77을 독립 재실행했다. 최초 sandbox 실행의 filesystem EPERM8개는 동일 명령의 일반 파일 접근 실행에서 해소됐다. 전체832·browser/candidate/E2E는 로그를 검사했으며 재실행하지 않았다.
+
+합성 보고서14/18/12·source1·qualityFailures0·138개 channel full-scale0, 감사 입력47개 해시와 기존 관측 ID7개의 일치, frozen P02와 root dist/HEAD 불변도 독립 확인했다. 실제 공개 CI·병합은 해당 PR의 마지막 커밋 checks·merge 메타데이터를 기준으로 판정한다.
+
+검토의 제외 항목에 대한 주 실행자 판단:
+
+- NUM01·capture 시각/길이 consistency·overflow: 기존 정책을 유지하는 이번 계약 범위로 인정한다. 비용은 잘못된 숫자의 유한/일관 결과를 보장하지 않음이다.
+- proxy/accessor/custom method·외부/공유 buffer 변경·Samples 밖 입력: 소유 buffer 계약 밖으로 유지한다. 비용은 해당 입력의 안정성 미보장이다.
+- browser/CLI/full report/artifact/filesystem 전체 static safety: 실제 연결·기존 실행 게이트를 유지한 작은 graph로 인정한다. 비용은 나머지 unchecked 경계다.
+- 기존 filesystem7 관측의 취약점 판정: 같은 source·ID의 heuristic으로 남긴다. 비용은 보안 인증/해결 판정 부재다.
+- 실제 방송·계정·hardware·worker/BFCache·in-place reload: 제품 불변과 합성 증거를 새 실사용 증거로 확대하지 않는다. 비용은 해당 환경 미검증이다.
+- 과거 private P02 hash assertion 재검증: 승인된 정확한 한 항목 제외와 원본 해시 보존을 유지한다. 비용은 역사적 입력 일치 assertion의 재검증 부재다.
+
+Deferred minors: 없음. 검토에서 제외된 항목과 보존한 관측을 해결 완료로 표시하지 않는다.
+
 ## RED → GREEN과 독립 기대값
 
 - 신규 모듈·설정 부재에서 새15개 검사 모두 실패했다. missing-module/config 진단은 negative proof의 성공으로 인정하지 않았다.

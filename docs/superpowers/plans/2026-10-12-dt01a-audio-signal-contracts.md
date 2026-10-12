@@ -107,7 +107,9 @@ node scripts/check-installed-extension-negative.mjs
 
   candidate ID는 실행 전에 미존재 경로임을 확인한다. 이미 존재하면 새 영숫자 ID를 골라 기존 산출물을 보존한다. verifyCandidate가 build와 package 검사를 함께 수행하고 설치형 runner도 자체 고유 candidate를 생성한다. 감사 exit0은 clean, exit1은 실제 findings, exit2는 검사 오류/입력 불안정으로 구분해 기록한다. npm/Gitleaks 실행 환경이 없으면 미검증으로 남기고 완료로 표시하지 않는다.
 - [x] **8. 실효성 기록·커밋:** compile/run 시간·추가 주석/단언·변경/unchanged file graph·모든 회귀 수와 환경 제한·NUM01 미해결을 validation에 기록한다. meaningful compiler rejection과 독립 literal oracle 유지가 확인돼야 완료한다. source/test/validation/PLANS를 한 단위로 커밋한다.
-- [ ] **9. 독립 검토·한글 PR:** 주 실행자 순차 구현 뒤 Astra max whole-branch 검토1회, Critical/Important 수정과 실패→성공/전체 회귀를 완료한다. 한글 PR 생성·task 연결 후 마지막 커밋의 Windows·Ubuntu foundation과 전체 verify 통과를 확인하고 기존 승인 범위대로 병합한다. DT01 전체/B/C/NUM01 완료로 표시하지 않는다.
+- [x] **9. 독립 검토:** 주 실행자 순차 구현 뒤 Astra max whole-branch 검토1회 완료(Critical0·Important0·Minor0). 수치/summary2,286개 호출 대조·집중77/77 재확인. 추가 코드 수정 요구는 없다. 제외 항목·미검증 범위를 validation에 기록했다.
+
+공개 통합 게이트는 한글 PR 생성·task 연결 → 마지막 커밋의 Windows·Ubuntu foundation/전체 verify 통과 확인 → 기존 승인 범위대로 병합 순서다. 실제 CI·병합 상태는 해당 PR의 checks·merge 메타데이터를 기준으로 확인하며 별도 상태 문서 커밋만 반복하지 않는다. DT01 전체/B/C/NUM01 완료로 표시하지 않는다.
 
 ## 자체 대조와 실행 승인
 
@@ -117,4 +119,4 @@ Astra max의 read-only 공격적 검토 결과는 Critical0·Important0·Minor1�
 
 검토자는 현재 CLI 본문의 고정 golden·outer/channel key 순서·frequency 생략/undefined/null, five call sites·CI assertion 보존·lint/inventory/snapshot 구분·NUM01 현상을 읽기 전용으로 확인했다. 주 실행자의 기준 metrics/artifacts19/19, 문서 링크·언어·diff 검사와 동결 P02 해시 불변도 확인했다. 신규 compiler proof·성능·전체 오디오/설치형 회귀·보안 인증은 아직 검증하지 않았으며, 구현 단계의 체크박스를 미완료로 유지한다.
 
-한 경계의 두 순차 작업이므로 **Native(주 실행자 직접 구현) + 최종 Astra max 독립 검토**를 선택했다. 사용자 승인 후 확장 새로고침 없이 구현·로컬 검증을 진행했으며 최종 검토→PR/CI→병합으로 이어간다. DT01 전체/B/C/NUM01 승인·완료로 확대하지 않는다.
+한 경계의 두 순차 작업이므로 **Native(주 실행자 직접 구현) + 최종 Astra max 독립 검토**를 선택했다. 사용자 승인 후 확장 새로고침 없이 구현·로컬 검증·최종 독립 검토를 완료했으며 공개 통합 게이트는 위 PR 이력으로 확인한다. DT01 전체/B/C/NUM01 승인·완료로 확대하지 않는다.
