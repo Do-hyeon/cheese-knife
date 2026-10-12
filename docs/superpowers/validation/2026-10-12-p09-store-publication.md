@@ -84,7 +84,7 @@ Chrome의 [sandboxed unpacker](https://chromium.googlesource.com/chromium/src/+/
 
 사용자가 어제 적용된 로컬 시험판이 오늘 제거됐다고 보고했다. 읽기 전용 조사에서 기존 로드 경로인 repository root `dist`의 부재를 확인했다. 2026-10-11 release gates 기록에는 해당 폴더58개 파일을 실제 시험판으로 새로고침·수용한 근거가 있다.
 
-AF01 commit `e36ef120`(2026-10-12 01:06:40 / Asia-Seoul)에 포함된 `production build preserves first-party runtime bytes and excludes developer files` 검사는 실제 repository `dist`에 build 후 `t.after(() => fs.rm(target, { recursive: true, force: true }))`를 등록한다. 작업 기록에는 같은 repository에서 01:06:11부터 package 검사 실행, 01:06:31 성공 출력과 이후 반복 실행이 있다. 격리해야 할 테스트가 사용자 시험판의 로드 파일을 지우는 결함이며 현재도 코드에 남아 있다. 직접 Chrome uninstall을 수행했다는 증거와는 구분하며, Chrome 등록 제거의 정확한 시각·원래 저장 설정 보존은 아직 확인하지 않았다.
+AF01 commit `e36ef120`(2026-10-12 01:06:40 / Asia-Seoul)에 포함된 `production build preserves first-party runtime bytes and excludes developer files` 검사는 실제 repository `dist`에 build 후 `t.after(() => fs.rm(target, { recursive: true, force: true }))`를 등록했다. 작업 기록에는 같은 repository에서 01:06:11부터 package 검사 실행, 01:06:31 성공 출력과 이후 반복 실행이 있다. 이 결함은 진단 당시 코드에 남아 있었으며 INC01에서 수정했다. 직접 Chrome uninstall을 수행했다는 증거와는 구분한다. Chrome 등록 제거의 정확한 시각은 미확인이고, 복원 후 기존 설정 유지는 사용자의 재등록 수용으로 확인했다.
 
 P09 새 프로필 생성/설치 단계에서 기존 Chrome 설정을 직접 변경하지 않았다는 설명을 이전 AF 테스트의 파일 보존 보장으로 확대할 수 없다. 원인 파악 전 프로필 혼동을 제시하고 시험판을 건드리지 않았다고 단정한 답변은 부정확했다. INC01 승인 후 테스트 격리 수정과 어제 검증본의 원래 경로 복원을 수행했고, 사용자가 같은 경로의 로컬 시험판 재등록·기존 설정 유지를 확인했다. [복원과 검증 기록](2026-10-12-inc01-installed-dist-preservation.md). 현재 AF 소스의 새 빌드로 기존 시험판을 임의 교체하지 않았으며 이 수용은 구 스토어 설치본 업데이트 검증과 다르다.
 
