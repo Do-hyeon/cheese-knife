@@ -66,10 +66,10 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어는 같�
 | AF05-A | 내부 원본 종료·검증 | AF04 | DONE | 생성·strict·전체 회귀·공개 CI 유지 |
 | AF05-B | 공개 설치·업데이트·롤백 수용 | P09, 차기 AF 배포 준비 | DEFERRED-MAINTENANCE | B1 완료, B2 문서·승인 게이트 보존; 테스트·개발 도구 타입 강화 후속 마무리 후 복귀. 전체 수용 기준·실제 배포 미승인 |
 | DT01-B | 오디오 quality report 타입 계약 | DT01-A 완료·설계/실행 승인 | DONE | 구현·격리 검증·Astra max·PR #40 공개 CI 확인; 최종 head checks·병합 상태는 해당 PR 기준 |
-| DT01-C | artifact description·부분 report 비교 계약 | DT01-A/B 완료·설계 방향 승인 | DESIGN-REVIEW | core/읽기 계약 상세 설계·Astra max 검토 → written-spec 승인; 구현 계획·실행 승인 별도 |
+| DT01-C | artifact description·부분 report 비교 계약 | DT01-A/B 완료·설계 방향 승인 | WAITING-USER | 상세 설계·Astra max 검토/보완 완료 → written-spec 승인; 구현 계획·실행 승인 별도 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **DT01-C 상세 설계·Astra max 검토**. 사용자2026-10-13 core/읽기 경계 분리 방향 승인. [상세 설계](docs/superpowers/specs/2026-10-13-dt01c-artifact-contract-design.md)를 작성했으며 written-spec·구현 계획/실행 승인은 별도다. DT01-B는 PR #40의 최종 head `f7231cc`·공개 CI run `38282936547` 통과 후 merge `9b8640f`로 통합했다. 사용자가 독립 유지보수 후속의 테스트·개발 도구 타입 강화 작업을 마무리한 뒤 AF05-B로 복귀하도록 순서를 지정했다. B2 계획과 기존 공개 수용 기준은 보존한다.
+현재 커서: **DT01-C 보완된 written-spec 사용자 검토**. 사용자2026-10-13 core/읽기 경계 분리 방향 승인. [상세 설계](docs/superpowers/specs/2026-10-13-dt01c-artifact-contract-design.md)와 Astra max 독립 검토(Critical0·Important1·Minor2)를 대조/보완했다. 수정 후 독립0건·구현 PASS가 아니며 written-spec·구현 계획/실행 승인은 구분한다. 사용자가 독립 유지보수 후속의 테스트·개발 도구 타입 강화 작업을 마무리한 뒤 AF05-B로 복귀하도록 순서를 지정했다. B2 계획과 기존 공개 수용 기준은 보존한다. 문서만의 PR/push 없이 같은 작업 브랜치의 로컬 커밋으로 보관한다.
 
 B1은 PR #36 최종 CI run `38255250513`과 merge `b38ec388`로 완료했다. B2 설계·계획은 PR #37로 병합됐으며 최초 Astra max Critical0·Important3·Minor1 보완 기록과 구현·실행 승인 게이트를 보존한다. 수정 후 독립0건/실제전환PASS/native update 수용은 아니다. P09의 게시2.13.3·격리 신규 설치 기준은 보존하며 과거 업데이트·실제 롤백 수용은 미검증이다. AF05 전체와 기능 로드맵 동결은 유지한다.
 
@@ -274,10 +274,11 @@ AF05-B 공개 수용 — P09와 차기 AF 배포에 의존:
 - [x] **DT01-B / 공격적 계획 검토·보완:** fresh Astra max 최초 Critical0·Important1·Minor1. 기존 runner의 disposable profile cleanup 한계를 승인/증거 범위에 명시하고 weak-alias 검사는 구조 대조·정규compiler4회로 구체화했다. [계획 검토 기록](docs/superpowers/validation/2026-10-13-dt01b-plan-review.md). 수정 후 독립0건·구현/신규proof PASS는 아님.
 - [x] **DT01-B / 계획·실행 방식 승인:** 사용자2026-10-13 Native2task 순차 구현·격리 후보 검사·최종 Astra max와 기존 설치형 runner의 종료 미확인 시 disposable profile 삭제 가능 한계를 함께 승인. root dist/실제 시청/native 기준 프로필 보존; 기능 negative PASS와 cleanup 증거 분리.
 - [x] **DT01-B / 구현·격리 검증·최종 검토:** 정상/partial/raw oracle·20개 정적 오용·내부5곳 any control, 집중132/132·전체990개 중989pass/실패0/기존skip1, 합성14/18/12·설치positive/negative 확인. Astra max 최종 Critical0·Important0·Minor0. [검증 기록](docs/superpowers/validation/2026-10-13-dt01b-quality-report-contracts.md). 제품2.13.3·root dist·ZIP·동결 증거 보존.
-- [x] **DT01-B / 공개 CI/통합 게이트:** [PR #40](https://github.com/Do-hyeon/cheese-knife/pull/40)의 `283c022`에서 [run 38282283191](https://github.com/Do-hyeon/cheese-knife/actions/runs/38282283191) Windows/Ubuntu foundation·전체 verify 통과. 문서 갱신 후 최종 head checks 성공시에만 승인 범위에서 병합하며 최신 결과·병합 여부는 해당 PR 기준. 이후 B2 정합성 재확인; B2 구현·실행 승인은 별도.
+- [x] **DT01-B / 공개 CI/통합 게이트:** [PR #40](https://github.com/Do-hyeon/cheese-knife/pull/40)의 최종 `f7231cc`에서 [run 38282936547](https://github.com/Do-hyeon/cheese-knife/actions/runs/38282936547) Windows/Ubuntu foundation·전체 verify 통과 후 merge `9b8640f`로 통합. 현재 사용자 지정 순서는 독립 유지보수 후속 마무리 후 AF05-B 복귀이며, 복귀 시 B2 정합성 재확인·별도 구현 승인.
 - [x] **DT01-C / 선행 상태·현행 경계 조사:** DT01-A/B 완료, 사용자 착수 요청. 기존 artifact export·실제 CLI·검사·부분 report 비교·malformed 반환/예외·owned-files import graph 대조. 읽기 전용 strict 조회의 artifact23/owned-files42 진단은 타입 정보 부족이며 버그 수가 아님. 제품·테스트·config는 변경하지 않음.
 - [x] **DT01-C / 설계 방향 승인·상세 설계 작성:** 사용자2026-10-13 core/읽기 경계 분리 방향 승인. [설계](docs/superpowers/specs/2026-10-13-dt01c-artifact-contract-design.md)에 기존 공개 API·5파일·허용치·부분 report/오류·실제 reader·6파일 graph·감사 이전·정적/실행 oracle·보호/한계를 명시. 임의 declaration facade·전체 cast 금지, provider/CLI 전체 타입화 미주장.
-- [ ] **DT01-C / Astra max 검토·written-spec 승인:** 별도 독립 검토로 경계·호환성·검사 실효성을 확인/보완한 뒤 사용자가 작성된 설계를 검토. 방향 승인을 구현 승인으로 전용하지 않음.
+- [x] **DT01-C / Astra max 독립 검토·보완:** 최초 Critical0·Important1·Minor2. Reader 메서드의 좁은 경로 허용을 함수형 프로퍼티 계약으로 보완, nullable alignment 허용·동일 baseline의 nonfinite 비교 생략을 정확히 명시. TypeScript7 RAM 계약 대조와 원본 API 결과를 확인. [검토 기록](docs/superpowers/validation/2026-10-13-dt01c-design-review.md). 새 core 구현/graph/검사 PASS·수정 후 독립0건은 아님.
+- [ ] **DT01-C / written-spec 승인:** 사용자가 보완된 [설계](docs/superpowers/specs/2026-10-13-dt01c-artifact-contract-design.md)를 검토. 방향 승인을 구현 승인으로 전용하지 않음.
 - [ ] **DT01-C / 구현 계획·Native 실행 승인:** 설계 승인 후 정확한 계약·독립 oracle·정적 오용 검사·감사 목록 이전·격리 실행/보호 경계를 작성·검토하고 승인받음. DT01-B 승인 자동 전용 금지.
 - [ ] **DT01-C / 구현·검증·최종 검토·통합:** 승인 이후 기존 결과/오류·실제 파일 읽기 연결·strict graph·전체 gate·최종 Astra max 확인. 설계·검토 문서만의 PR은 금지하고 관련된 승인 타입 강화 구현·테스트·검증을 의미 있는 묶음으로 모은 뒤 문서와 함께 PR/공개 CI/통합을 진행. 단계/작은 항목별 PR은 생성하지 않음.
 - [ ] **DT01-S / BACKLOG-BLOCKED:** settings fixture/reply는 별도 유지보수 후보로 보류하며 오디오 작업에 함께 끌어오지 않는다.
@@ -308,7 +309,7 @@ git -c core.safecrlf=false diff --check
 
 INC01은 사용자 재등록·설정 유지 확인과 PR #30·공개 CI·main 병합으로 종료했다. 원래 dist의58파일과 현재 시험판·설정은 계속 보존한다. 이 수용을 모든 방송 기능·기존 스토어 버전 업데이트 검사로 확대하지 않는다.
 
-DT01-B는 완료했고 DT01-C 설계 방향·독립 검토는 승인됐다. 현재는 상세 설계 작성·검토 단계이며, 다음 사용자 개입은 작성된 written-spec 검토다. 구현 계획/실행 범위 승인은 그 다음 단계로 구분한다. 제품/source/test/config 구현·빌드·설치·신규 도구·시청 Chrome/native 기준 profile·스토어는 건드리지 않는다. 기존 runner의 종료/임시 profile 한계와 root dist 보호는 유지한다. DT01-C 문서와 구현은 같은 작업 브랜치에서 한 PR에 묶는다. AF05-B는 이 독립 타입 강화 유지보수 후속 마무리까지 보류하며 B2의 기존 승인 게이트는 보존한다.
+DT01-B는 완료했고 DT01-C 상세 설계·독립 검토/보완도 완료했다. 현재 사용자 개입은 보완된 written-spec 검토다. brainstorming의 아키텍처 승인 단계에 따라 그 승인 후 구현 계획을 작성하며, 계획/실행 범위 승인은 별도로 구분한다. 제품/source/test/config 구현·빌드·설치·신규 도구·시청 Chrome/native 기준 profile·스토어는 건드리지 않는다. 기존 runner의 종료/임시 profile 한계와 root dist 보호는 유지한다. 문서만의 PR은 생성하지 않고 관련된 승인 타입 강화 구현·테스트·검증과 함께 의미 있는 묶음으로 통합한다. AF05-B는 독립 타입 강화 유지보수 후속 마무리까지 보류하며 B2의 기존 승인 게이트는 보존한다.
 
 게시 완료 알림의14:55는 표시 시각이고 실제 처리 시각·시간대·초는 미확정이다. 추가 시각 자료 요청은 종료했다. 실제 롤백·차기 설치/업데이트·스토어 제출/게시에는 각각 별도 승인이 필요하다. B2 승인은 새 private bundled 프로필·UI 저장·손실 control·cleanup을 포함하며 종료 미확인 시 root 보존/수동 종료가 필요할 수 있다. 승인 전 reader/fixture/runner/CI 구현이나 browser 실행을 하지 않는다. native/공개 실행·과거 미검증 수용·AF05-B 전체 완료 기준 변경은 별도 게이트다.
 

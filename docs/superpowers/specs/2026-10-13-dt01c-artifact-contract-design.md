@@ -83,9 +83,12 @@ ESLint coverage. Scanner exclusions and historical evidence are unchanged.
 
 - `AudioArtifactPath` is the five existing relative strings, in existing order:
   `config.js`, `web/runtime.js`, `web/site-adapter.js`, `web/audio.js`, `web/player.js`.
-- `AudioArtifactReader = {readonly root:string; readFile(relative:AudioArtifactPath):Promise<Uint8Array>}`.
-  Node Buffer is compatible. No wrapper, cast or detached readFile method is
-  required. The actual public entry still obtains the existing guarded root.
+- `AudioArtifactReader = {readonly root:string; readonly readFile:(relative:AudioArtifactPath)=>Promise<Uint8Array>}`.
+  The function-valued property is deliberately not a method signature: strict
+  function parameter checking must reject a reader supporting only config.js.
+  All-five-path and broader-string readers returning Node Buffer are compatible.
+  No wrapper, cast or detached readFile call is required. The actual public
+  entry still obtains the existing guarded root.
 - `AudioArtifactFile = {path:AudioArtifactPath,sha256:string}`;
   `AudioArtifactDescription = {label:string,root:string,files:readonly AudioArtifactFile[]}`.
   The five-entry/order/hash guarantee is runtime-tested, not a false tuple cast.
@@ -130,15 +133,19 @@ Use local JSDoc contracts with these exact meanings:
   does not claim the full kind/value correlation guaranteed by DT01-B.
 - Alignments have optional DelayAlignment numeric fields and allow additional
   ComparableValue keys: the current code compares alignment objects verbatim.
+  Their array items also allow null/undefined and sparse holes; unlike cases
+  and transitions, matching nullable alignment entries do not throw.
   Nodes are optional ComparableValue and are also compared verbatim.
 - Stress is an optional nullable comparison window plus optional string profile.
 - Partial artifact has optional string label/root and nullable file array.
   File records have optional string path/sha256; irrelevant extra paths remain
   representable and ignored by the existing fixed-file comparison.
-- Quality failures are an optional nullable readonly string array. Cases,
-  transitions and alignments are optional nullable readonly arrays; their item
-  records are not nullable because current null items can throw. Raw malformed
-  inputs stay in unchecked compatibility tests, not dishonest typed fixtures.
+- Quality failures are an optional nullable readonly string array. Cases and
+  transitions are optional nullable readonly arrays with non-null item records
+  because their projection can throw on null items. Alignments are an optional
+  nullable readonly array of alignment/null/undefined, preserving its distinct
+  recursive comparison behavior. Raw malformed inputs stay in unchecked
+  compatibility tests, not dishonest typed fixtures.
 
 `compareAudioArtifactReports(reports?:readonly (AudioComparisonReport|null|undefined)[]):string[]`
 remains the same runtime function through the legacy re-export. Existing full
@@ -166,6 +173,9 @@ observations, not includes-only assertions, are captured before implementation.
 | null file record | TypeError: `Cannot read properties of null (reading 'path')` |
 | cases object instead of array | TypeError: `report?.cases?.map is not a function` |
 | null case item | TypeError: `Cannot read properties of null (reading 'frequency')` |
+| two matching alignment arrays with null/undefined/hole items | empty failure array; items are compared recursively, not projected as cases |
+| repeated baseline object with matching hashes/empty qualityFailures and nodes.sampleRate Infinity | empty failure array; its measurement comparison is skipped |
+| a cloned second report with that same Infinity | `['source/numeric/nodes.sampleRate']` when the artifact label is source |
 | duplicate --chrome and --label options | existing acceptance; last label wins |
 
 Further fixtures pin mixed failures and their order/dedup, repeated baseline
@@ -182,7 +192,10 @@ are compared. Report/source identity behavior, default unknown label, sorted
 Object.entries traversal, failure group order and final Set dedup remain intact.
 
 Numeric tolerance remains **absolute1e-7 + relative1e-6 * max(abs(expected),abs(actual))**;
-nonfinite numbers fail, equality at tolerance is accepted, excess fails. No new
+nonfinite numbers fail when reached by numeric comparison, equality at tolerance
+is accepted, excess fails. Repeated baseline identity retains its measurement
+comparison skip, including nonfinite values; do not replace identity or add a
+new nonfinite pre-validation. No new
 filter, key normalization, rounding, recursive budget or cycle policy. Readonly
 does not freeze buffers/objects. Cyclic/accessor/proxy safety is not asserted.
 
@@ -193,9 +206,13 @@ does not freeze buffers/objects. Cyclic/accessor/proxy safety is not asserted.
    RAM tolerance/projection mutations must fail an independent oracle.
 2. Checked core consumer accepts real numeric/report summaries and partial
    fixtures. Positive compiler proof precedes a batched negative proof. Reject
-   non-byte reader return, wrong reader path parameter, missing description
-   fields, wrong known numeric/boolean fields and invalid failure arrays at the
+   non-byte reader return, disjoint reader path parameter and a reader restricted
+   to config.js, missing description fields, wrong known numeric/boolean fields
+   and invalid failure arrays at the
    target source line/code; crashes/import/ambient errors are not success.
+   All-five-path and broader-string/Buffer readers must compile. Matching
+   nullable alignment items must have a typed positive example. Repeated and
+   cloned baseline nonfinite behavior must both be in the raw literal oracle.
 3. Clean temporary actual core source compiles before inserting minimal misuse
    controls at report/file/quality-failure and recursive array/entry boundaries.
    Object.entries arbitrary keys do not have to produce TS2339; a selected
@@ -242,3 +259,17 @@ compatibility/integration, final review and CI/integration evidence. Afterwards
 resolve the remaining maintenance list explicitly; AF05-B resumes only after
 that maintenance-closeout decision, not merely after C. Remaining candidates
 are neither silently implemented nor silently declared unnecessary/completed.
+
+## 8. Independent design review and amendments
+
+Fresh Astra max reviewed local checkpoint `f52c8ac`: Critical0/Important1/Minor2,
+ready for written-spec approval with fixes. The Important reader method-variance
+issue and both invariant/nullability clarifications were confirmed against
+pinned TypeScript7 and the existing API, then amended above. The reviewer also
+checked actual imported QualityReport/CaptureSummary assignability and recursive
+array/Object.entries control feasibility in RAM. Those are design-shape checks,
+not compilation of a not-yet-written core or implementation PASS.
+
+[Review and scope decisions](../validation/2026-10-13-dt01c-design-review.md).
+Amendments are author corrections, not a second independent zero-finding review.
+The written spec is now ready for the user's review before implementation planning.
