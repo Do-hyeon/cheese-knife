@@ -11,7 +11,7 @@
   "web/audio.js": "fdf323af91303c1635e1eb97681c2a0c17326c20c5f56c840e1c1af99d3fe4eb",
   "web/inject.js": "da2fb147cde91953c7bd26f1d23e852185cb0d700d98104aefcaf6c1570237ee",
   "web/main.js": "22cd76c2a41743ca2886dee311a9a6431a013d0de2fd97bac4881d8b58ba4421",
-  "web/player.js": "6170e6919a2613dd4b88b32b0b4ed024c7c92b92ad46b85e3f64271b936d728c",
+  "web/player.js": "e1c809db8c90368c3199c20a2ace88f95851d013f383c2ca30e59d9e16ff9835",
   "web/preview.js": "1678bcdddd455616676feb2e85b83ec729483e0f9fab532f17a1976cbf70a848",
   "web/runtime.js": "7d965f3deedf55d9d0b3e7edf6e3922c7774e97402c477499b225bcd5ebd5cd2",
   "web/site-adapter.js": "766b20895ca8cfe58217afceb6d7cd566ac9407e0398f05aaf847db3ffbf1ae7"

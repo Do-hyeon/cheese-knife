@@ -4,7 +4,7 @@
 
 **Goal:** 게시된 Chrome 커뮤니티 복구판을 유지하면서, 설치된 MV3 산출물 E2E와 명시적 계약·타입·모듈 경계를 먼저 확립한 뒤 기능 로드맵을 재개한다.
 
-**Current stack:** Chrome MV3, JavaScript 제품 런타임, Node 24.19.0, Node test runner, Playwright 1.62.1, ESLint, npm audit, Gitleaks. TypeScript 7.0.2와 esbuild 0.28.2로 설정, MAIN runtime·site adapter와 audio의 수기 원본을 strict TypeScript에 두고, 저장소 생성 JavaScript를 검증한 뒤 기존 `dist` 파일명으로 복사한다.
+**Current stack:** Chrome MV3, JavaScript 제품 런타임, Node 24.19.0, Node test runner, Playwright 1.62.1, ESLint, npm audit, Gitleaks. TypeScript 7.0.2와 esbuild 0.28.2로 설정, MAIN runtime·site adapter·audio·player의 수기 원본을 strict TypeScript에 두고, 저장소 생성 JavaScript를 검증한 뒤 기존 `dist` 파일명으로 복사한다.
 
 **Core references:** [AI 친화적 유지보수 기반 장기 설계](docs/superpowers/specs/2026-10-11-ai-friendly-foundation-design.md), [AF01 타입·빌드 기반 상세 설계](docs/superpowers/specs/2026-10-12-af01-type-build-foundation-design.md), [AF01 구현 계획](docs/superpowers/plans/2026-10-12-af01-type-build-foundation.md), [AF01 검증 기록](docs/superpowers/validation/2026-10-12-af01-type-build-foundation.md), [AF02 계약 우선 TypeScript 전환 상세 설계](docs/superpowers/specs/2026-10-12-af02-contract-first-migration-design.md), [AF02 구현 계획](docs/superpowers/plans/2026-10-12-af02-contract-first-migration.md), [AF03 runtime·site adapter 상세 설계](docs/superpowers/specs/2026-10-12-af03-runtime-site-adapter-design.md), [AF03 구현 계획](docs/superpowers/plans/2026-10-12-af03-runtime-site-adapter.md), [AF03 검증 기록](docs/superpowers/validation/2026-10-12-af03-runtime-site-adapter.md), [AF00 설치형 E2E 구현 계획](docs/superpowers/plans/2026-10-11-af00-installed-extension-e2e.md), [AF00 검증 기록](docs/superpowers/validation/2026-10-11-af00-installed-extension-e2e.md), [최신 출시 게이트](docs/superpowers/validation/2026-10-11-recovery-release-gates.md), [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md).
 
@@ -27,7 +27,7 @@
 ## 2. 현재 공개·저장소 상태
 
 - AF04-A 제품 기준 merge commit: `5d28c481b4d2b693eb08d504140c72cc99412cb1`.
-- PR #2 `2.13.3` 복구 변경, PR #3 README 간소화, PR #4 AF00 설치형 E2E 기반, PR #5 AF01 타입·빌드 기반, PR #6 AF02 계약 우선 전환, PR #7 AF02 상태 고정, PR #8 AF03 runtime·site adapter 분리, PR #9 AF03 상태 고정, PR #12 AF04 설계와 PR #13 AF04-A audio 이전은 `main`에 병합됐다.
+- PR #2 `2.13.3` 복구 변경, PR #3 README 간소화, PR #4 AF00 설치형 E2E 기반, PR #5 AF01 타입·빌드 기반, PR #6 AF02 계약 우선 전환, PR #7 AF02 상태 고정, PR #8 AF03 runtime·site adapter 분리, PR #9 AF03 상태 고정, PR #12 AF04 설계, PR #13 AF04-A audio 이전과 PR #14 AF04-A 상태 고정은 `main`에 병합됐다.
 - GitHub prerelease `v2.13.3-community.1`이 공개됐다.
 - Chrome 웹 스토어 2.13.3 교체본은 사용자가 게시 완료를 확인했다. 새 설치·기존 설치 자동 업데이트와 설정 보존은 아직 완료로 가정하지 않는다.
 - 현재 기준 브랜치: 포크의 `origin/main`. 움직이는 최신 문서 merge SHA나 PR 번호 상한은 기준점으로 기록하지 않는다.
@@ -57,11 +57,11 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 상태�
 | AF01 | 타입·빌드 전환 기반 | AF00 | DONE | strict/build proof와 공개 CI 유지 |
 | AF02 | 계약 우선 TypeScript 전환 | AF01 | DONE | 생성·drift·strict·설치형 E2E 게이트 유지 |
 | AF03 | MAIN runtime·site adapter 분리 | AF02 | DONE | 생성·strict·설치형 E2E·공개 CI 유지 |
-| AF04 | 기능별 모듈 이전 | AF03 | DOING | 승인된 AF04-B player 구현 계획 착수 |
+| AF04 | 기능별 모듈 이전 | AF03 | DOING | AF04-B player 공개 PR·CI·merge |
 | AF05 | 이행 종료·공개 게이트 | AF04, P09 | BLOCKED | 설치·업데이트·롤백과 정책 정합성 확인 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **AF04-B player module 구현**. AF04-A는 공개 CI와 병합까지 완료했으며, 승인된 player 계획을 같은 실패 검사→최소 구현→집중 회귀→전체 게이트 순서로 실행한다.
+현재 커서: **AF04-B player module 공개 PR·CI**. 로컬 구현·전체 게이트·Astra max 독립 검토는 완료했으며, 공개 Windows·Ubuntu foundation과 전체 verify가 모두 통과할 때만 병합한다. AF04-C는 AF04-B 병합 뒤 시작한다.
 
 ## 5. P09 — 스토어 게시 후 고정
 
@@ -168,6 +168,7 @@ P09의 게시 뒤 설치·업데이트 수용 검사는 AF02의 내부 계약 �
 - [x] 네 구현 계획 묶음 사용자 승인과 실행 방식 확정.
 - [x] AF04-A audio typed source graph 로컬 구현·전체 검증·독립 검토 완료.
 - [x] AF04-A audio를 typed source graph로 이전하고 PR #13·공개 CI run `38185697240`·merge commit `5d28c48`로 완료.
+- [x] AF04-B player typed source graph 로컬 구현·전체 검증·Astra max 독립 검토 완료.
 - [ ] AF04-B player를 typed source graph로 이전하고 공개 CI·merge 완료.
 - [ ] AF04-C preview를 typed source graph로 이전하고 공개 CI·merge 완료.
 - [ ] AF04-D inject를 기능별 module로 분리하고 공개 CI·merge 완료.
@@ -212,4 +213,4 @@ git -c core.safecrlf=false diff --check
 
 ## 10. 현재 사용자 개입 지점
 
-AF04-A 상태를 고정한 뒤 승인된 AF04-B player 계획을 시작한다. 현재 승인 범위 밖의 동작 변경이나 권한·데이터 확대가 발견될 때만 중지한다. P09 설치 수용은 AF04와 별도로 재개한다.
+AF04-B 한글 PR을 열고 공개 CI를 확인한다. 모든 필수 check가 통과하면 승인된 범위에서 병합하고 상태를 고정한 뒤 AF04-C preview 계획으로 이동한다. 현재 승인 범위 밖의 동작 변경이나 권한·데이터 확대가 발견될 때만 중지한다. P09 설치 수용은 AF04와 별도로 재개한다.

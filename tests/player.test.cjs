@@ -65,6 +65,42 @@ test('player labels use own supported translations and ignore inherited values',
   assert.equal(dom.window.document.querySelector('.knife-comp button').getAttribute('aria-label'), 'Own compressor label');
 });
 
+test('player installation is single-owner and preserves a foreign controller', async t => {
+  const duplicate = setup(t);
+  const installed = runtime(duplicate).player;
+  load(duplicate, 'web/player.js');
+  assert.equal(runtime(duplicate).player, installed);
+  assert.equal(duplicate.window.document.querySelectorAll('.knife-ff').length, 1);
+
+  const foreign = page(playerHTML);
+  t.after(async () => { foreign.window.dispatchEvent(new foreign.window.PageTransitionEvent('pagehide')); await flush(); foreign.window.close(); });
+  load(foreign, 'web/runtime.js'); load(foreign, 'web/site-adapter.js'); deliver(foreign);
+  const owner = { foreign: true };
+  runtime(foreign).player = owner;
+  load(foreign, 'web/player.js');
+  assert.equal(runtime(foreign).player, owner);
+  assert.equal(foreign.window.document.querySelector('.knife-ff'), null);
+});
+
+test('player startup failure does not publish a partial controller', async t => {
+  const dom = page(playerHTML);
+  t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
+  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom);
+  runtime(dom).subscribe = () => { throw new Error('subscribe unavailable'); };
+  assert.doesNotThrow(() => load(dom, 'web/player.js'));
+  assert.equal(runtime(dom).player, undefined);
+  assert.equal(dom.window.document.querySelector('.knife-ff'), null);
+});
+
+test('throwing player label accessors fall back without invocation', t => {
+  let reads = 0;
+  const dom = setup(t, false, current => {
+    Object.defineProperty(runtime(current).i18n, 'fastForward', { enumerable: true, get() { reads++; throw new Error('label getter'); } });
+  });
+  assert.equal(reads, 0);
+  assert.equal(dom.window.document.querySelector('.knife-ff').getAttribute('aria-label'), 'Live edge');
+});
+
 test('live seeking clamps gaps and supports finite live duration', t => {
   const dom = setup(t);
   const video = dom.window.document.querySelector('video');
@@ -75,6 +111,38 @@ test('live seeking clamps gaps and supports finite live duration', t => {
   assert.equal(video.currentTime, 30);
   dom.window.document.querySelector('.knife-ff').click();
   assert.equal(video.currentTime, 39.95);
+});
+
+test('player range arithmetic preserves gaps, edges, fallbacks, and end reserve', async t => {
+  const cases = [
+    { name: 'empty seekable and buffered', seekable: [], buffered: [], current: 5, backward: false, result: false, expected: 5 },
+    { name: 'empty seekable falls back to buffered', seekable: [], buffered: [[1, 9]], current: 2, backward: false, result: true, expected: 7 },
+    { name: 'invalid and reversed seekable ranges are rejected', seekable: [[NaN, 5], [8, 8], [10, 9]], buffered: [[0, 100]], current: 2, backward: false, result: false, expected: 2 },
+    { name: 'forward gap clamps to next range start', seekable: [[10, 20], [30, 40]], buffered: [], current: 24.5, backward: false, result: true, expected: 30 },
+    { name: 'backward gap clamps to previous range reserve', seekable: [[10, 20], [30, 40]], buffered: [], current: 25.5, backward: true, result: true, expected: 19.95 },
+    { name: 'before first range clamps to first start', seekable: [[10, 20]], buffered: [], current: 10, backward: true, result: true, expected: 10 },
+    { name: 'after last range keeps point zero five reserve', seekable: [[10, 20]], buffered: [], current: 19, backward: false, result: true, expected: 19.95 },
+  ];
+  for (const scenario of cases) {
+    await t.test(scenario.name, child => {
+      const dom = setup(child);
+      const video = dom.window.document.querySelector('video');
+      Object.defineProperty(video, 'seekable', { value: ranges(scenario.seekable) });
+      Object.defineProperty(video, 'buffered', { value: ranges(scenario.buffered) });
+      video.currentTime = scenario.current;
+      assert.equal(runtime(dom).player.seek(scenario.backward), scenario.result);
+      assert.equal(video.currentTime, scenario.expected);
+    });
+  }
+
+  await t.test('finite live duration reaches the reserved live edge', child => {
+    const dom = setup(child);
+    const video = dom.window.document.querySelector('video');
+    Object.defineProperty(video, 'seekable', { value: ranges([[0, 40]]) });
+    Object.defineProperty(video, 'duration', { value: 40 });
+    runtime(dom).player.liveEdge();
+    assert.equal(video.currentTime, 39.95);
+  });
 });
 
 test('editable descendants and sliders retain arrow keys', t => {
@@ -122,6 +190,81 @@ test('native replacement of control children automatically restores owned contro
   dom.window.document.querySelector('.pzp-pc__bottom-buttons-left').innerHTML = '<button class="pzp-pc__playback-switch"></button><div class="pzp-pc__volume-control"></div>';
   await flush(); await flush();
   assert.equal(dom.window.document.querySelectorAll('.knife-ff').length, 1);
+});
+
+test('player identity changes bypass only a replaced video', async t => {
+  const dom = setup(t);
+  const rt = runtime(dom);
+  const bypassed = [];
+  rt.audio = { bypass: video => bypassed.push(video), configure() {}, eligible: () => false,
+    getState: () => 'off', setEnabled: async () => false, setGain() {}, subscribe: () => () => {} };
+  const layout = dom.window.document.getElementById('live_player_layout');
+  const original = layout.querySelector('video');
+  const replacement = dom.window.document.createElement('div');
+  replacement.className = 'pzp-pc';
+  replacement.innerHTML = '<div class="pzp-pc__video"></div><div class="pzp-pc__bottom-buttons-left"><button class="pzp-pc__playback-switch"></button><div class="pzp-pc__volume-control"></div></div>';
+  replacement.querySelector('.pzp-pc__video').append(original);
+  layout.querySelector('.pzp-pc').replaceWith(replacement);
+  rt.reconcile();
+  assert.deepEqual(bypassed, [], 'same-video UI replacement keeps the audio graph');
+  const next = dom.window.document.createElement('video');
+  original.replaceWith(next);
+  rt.reconcile();
+  assert.deepEqual(bypassed, [original], 'selected-video replacement retires the old audio graph');
+  assert.equal(dom.window.document.querySelectorAll('.knife-ff').length, 1);
+});
+
+test('persisted pagehide keeps controls but final pagehide removes global shortcuts once', t => {
+  const dom = setup(t);
+  const rt = runtime(dom);
+  const video = dom.window.document.querySelector('video');
+  Object.defineProperty(video, 'seekable', { value: ranges([[0, 100]]) });
+  let seeks = 0;
+  rt.player.seek = () => { seeks++; return true; };
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide', { persisted: true }));
+  dom.window.document.body.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+  assert.equal(seeks, 1);
+  assert.equal(dom.window.document.querySelectorAll('.knife-ff').length, 1);
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
+  dom.window.document.body.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+  assert.equal(seeks, 1, 'final disposal must not leave a stale key listener');
+  assert.equal(dom.window.document.querySelector('.knife-ff'), null);
+});
+
+test('a player callback failure is owned and unrelated subscribers still run', t => {
+  const dom = setup(t);
+  const rt = runtime(dom);
+  const changes = [];
+  const setStatus = rt.setStatus;
+  rt.setStatus = (...args) => { changes.push(args); setStatus(...args); };
+  let unrelated = 0;
+  rt.subscribe(() => { unrelated++; });
+  unrelated = 0;
+  const pzp = dom.window.document.querySelector('.pzp-pc');
+  const querySelector = pzp.querySelector.bind(pzp);
+  let fail = true;
+  pzp.querySelector = selector => {
+    if (fail) { fail = false; throw new Error('owned player failure'); }
+    return querySelector(selector);
+  };
+  rt.notify();
+  assert.equal(unrelated, 1);
+  assert.ok(changes.some(([feature, state]) => feature === 'player' && state === 'failed'));
+  assert.equal(changes.some(([feature]) => feature === 'runtime'), false);
+});
+
+test('late metrics resolution cannot write after its overlay is disposed', async t => {
+  let resolveMetrics;
+  const dom = setup(t, false, current => {
+    current.window.document.querySelector('.pzp-pc').insertAdjacentHTML('beforeend', '<div id="license"><button>License</button></div>');
+    runtime(current).adapter.player.readMetrics = () => new Promise(resolve => { resolveMetrics = resolve; });
+  });
+  dom.window.document.querySelector('#knife-stats button').click();
+  dom.window.document.querySelector('.knife-stats-overlay button').click();
+  resolveMetrics({ codec: 'late-codec' });
+  await flush();
+  assert.equal(dom.window.document.querySelector('.knife-stats-overlay'), null);
 });
 
 function nativeVOD(t, initiallyPaused) {
@@ -239,6 +382,19 @@ test('another pointer cannot end the active hold or consume its click token', as
   send('pointerup');
   assert.equal(send('click', undefined, 1, 8).defaultPrevented, false);
   assert.equal(send('click').defaultPrevented, true);
+});
+
+test('a simultaneous pointer replaces the active hold without leaving speed or capture behind', async t => {
+  const { dom, video, send } = nativeVOD(t, false);
+  video.playbackRate = 1.5;
+  send('pointerdown', undefined, 0, 7); await new Promise(resolve => setTimeout(resolve, 550));
+  assert.equal(video.playbackRate, 2);
+  send('pointerdown', undefined, 0, 8);
+  assert.equal(video.playbackRate, 1.5);
+  assert.equal(dom.window.document.querySelector('.knife-ff-indicator'), null);
+  send('pointerup', undefined, 0, 7);
+  send('pointerup', undefined, 0, 8);
+  assert.equal(video.playbackRate, 1.5);
 });
 
 test('unused completed-hold click token expires without intercepting a later activation', async t => {
