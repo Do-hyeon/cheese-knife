@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.development.json",
+  "files": ["scripts/audio-signal.mjs", "tests/audio-signal-contract.test.cjs"],
+  "include": []
+}
