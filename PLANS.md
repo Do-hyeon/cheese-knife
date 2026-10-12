@@ -8,7 +8,7 @@
 
 **Core references:** [AI 친화적 유지보수 기반 장기 설계](docs/superpowers/specs/2026-10-11-ai-friendly-foundation-design.md), [AF01 타입·빌드 기반 상세 설계](docs/superpowers/specs/2026-10-12-af01-type-build-foundation-design.md), [AF01 구현 계획](docs/superpowers/plans/2026-10-12-af01-type-build-foundation.md), [AF01 검증 기록](docs/superpowers/validation/2026-10-12-af01-type-build-foundation.md), [AF02 계약 우선 TypeScript 전환 상세 설계](docs/superpowers/specs/2026-10-12-af02-contract-first-migration-design.md), [AF02 구현 계획](docs/superpowers/plans/2026-10-12-af02-contract-first-migration.md), [AF03 runtime·site adapter 상세 설계](docs/superpowers/specs/2026-10-12-af03-runtime-site-adapter-design.md), [AF03 구현 계획](docs/superpowers/plans/2026-10-12-af03-runtime-site-adapter.md), [AF03 검증 기록](docs/superpowers/validation/2026-10-12-af03-runtime-site-adapter.md), [AF00 설치형 E2E 구현 계획](docs/superpowers/plans/2026-10-11-af00-installed-extension-e2e.md), [AF00 검증 기록](docs/superpowers/validation/2026-10-11-af00-installed-extension-e2e.md), [최신 출시 게이트](docs/superpowers/validation/2026-10-11-recovery-release-gates.md), [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md).
 
-**AF04 references:** [기능 모듈 이전 상세 설계](docs/superpowers/specs/2026-10-12-af04-feature-modules-design.md), [AF04-A 오디오 계획](docs/superpowers/plans/2026-10-12-af04a-audio-module.md), [AF04-A 검증 기록](docs/superpowers/validation/2026-10-12-af04a-audio-module.md), [AF04-B 플레이어 계획](docs/superpowers/plans/2026-10-12-af04b-player-module.md), [AF04-C 미리보기 계획](docs/superpowers/plans/2026-10-12-af04c-preview-module.md), [AF04-C 검증 기록](docs/superpowers/validation/2026-10-12-af04c-preview-module.md), [AF04-D inject 계획](docs/superpowers/plans/2026-10-12-af04d-inject-modules.md).
+**AF04 references:** [기능 모듈 이전 상세 설계](docs/superpowers/specs/2026-10-12-af04-feature-modules-design.md), [AF04-A 오디오 계획](docs/superpowers/plans/2026-10-12-af04a-audio-module.md), [AF04-A 검증 기록](docs/superpowers/validation/2026-10-12-af04a-audio-module.md), [AF04-B 플레이어 계획](docs/superpowers/plans/2026-10-12-af04b-player-module.md), [AF04-C 미리보기 계획](docs/superpowers/plans/2026-10-12-af04c-preview-module.md), [AF04-C 검증 기록](docs/superpowers/validation/2026-10-12-af04c-preview-module.md), [AF04-D inject 계획](docs/superpowers/plans/2026-10-12-af04d-inject-modules.md), [AF04-D 검증 기록](docs/superpowers/validation/2026-10-12-af04d-inject-modules.md).
 
 작성일: 2026-10-11 / Asia-Seoul.
 
@@ -57,11 +57,11 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 상태�
 | AF01 | 타입·빌드 전환 기반 | AF00 | DONE | strict/build proof와 공개 CI 유지 |
 | AF02 | 계약 우선 TypeScript 전환 | AF01 | DONE | 생성·drift·strict·설치형 E2E 게이트 유지 |
 | AF03 | MAIN runtime·site adapter 분리 | AF02 | DONE | 생성·strict·설치형 E2E·공개 CI 유지 |
-| AF04 | 기능별 모듈 이전 | AF03 | DOING | AF04-D inject 구현·검증·공개 PR |
+| AF04 | 기능별 모듈 이전 | AF03 | DOING | AF04-D 한글 PR·공개 CI·merge |
 | AF05 | 이행 종료·공개 게이트 | AF04, P09 | BLOCKED | 설치·업데이트·롤백과 정책 정합성 확인 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **AF04-D inject module 구현**. AF04-C는 로컬 전체 gate·Astra max 독립 검토 finding 보완·Chromium autoplay proof·설치형 E2E와 공개 Windows/Ubuntu foundation·전체 verify를 통과하고 병합됐다. 승인된 [AF04-D 구현 계획](docs/superpowers/plans/2026-10-12-af04d-inject-modules.md)에 따라 다음 단계를 진행한다.
+현재 커서: **AF04-D 공개 PR**. inject 기능별 strict TypeScript 이전, 전체 799건, 객관 오디오, 설치형 positive/negative E2E와 Astra max Important finding 보완을 로컬에서 완료했다. 한글 PR의 공개 Windows·Ubuntu foundation·전체 verify 통과와 merge 뒤 상태를 고정한다.
 
 ## 5. P09 — 스토어 게시 후 고정
 
@@ -172,9 +172,10 @@ P09의 게시 뒤 설치·업데이트 수용 검사는 AF02의 내부 계약 �
 - [x] AF04-B player를 typed source graph로 이전하고 PR #15·공개 CI run `38187819147`·merge commit `5e6e541`로 완료.
 - [x] AF04-C preview typed source graph 로컬 구현·전체 검증·Astra max finding 보완 완료.
 - [x] AF04-C preview를 typed source graph로 이전하고 PR #17·공개 CI run `38191280752`·merge commit `c526296`으로 완료.
+- [x] AF04-D inject typed source graph 로컬 구현·전체 검증·Astra max finding 보완 완료.
 - [ ] AF04-D inject를 기능별 module로 분리하고 공개 CI·merge 완료.
-- [ ] 각 기능의 mount/dispose/status, 실패 격리, 다중 창과 설치형 positive/negative E2E 확인.
-- [ ] `web/inject.js` entry에는 순차 의존성 조립과 등록만 남기고 AF04 검증 기록 고정.
+- [x] 각 기능의 mount/dispose/status, 실패 격리, 다중 창과 설치형 positive/negative E2E 확인.
+- [x] `web/inject.js` entry에는 순차 의존성 조립과 등록만 남기고 AF04 로컬 검증 기록 작성.
 
 ### AF05 — 이행 종료
 
@@ -214,4 +215,4 @@ git -c core.safecrlf=false diff --check
 
 ## 10. 현재 사용자 개입 지점
 
-AF04-D inject 계획을 순차 실행한다. 현재 승인 범위 밖의 동작 변경이나 권한·데이터 확대가 발견될 때만 중지한다. P09 설치 수용은 AF04와 별도로 재개한다.
+AF04-D 한글 PR을 열고 공개 Windows·Ubuntu foundation·전체 verify를 확인해 병합한다. 현재 승인 범위 밖의 동작 변경이나 권한·데이터 확대가 발견될 때만 중지한다. P09 설치 수용은 AF04와 별도로 재개한다.

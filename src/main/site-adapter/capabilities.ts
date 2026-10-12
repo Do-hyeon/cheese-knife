@@ -1,6 +1,8 @@
 import type {
-  BlindEventSnapshot, BlindTransition, ChatControllerPort, ChatMessageSnapshot, OwnedBinding, SiteAdapter, SitePlayerMetrics,
+  BlindEventSnapshot, BlindTransition, ChatControllerPort, ChatMessageSnapshot, FollowingControls, OwnedBinding,
+  SidebarSectionKind, SiteAdapter, SitePlayerMetrics, StartTimeTarget,
 } from './contracts';
+import type { Route } from '../runtime/contracts';
 import { affectsSiteDiscovery, discoverSite } from './discovery';
 import { ownData, replaceOwnData, siteObject, type ReactReader, type SiteObject } from './react';
 
@@ -50,6 +52,86 @@ function boundedArray(value: unknown, max: number): BoundedArray | null {
 function binding(active: () => boolean, release: () => void): OwnedBinding {
   let disposed = false;
   return { get active() { return !disposed && active(); }, dispose() { if (disposed) return; disposed = true; release(); } };
+}
+
+function one(root: Element, selector: string): Element | null {
+  try { return root.querySelector(selector); } catch { return null; }
+}
+function many(root: Element, selector: string): Element[] {
+  try { return [...root.querySelectorAll(selector)]; } catch { return []; }
+}
+function html(node: Element | null): HTMLElement | null { return node instanceof HTMLElement ? node : null; }
+function button(node: Element | null): HTMLButtonElement | null { return node instanceof HTMLButtonElement ? node : null; }
+function anchor(node: Element | null): HTMLAnchorElement | null { return node instanceof HTMLAnchorElement ? node : null; }
+function urlOf(node: HTMLAnchorElement): URL | null {
+  try { return new URL(node.getAttribute('href') || '', node.ownerDocument.location.href); } catch { return null; }
+}
+function sectionKind(section: Element): SidebarSectionKind | null {
+  try {
+    const label = section.getAttribute('aria-label');
+    if (label === '팔로우' || label === 'Following channels') return null;
+    if (label === '인기 카테고리') return 'popular';
+    const header = one(section, ':scope > [class^="_header_"]');
+    const title = header && one(header, ':scope > strong[class^="_title_"]');
+    const titleText = [...(title?.childNodes || [])].filter(child => child.nodeType === 3)
+      .map(child => child.textContent).join('').trim().replace(/\s+/g, ' ');
+    if (titleText === '팔로잉 채널' || titleText === 'Following channels') return null;
+    if (titleText === '인기 카테고리') return 'popular';
+    if (titleText === '다가오는 방송 일정' || titleText === '방송일정') return 'schedule';
+    if (titleText === '파트너 스트리머') return 'partner';
+    if (titleText === '서비스 바로가기') return 'shortcut';
+    if (titleText) return null;
+    const links = (root: Element | null): URL[] => root ? many(root, 'a[href]').flatMap(node => {
+      const link = anchor(node), url = link && urlOf(link); return url ? [url] : [];
+    }) : [];
+    const location = section.ownerDocument.location;
+    if (links(header).some(url => url.origin === location.origin && url.pathname.slice(1) === 'partner')) return 'partner';
+    const services = links(one(section, ':scope > ul')).filter(url =>
+      url.protocol === 'https:' && url.hostname === ['game', 'naver', 'com'].join('.') && url.port === '');
+    return services.some(url => url.pathname.length === 1) && services.some(url => url.pathname.slice(1) === 'esports') ? 'shortcut' : null;
+  } catch { return null; }
+}
+function followingControls(root: Element): FollowingControls | null {
+  try {
+    const section = one(root, 'nav[aria-label="팔로우"], nav[aria-label="Following channels"]') ||
+      many(root, 'nav').find(candidate => /^(팔로잉 채널|Following channels)$/i.test(
+        one(candidate, '[class*="_title_"], [class^="navigation_bar_title__"]')?.textContent?.trim() || '')) || null;
+    if (!section) return null;
+    const more = button(one(section, ':scope > button[class*="_more_button_"], :scope > div[class^="_box_"] > button[class*="_more_button_"], :scope > button[class^="navigation_bar_more_button__"]'));
+    const fold = many(section, ':scope > [class^="_header_"] > button[aria-expanded], :scope > [class^="navigation_bar_header__"] > button[aria-expanded]')
+      .map(button).find(candidate => candidate && /^(펼쳐짐, 접기|접혀짐, 펼치기|접힘, 펼치기|Expanded, collapse|Collapsed, expand)$/i.test(candidate.getAttribute('aria-label') || '')) || null;
+    const refresh = button(one(section, 'button[aria-label="새로고침"], button[aria-label="Refresh"]'));
+    return Object.freeze({ section, more, fold, refresh });
+  } catch { return null; }
+}
+function viewMode(body: HTMLElement | null, player: Element | null, route: Route): boolean | null {
+  try {
+    const label = player?.isConnected ? one(player, '.pzp-pc__viewmode-button')?.getAttribute('aria-label') || '' : '';
+    if (/^(좁은 화면|Narrow screen|Normal view)$/i.test(label)) return true;
+    if (/^(넓은 화면|Wide screen|Wide view)$/i.test(label)) return false;
+    if (route.kind !== 'live' && route.kind !== 'vod') return false;
+    return /(?:^|\s)(?:_is_large_|live_information_is_large__)/.test(body?.getAttribute('class') || '') ? true : null;
+  } catch { return null; }
+}
+function startTarget(target: EventTarget | null, route: Route): StartTimeTarget | null {
+  try {
+    if (!(target instanceof Element)) return null;
+    const liveCount = 'main [class*="_data_"] > strong[class*="_count_"]';
+    const vodDate = '[class*="_area_"] > [class*="_information_"] > span[class*="_item_"]:last-child';
+    const node = html(target.closest('[class^="video_information_count__"], span[class^="video_card_item__"], ' + liveCount + ', ' + vodDate));
+    if (!node) return null;
+    const currentLive = node.matches(liveCount);
+    if (currentLive && route.kind !== 'live') return null;
+    if ((node.getAttribute('class') || '').startsWith('video_information_count__') || currentLive) {
+      return Object.freeze({ kind: 'live', node });
+    }
+    if (node.nextElementSibling) return null;
+    const link = anchor(one(node.parentElement?.parentElement || node, 'a[href]'));
+    if (!link) return null;
+    const url = urlOf(link), location = node.ownerDocument.location;
+    const id = url?.origin === location.origin ? url.pathname.match(/^\/video\/(\d+)\/?$/)?.[1] : null;
+    return id ? Object.freeze({ kind: 'vod', node, link, id }) : null;
+  } catch { return null; }
 }
 
 export function createSiteCapabilities(reader: ReactReader): SiteAdapter {
@@ -230,6 +312,15 @@ export function createSiteCapabilities(reader: ReactReader): SiteAdapter {
     discover: (document, route) => discoverSite(document, route, reader),
     affectsDiscovery: affectsSiteDiscovery,
     chat: {
+      findContainer(body, kind) {
+        return kind === 'vod' ? one(body, '[class^="vod_chatting_container__"]') || one(body, 'aside:not([aria-label])') :
+          one(body, 'aside:not([aria-label])');
+      },
+      findLogRoot: container => one(container, '[role="log"], [class^="live_chatting_list_wrapper__"], [class^="vod_chatting_list__"]'),
+      messageRows: root => many(root, '[class^="_item_"], [class^="live_chatting_item__"], [class^="vod_chatting_item__"]'),
+      timestampTarget: row => html(one(row, '[class^="_chatting_message_"], [class^="live_chatting_message_chatting_message__"]')),
+      deletedTextTargets: row => many(row, '[class^="_chatting_message_"] > span[class^="_text_"], [class^="live_chatting_message_chatting_message__"] > span[class^="live_chatting_message_text__"]')
+        .map(html).filter((node): node is HTMLElement => !!node),
       readMessage: row => snapshotMessage(messageFromRow(row)),
       connect(container) {
         const controller = reader.stateOf(container, value => typeof data(value, 'messageFilter') === 'function');
@@ -238,6 +329,20 @@ export function createSiteCapabilities(reader: ReactReader): SiteAdapter {
         if (existing?.active) return existing;
         const port = createPort(controller); ports.set(controller, port); return port;
       },
+    },
+    sidebar: {
+      sections(root) {
+        try { return many(root, 'nav[class^="_section_"]').filter(section => !section.parentElement?.closest('nav')); }
+        catch { return []; }
+      },
+      classify: sectionKind,
+      following: followingControls,
+      viewMode,
+    },
+    page: {
+      channelTabs: (body, route) => route.kind === 'channel' ? one(body, '[role="tablist"], [class*="channel_area__"]') : null,
+      startTarget,
+      bannerRoot: body => one(body, '[class^="band_banner_container__"]'),
     },
     banner: { closeHandler(node) {
       const fiber = reader.fiberOf(node), props = data(data(fiber, 'return'), 'memoizedProps'), close = data(props, 'closeHandler');

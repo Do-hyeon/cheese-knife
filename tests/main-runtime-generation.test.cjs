@@ -37,6 +37,7 @@ test('MAIN runtime entries and build options are fixed', async () => {
     { source: 'src/main/features/audio/entry.ts', output: 'web/audio.js', kind: 'feature-audio' },
     { source: 'src/main/features/player/entry.ts', output: 'web/player.js', kind: 'feature-player' },
     { source: 'src/main/features/preview/entry.ts', output: 'web/preview.js', kind: 'feature-preview' },
+    { source: 'src/main/features/inject/entry.ts', output: 'web/inject.js', kind: 'feature-inject' },
   ]);
   assert.deepEqual(mod.MAIN_RUNTIME_OPTIONS, {
     bundle: true, format: 'iife', platform: 'browser', target: 'chrome121', minify: false,
@@ -49,7 +50,7 @@ test('MAIN runtime render is deterministic classic JavaScript with separate grap
   const first = await mod.renderMainRuntime(path.resolve('.'));
   const second = await mod.renderMainRuntime(path.resolve('.'));
   assert.deepEqual(first, second);
-  assert.deepEqual(Object.keys(first).sort(), ['web/audio.js', 'web/player.js', 'web/preview.js', 'web/runtime.js', 'web/site-adapter.js']);
+  assert.deepEqual(Object.keys(first).sort(), ['web/audio.js', 'web/inject.js', 'web/player.js', 'web/preview.js', 'web/runtime.js', 'web/site-adapter.js']);
   for (const source of Object.values(first)) assert.doesNotThrow(() => new Script(source));
   assert.match(first['web/runtime.js'], /cheese-knife\.runtime\.v1/);
   assert.doesNotMatch(first['web/runtime.js'], /#layout-body|#sidebar|#live_player_layout|#player_layout|\.pzp-pc|#license/);
@@ -63,6 +64,9 @@ test('MAIN runtime render is deterministic classic JavaScript with separate grap
   assert.match(first['web/preview.js'], /cheese-knife\.runtime\.v1/);
   assert.match(first['web/preview.js'], /runtime\.preview/);
   assert.doesNotMatch(first['web/preview.js'], /sourceMappingURL|https?:\/\/[^'"`\s]+\.(?:js|mjs)/);
+  assert.match(first['web/inject.js'], /^\/\/ Generated from src\/main\/features\/inject\/entry\.ts by scripts\/main-runtime\.mjs\. Do not edit\.\n/);
+  assert.match(first['web/inject.js'], /coordinatorStarted/);
+  assert.doesNotMatch(first['web/inject.js'], /\r|sourceMappingURL|getWebpackRequire|getCorePlayer|fiberOf|propsOf|stateOf|contextOf|webpackChunk|__react/i);
   const graphs = await mod.inspectMainRuntimeGraphs(path.resolve('.'));
   assert.equal(graphs.adapter.some(file => /src\/main\/runtime\/(?:entry|lifecycle)\.ts$/.test(file)), false);
   assert.equal(graphs.runtime.some(file => /src\/main\/runtime\/entry\.ts$/.test(file)), true);
@@ -72,6 +76,12 @@ test('MAIN runtime render is deterministic classic JavaScript with separate grap
   assert.equal(graphs['feature-player'].some(file => /src\/main\/features\/player\/entry\.ts$/.test(file)), true);
   assert.equal(graphs['feature-preview'].every(file => file.startsWith('src/main/features/preview/')), true);
   assert.equal(graphs['feature-preview'].some(file => /src\/main\/features\/preview\/entry\.ts$/.test(file)), true);
+  assert.equal(graphs['feature-inject'].every(file =>
+    file.startsWith('src/main/features/inject/') ||
+    file === 'src/main/runtime/contracts.ts' ||
+    file === 'src/main/site-adapter/contracts.ts' ||
+    file === 'src/main/features/preview/contracts.ts'), true);
+  assert.equal(graphs['feature-inject'].some(file => /src\/main\/features\/inject\/entry\.ts$/.test(file)), true);
 });
 
 test('MAIN runtime validator rejects a raw adapter publication', async () => {
@@ -88,7 +98,7 @@ test('MAIN runtime validator rejects a raw adapter publication', async () => {
 test('generated MAIN runtime outputs are pinned to LF checkouts', async () => {
   const attributes = await fs.readFile('.gitattributes', 'utf8');
   const lines = new Set(attributes.split(/\r?\n/));
-  for (const file of ['src/main/**/*.ts', 'web/runtime.js', 'web/site-adapter.js', 'web/audio.js', 'web/player.js', 'web/preview.js']) {
+  for (const file of ['src/main/**/*.ts', 'web/runtime.js', 'web/site-adapter.js', 'web/audio.js', 'web/player.js', 'web/preview.js', 'web/inject.js']) {
     assert.equal(lines.has(`${file} text eol=lf`), true);
   }
 });
@@ -116,6 +126,10 @@ test('MAIN runtime check is read-only for stale and unexpected outputs', async t
   await fs.writeFile(path.join(root, 'web/preview.js'), 'void 0;\n');
   await assert.rejects(mod.checkMainRuntime(root), { code: 'main-runtime-drift' });
   assert.equal(await fs.readFile(path.join(root, 'web/preview.js'), 'utf8'), 'void 0;\n');
+  await fs.writeFile(path.join(root, 'web/preview.js'), rendered['web/preview.js']);
+  await fs.writeFile(path.join(root, 'web/inject.js'), 'void 0;\n');
+  await assert.rejects(mod.checkMainRuntime(root), { code: 'main-runtime-drift' });
+  assert.equal(await fs.readFile(path.join(root, 'web/inject.js'), 'utf8'), 'void 0;\n');
   assert.throws(() => mod.validateMainRuntime({ ...rendered, 'web/extra.js': 'void 0;\n' }), { code: 'main-runtime-output-set' });
 });
 
@@ -157,5 +171,5 @@ test('repository generated MAIN runtime is current and check is read-only', asyn
   const report = await mod.checkMainRuntime(path.resolve('.'));
   const after = await Promise.all(mod.MAIN_RUNTIME_ENTRIES.map(entry => fs.readFile(entry.output, 'utf8')));
   assert.deepEqual(after, before);
-  assert.deepEqual(Object.keys(report).sort(), ['web/audio.js', 'web/player.js', 'web/preview.js', 'web/runtime.js', 'web/site-adapter.js']);
+  assert.deepEqual(Object.keys(report).sort(), ['web/audio.js', 'web/inject.js', 'web/player.js', 'web/preview.js', 'web/runtime.js', 'web/site-adapter.js']);
 });

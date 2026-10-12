@@ -13,7 +13,86 @@ function setup(t, html = '') {
 
 test('adapter publishes only the bounded capability surface', t => {
   const { adapter } = setup(t);
-  assert.deepEqual(Array.from(Object.keys(adapter)).sort(), ['affectsDiscovery', 'banner', 'chat', 'discover', 'player', 'video']);
+  assert.deepEqual(Array.from(Object.keys(adapter)).sort(), ['affectsDiscovery', 'banner', 'chat', 'discover', 'page', 'player', 'sidebar', 'video']);
+  assert.deepEqual(Object.keys(adapter.chat).sort(), ['connect', 'deletedTextTargets', 'findContainer', 'findLogRoot', 'messageRows', 'readMessage', 'timestampTarget']);
+  assert.deepEqual(Object.keys(adapter.sidebar).sort(), ['classify', 'following', 'sections', 'viewMode']);
+  assert.deepEqual(Object.keys(adapter.page).sort(), ['bannerRoot', 'channelTabs', 'startTarget']);
+});
+
+test('chat DOM capabilities find current live and VOD roots and re-read reused rows', t => {
+  const { dom, adapter } = setup(t, '<div id="layout-body"><aside id="live"><div role="log"><div id="live-row" class="_item_live"><span class="_chatting_message_live"><span class="_text_live">Live</span></span></div></div></aside><div id="vod" class="vod_chatting_container__fixture"><div class="vod_chatting_list__fixture"><div id="vod-row" class="vod_chatting_item__fixture"><span class="live_chatting_message_chatting_message__fixture"><span class="live_chatting_message_text__fixture">VOD</span></span></div></div></div></div>');
+  const body = dom.window.document.getElementById('layout-body');
+  const live = adapter.chat.findContainer(body, 'live'), vod = adapter.chat.findContainer(body, 'vod');
+  assert.equal(live.id, 'live'); assert.equal(vod.id, 'vod');
+  const liveRoot = adapter.chat.findLogRoot(live), vodRoot = adapter.chat.findLogRoot(vod);
+  assert.equal(liveRoot.getAttribute('role'), 'log'); assert.equal(vodRoot.className, 'vod_chatting_list__fixture');
+  const liveRow = adapter.chat.messageRows(liveRoot)[0], vodRow = adapter.chat.messageRows(vodRoot)[0];
+  assert.equal(liveRow.id, 'live-row'); assert.equal(vodRow.id, 'vod-row');
+  assert.equal(adapter.chat.timestampTarget(liveRow).className, '_chatting_message_live');
+  assert.equal(adapter.chat.deletedTextTargets(liveRow)[0].className, '_text_live');
+  assert.equal(adapter.chat.timestampTarget(vodRow).className, 'live_chatting_message_chatting_message__fixture');
+  assert.equal(adapter.chat.deletedTextTargets(vodRow)[0].className, 'live_chatting_message_text__fixture');
+  const replacement = dom.window.document.createElement('div'); replacement.id = 'live-row-next'; replacement.className = '_item_live';
+  replacement.innerHTML = '<span class="_chatting_message_live"><span class="_text_live">Next</span></span>';
+  liveRow.replaceWith(replacement);
+  const reused = adapter.chat.messageRows(liveRoot);
+  assert.equal(reused.length, 1); assert.equal(reused[0], replacement);
+});
+
+test('sidebar DOM capabilities classify only top-level sections and return current following controls', t => {
+  const { dom, adapter } = setup(t, '<aside id="sidebar"><nav id="popular" class="_section_a" aria-label="인기 카테고리"><nav id="nested" class="_section_nested"></nav></nav><nav id="schedule" class="_section_b"><div class="_header_b"><strong class="_title_b">다가오는 방송 일정</strong></div></nav><nav id="partner" class="_section_c"><div class="_header_c"><a href="/partner">Partner</a></div></nav><nav id="shortcut" class="_section_d"><ul><li><a href="https://game.naver.com/">Game</a></li><li><a href="https://game.naver.com/esports">Esports</a></li></ul></nav><nav id="following" aria-label="팔로우"><button id="refresh" aria-label="새로고침"></button><button id="more" class="_more_button_a" aria-expanded="false"></button><div class="_header_a"><button id="fold" aria-label="펼쳐짐, 접기" aria-expanded="true"></button></div></nav></aside>');
+  const root = dom.window.document.getElementById('sidebar');
+  const sections = adapter.sidebar.sections(root);
+  assert.deepEqual(Array.from(sections, node => node.id), ['popular', 'schedule', 'partner', 'shortcut']);
+  assert.deepEqual(Array.from(sections, node => adapter.sidebar.classify(node)), ['popular', 'schedule', 'partner', 'shortcut']);
+  assert.equal(adapter.sidebar.classify(dom.window.document.getElementById('nested')), null);
+  const first = adapter.sidebar.following(root);
+  assert.deepEqual(Object.keys(first), ['section', 'more', 'fold', 'refresh']);
+  assert.equal(first.section.id, 'following'); assert.equal(first.more.id, 'more'); assert.equal(first.fold.id, 'fold'); assert.equal(first.refresh.id, 'refresh');
+  const next = dom.window.document.createElement('button'); next.id = 'more-next'; next.className = '_more_button_a'; next.setAttribute('aria-expanded', 'false');
+  first.more.replaceWith(next);
+  const current = adapter.sidebar.following(root);
+  assert.equal(current.more, next); assert.notEqual(current.more, first.more);
+});
+
+test('sidebar view mode distinguishes known endpoints from live uncertainty', t => {
+  const { dom, adapter } = setup(t, '<div id="layout-body"></div><div id="pzp"><button class="pzp-pc__viewmode-button" aria-label="Wide screen"></button></div>');
+  const body = dom.window.document.getElementById('layout-body'), pzp = dom.window.document.getElementById('pzp');
+  const live = { kind: 'live', path: '/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', id: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' };
+  assert.equal(adapter.sidebar.viewMode(body, pzp, live), false);
+  pzp.firstElementChild.setAttribute('aria-label', 'Narrow screen');
+  assert.equal(adapter.sidebar.viewMode(body, pzp, live), true);
+  pzp.firstElementChild.remove();
+  assert.equal(adapter.sidebar.viewMode(body, pzp, live), null);
+  body.className = '_is_large_fixture';
+  assert.equal(adapter.sidebar.viewMode(body, pzp, live), true);
+  body.className = '';
+  assert.equal(adapter.sidebar.viewMode(body, pzp, { kind: 'channel', path: '/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', id: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }), false);
+});
+
+test('DOM capability boundary contains a throwing native relationship lookup', t => {
+  const { dom, adapter } = setup(t, '<aside id="sidebar"><nav class="_section_fixture" aria-label="인기 카테고리"></nav></aside>');
+  const root = dom.window.document.getElementById('sidebar');
+  root.closest = () => { throw new Error('fixture-closest'); };
+  assert.deepEqual(Array.from(adapter.sidebar.sections(root)), []);
+});
+
+test('page DOM capabilities limit tabs, start targets, VOD links, and banners to trusted identities', t => {
+  const { dom, adapter } = setup(t, '<div id="layout-body"><section><div id="tabs" role="tablist"><button>Videos</button></div></section><main><div class="_data_current"><strong id="live" class="_count_current"><span id="live-child">Viewers</span></strong></div><article><a id="vod-link" href="/video/123">VOD</a><div><span id="vod" class="video_card_item__fixture">Date</span></div></article><div id="banner" class="band_banner_container__fixture"></div></main></div>');
+  const body = dom.window.document.getElementById('layout-body');
+  const channel = { kind: 'channel', path: '/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', id: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' };
+  const liveRoute = { kind: 'live', path: '/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', id: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' };
+  assert.equal(adapter.page.channelTabs(body, channel).id, 'tabs');
+  assert.equal(adapter.page.channelTabs(body, liveRoute), null);
+  const live = adapter.page.startTarget(dom.window.document.getElementById('live-child'), liveRoute);
+  assert.deepEqual(Object.keys(live), ['kind', 'node']); assert.equal(live.kind, 'live'); assert.equal(live.node.id, 'live');
+  const vod = adapter.page.startTarget(dom.window.document.getElementById('vod'), { kind: 'home', path: '/', id: null });
+  assert.deepEqual(Object.keys(vod), ['kind', 'node', 'link', 'id']);
+  assert.equal(vod.kind, 'vod'); assert.equal(vod.node.id, 'vod'); assert.equal(vod.link.id, 'vod-link'); assert.equal(vod.id, '123');
+  dom.window.document.getElementById('vod-link').href = 'https://foreign.invalid/video/123';
+  assert.equal(adapter.page.startTarget(dom.window.document.getElementById('vod'), { kind: 'home', path: '/', id: null }), null);
+  const banner = adapter.page.bannerRoot(body);
+  assert.equal(banner.id, 'banner'); assert.equal(adapter.banner.closeHandler(banner), null);
 });
 
 function attachState(node, value) {
