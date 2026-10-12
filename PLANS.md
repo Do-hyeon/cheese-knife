@@ -65,10 +65,10 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어는 같�
 | AF05 | 이행 종료·공개 게이트 | AF05-A, AF05-B | WAITING-DEPENDENCY | 내부 완료, 공개 설치 수용 대기 |
 | AF05-A | 내부 원본 종료·검증 | AF04 | DONE | 생성·strict·전체 회귀·공개 CI 유지 |
 | AF05-B | 공개 설치·업데이트·롤백 수용 | P09, 차기 AF 배포 준비 | WAITING-USER | B1 완료, B2 설계·계획 보존; DT01-B 우선 후 정합성 확인·구현 승인. 전체 수용 기준·실제 배포 미승인 |
-| DT01-B | 오디오 quality report 타입 계약 | DT01-A 완료 | PLAN-REVIEW | 상세 설계·Astra max 검토 → written-spec 승인 → 구현 계획·실행 승인; B2보다 작업 우선 |
+| DT01-B | 오디오 quality report 타입 계약 | DT01-A 완료 | WAITING-USER | 설계·Astra max 검토/보완 완료 → written-spec 승인 → 구현 계획·실행 승인; B2보다 작업 우선 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **DT01-B 상세 설계·Astra max 검토 후 written-spec 승인을 받는다**. 사용자 권장 순서 승인에 따라 DT01-B를 우선하고 AF05-B2 구현은 보류한다. DT01-B는 B2의 기술적 필수 의존성이나 새로운 출시 게이트가 아니며 DT01-C를 선행 조건으로 추가하지 않는다. DT01-B 승인·구현·검증 후 B2 계획 정합성을 재확인한다.
+현재 커서: **DT01-B 보완된 written-spec 승인 대기**. 사용자 권장 순서 승인에 따라 DT01-B를 우선하고 AF05-B2 구현은 보류한다. DT01-B는 B2의 기술적 필수 의존성이나 새로운 출시 게이트가 아니며 DT01-C를 선행 조건으로 추가하지 않는다. DT01-B 승인·구현·검증 후 B2 계획 정합성을 재확인한다.
 
 B1은 PR #36 최종 CI run `38255250513`과 merge `b38ec388`로 완료했다. B2 설계·계획은 PR #37로 병합됐으며 최초 Astra max Critical0·Important3·Minor1 보완 기록과 구현·실행 승인 게이트를 보존한다. 수정 후 독립0건/실제전환PASS/native update 수용은 아니다. P09의 게시2.13.3·격리 신규 설치 기준은 보존하며 과거 업데이트·실제 롤백 수용은 미검증이다. AF05 전체와 기능 로드맵 동결은 유지한다.
 
@@ -267,7 +267,7 @@ AF05-B 공개 수용 — P09와 차기 AF 배포에 의존:
 - [x] **DT01-A / 구현·로컬 검증:** 순수 수치3개·실제 Node summary strict 계약, 구 export identity·CLI5개 호출·실제 감사 포함 연결. 집중43/43·연결77/77·공개조건 전체832/832, 합성14/18/12·qualityFailures0·full-scale0, 설치형 positive/negative 통과. [검증 기록](docs/superpowers/validation/2026-10-12-dt01a-audio-signal-contracts.md)에 비용·단언·미검사 범위와 기존 ESLint7 관측 유지 기록.
 - [x] **DT01-A / 최종 검토:** Astra max whole-branch Critical0·Important0·Minor0. 기준 버전과2,286개 수치·요약 호출의 결과/오류 대조 및 집중77/77 재확인. 공개 CI·병합 이력은 이 변경 PR의 마지막 커밋 checks·merge 상태를 기준으로 확인한다. 제품·스토어 제출본 불변, DT01-B/C/S·NUM01 미완료 유지.
 - [x] **DT01-B / 상세 설계 작성:** [quality report 계약 설계](docs/superpowers/specs/2026-10-12-dt01b-quality-report-contract-design.md). 정상 transition 상관 타입·2채널 summary와 partial/raw 호환을 구분하고 기존 gate·alias identity·실제 CLI 연결·4파일 checked graph·독립 oracle를 명시했다. DT01-A 효과 확인은 완료됐으므로 WAITING-DEPENDENCY를 해제한다.
-- [ ] **DT01-B / Astra max 검토:** 실제 gate/생산자/호출자·기존 checker·raw 결과 대조와 보완. [검토 기록](docs/superpowers/validation/2026-10-12-dt01b-quality-contract-review.md). 구현이나 신규 compiler proof PASS와 구분한다.
+- [x] **DT01-B / Astra max 검토·보완:** 최초 Critical0·Important1·Minor1. 선택 필드의 native Math.max/peak 국소 경계와 guarded 배열 타입 복원·내부 any negative control을 명시했다. [검토 기록](docs/superpowers/validation/2026-10-12-dt01b-quality-contract-review.md). 수정 후 독립0건·전체 strict·구현 PASS는 아니다.
 - [ ] **DT01-B / written-spec 승인:** 위 설계 승인 뒤에만 상세 구현 계획 작성. B2 승인·Native 실행 승인을 자동 전용하지 않는다.
 - [ ] **DT01-B / 상세 구현 계획·공격적 검토:** 파일·단계·실패 검사·국소 주석 근거·비용·기존 CLI/감사 연결을 구체화한다.
 - [ ] **DT01-B / 계획·실행 방식 승인:** Native 순차 구현·격리 후보 검사·최종 Astra max 범위를 승인받는다. root dist/실제 프로필 보존.

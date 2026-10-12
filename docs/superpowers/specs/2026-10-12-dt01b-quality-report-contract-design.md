@@ -1,6 +1,6 @@
 # DT01-B — 오디오 quality report 계약 상세 설계
 
-작성일: 2026-10-12 / Asia-Seoul. 상태: written-spec 승인 대기. 구현 계획·구현·브라우저 실행은 아직 승인하지 않았다.
+작성 시작: 2026-10-12 / 검토·보완: 2026-10-13 / Asia-Seoul. 상태: written-spec 승인 대기. 구현 계획·구현·브라우저 실행은 아직 승인하지 않았다.
 
 ## 1. 목적과 순서
 
@@ -53,7 +53,14 @@ DT01-A의 순수 수치·`CaptureSummary` 계약을 기존 quality gate까지 �
 
 raw JavaScript는 정적 허용 범위를 벗어날 수 있다. malformed 검사는 unchecked 테스트에 남긴다. null/wrong-container/numeric-string/truthy-number를 정상 타입으로 거짓 단언하지 않는다. 정규화·필터·빈 report 대체·예외의 실패 배열 전환은 하지 않는다. 정상 alias의 unknown overload나 any escape hatch는 금지한다.
 
-`Array.isArray`의 any[] narrowing을 정상 report 검사의 대체물로 삼지 않는다. partial 모델의 필드 타입을 유지하는 국소 주석은 가능하나 전체 report cast·@ts-nocheck·@ts-ignore·광범위 any는 금지한다. 기존 numeric guard를 compiler가 좁히지 못하면 그 guard가 증명한 특정 local read에만 주석을 둔다. undefined→NaN 산술·JS 비교 coercion을 보존해야 할 필드를 정상 숫자로 거짓 단언하지 않는다. 이 조건에서 strict 해결이 불가능하면 중지하고 최소 타입 경계 수정안을 제시한다. 새 validator/오류 정책으로 몰래 전환하지 않는다. 상세 계획에 각 국소 주석의 위치·근거를 명시한다.
+`Array.isArray` 뒤에 선언된 partial 배열 원소 타입을 **반드시 복원**한다. cases/transitions/alignments·stress.channels·case.channels의 해당 읽기/반복에 국소 타입 주석을 두며 any[] narrowing을 검사의 대체물로 삼지 않는다. 이는 선언된 인자 타입 복원이지 raw 원소의 런타임 검증이 아니다. 전체 report cast·@ts-nocheck·@ts-ignore·광범위 any는 금지한다.
+
+기존 finite envelope guard가 증명한 local RMS/channel 존재만 국소 narrowing으로 표현한다. 다음 두 곳은 그 guard가 증명하지 않으므로 별도 최소 경계를 명시한다:
+
+1. baselineStep의 기존 Math.max 호출에만 `(number|undefined)[]`를 받는 native callable-signature 주석을 둔다. undefined를 NaN으로 처리하는 호출 의미이며 입력 자체가 number라고 cast하지 않는다. 새 wrapper·Number 변환·기본값은 없다. raw null/string/BigInt 등의 실제 native coercion/예외도 유지한다.
+2. 기존 상한 peak 비교가 읽는 바로 그 위치에서 `const peak=channel?.peak`로 읽고 `peak!==undefined && peak>0.9801`로 비교한다. 메시지는 기존 `channel.peak` 읽기를 유지한다. null도 partial 타입에 포함하면 동등한 null guard를 둘 수 있다. 반환·예외·getter 읽기 횟수/순서를 유지하는 국소 수정이며 유한성 filter·정규화·threshold 변경이 아니다.
+
+상세 계획에 각 주석의 위치·근거와 getter/coercion 대조를 명시한다. 전체 annotated gate의 strict 성공은 구현 단계에서 확인하며 조각 proof로 성공을 앞당겨 주장하지 않는다.
 
 ## 6. 런타임 호환 oracle
 
@@ -70,13 +77,17 @@ base `7b2be0ec7ffb10b765424bab83128742e7243e27`의 다음 동작을 pin한다. �
 | enabled transition 측정 누락 | `250Hz/on/transition-signal` |
 | transition.before.channels가 object | `.at is not a function` TypeError |
 | stress peak 문자열 '1' | stress-peak-low 다음 peak=1 |
+| baseline step 누락, 다른 값 정상 | `250Hz/on/step` |
+| baseline step null 또는 문자열 '0.1' | 기존 빈 배열 |
+| change step 문자열 '0.1' | `250Hz/on/step` |
+| stress peak 누락·null·정확한 상한·상한 초과 | 기존 전체 실패 순서·문자열; getter 읽기/예외도 대조 |
 | raw enabled/value truthy 숫자1 | 기존 빈 배열 |
 | raw transition frequency NaN | 기존 빈 배열; 현재 판정 필드 아님 |
 | enabled RMS 정확히1e-4 | 기존 빈 배열 |
 
 0.95 envelope 비율, step1e-6, stress peak 하한0.97/상한0.9801, overFullScaleSamples0, alignment 조건을 유지한다. report 키 순서와 입력 object/배열/typed buffer 비변경도 비교한다. 기존 한계를 별도 correctness 설계 없이 해결 완료로 표시하지 않는다.
 
-raw fixture는 compiler proof가 아니다. NaN/undefined/hole 태그 복원은 테스트에서만 하고 태그 의미를 직접 검증한다. 오류는 name/message로 관측하며 stack·환경 경로·시간은 golden에 넣지 않는다. baseline은 변경 전에 기록하며 이후 구현으로 기대값을 재생성하지 않는다.
+raw fixture는 compiler proof가 아니다. 입력은 unchecked 테스트의 직접 factory, JSON은 기대 결과만 저장하는 방식을 우선하여 태그 parser를 만들지 않는다. NaN/undefined/hole 태그가 필요하면 테스트에서만 복원하고 직접 검증한다. 오류는 name/message로 관측하며 stack·환경 경로·시간은 golden에 넣지 않는다. baseline은 변경 전에 기록하며 이후 구현으로 기대값을 재생성하지 않는다.
 
 ## 7. 검증 설계
 
@@ -84,7 +95,7 @@ raw fixture는 compiler proof가 아니다. NaN/undefined/hole 태그 복원은 
 
 기존 2파일 graph를 4파일로 확장한다: `scripts/audio-signal.mjs`, `scripts/audio-metrics.mjs`, `tests/audio-signal-contract.test.cjs`, `tests/audio-quality-contract.test.cjs`. Node 타입은 기존 의존성이다. listFilesOnly로 다른 저장소 모듈의 편입이 없는지 확인하고 기존 config/CI/발견 경로 assertion을 갱신한다.
 
-checked 소비자는 실제 summarizeCapture로 before/change/after·steady/stress를 만들고 literal 설정·alignment로 report를 구성한다. 신호 fixture 선택은 명시하며 최종 실패 문자열은 독립 literal로 고정한다. 브라우저 생산자 전체가 checked라고 주장하지 않는다.
+checked 소비자는 실제 summarizeCapture로 before/change/after·steady/stress를 만들고 literal 설정·alignment로 report를 구성한다. 신호 fixture 선택은 명시하며 최종 실패 문자열은 독립 literal로 고정한다. 보장은 정상 API·순수 gate·대표 소비자다. CLI import는 실제 연결이지 browser 생산자의 report 조립을 compiler가 검사한다는 뜻이 아니다. CLI의 enabled/value 조립 오용을 이 checker가 잡는다고 주장하지 않는다.
 
 compiler proof는 기존 임시 output·bounded spawnSync·진단 파일/행/코드 확인 패턴을 재사용한다. 정상 gain/enabled branch와 metadata report는 진단0이어야 한다. 다음 오용은 실제 proof 위치의 목표 진단이어야 하며 crash/import 실패로 대신하지 않는다:
 
@@ -93,6 +104,8 @@ compiler proof는 기존 임시 output·bounded spawnSync·진단 파일/행/코
 - string sampleRate/frame, 잘못된 stereo/boolean.
 - 확인 없이 nullable spectral 산술, 없는 report 필드 접근.
 - 정상 alias에 root/stress 누락 또는 undefined/null. partial API의 최소 정상 입력은 컴파일 허용.
+
+alias 오용만으로 완료하지 않는다. 실제 gate의 guarded 배열 반복 내부에 없는 원소 필드 접근을 넣은 최소 negative control에서 해당 source 위치의 TS2339 등 목표 진단을 확인한다. 대표 loop의 any 누수로 오용이 허용되면 실패다. mutation은 owned 임시 source 또는 RAM compiler view에만 적용하고 원본 source/graph는 바꾸지 않는다. import 실패나 전체 cast로 대신하지 않는다. 상세 계획에서 각 배열의 복원 근거와 proof 위치를 정한다.
 
 ### 동작과 연결
 
