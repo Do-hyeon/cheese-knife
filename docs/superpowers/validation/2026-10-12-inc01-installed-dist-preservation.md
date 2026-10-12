@@ -40,3 +40,11 @@ AF01에서 추가한 production package test가 실제 repository `dist`를 빌�
 private RED/GREEN/전체 실행 로그는 `output/inc01-*.log`에 두며 프로필이나 실제 설정을 공개하지 않는다.
 
 실행 환경에 npm shim이 없어 package.json의 test 명령과 동일한 `node --test tests/*.test.cjs`를 Native 방식으로 실행했다. npm 명령을 찾지 못한 최초 시도는 테스트 실행으로 세지 않는다. 의존성·제품 TS/생성 JS·manifest·버전·lockfile은 변경하지 않았다.
+
+## 공개 checkout 전체 검사
+
+수용 기록 커밋 `eab1398`의 추적 파일만 Git archive로 새 검사 복제에 풀어 private 원장을 제외했다. 의존성을 junction으로 연결한 첫 실행은 HLS의 owned-path-link/final-snapshot-failed로833 passed·1 failed·1 skipped였다. 이 실행을 PASS로 표시하지 않는다. 실패는 실제 제품 변경이 아닌 검사 복제의 의존성 경로에서 발생했다.
+
+원본 설치 의존성을 새 복제에 물리적 파일로 복사하고 동일한 전체 명령을 제외 옵션 없이 재실행했다. 결과는835 total·834 passed·0 failed·1 skipped다. skip1은 private 자료가 공개 checkout에 없으면 생략하도록 기존에 정의된 역사 검사이며 새 skip 규칙을 추가하지 않았다. 원래 로컬 전체 검사의 역사 해시 실패도 그대로 보존한다. 실행 후 사용자가 재등록한 실제 root dist58/58 파일이 원본 ZIP과 그대로 일치했다.
+
+private 로그는 `output/inc01-public-checkout-full-node.log`, `output/inc01-public-native-full-node.log`이며 새로운 코드/패키지 설치 없이 기존 설치 의존성을 재사용했다. 공개 CI 결과는 별도로 확인한다.
