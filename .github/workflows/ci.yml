@@ -56,6 +56,9 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      - name: Fetch pinned published settings baseline
+        run: git fetch --no-tags --depth=1 origin fb15f9675f9ea910e98363635155bc4ff9eb1d2f
+
       - name: Run tests
         run: npm test
 
