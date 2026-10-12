@@ -65,10 +65,10 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어는 같�
 | AF05 | 이행 종료·공개 게이트 | AF05-A, AF05-B | WAITING-DEPENDENCY | 내부 완료, 공개 설치 수용 대기 |
 | AF05-A | 내부 원본 종료·검증 | AF04 | DONE | 생성·strict·전체 회귀·공개 CI 유지 |
 | AF05-B | 공개 설치·업데이트·롤백 수용 | P09, 차기 AF 배포 준비 | WAITING-USER | B1 완료, B2 설계·계획 보존; DT01-B 우선 후 정합성 확인·구현 승인. 전체 수용 기준·실제 배포 미승인 |
-| DT01-B | 오디오 quality report 타입 계약 | DT01-A 완료 | WAITING-USER | 설계·Astra max 검토/보완 완료 → written-spec 승인 → 구현 계획·실행 승인; B2보다 작업 우선 |
+| DT01-B | 오디오 quality report 타입 계약 | DT01-A 완료·설계 승인 | PLAN-REVIEW | 상세 구현 계획·Astra max 검토 → 계획·Native 실행 승인; B2보다 작업 우선 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **DT01-B 보완된 written-spec 승인 대기**. 사용자 권장 순서 승인에 따라 DT01-B를 우선하고 AF05-B2 구현은 보류한다. DT01-B는 B2의 기술적 필수 의존성이나 새로운 출시 게이트가 아니며 DT01-C를 선행 조건으로 추가하지 않는다. DT01-B 승인·구현·검증 후 B2 계획 정합성을 재확인한다.
+현재 커서: **DT01-B 승인된 설계의 상세 구현 계획·Astra max 공격적 검토**. 사용자2026-10-13 설계 승인에 따라 두 순차 task와 Native 권장안을 문서화한다. 계획·실행 승인 전에는 구현하지 않는다. DT01-B를 먼저 하는 것은 작업 우선순위이며 B2의 기술적 필수 의존성·새 출시 게이트가 아니다. DT01-C는 별도 후속이며 B2 구현은 보류한다.
 
 B1은 PR #36 최종 CI run `38255250513`과 merge `b38ec388`로 완료했다. B2 설계·계획은 PR #37로 병합됐으며 최초 Astra max Critical0·Important3·Minor1 보완 기록과 구현·실행 승인 게이트를 보존한다. 수정 후 독립0건/실제전환PASS/native update 수용은 아니다. P09의 게시2.13.3·격리 신규 설치 기준은 보존하며 과거 업데이트·실제 롤백 수용은 미검증이다. AF05 전체와 기능 로드맵 동결은 유지한다.
 
@@ -268,8 +268,9 @@ AF05-B 공개 수용 — P09와 차기 AF 배포에 의존:
 - [x] **DT01-A / 최종 검토:** Astra max whole-branch Critical0·Important0·Minor0. 기준 버전과2,286개 수치·요약 호출의 결과/오류 대조 및 집중77/77 재확인. 공개 CI·병합 이력은 이 변경 PR의 마지막 커밋 checks·merge 상태를 기준으로 확인한다. 제품·스토어 제출본 불변, DT01-B/C/S·NUM01 미완료 유지.
 - [x] **DT01-B / 상세 설계 작성:** [quality report 계약 설계](docs/superpowers/specs/2026-10-12-dt01b-quality-report-contract-design.md). 정상 transition 상관 타입·2채널 summary와 partial/raw 호환을 구분하고 기존 gate·alias identity·실제 CLI 연결·4파일 checked graph·독립 oracle를 명시했다. DT01-A 효과 확인은 완료됐으므로 WAITING-DEPENDENCY를 해제한다.
 - [x] **DT01-B / Astra max 검토·보완:** 최초 Critical0·Important1·Minor1. 선택 필드의 native Math.max/peak 국소 경계와 guarded 배열 타입 복원·내부 any negative control을 명시했다. [검토 기록](docs/superpowers/validation/2026-10-12-dt01b-quality-contract-review.md). 수정 후 독립0건·전체 strict·구현 PASS는 아니다.
-- [ ] **DT01-B / written-spec 승인:** 위 설계 승인 뒤에만 상세 구현 계획 작성. B2 승인·Native 실행 승인을 자동 전용하지 않는다.
-- [ ] **DT01-B / 상세 구현 계획·공격적 검토:** 파일·단계·실패 검사·국소 주석 근거·비용·기존 CLI/감사 연결을 구체화한다.
+- [x] **DT01-B / written-spec 승인:** 사용자2026-10-13 설계 승인. B2 승인·Native 실행 승인을 자동 전용하지 않는다.
+- [x] **DT01-B / 상세 구현 계획 작성:** [계획](docs/superpowers/plans/2026-10-13-dt01b-quality-report-contracts.md). gate·정적/호환 증명과 CLI·감사/격리 회귀의2task, 국소 주석·독립 oracle·내부5곳 any control·실행 경로·비용·보호 범위 명시.
+- [ ] **DT01-B / 공격적 계획 검토:** fresh Astra max로 실제 코드/호출자·기존 검사와 대조하고 보완. [계획 검토 기록](docs/superpowers/validation/2026-10-13-dt01b-plan-review.md). 구현/신규proof PASS와 구분.
 - [ ] **DT01-B / 계획·실행 방식 승인:** Native 순차 구현·격리 후보 검사·최종 Astra max 범위를 승인받는다. root dist/실제 프로필 보존.
 - [ ] **DT01-B / 구현·검증·최종 검토·공개 CI/통합:** 정상/partial/raw oracle·정적 오용 검출·전체 gate를 실제 확인한 뒤 완료 표시. 다음은 B2 정합성 재확인.
 - [ ] **DT01-C / WAITING-DEPENDENCY:** artifact 부분 report projection·comparison과 owned-files 연결은 별도 설계. 기존 부분 report 허용·비교 허용치·감사 대상 보존.
@@ -300,7 +301,7 @@ git -c core.safecrlf=false diff --check
 
 INC01은 사용자 재등록·설정 유지 확인과 PR #30·공개 CI·main 병합으로 종료했다. 원래 dist의58파일과 현재 시험판·설정은 계속 보존한다. 이 수용을 모든 방송 기능·기존 스토어 버전 업데이트 검사로 확대하지 않는다.
 
-현재 사용자 개입은 DT01-B written-spec 승인이다. 설계·Astra max 검토가 끝나면 위 상세 설계를 검토받고, 승인 뒤 구현 계획·실행 방식을 별도로 작성/승인받는다. B2의 보완된 설계·계획은 유지하지만 구현은 보류한다. DT01-B 완료 뒤 B2 정합성을 확인하고 기존 묶음 승인 게이트로 돌아간다.
+현재 사용자 개입은 DT01-B 상세 구현 계획·검토 완료 후의 계획/Native 실행 방식 승인이다. 설계는2026-10-13 승인됐고 이후 계획 작성·Astra max 검토를 진행한다. B2의 보완된 설계·계획은 보존하되 구현은 보류하며 DT01-B 완료 뒤 정합성을 재확인한다. Native 방식 승인 범위는 이 계획의 source/test/config 변경과 격리 로컬 검증이며 실제 Chrome/스토어/새 도구 설치는 별도다.
 
 게시 완료 알림의14:55는 표시 시각이고 실제 처리 시각·시간대·초는 미확정이다. 추가 시각 자료 요청은 종료했다. 실제 롤백·차기 설치/업데이트·스토어 제출/게시에는 각각 별도 승인이 필요하다. B2 승인은 새 private bundled 프로필·UI 저장·손실 control·cleanup을 포함하며 종료 미확인 시 root 보존/수동 종료가 필요할 수 있다. 승인 전 reader/fixture/runner/CI 구현이나 browser 실행을 하지 않는다. native/공개 실행·과거 미검증 수용·AF05-B 전체 완료 기준 변경은 별도 게이트다.
 
