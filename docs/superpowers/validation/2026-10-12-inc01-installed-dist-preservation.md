@@ -48,3 +48,11 @@ private RED/GREEN/전체 실행 로그는 `output/inc01-*.log`에 두며 프로�
 원본 설치 의존성을 새 복제에 물리적 파일로 복사하고 동일한 전체 명령을 제외 옵션 없이 재실행했다. 결과는835 total·834 passed·0 failed·1 skipped다. skip1은 private 자료가 공개 checkout에 없으면 생략하도록 기존에 정의된 역사 검사이며 새 skip 규칙을 추가하지 않았다. 원래 로컬 전체 검사의 역사 해시 실패도 그대로 보존한다. 실행 후 사용자가 재등록한 실제 root dist58/58 파일이 원본 ZIP과 그대로 일치했다.
 
 private 로그는 `output/inc01-public-checkout-full-node.log`, `output/inc01-public-native-full-node.log`이며 새로운 코드/패키지 설치 없이 기존 설치 의존성을 재사용했다. 공개 CI 결과는 별도로 확인한다.
+
+## 공개 CI와 반영
+
+[PR #30](https://github.com/Do-hyeon/cheese-knife/pull/30)의 최종 HEAD는 `a386776c1c515f1dfccfc18be9ef2683e2f67d7e`다. [CI run38227171266](https://github.com/Do-hyeon/cheese-knife/actions/runs/38227171266)에서 Ubuntu foundation20초·Windows foundation38초·전체 verify3분2초가 통과했다. verify는 전체 Node·빌드/패키지·객관 오디오·설치형 positive/negative를 포함한다.
+
+merge commit `798e56ef2a405a4b65ec5331276dcffac502d7e8`, 병합 시각2026-10-12 18:07:19 / Asia-Seoul이다. 검증된 PR HEAD와 merge tree의 파일 차이0을 확인하고 로컬 main을 fast-forward했다. 브랜치는 삭제하지 않았으며 스토어 배포·버전·실제 시험판의 root dist도 교체하지 않았다.
+
+CI에는2026-10-19 Ubuntu runner 기본 이미지 변경 예정이라는 GitHub 안내가 있었지만 실패나 repository 결함으로 분류하지 않는다. 원래 로컬의 frozen 역사 해시 검사 실패와 향후 실제 스토어 수용은 이 공개 CI 성공으로 해결됐다고 표시하지 않는다.
