@@ -7,7 +7,7 @@ const { spawnSync } = require('node:child_process');
 
 const contractFiles = ['src/settings/contract.ts', 'src/settings/client.ts', 'src/settings/broker.ts'];
 const generatedFiles = ['settings-contract.js', 'settings-client.js', 'settings-broker.js'];
-const requiredTrue = ['allowJs', 'checkJs', 'noEmit', 'strict', 'noUncheckedIndexedAccess', 'exactOptionalPropertyTypes', 'useUnknownInCatchVariables'];
+const requiredTrue = ['noEmit', 'strict', 'noUncheckedIndexedAccess', 'exactOptionalPropertyTypes', 'useUnknownInCatchVariables'];
 
 test('audio runtime contract is explicit and typechecked', async () => {
   const audio = await fs.readFile('src/main/features/audio/contracts.ts', 'utf8');
@@ -102,12 +102,14 @@ test('inject runtime contracts are explicit and typechecked', async () => {
   assert.equal(result.status, 0, result.stdout + result.stderr);
 });
 
-test('AF03 tsconfig has the strict no-emit contract and narrow include', async () => {
+test('AF05 tsconfig checks only TypeScript product sources with strict no-emit', async () => {
   const config = JSON.parse(await fs.readFile('tsconfig.json', 'utf8'));
   for (const option of requiredTrue) assert.equal(config.compilerOptions[option], true, `${option} must be true`);
   assert.equal(Object.hasOwn(config.compilerOptions, 'skipLibCheck'), false);
   assert.deepEqual(config.compilerOptions.types, ['chrome']);
-  assert.deepEqual(config.include, ['config.js', 'style-schema.js', 'src/settings/**/*.ts', 'src/main/**/*.ts', 'build-proof/**/*.ts']);
+  assert.equal(config.compilerOptions.allowJs, false);
+  assert.equal(Object.hasOwn(config.compilerOptions, 'checkJs'), false);
+  assert.deepEqual(config.include, ['src/settings/**/*.ts', 'src/main/**/*.ts', 'build-proof/**/*.ts']);
   await assert.rejects(fs.access('tsconfig.af01.json'));
   await assert.rejects(fs.access('types/knife-settings.d.ts'));
 });

@@ -8,9 +8,16 @@ import {
 import { openOwnedRoot } from './owned-files.mjs';
 
 export const SETTINGS_RUNTIME_ENTRIES = Object.freeze([
+  Object.freeze({ source: 'src/settings/config.ts', output: 'config.js', global: 'KnifeHostPolicy' }),
+  Object.freeze({ source: 'src/settings/style-schema.ts', output: 'style-schema.js', global: 'STYLES' }),
   Object.freeze({ source: 'src/settings/contract.ts', output: 'settings-contract.js', global: 'KnifeSettingsContract' }),
   Object.freeze({ source: 'src/settings/client.ts', output: 'settings-client.js', global: 'createSettingsClient' }),
   Object.freeze({ source: 'src/settings/broker.ts', output: 'settings-broker.js', global: 'createSettingsBroker' }),
+  Object.freeze({ source: 'src/settings/background.ts', output: 'background.js', global: null }),
+  Object.freeze({ source: 'src/settings/permission.ts', output: 'permission.js', global: null }),
+  Object.freeze({ source: 'src/settings/popup.ts', output: 'popup.js', global: null }),
+  Object.freeze({ source: 'src/settings/styles.ts', output: 'styles.js', global: null }),
+  Object.freeze({ source: 'src/settings/bridge.ts', output: 'web/main.js', global: 'initStyleParameters' }),
 ]);
 export const SETTINGS_RUNTIME_OPTIONS = Object.freeze({
   loader: 'ts', target: CLASSIC_RUNTIME_OPTIONS.target, minify: CLASSIC_RUNTIME_OPTIONS.minify,
@@ -26,14 +33,9 @@ const generatedCodes = Object.freeze({
   nondeterministic: 'settings-runtime-nondeterministic', drift: 'settings-runtime-drift',
   writeCi: 'settings-runtime-write-ci',
 });
-const hasExpectedGlobal = (output, source) => {
-  switch (output) {
-    case 'settings-contract.js': return /^var\s+KnifeSettingsContract\b/.test(source);
-    case 'settings-client.js': return /^var\s+createSettingsClient\b/.test(source);
-    case 'settings-broker.js': return /^var\s+createSettingsBroker\b/.test(source);
-    default: return false;
-  }
-};
+const hasExpectedGlobal = (entry, source) => entry.global
+  ? new RegExp(`^(?:var|const|let)\\s+${entry.global}\\b`).test(source)
+  : /^\(\(\) => \{/.test(source);
 
 export async function renderSettingsRuntime(root = repositoryRoot()) {
   const owned = await openOwnedRoot(root);
@@ -57,19 +59,17 @@ export function validateSettingsRuntime(outputs, identities = []) {
     if (typeof source !== 'string') throw fail('settings-runtime-global');
     const marker = `// Generated from ${entry.source} by scripts/settings-runtime.mjs. Do not edit.\n`;
     const body = source.startsWith(marker) ? source.slice(marker.length) : source;
-    if (!hasExpectedGlobal(entry.output, body)) throw fail('settings-runtime-global');
-    const inspected = source.replace(/(\.origin\s*!==\s*)(["'])https:\/\/chzzk\.naver\.com\2/g, '$1$2$2');
+    if (!hasExpectedGlobal(entry, body)) throw fail('settings-runtime-global');
+    let inspected = source.replace(/(\.origin\s*!==\s*)(["'])https:\/\/chzzk\.naver\.com\2/g, '$1$2$2');
+    if (entry.output === 'config.js') inspected = inspected.replace(/(origins: Object\.freeze\(\[)["']https:\/\/chzzk\.naver\.com\/\*["'](\]\))/, '$1""$2');
+    if (entry.output === 'web/main.js') inspected = inspected.replace(/(document\.createElementNS\()["']http:\/\/www\.w3\.org\/2000\/svg["']/, '$1""');
     validateClassicRuntime(inspected, identities, generatedCodes);
   }
 }
 
 function report(outputs) {
   const files = SETTINGS_RUNTIME_ENTRIES.map(entry => entry.output);
-  const hashes = {
-    'settings-contract.js': sha256(outputs['settings-contract.js']),
-    'settings-client.js': sha256(outputs['settings-client.js']),
-    'settings-broker.js': sha256(outputs['settings-broker.js']),
-  };
+  const hashes = Object.fromEntries(files.map(file => [file, sha256(outputs[file])]));
   return { files, hashes };
 }
 
