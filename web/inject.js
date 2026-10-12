@@ -315,7 +315,7 @@
     const cache = /* @__PURE__ */ new Map();
     let mounted = null, config = {}, labels = {};
     const bindStartTimes = (body, scope) => {
-      const pending = /* @__PURE__ */ new WeakMap(), annotations = /* @__PURE__ */ new WeakMap();
+      const pending = /* @__PURE__ */ new Map(), annotations = /* @__PURE__ */ new WeakMap();
       const annotated = /* @__PURE__ */ new Set();
       const annotate = (found, date, id = null) => {
         const node = found.node;
@@ -347,6 +347,11 @@
             for (const node2 of annotated) if (node2 === event.target || node2.contains(event.target)) {
               const record2 = annotations.get(node2);
               if (record2 && node2.dataset.knifeTooltip === record2.text) delete node2.dataset.knifeTooltip;
+            }
+            for (const [node2, waiting2] of pending) if (node2 === event.target || node2.contains(event.target)) {
+              waiting2.abort();
+              target.clearTimeout(waiting2.timeout);
+              pending.delete(node2);
             }
           }
           return;
@@ -932,6 +937,7 @@
         config = nextConfig;
         setEnabled();
         syncMode(state);
+        if (!owner) return;
         if (observedOwner !== owner) {
           observedOwner = owner;
           const changed = () => {
@@ -1000,6 +1006,7 @@
       const config = runtime.config, labels = runtime.i18n;
       fail("popupPlayer", () => popups.retireDetached());
       if (!runtime.configReady || state.route?.kind === "excluded") {
+        fail("sidebarRefresh", () => sidebar.reconcile(null, state, owner, config));
         retireOwner();
         if (state.route?.kind === "excluded") fail("popupPlayer", () => popups.dispose());
         return;

@@ -156,6 +156,26 @@ test('disablement and excluded navigation dispose pending following activation',
   assert.equal(f.clicks(), 0);
 });
 
+test('excluded navigation rearms following restoration on return to the same live route', async t => {
+  const f = fixture(t); await f.advance(500);
+  assert.equal(f.clicks(), 1); assert.equal(f.more.getAttribute('aria-expanded'), 'true');
+  f.dom.reconfigure({ url: 'https://chzzk.naver.com/settings/profile' }); runtime(f.dom).reconcile();
+  f.more.setAttribute('aria-expanded', 'false'); await f.advance(1000);
+  f.dom.reconfigure({ url: 'https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }); runtime(f.dom).reconcile();
+  await f.advance(500);
+  assert.equal(f.clicks(), 2); assert.equal(f.more.getAttribute('aria-expanded'), 'true');
+});
+
+test('following OFF and ON while excluded clears a previous manual collapse', async t => {
+  const f = fixture(t); await f.advance(500); f.more.click();
+  assert.equal(f.clicks(), 2); assert.equal(f.more.getAttribute('aria-expanded'), 'false');
+  f.dom.reconfigure({ url: 'https://chzzk.naver.com/settings/profile' }); runtime(f.dom).reconcile();
+  deliver(f.dom, { expandFollowings: false }, 2); deliver(f.dom, { expandFollowings: true }, 3);
+  f.dom.reconfigure({ url: 'https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }); runtime(f.dom).reconcile();
+  await f.advance(500);
+  assert.equal(f.clicks(), 3); assert.equal(f.more.getAttribute('aria-expanded'), 'true');
+});
+
 test('a timer cannot activate the old sidebar after silent SPA navigation before reconciliation', async t => {
   const f = fixture(t); await f.advance(300);
   f.dom.reconfigure({ url: 'https://chzzk.naver.com/settings/profile' });

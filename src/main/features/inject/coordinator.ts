@@ -35,6 +35,7 @@ export function startCoordinator(target: Window): boolean {
     const config = runtime.config, labels = runtime.i18n;
     fail('popupPlayer', () => popups.retireDetached());
     if (!runtime.configReady || state.route?.kind === 'excluded') {
+      fail('sidebarRefresh', () => sidebar.reconcile(null, state, owner, config));
       retireOwner();
       if (state.route?.kind === 'excluded') fail('popupPlayer', () => popups.dispose());
       return;

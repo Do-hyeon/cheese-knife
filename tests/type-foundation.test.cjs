@@ -85,7 +85,7 @@ test('inject runtime contracts are explicit and typechecked', async () => {
     'open(url: string, left: number, top: number, labels: PopupLabels): HTMLElement | null;',
     'retireDetached(): void;',
     'reconcile(container: Element | null, isLive: boolean, owner: ResourceScope, config: RuntimeConfig): void;',
-    'reconcile(root: Element | null, state: RuntimeState, owner: ResourceScope, config: RuntimeConfig): void;',
+    'reconcile(root: Element | null, state: RuntimeState, owner: ResourceScope | null, config: RuntimeConfig): void;',
     'mountOwner(state: RuntimeState, owner: ResourceScope, config: RuntimeConfig, labels: RuntimeLabels): void;',
     'reconcileChannel(state: RuntimeState, owner: ResourceScope): void;',
     'reconcileBanner(state: RuntimeState, owner: ResourceScope): void;',

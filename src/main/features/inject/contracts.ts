@@ -17,7 +17,7 @@ export interface ChatFeature {
 }
 
 export interface SidebarFeature {
-  reconcile(root: Element | null, state: RuntimeState, owner: ResourceScope, config: RuntimeConfig): void;
+  reconcile(root: Element | null, state: RuntimeState, owner: ResourceScope | null, config: RuntimeConfig): void;
   dispose(): void;
 }
 

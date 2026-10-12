@@ -215,6 +215,7 @@ export function createSidebarFeature(runtime: KnifeRuntime, target: Window, adap
   return {
     reconcile(root, state, owner, nextConfig) {
       config = nextConfig; setEnabled(); syncMode(state);
+      if (!owner) return;
       if (observedOwner !== owner) {
         observedOwner = owner;
         const changed = (): void => { syncMode(); record?.sync(); };

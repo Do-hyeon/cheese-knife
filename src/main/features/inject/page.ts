@@ -19,7 +19,7 @@ export function createPageFeature(runtime: KnifeRuntime, target: Window, adapter
   let mounted: ResourceScope | null = null, config: RuntimeConfig = {}, labels: RuntimeLabels = {};
 
   const bindStartTimes = (body: Element, scope: ResourceScope): void => {
-    const pending = new WeakMap<HTMLElement, Pending>(), annotations = new WeakMap<HTMLElement, Annotation>();
+    const pending = new Map<HTMLElement, Pending>(), annotations = new WeakMap<HTMLElement, Annotation>();
     const annotated = new Set<HTMLElement>();
     const annotate = (found: StartTimeTarget, date: string, id: string | null = null): void => {
       const node = found.node;
@@ -40,9 +40,14 @@ export function createPageFeature(runtime: KnifeRuntime, target: Window, adapter
       if (!route) return;
       const found = adapter.page.startTarget(event.target, route);
       if (!found) {
-        if (event.target instanceof browser.Node) for (const node of annotated) if (node === event.target || node.contains(event.target)) {
-          const record = annotations.get(node);
-          if (record && node.dataset.knifeTooltip === record.text) delete node.dataset.knifeTooltip;
+        if (event.target instanceof browser.Node) {
+          for (const node of annotated) if (node === event.target || node.contains(event.target)) {
+            const record = annotations.get(node);
+            if (record && node.dataset.knifeTooltip === record.text) delete node.dataset.knifeTooltip;
+          }
+          for (const [node, waiting] of pending) if (node === event.target || node.contains(event.target)) {
+            waiting.abort(); target.clearTimeout(waiting.timeout); pending.delete(node);
+          }
         }
         return;
       }
