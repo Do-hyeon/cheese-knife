@@ -64,7 +64,7 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어는 같�
 | AF04 | 기능별 모듈 이전 | AF03 | DONE | 생성·strict·설치형 E2E·공개 CI 유지 |
 | AF05 | 이행 종료·공개 게이트 | AF05-A, AF05-B | WAITING-DEPENDENCY | 내부 완료, 공개 설치 수용 대기 |
 | AF05-A | 내부 원본 종료·검증 | AF04 | DONE | 생성·strict·전체 회귀·공개 CI 유지 |
-| AF05-B | 공개 설치·업데이트·롤백 수용 | P09, 차기 AF 배포 준비 | PLAN-REVIEW | 차기 배포 수용 설계·독립 검토 → written-spec 승인; 실제 배포 미승인 |
+| AF05-B | 공개 설치·업데이트·롤백 수용 | P09, 차기 AF 배포 준비 | PLAN-REVIEW | B1 로컬 호환성 계획·검토 → 승인; 전체 수용 기준·실제 배포 미승인 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
 현재 커서: **P09 미검증 범위 고정과 AF05-B 차기 배포 수용 설계**. AF05-A 내부 작업은 PR #22·공개 CI run `38198182595`·merge commit `39558c4`로 완료했다. 게시 CRX는 제출 ZIP의57개 파일 byte 일치와 manifest의 update_url 추가만 확인했고, 패키지·게시 JS 합성 오디오 검사를 통과했다. 승인된 격리 프로필에서 사용자가 native 스토어 설치를 완료했고 설치 파일/출처/권한·실행 JS/CSS46개 byte 일치·JSON/아이콘 내용 대조를 확인했다. 사용자는 기존 시청 Chrome에 로컬 시험판만 있다고 확인했다. 실제 구 스토어 설치본의 업데이트/설정 보존은 검증 대상 부재로 미검증이며 사용자 버전 확인을 반복 요청하지 않는다. 게시 완료 메일의14:55 표시와 실제 처리 시각 미확정을 기록해 시각 자료 대기는 해제했다. 롤백 수용은 남았고 새 격리 프로필의 스토어2.13.3은 차기 업데이트 검증 기준으로 보존한다. 게시된 복구2.13.3과 이후 AF 변경 후보는 서로 다른 산출물이다. AF05 전체와 기능 로드맵 동결은 유지한다.
@@ -219,7 +219,12 @@ AF05-B 공개 수용 — P09와 차기 AF 배포에 의존:
 - [x] [차기 배포 수용 상세 설계](docs/superpowers/specs/2026-10-12-af05b-release-acceptance-design.md) 작성. 기존2.13.3 보존·배포 번호 미정·저장 호환성·동일 ID 격리 전환·실제 스토어 업데이트와 플랫폼 롤백 분리. 잔여 개발·로컬 검증 완료 후 배포 준비 단계에서 번호를 별도 결정/승인.
 - [x] Astra max 독립 설계 검토 Critical0·Important3·Minor2와 주 실행자 보완. native baseline 선행·각 phase payload hash·legacy 정리·finally cleanup·P09/AF05-B 소유권 반영. 수정 후 독립0건 판정이나 실제 전환 PASS를 주장하지 않음.
 - [ ] written-spec 승인: 과거 native2.13.2 경로의 미검증 수용 및 격리 rollback/미실행 플랫폼 rollback의 완료 기준 분리 포함. 승인 전 P09/AF05 완료 기준은 바꾸지 않음.
-- [ ] 상세 구현 계획 작성/검토·사용자 승인과 실행 방식 선택.
+- [x] **B1 / 상세 계획:** [게시 설정 계약 호환성 구현 계획](docs/superpowers/plans/2026-10-12-af05b1-settings-compatibility.md). Git/배포 hash를 고정한4파일과 같은fixture 저장 old→new→old·독립golden·fault/negative control. background/구 UI/native/전체58파일은 검증 범위 밖.
+- [ ] **B1 / 독립 검토:** Astra max 계획 검토와 필요한 주 실행자 보완. 구현·CI fetch 변경은 아직 실행하지 않음.
+- [ ] **B1 / 구현 승인:** 사용자 계획·실행 방식 선택. Native+최종Astra max 권장. 이 승인만으로 과거 미검증 수용·P09/AF05 완료 기준을 바꾸지 않음.
+- [ ] **B1 / 구현·검증:** 출처reader → fixture/compatibility → 전체 기존 게이트 → 최종 검토·CI·병합. 제품2.13.3·root dist·ZIP·프로필·frozen 원장은 보존.
+- [ ] **B2 / 후속 상세 계획·승인:** 전체58파일 payload·실제background/구 UI·bundled Chromium의 동일 프로필/ID 전환·격리 rollback. B1 PASS를B2/native PASS로 합산하지 않음.
+- [ ] **후속 / native preflight·공개 준비:** 관측/설치·제품 버전·스토어 제출·게시 각각 별도 승인. 상세 계획은 앞 단계 근거를 확인한 뒤 작성.
 - [ ] 새 설치·기존 설치 업데이트·설정 보존·롤백 설치 수용.
 - [ ] F00–F05 동결 해제 여부 사용자 승인.
 

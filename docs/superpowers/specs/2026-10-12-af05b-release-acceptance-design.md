@@ -43,6 +43,8 @@
 
 실제 게시2.13.3의 `config.js`, `style-schema.js`, `settings-contract.js`, `settings-broker.js`, `background.js`와 후보 생성 JS를 각각 독립 context에서 실행한다. 정적 타입 검사나 새 원본만 실행한 mock 결과로 이전 버전의 동작을 추정하지 않는다. 기존 settings fixture의 저장/event/CSS 모의를 재사용하되 구현 계획에서 로드 입력 경계를 명시한다.
 
+단계화 제안: [AF05-B1 구현 계획](../plans/2026-10-12-af05b1-settings-compatibility.md)은 위 파일 중 설정 계약4개만 기존 jsdom fixture에서 먼저 실행한다. 고정 게시 commit의raw blob hash와 배포 ZIP entry hash를 모두 검사하며, `config.js`만 원본과 대조한 고정 줄바꿈 위치를 정확히 복원한다. Git object가 없거나hash가 다르면FAIL이고current source로 대체하지 않는다. B1에는 `background.js` IIFE·구 UI·실제 worker/설치가 없으므로 §4 전체·AF05-B 완료를 주장하지 않는다. 전체58파일ZIP과background/UI/설치 전환은B2 이후에 남긴다. B1 기술 계획 승인만으로 §2의 과거 미검증 수용·rollback 완료 기준을 변경하지 않는다.
+
 | 입력군 | 확인할 결과 |
 | --- | --- |
 | 빈 storage | 각 버전의 default snapshot 동일; 예기치 않은 저장/삭제 없음 |
