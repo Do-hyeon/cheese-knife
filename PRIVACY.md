@@ -1,10 +1,10 @@
 # 개인정보처리방침 / Privacy Policy
 
 - 적용 대상: **치즈 나이프 — 커뮤니티 복구판 (Cheese Knife — Community Recovery), 2.13.2 및 2.13.3 후속 시험판**
-- 시행일: **2026-10-08** / 문서 링크·적용 버전 최종 수정일: **2026-10-11**
+- 시행일: **2026-10-08** / 문서 링크·적용 버전 최종 수정일: **2026-10-12**
 - 관리 주체: GitHub 계정 **Do-hyeon**이 관리하는 [커뮤니티 포크](https://github.com/Do-hyeon/cheese-knife/tree/main)
 
-공식 문서 위치는 [main/PRIVACY.md](https://github.com/Do-hyeon/cheese-knife/blob/main/PRIVACY.md)입니다. 기존 `codex/community-store-preview`의 문서 URL은 구버전 안내를 위해 유지하며, 새 위치의 공개 내용 확인 후 스토어 개인정보처리방침 URL을 별도로 변경합니다. 이번 수정은 문서 링크·적용 버전 표기를 정리한 것으로, 아래 데이터 처리 방침을 변경하거나 보안 검증 완료를 선언하지 않습니다.
+공식 문서 위치는 [main/PRIVACY.md](https://github.com/Do-hyeon/cheese-knife/blob/main/PRIVACY.md)입니다. 2026-10-12 현재 게시된 Chrome 웹 스토어도 이 URL을 사용합니다. 이전 작업 브랜치의 문서 URL은 더 이상 유지하지 않으므로 공식 URL을 이용해 주세요. 이번 수정은 문서 위치 안내를 정리한 것으로, 아래 데이터 처리 방침을 변경하거나 보안 검증 완료를 선언하지 않습니다.
 
 이 방침은 비공식 커뮤니티 복구판에 적용됩니다. 원작자의 배포판이나 네이버·치지직의 개인정보처리방침을 대신하지 않습니다.
 
@@ -66,12 +66,12 @@
 ## English
 
 - **Scope:** Cheese Knife — Community Recovery, version 2.13.2 and the 2.13.3 follow-up preview.
-- **Effective:** October 8, 2026. **Document link / version metadata updated:** October 11, 2026.
+- **Effective:** October 8, 2026. **Document link / version metadata updated:** October 12, 2026.
 - **Maintainer:** the community fork maintained by GitHub account **Do-hyeon**.
 
 The community recovery supports Google Chrome only; Firefox is not supported or distributed.
 
-The canonical document URL is [main/PRIVACY.md](https://github.com/Do-hyeon/cheese-knife/blob/main/PRIVACY.md). Existing document URLs on `codex/community-store-preview` are retained for older versions. Update the store's policy URL separately after checking the published document. This revision changes document links and version metadata, not the data-processing policy below, and does not declare completed security verification.
+The canonical document URL is [main/PRIVACY.md](https://github.com/Do-hyeon/cheese-knife/blob/main/PRIVACY.md). The published Chrome Web Store listing uses this URL as of October 12, 2026. URLs on the retired work branch are no longer maintained; use the canonical URL instead. This revision updates document-location guidance, not the data-processing policy below, and does not declare completed security verification.
 
 This policy applies to the unofficial community recovery, not the original author's release or NAVER/CHZZK services.
 

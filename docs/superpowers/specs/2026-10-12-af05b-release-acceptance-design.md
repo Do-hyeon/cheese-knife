@@ -9,7 +9,7 @@
 - 설계 기준 main: `38da1f4fc5fc9f6f363e5b669b2713466ac0dcee`.
 - 게시 제품 기준: `fb15f9675f9ea910e98363635155bc4ff9eb1d2f`, version2.13.3, 확장 ID `cgfddiiffponlciljlfbiecmlagflbpe`.
 - 원본 ZIP SHA-256: `67ae9c1512fef7e0ca651c150e3b4e3052a73e7d96b7ed988adc85114cdb1d51`;58파일. 게시 CRX·설치 시 정규화된 파일은 [P09 기록](../validation/2026-10-12-p09-store-publication.md)의 별도 근거다.
-- 제안 후보 버전: **2.13.4**. 실행 직전 실제 공개/심사/예약 버전보다 높은지 확인하며 사용 중이면 버전을 다시 승인받는다. 같은2.13.3의 변경 ZIP을 제출하지 않는다.
+- **차기 배포 번호는 미정이며 현재 제품 버전은2.13.3이다.** 앞서 제안한 번호는 완료/출시 선언이 아니었지만, 미완료 단계에서 구체적인 번호를 제시해 혼동을 만들었다. 잔여 설계·구현·로컬 검증과 native 기준값 관찰을 마친 뒤 배포 준비 단계에서 실제 공개/심사/예약 버전보다 높은 번호를 제안하고 별도로 승인받는다. 그 전에는 제품 version을 올리거나 릴리즈/제출 ZIP을 만들지 않는다. 같은2.13.3의 변경 ZIP을 제출하지 않는다.
 - 사용자 시험판의 원래 root `dist`, 제출 ZIP, 실제 시청 프로필, 격리 프로필의 native 스토어2.13.3, frozen P02 기준선/원장은 보존한다.
 
 원본/후보의 TypeScript·JS 텍스트가 달라지는 것은 예상된다. 버전·생성 파일 형식 외의 사용자 기능·설정 계약 차이가 발견되면 이를 타입 이전으로 간주하지 않고 원인을 분리해 중지한다.
@@ -32,9 +32,9 @@
 
 - 원본 ZIP은 hash/inventory를 확인한 뒤 새 private 작업 디렉터리에만 해제한다. traversal·duplicate·link·크기 상한을 유지한다. 원본 파일과 현재 root dist에 쓰지 않는다.
 - clean CI의 원본은 [고정 공개 릴리즈 ZIP](https://github.com/Do-hyeon/cheese-knife/releases/download/v2.13.3-community.1/cheese-knife-community-recovery-2.13.3-fb15f967.zip)이다. 공개 API에서201802 bytes·위 SHA-256 digest를 재확인했다. 준비 단계에서 HTTPS 다운로드 후 고정 hash를 검사하고 fixture 실행 중에는 네트워크를 닫는다. hash 불일치/자산 부재는 FAIL이며 최신 main이나 다른 ZIP으로 대체하지 않는다. 현재 checkout의 private output 파일을 CI의 선행 조건으로 삼지 않는다.
-- 후보는 승인된 버전 변경을 포함한 immutable commit에서 `scripts/verify-candidate.mjs`와 기존 `buildChecked`/패키지 검사로 만든다. builder는 대상 source root의 dist를 지우므로 **후보/임시 복제에서만** 호출한다.
+- 개발·호환성 검사 payload는 현재 제품 version2.13.3을 유지한 immutable AF commit에서 `scripts/verify-candidate.mjs`와 기존 `buildChecked`/패키지 검사로 만든다. 개발·검증을 마친 뒤 공개 배포 번호를 승인받은 경우에만 version 변경 commit에서 최종 공개 후보를 다시 생성·검증한다. builder는 대상 source root의 dist를 지우므로 **후보/임시 복제에서만** 호출한다.
 - source SHA, manifest/package version, toolchain/lock 해시, 일반 파일별 SHA-256·inventory, ZIP SHA-256을 한 검증 기록에 연결한다. 두 독립 후보의 파일 해시를 대조한다. 압축 컨테이너의 timestamp 차이를 runtime 재현 실패로 오인하지 않는다.
-- `npm version`, 기존 POSIX `postversion`, `publish:chrome`, 기존 Publish workflow의 수동 dispatch는 사용하지 않는다. 승인된 구현에서 package.json/version·package-lock.json/version 및 packages[""].version·manifest.json/version_name만 명시적으로 갱신하고 검사한다. upload/publish·공개 태그/릴리즈 생성은 별도 사용자 게이트다.
+- `npm version`, 기존 POSIX `postversion`, `publish:chrome`, 기존 Publish workflow의 수동 dispatch는 사용하지 않는다. 개발·검증 완료와 별도 배포 번호 승인 뒤 package.json/version·package-lock.json/version 및 packages[""].version·manifest.json/version_name만 명시적으로 갱신하고 검사한다. upload/publish·공개 태그/릴리즈 생성은 별도 사용자 게이트다.
 - 새 스크립트가 필요하면 전환 시나리오용 단일 runner로 한정한다. `owned-files`, `verify-candidate`, `extension-e2e/harness`, fixture-router와 기존 검사기를 사용하며 일반 배포 엔진·임의 경로 CLI를 만들지 않는다.
 
 ## 4. 저장 호환성: 실제 두 버전의 경계 대조
@@ -63,11 +63,11 @@
 전환 순서:
 
 1. old2.13.3 payload를 설치하고 worker의 manifest version·ID·popup/MAIN 상태를 확인한다. fixture에서 비기본 config/style/parameter를 UI로 저장하고 raw storage/등록 CSS를 관찰한다.
-2. context를 완전히 닫은 후 **동일한 private 설치 경로**의 내용만 후보로 교체한다. 같은 프로필로 후보를 기동하고 version2.13.4·ID 동일·저장값 보존·CSS 재등록·페이지 준비를 확인한다.
-3. 후보 UI로 다른 필드를 저장한 뒤 context를 닫고 이전 코드 기반 rollback payload로 교체한다. 로컬 rollback용 manifest는 후보보다 높은 가상 version2.13.5로 표시하며 원본2.13.3 ZIP은 변경하지 않는다. 이 payload는 스토어에 제출하지 않는다.
+2. context를 완전히 닫은 후 **동일한 private 설치 경로**의 내용만 AF 검사 payload로 교체한다. 테스트용 복사본의 manifest에만 가상 시험 버전 T를 부여하고 같은 프로필에서 실행 버전 T·ID 동일·저장값 보존·CSS 재등록·페이지 준비를 확인한다. T는 공개 배포 번호가 아니며 생성 규칙은 구현 계획에 고정한다. 저장소의 제품 version은2.13.3 그대로 둔다.
+3. 검사 payload UI로 다른 필드를 저장한 뒤 context를 닫고 이전 코드 기반 rollback payload로 교체한다. 로컬 rollback용 manifest에는 T보다 높은 가상 시험 버전 R을 사용하며 원본2.13.3 ZIP은 변경하지 않는다. T/R payload는 스토어에 제출하지 않는다.
 4. 같은 프로필에서 이전 코드·동일 ID·후보가 남긴 raw 저장값·UI·CSS·추가 저장·fresh MAIN 기동을 확인한다.
 
-**각 launch 전과 해당 phase context 종료 후**, 고정 설치 디렉터리의 전체 일반 파일 inventory·SHA-256을 그 phase의 기대 payload와 대조한다. old와 rollback의 runtime·CSS·locale·아이콘·라이선스는 frozen old payload와 정확히 같아야 한다. rollback의 예외는 명시한 manifest version/version_name 값만이며 변형 manifest의 기대 object/hash를 따로 고정한다. candidate는 immutable 후보의 전체 payload와 일치해야 한다. extra/missing/mixed 파일·link·hash 불일치는 동작 결과를 채택하기 전에 FAIL이다. version/ID 표시만으로 이전 코드를 실제 실행했다고 판정하지 않는다.
+**각 launch 전과 해당 phase context 종료 후**, 고정 설치 디렉터리의 전체 일반 파일 inventory·SHA-256을 그 phase의 기대 payload와 대조한다. old와 rollback의 runtime·CSS·locale·아이콘·라이선스는 frozen old payload와 정확히 같아야 한다. AF 검사 payload의 같은 파일들은 immutable AF 소스의 검증된 payload와 일치해야 한다. 가상 T/R의 예외는 명시한 manifest version/version_name 값만이며 변형 manifest의 기대 object/hash를 따로 고정한다. extra/missing/mixed 파일·link·hash 불일치는 동작 결과를 채택하기 전에 FAIL이다. version/ID 표시만으로 이전 코드를 실제 실행했다고 판정하지 않는다.
 
 profile 복사/초기화, uninstall/reinstall, storage snapshot 재주입으로 정상 전환을 흉내 내지 않는다. ID·저장소가 바뀌면 FAIL이다. context 종료/파일 교체 실패는 전환 실패로 기록하며 성공 보고서로 덮지 않는다. 경로 교체는 fresh 작업 디렉터리의 실제 일반 파일만 허용하며 사용자 폴더는 대상이 아니다.
 
@@ -113,12 +113,14 @@ native2.13.3→후보 업데이트는 기존 설치를 제거하거나 새 설�
 
 ## 9. 상태·완료·승인 묶음
 
-- [ ] written-spec 사용자 승인: 버전 제안·비목표·과거 업데이트 미검증의 수용·격리 rollback/미실행 플랫폼 rollback 분리.
+- [ ] written-spec 사용자 승인: 배포 번호 결정 보류·비목표·과거 업데이트 미검증의 수용·격리 rollback/미실행 플랫폼 rollback 분리.
 - [ ] 정확한 파일·fixture·명령·negative control·순차 커밋 단위의 구현 계획 작성/검토와 실행 방식 승인.
-- [ ] immutable 후보2.13.4·저장 호환성·격리 설치 전환/복귀·기존 전체 게이트·독립 최종 품질 검토.
+- [ ] immutable AF 검사 payload·저장 호환성·격리 설치 전환/복귀·기존 전체 게이트·독립 최종 품질 검토.
+- [ ] 기존 native2.13.3의 검사용 설정 조작·관측 승인과 성공한 runtime/seeded 저장 preflight; 미완료면 배포 번호 결정·스토어 제출·게시 대기.
+- [ ] 위 개발·검증과 native 기준값 관찰 완료 후 공개 배포 번호 별도 승인; version 변경을 포함한 최종 산출물의 게이트 재실행.
 - [ ] 한글 PR·CI·병합과 ZIP/version/hash 고정.
-- [ ] 실제 native 검사용 설치/설정 조작 승인과 성공한2.13.3 runtime/seeded 저장 preflight; 미완료면 스토어 제출·게시 금지.
 - [ ] 스토어 제출/수동 게시 각각의 승인과 게시 package 대조.
+- [ ] 신규 native 검사용 프로필의 실제 설치 승인; 기존 업데이트 기준 프로필은 유지.
 - [ ] native 신규 설치·실제2.13.3→후보 업데이트·설정/페이지/오류 수용.
 - [ ] 미검증 이력·플랫폼 rollback 미실행·기타 공개 지원 제한을 남긴 최종 결과 사용자 승인.
 - [ ] 최종 결과 확인 뒤 F00–F05 동결 해제 여부 사용자 승인.
