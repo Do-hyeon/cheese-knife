@@ -219,7 +219,7 @@ P09·AF05-B의 현재 커서는 유지한다. 아래 작업은 기능 로드맵�
 
 - [x] 테스트·fixture와 도구·실행 경계 각각의 Astra max 독립 검토 및 주 실행자 교차 검토.
 - [x] 전면 이전 대신 명시적 JSDoc + `checkJs` 우선, 효과 확인 후 선택적 TS 이전 방향 고정.
-- [ ] **DT00 / PLAN-REVIEW:** 공용 helper의 작은 계약과 기존 소비자 하나를 묶은 상세 구현 계획·범위·별도 개발 타입 설정 검토.
+- [ ] **DT00 / PLAN-REVIEW:** [공용 helper·bridge 계약 검사 상세 계획](docs/superpowers/plans/2026-10-12-dt00-helper-contracts.md) 작성·자체 대조 완료. 선언 의존성·별도 개발 타입 설정·helper 초기화 assertion·CI 연결을 묶어 사용자 계획 검토·승인 대기.
 - [ ] **DT00:** 의도적 오용의 컴파일 거부, 정상·raw 실패 입력, 기존 생성 JS 실행 검사를 유지하는 제한된 실험. Windows·Ubuntu 회귀와 주석·의존성·검사 비용 기록.
 - [ ] **DT00:** 실험 결과에 따라 확대·유지·중단 결정. 의미 있는 검출 없이 전면 변환을 계속하지 않는다.
 - [ ] **DT01 / WAITING-DEPENDENCY:** DT00 효과 확인 후 settings fixture/reply 경계 또는 오디오 report producer·consumer를 별도 작은 단위로 강화. 부분 report·잘못된 입력·독립 기대값·시간/오류 의미 보존.
