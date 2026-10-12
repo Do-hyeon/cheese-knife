@@ -219,9 +219,9 @@ P09·AF05-B의 현재 커서는 유지한다. 아래 작업은 기능 로드맵�
 
 - [x] 테스트·fixture와 도구·실행 경계 각각의 Astra max 독립 검토 및 주 실행자 교차 검토.
 - [x] 전면 이전 대신 명시적 JSDoc + `checkJs` 우선, 효과 확인 후 선택적 TS 이전 방향 고정.
-- [ ] **DT00 / PLAN-REVIEW:** [공용 helper·bridge 계약 검사 상세 계획](docs/superpowers/plans/2026-10-12-dt00-helper-contracts.md) 작성·자체 대조 완료. 선언 의존성·별도 개발 타입 설정·helper 초기화 assertion·CI 연결을 묶어 사용자 계획 검토·승인 대기.
-- [ ] **DT00:** 의도적 오용의 컴파일 거부, 정상·raw 실패 입력, 기존 생성 JS 실행 검사를 유지하는 제한된 실험. Windows·Ubuntu 회귀와 주석·의존성·검사 비용 기록.
-- [ ] **DT00:** 실험 결과에 따라 확대·유지·중단 결정. 의미 있는 검출 없이 전면 변환을 계속하지 않는다.
+- [x] **DT00 / 계획:** [공용 helper·bridge 계약 검사 상세 계획](docs/superpowers/plans/2026-10-12-dt00-helper-contracts.md) 작성·자체 대조와 사용자 승인 완료.
+- [x] **DT00 / 로컬 실험:** 의도적 계약 오용5종의 컴파일 거부와 정상/raw 대조, 기존 생성 JS 실행 검사 유지. 집중53/53·공개조건 전체815/815·설치형 positive/negative 통과. [검증 기록](docs/superpowers/validation/2026-10-12-dt00-helper-contracts.md)에 의존성·단언·비용·제외 범위 고정. 최종 공개 CI와 독립 검토는 해당 PR 마지막 커밋 기준으로 확인한다.
+- [x] **DT00 / 판단:** 제한된 공용 계약 검사는 유지한다. 전체 변환으로 자동 확대하지 않으며 DT01은 별도 작은 설계 단위로 진행한다.
 - [ ] **DT01 / WAITING-DEPENDENCY:** DT00 효과 확인 후 settings fixture/reply 경계 또는 오디오 report producer·consumer를 별도 작은 단위로 강화. 부분 report·잘못된 입력·독립 기대값·시간/오류 의미 보존.
 - [ ] **DT02 / WAITING-DEPENDENCY:** JSDoc보다 명확한 이점이 입증된 파일만 native `.mts`/`.cts` 검토. 실행 경로·테스트 발견·기존 감사 대상의 inventory·snapshot·ESLint·provenance 누락 방지와 별도 strict 검사를 함께 확보. 기존 감사 제외 범위를 확대하지 않는다.
 

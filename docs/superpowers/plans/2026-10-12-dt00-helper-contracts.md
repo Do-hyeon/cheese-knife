@@ -1,6 +1,6 @@
 # DT00 — 공용 테스트 helper 계약 검사 구현 계획
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. 이 문서는 승인 대기 초안이며 구현 완료 기록이 아니다.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. 사용자가 2026-10-12에 이 계획과 Native 실행을 승인했다. 검증 수치·제외 범위는 [DT00 검증 기록](../validation/2026-10-12-dt00-helper-contracts.md)으로 분리한다.
 
 **Goal:** 공용 helper와 작은 기존 소비자를 strict `checkJs`로 검사하고, 의도적 오용 검출과 기존 실패 입력·실행 검증 보존을 입증한다.
 

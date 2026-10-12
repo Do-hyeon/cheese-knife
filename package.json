@@ -14,6 +14,7 @@
     "generate:main": "node scripts/main-runtime.mjs --write",
     "check:main-runtime": "node scripts/main-runtime.mjs",
     "typecheck": "tsc -p tsconfig.json",
+    "typecheck:development": "tsc -p tsconfig.development.json",
     "check:build-proof": "node scripts/check-build-proof.mjs",
     "test:e2e": "node scripts/check-installed-extension.mjs",
     "test:e2e:negative": "node scripts/check-installed-extension-negative.mjs",
@@ -24,6 +25,8 @@
   },
   "devDependencies": {
     "@types/chrome": "0.2.8",
+    "@types/jsdom": "30.0.0",
+    "@types/node": "24.19.2",
     "chrome-webstore-upload-cli": "4.0.0-0",
     "esbuild": "0.28.2",
     "eslint": "10.12.0",
