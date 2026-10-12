@@ -21,15 +21,18 @@ interface HlsConstructor {
   Events: { ERROR: string; MANIFEST_PARSED: string };
 }
 type PreviewRuntime = KnifeRuntime & { Hls?: HlsConstructor };
-export interface PlaybackIntent extends PreviewIntent { invalidate(): void }
+export interface PlaybackIntent extends PreviewIntent {
+  token: number;
+  active(token: number): boolean;
+  invalidate(): void;
+}
 export interface PreviewPlaybackSession extends PreviewSession {
+  active(): boolean;
   play(manual?: boolean): Promise<void>;
   toggle(): void;
   refresh(): void;
   setVolume(): void;
 }
-
-let sessionSequence = 0;
 
 function own(record: unknown, key: string): unknown {
   if (typeof record !== 'object' || record === null) return undefined;
@@ -57,6 +60,10 @@ function volume(runtime: KnifeRuntime): number {
   return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(1, value / 100)) : 0.05;
 }
 
+function status(runtime: KnifeRuntime, feature: string, state: 'pending' | 'ready' | 'limited', reason = ''): void {
+  try { runtime.setStatus(feature, state, reason); } catch {}
+}
+
 export function createPlayback(runtime: KnifeRuntime, panel: PreviewPanel, intent: PlaybackIntent, info: PreviewLiveInfo): PreviewPlaybackSession {
   const target = intent.anchor.ownerDocument.defaultView as BrowserWindow | null;
   if (!target || !panel.player || !panel.root || !panel.audioNote) throw new Error('preview-window-unavailable');
@@ -72,7 +79,7 @@ export function createPlayback(runtime: KnifeRuntime, panel: PreviewPanel, inten
   video.style.cssText += ';width:100%;height:100%;object-fit:contain;background:#000;';
   panel.player.append(video);
   const session: PreviewPlaybackSession = {
-    token: ++sessionSequence, abort: controller, timers, backend: null, media: video,
+    token: intent.token, abort: controller, timers, backend: null, media: video,
     dispose() {
       if (disposed) return;
       disposed = true; controller.abort();
@@ -82,20 +89,22 @@ export function createPlayback(runtime: KnifeRuntime, panel: PreviewPanel, inten
       try { video.pause(); video.removeAttribute('src'); video.srcObject = null; video.load(); } catch {}
       video.remove(); session.media = null;
     },
+    active: () => false,
     play: async () => {}, toggle: () => {}, refresh: () => {}, setVolume: () => { video.volume = volume(runtime); },
   };
   const later = (callback: () => void, delay: number): number => {
     const timer = target.setTimeout(() => { timers.delete(timer); callback(); }, delay); timers.add(timer); return timer;
   };
   const ownsAnchor = (): boolean => !!runtime.state.sidebar?.isConnected && intent.anchor.isConnected && runtime.state.sidebar.contains(intent.anchor);
-  const active = (): boolean => !disposed && !failed && session.media === video && ownsAnchor() && intent.anchor.href === intent.href &&
-    target.location.pathname === intent.route && runtime.config.preview === true && runtime.configReady && !target.document.hidden;
+  session.active = (): boolean => !disposed && !failed && session.media === video && intent.active(session.token) && ownsAnchor() &&
+    intent.anchor.href === intent.href && target.location.pathname === intent.route && runtime.config.preview === true &&
+    runtime.configReady && !target.document.hidden && panel.root?.isConnected === true;
   const note = (event: { type: string; readonly [key: string]: unknown }): void => {
     panel.diagnostics.events.push(event);
     if (panel.diagnostics.events.length > 20) panel.diagnostics.events.shift();
   };
   const sample = (type: string): void => {
-    if (!active()) return;
+    if (!session.active()) return;
     let ahead = 0;
     for (let index = 0; index < video.buffered.length; index++) {
       if (video.buffered.start(index) <= video.currentTime && video.buffered.end(index) >= video.currentTime) ahead = video.buffered.end(index) - video.currentTime;
@@ -104,15 +113,15 @@ export function createPlayback(runtime: KnifeRuntime, panel: PreviewPanel, inten
       width: video.videoWidth, height: video.videoHeight, paused: video.paused });
   };
   const fail = (reason = 'stream-playback-unavailable'): void => {
-    if (!active()) return;
+    if (!session.active()) return;
     failed = true; intent.invalidate();
     try { session.backend?.destroy(); video.pause(); video.removeAttribute('src'); video.load(); } catch {}
     session.backend = null; video.style.visibility = 'hidden'; panel.audioNote!.hidden = true;
-    runtime.setStatus('livePreview', 'limited', reason);
+    status(runtime, 'livePreview', 'limited', reason);
   };
   if (!path) {
     failed = true; video.remove(); session.media = null;
-    runtime.setStatus('livePreview', 'limited', info.adult ? 'age-restricted-stream' : 'stream-unavailable');
+    status(runtime, 'livePreview', 'limited', info.adult ? 'age-restricted-stream' : 'stream-unavailable');
     return session;
   }
 
@@ -131,14 +140,14 @@ export function createPlayback(runtime: KnifeRuntime, panel: PreviewPanel, inten
   let lastTime = 0;
   let lastProgress = 0;
   const watchProgress = (): void => {
-    if (!active()) return;
+    if (!session.active()) return;
     const now = target.performance.now();
     if (Math.abs(video.currentTime - lastTime) > 0.01) lastProgress = now;
     else if (now - lastProgress >= 10000) { sample('stalled-timeout'); fail('stream-stalled'); return; }
     lastTime = video.currentTime; later(watchProgress, 1000);
   };
   const renderAudioNote = (): void => {
-    if (!active()) return;
+    if (!session.active()) return;
     const element = panel.audioNote!;
     element.hidden = !soundBlocked;
     const text = soundBlocked ? (runtime.i18n.previewAudioBlocked || 'The browser blocked automatic sound. Playing muted.') +
@@ -146,14 +155,14 @@ export function createPlayback(runtime: KnifeRuntime, panel: PreviewPanel, inten
     if (element.textContent !== text) element.textContent = text;
   };
   const play = async (manual = false): Promise<void> => {
-    if (!active() || !dataReady || (startUnmuted && panel.root!.hidden) ||
+    if (!session.active() || !dataReady || (startUnmuted && panel.root!.hidden) ||
       (!manual && (playingRequest?.attempt === attempt || (loaded && !video.paused)))) return;
     const request = { attempt, audioRevision }; playingRequest = request;
-    const currentRequest = (): boolean => active() && request.attempt === attempt;
+    const currentRequest = (): boolean => session.active() && request.attempt === attempt;
     const currentAudio = (): boolean => currentRequest() && request.audioRevision === audioRevision;
     const complete = (): void => {
       if (!currentRequest()) return;
-      loaded = true; video.style.visibility = ''; runtime.setStatus('livePreview', 'ready');
+      loaded = true; video.style.visibility = ''; status(runtime, 'livePreview', 'ready');
       if (currentAudio() && !desiredMuted && !video.muted && !video.paused) {
         policyBlockRevision = null; soundBlocked = false; renderAudioNote();
       } else if (currentAudio() && video.muted && policyBlockRevision === audioRevision) {
@@ -175,7 +184,7 @@ export function createPlayback(runtime: KnifeRuntime, panel: PreviewPanel, inten
   session.play = play;
   session.refresh = renderAudioNote;
   session.toggle = () => {
-    if (!active()) return;
+    if (!session.active()) return;
     audioRevision++; desiredMuted = !desiredMuted;
     video.volume = volume(runtime); video.muted = startUnmuted && panel.root!.hidden ? true : desiredMuted;
     if (!desiredMuted || video.paused) void play(true);
@@ -184,16 +193,16 @@ export function createPlayback(runtime: KnifeRuntime, panel: PreviewPanel, inten
   video.addEventListener('error', () => { sample('media-error'); if (!session.backend) fail(); });
   for (const event of ['waiting', 'stalled', 'playing', 'loadedmetadata']) video.addEventListener(event, () => {
     sample(event);
-    if (!active()) return;
-    if (event === 'playing') runtime.setStatus('livePreview', 'ready');
-    else if (event === 'waiting' || event === 'stalled') runtime.setStatus('livePreview', 'pending', 'stream-buffering');
+    if (!session.active()) return;
+    if (event === 'playing') status(runtime, 'livePreview', 'ready');
+    else if (event === 'waiting' || event === 'stalled') status(runtime, 'livePreview', 'pending', 'stream-buffering');
   });
   try {
     if (Hls?.isSupported()) {
       const hls = session.backend = new Hls({ enableWorker: false, autoStartLoad: false, capLevelToPlayerSize: true,
         maxBufferLength: 8, maxMaxBufferLength: 16, backBufferLength: 0 });
       hls.on(Hls.Events.ERROR, (_event, data) => {
-        if (!active() || session.backend !== hls) return;
+        if (!session.active() || session.backend !== hls) return;
         const info = errorInfo(data);
         note({ type: info.type, details: info.details, fatal: info.fatal, status: info.status });
         if (!info.fatal) return;
@@ -203,10 +212,10 @@ export function createPlayback(runtime: KnifeRuntime, panel: PreviewPanel, inten
         if (denied || recoveries >= 2 || (!mediaFailure && !networkFailure)) { fail(); return; }
         recoveries++; attempt++;
         const recoveryAttempt = attempt;
-        runtime.setStatus('livePreview', 'pending', 'stream-recovering');
+        status(runtime, 'livePreview', 'pending', 'stream-recovering');
         note({ type: 'recovery', attempt: recoveries, reason: mediaFailure ? 'media' : 'network' });
         const recover = (): void => {
-          if (!active() || session.backend !== hls || recoveryAttempt !== attempt) return;
+          if (!session.active() || session.backend !== hls || recoveryAttempt !== attempt) return;
           try {
             if (mediaFailure) { const position = video.currentTime; hls.recoverMediaError(); if (position === 0) hls.startLoad(); }
             else hls.startLoad();
@@ -215,7 +224,7 @@ export function createPlayback(runtime: KnifeRuntime, panel: PreviewPanel, inten
         if (mediaFailure) recover(); else later(recover, 500);
       });
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        if (!active() || session.backend !== hls) return;
+        if (!session.active() || session.backend !== hls) return;
         note({ type: 'manifestParsed', levels: hls.levels.map(level => ({
           height: typeof level.height === 'number' && Number.isFinite(level.height) ? level.height : null,
           videoCodec: code(level.videoCodec), audioCodec: code(level.audioCodec),
@@ -235,8 +244,8 @@ export function createPlayback(runtime: KnifeRuntime, panel: PreviewPanel, inten
       hls.loadSource(path); hls.attachMedia(video);
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) video.src = path;
     else { fail(); return session; }
-    runtime.setStatus('livePreview', 'pending', 'stream-loading');
-    later(() => { if (active() && !loaded) fail(); }, 15000);
+    status(runtime, 'livePreview', 'pending', 'stream-loading');
+    later(() => { if (session.active() && !loaded) fail(); }, 15000);
   } catch { fail(); }
   return session;
 }

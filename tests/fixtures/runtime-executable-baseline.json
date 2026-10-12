@@ -12,7 +12,7 @@
   "web/inject.js": "da2fb147cde91953c7bd26f1d23e852185cb0d700d98104aefcaf6c1570237ee",
   "web/main.js": "22cd76c2a41743ca2886dee311a9a6431a013d0de2fd97bac4881d8b58ba4421",
   "web/player.js": "e1c809db8c90368c3199c20a2ace88f95851d013f383c2ca30e59d9e16ff9835",
-  "web/preview.js": "c3bdf35b048221c290925f00a5629dba83cfc7bcaafa981fa88f96b0e77078ed",
+  "web/preview.js": "f0ac8c5b80d785c679f42a026c73571a3e374af7b384582d60c1dd64690ba732",
   "web/runtime.js": "7d965f3deedf55d9d0b3e7edf6e3922c7774e97402c477499b225bcd5ebd5cd2",
   "web/site-adapter.js": "766b20895ca8cfe58217afceb6d7cd566ac9407e0398f05aaf847db3ffbf1ae7"
 }

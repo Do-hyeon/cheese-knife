@@ -76,7 +76,6 @@
   }
 
   // src/main/features/preview/playback.ts
-  var sessionSequence = 0;
   function own(record, key) {
     if (typeof record !== "object" || record === null) return void 0;
     const descriptor = Object.getOwnPropertyDescriptor(record, key);
@@ -87,17 +86,23 @@
   }
   function errorInfo(value) {
     const response = own(value, "response");
-    const status = own(response, "code");
+    const status3 = own(response, "code");
     return {
       type: code(own(value, "type")),
       details: code(own(value, "details")),
       fatal: own(value, "fatal") === true,
-      status: typeof status === "number" && Number.isFinite(status) ? status : null
+      status: typeof status3 === "number" && Number.isFinite(status3) ? status3 : null
     };
   }
   function volume(runtime) {
     const value = runtime.config.previewVolume;
     return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.min(1, value / 100)) : 0.05;
+  }
+  function status(runtime, feature, state, reason = "") {
+    try {
+      runtime.setStatus(feature, state, reason);
+    } catch {
+    }
   }
   function createPlayback(runtime, panel, intent, info) {
     const target = intent.anchor.ownerDocument.defaultView;
@@ -118,7 +123,7 @@
     video.style.cssText += ";width:100%;height:100%;object-fit:contain;background:#000;";
     panel.player.append(video);
     const session = {
-      token: ++sessionSequence,
+      token: intent.token,
       abort: controller,
       timers,
       backend: null,
@@ -144,6 +149,7 @@
         video.remove();
         session.media = null;
       },
+      active: () => false,
       play: async () => {
       },
       toggle: () => {
@@ -163,13 +169,13 @@
       return timer;
     };
     const ownsAnchor = () => !!runtime.state.sidebar?.isConnected && intent.anchor.isConnected && runtime.state.sidebar.contains(intent.anchor);
-    const active = () => !disposed && !failed && session.media === video && ownsAnchor() && intent.anchor.href === intent.href && target.location.pathname === intent.route && runtime.config.preview === true && runtime.configReady && !target.document.hidden;
+    session.active = () => !disposed && !failed && session.media === video && intent.active(session.token) && ownsAnchor() && intent.anchor.href === intent.href && target.location.pathname === intent.route && runtime.config.preview === true && runtime.configReady && !target.document.hidden && panel.root?.isConnected === true;
     const note = (event) => {
       panel.diagnostics.events.push(event);
       if (panel.diagnostics.events.length > 20) panel.diagnostics.events.shift();
     };
     const sample = (type) => {
-      if (!active()) return;
+      if (!session.active()) return;
       let ahead = 0;
       for (let index = 0; index < video.buffered.length; index++) {
         if (video.buffered.start(index) <= video.currentTime && video.buffered.end(index) >= video.currentTime) ahead = video.buffered.end(index) - video.currentTime;
@@ -185,7 +191,7 @@
       });
     };
     const fail = (reason = "stream-playback-unavailable") => {
-      if (!active()) return;
+      if (!session.active()) return;
       failed = true;
       intent.invalidate();
       try {
@@ -198,13 +204,13 @@
       session.backend = null;
       video.style.visibility = "hidden";
       panel.audioNote.hidden = true;
-      runtime.setStatus("livePreview", "limited", reason);
+      status(runtime, "livePreview", "limited", reason);
     };
     if (!path) {
       failed = true;
       video.remove();
       session.media = null;
-      runtime.setStatus("livePreview", "limited", info.adult ? "age-restricted-stream" : "stream-unavailable");
+      status(runtime, "livePreview", "limited", info.adult ? "age-restricted-stream" : "stream-unavailable");
       return session;
     }
     let attempt = 0;
@@ -222,7 +228,7 @@
     let lastTime = 0;
     let lastProgress = 0;
     const watchProgress = () => {
-      if (!active()) return;
+      if (!session.active()) return;
       const now = target.performance.now();
       if (Math.abs(video.currentTime - lastTime) > 0.01) lastProgress = now;
       else if (now - lastProgress >= 1e4) {
@@ -234,23 +240,23 @@
       later(watchProgress, 1e3);
     };
     const renderAudioNote = () => {
-      if (!active()) return;
+      if (!session.active()) return;
       const element = panel.audioNote;
       element.hidden = !soundBlocked;
       const text = soundBlocked ? (runtime.i18n.previewAudioBlocked || "The browser blocked automatic sound. Playing muted.") + (runtime.config.rightClickToUnmute === true ? ` ${runtime.i18n.previewAudioRightClick || "Right-click the sidebar target to unmute."}` : "") : "";
       if (element.textContent !== text) element.textContent = text;
     };
     const play = async (manual = false) => {
-      if (!active() || !dataReady || startUnmuted && panel.root.hidden || !manual && (playingRequest?.attempt === attempt || loaded && !video.paused)) return;
+      if (!session.active() || !dataReady || startUnmuted && panel.root.hidden || !manual && (playingRequest?.attempt === attempt || loaded && !video.paused)) return;
       const request = { attempt, audioRevision };
       playingRequest = request;
-      const currentRequest = () => active() && request.attempt === attempt;
+      const currentRequest = () => session.active() && request.attempt === attempt;
       const currentAudio = () => currentRequest() && request.audioRevision === audioRevision;
       const complete = () => {
         if (!currentRequest()) return;
         loaded = true;
         video.style.visibility = "";
-        runtime.setStatus("livePreview", "ready");
+        status(runtime, "livePreview", "ready");
         if (currentAudio() && !desiredMuted && !video.muted && !video.paused) {
           policyBlockRevision = null;
           soundBlocked = false;
@@ -291,7 +297,7 @@
     session.play = play;
     session.refresh = renderAudioNote;
     session.toggle = () => {
-      if (!active()) return;
+      if (!session.active()) return;
       audioRevision++;
       desiredMuted = !desiredMuted;
       video.volume = volume(runtime);
@@ -308,9 +314,9 @@
     });
     for (const event of ["waiting", "stalled", "playing", "loadedmetadata"]) video.addEventListener(event, () => {
       sample(event);
-      if (!active()) return;
-      if (event === "playing") runtime.setStatus("livePreview", "ready");
-      else if (event === "waiting" || event === "stalled") runtime.setStatus("livePreview", "pending", "stream-buffering");
+      if (!session.active()) return;
+      if (event === "playing") status(runtime, "livePreview", "ready");
+      else if (event === "waiting" || event === "stalled") status(runtime, "livePreview", "pending", "stream-buffering");
     });
     try {
       if (Hls?.isSupported()) {
@@ -323,7 +329,7 @@
           backBufferLength: 0
         });
         hls.on(Hls.Events.ERROR, (_event, data) => {
-          if (!active() || session.backend !== hls) return;
+          if (!session.active() || session.backend !== hls) return;
           const info2 = errorInfo(data);
           note({ type: info2.type, details: info2.details, fatal: info2.fatal, status: info2.status });
           if (!info2.fatal) return;
@@ -337,10 +343,10 @@
           recoveries++;
           attempt++;
           const recoveryAttempt = attempt;
-          runtime.setStatus("livePreview", "pending", "stream-recovering");
+          status(runtime, "livePreview", "pending", "stream-recovering");
           note({ type: "recovery", attempt: recoveries, reason: mediaFailure ? "media" : "network" });
           const recover = () => {
-            if (!active() || session.backend !== hls || recoveryAttempt !== attempt) return;
+            if (!session.active() || session.backend !== hls || recoveryAttempt !== attempt) return;
             try {
               if (mediaFailure) {
                 const position = video.currentTime;
@@ -355,7 +361,7 @@
           else later(recover, 500);
         });
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          if (!active() || session.backend !== hls) return;
+          if (!session.active() || session.backend !== hls) return;
           note({ type: "manifestParsed", levels: hls.levels.map((level) => ({
             height: typeof level.height === "number" && Number.isFinite(level.height) ? level.height : null,
             videoCodec: code(level.videoCodec),
@@ -378,9 +384,9 @@
         fail();
         return session;
       }
-      runtime.setStatus("livePreview", "pending", "stream-loading");
+      status(runtime, "livePreview", "pending", "stream-loading");
       later(() => {
-        if (active() && !loaded) fail();
+        if (session.active() && !loaded) fail();
       }, 15e3);
     } catch {
       fail();
@@ -423,12 +429,12 @@
     if (own2(body, "code") !== 200) return null;
     const content = own2(body, "content");
     if (typeof content !== "object" || content === null) return null;
-    const status = own2(content, "status");
-    if (typeof status !== "string") return null;
+    const status3 = own2(content, "status");
+    if (typeof status3 !== "string") return null;
     const adult = own2(content, "adult");
     const openDate = own2(content, "openDate");
     return {
-      status,
+      status: status3,
       adult: adult === true,
       openDate: typeof openDate === "string" ? openDate : null,
       image: https(own2(content, "liveImageUrl")),
@@ -437,6 +443,12 @@
   }
   function configuredNumber(value, fallback) {
     return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+  }
+  function status2(runtime, feature, state, reason = "") {
+    try {
+      runtime.setStatus(feature, state, reason);
+    } catch {
+    }
   }
   function installPreview(target) {
     const browser = target;
@@ -462,7 +474,7 @@
       return timer;
     };
     const ownsAnchor = (anchor) => !!runtime.state.sidebar?.isConnected && anchor.isConnected && runtime.state.sidebar.contains(anchor);
-    const active = (token, intent) => token === generation && current === intent && ownsAnchor(intent.anchor) && intent.anchor.href === intent.href && browser.location.pathname === intent.route && runtime.config.preview === true && !browser.document.hidden && runtime.configReady;
+    const active = (token, intent) => !scope.disposed && token === generation && current === intent && ownsAnchor(intent.anchor) && intent.anchor.href === intent.href && browser.location.pathname === intent.route && runtime.config.preview === true && !browser.document.hidden && runtime.configReady;
     const cleanup = () => {
       generation++;
       request?.abort();
@@ -493,13 +505,16 @@
         const hoverStarted = browser.Date.now();
         const id = url.pathname.match(/[a-f0-9]{32}/i)?.[0];
         if (!id) return;
-        const intent = current = {
+        let intent;
+        intent = current = {
           id,
           href,
           anchor,
           route: browser.location.pathname,
           live: runtime.config.livePreview === true,
           startUnmuted: runtime.config.previewStartUnmuted === true,
+          token,
+          active: (candidate) => active(candidate, intent),
           invalidate: () => cache.delete(id)
         };
         const pending = request = new browser.AbortController();
@@ -525,7 +540,7 @@
             }
           }
         } catch {
-          if (active(token, intent)) runtime.setStatus("livePreview", "limited", "live-detail-unavailable");
+          if (active(token, intent)) status2(runtime, "livePreview", "limited", "live-detail-unavailable");
           return;
         } finally {
           browser.clearTimeout(timeout);
@@ -551,7 +566,7 @@
           if (!active(token, intent)) return;
           panel.show();
           updateUptime();
-          runtime.setStatus("preview", "ready");
+          status2(runtime, "preview", "ready");
           if (intent.startUnmuted) void session?.play();
         }, Math.max(0, hoverStarted + delay - browser.Date.now()));
       },

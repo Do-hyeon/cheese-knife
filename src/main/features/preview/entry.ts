@@ -53,6 +53,10 @@ function configuredNumber(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
+function status(runtime: KnifeRuntime, feature: string, state: 'ready' | 'limited', reason = ''): void {
+  try { runtime.setStatus(feature, state, reason); } catch {}
+}
+
 export function installPreview(target: Window): PreviewController | null {
   const browser = target as BrowserWindow;
   const key = browser.Symbol.for('cheese-knife.runtime.v1');
@@ -72,7 +76,7 @@ export function installPreview(target: Window): PreviewController | null {
     const timer = browser.setTimeout(() => { timers.delete(timer); callback(); }, delay); timers.add(timer); return timer;
   };
   const ownsAnchor = (anchor: HTMLAnchorElement): boolean => !!runtime.state.sidebar?.isConnected && anchor.isConnected && runtime.state.sidebar.contains(anchor);
-  const active = (token: number, intent: PreviewIntent): boolean => token === generation && current === intent && ownsAnchor(intent.anchor) &&
+  const active = (token: number, intent: PreviewIntent): boolean => !scope.disposed && token === generation && current === intent && ownsAnchor(intent.anchor) &&
     intent.anchor.href === intent.href && browser.location.pathname === intent.route && runtime.config.preview === true &&
     !browser.document.hidden && runtime.configReady;
   const cleanup = (): void => {
@@ -98,9 +102,12 @@ export function installPreview(target: Window): PreviewController | null {
       const hoverStarted = browser.Date.now();
       const id = url.pathname.match(/[a-f0-9]{32}/i)?.[0];
       if (!id) return;
-      const intent: PlaybackIntent = current = {
+      let intent: PlaybackIntent;
+      intent = current = {
         id, href, anchor, route: browser.location.pathname, live: runtime.config.livePreview === true,
         startUnmuted: runtime.config.previewStartUnmuted === true,
+        token,
+        active: candidate => active(candidate, intent),
         invalidate: () => cache.delete(id),
       };
       const pending = request = new browser.AbortController();
@@ -124,7 +131,7 @@ export function installPreview(target: Window): PreviewController | null {
           }
         }
       } catch {
-        if (active(token, intent)) runtime.setStatus('livePreview', 'limited', 'live-detail-unavailable');
+        if (active(token, intent)) status(runtime, 'livePreview', 'limited', 'live-detail-unavailable');
         return;
       } finally { browser.clearTimeout(timeout); timers.delete(timeout); }
       if (!active(token, intent)) return;
@@ -145,7 +152,7 @@ export function installPreview(target: Window): PreviewController | null {
       const delay = Math.max(100, Math.min(3000, configuredNumber(runtime.config.previewDelay, 1) * 1000 || 1000));
       later(() => {
         if (!active(token, intent)) return;
-        panel.show(); updateUptime(); runtime.setStatus('preview', 'ready');
+        panel.show(); updateUptime(); status(runtime, 'preview', 'ready');
         if (intent.startUnmuted) void session?.play();
       }, Math.max(0, hoverStarted + delay - browser.Date.now()));
     },
