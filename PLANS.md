@@ -65,10 +65,10 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어는 같�
 | AF05 | 이행 종료·공개 게이트 | AF05-A, AF05-B | WAITING-DEPENDENCY | 내부 완료, 공개 설치 수용 대기 |
 | AF05-A | 내부 원본 종료·검증 | AF04 | DONE | 생성·strict·전체 회귀·공개 CI 유지 |
 | AF05-B | 공개 설치·업데이트·롤백 수용 | P09, 차기 AF 배포 준비 | WAITING-USER | B1 완료, B2 설계·계획 보존; DT01-B 우선 후 정합성 확인·구현 승인. 전체 수용 기준·실제 배포 미승인 |
-| DT01-B | 오디오 quality report 타입 계약 | DT01-A 완료·설계/실행 승인 | DOING | Native 두 task 구현·격리 검증·최종 Astra max를 한 PR에 통합; B2보다 작업 우선 |
+| DT01-B | 오디오 quality report 타입 계약 | DT01-A 완료·설계/실행 승인 | DONE | 구현·격리 검증·Astra max·PR #40 공개 CI 확인; 최종 head checks·병합 상태는 해당 PR 기준 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **DT01-B 구현·격리 검증·Astra max 완료, 최종 공개 CI/통합 진행**. 두 task와 문서 갱신을 한 PR로 묶는다. 기존 설치형 runner의 disposable profile 정리 한계는 승인 범위에 포함됐다. B2는 보류하며 DT01-C를 선행 조건으로 추가하지 않는다.
+현재 커서: **AF05-B2 계획 정합성 재확인**. DT01-B 두 task·검증·최종 검토·문서 갱신을 [PR #40](https://github.com/Do-hyeon/cheese-knife/pull/40)에 묶었고 공개 CI run `38282283191`을 확인했다. 문서 갱신 후 최종 head checks 성공일 때만 승인 범위에서 병합한다. 최신 통합 상태는 해당 PR의 checks·merge 상태가 기준이다. B2 구현·실행 승인은 별도이며 DT01-C를 선행 조건으로 추가하지 않는다.
 
 B1은 PR #36 최종 CI run `38255250513`과 merge `b38ec388`로 완료했다. B2 설계·계획은 PR #37로 병합됐으며 최초 Astra max Critical0·Important3·Minor1 보완 기록과 구현·실행 승인 게이트를 보존한다. 수정 후 독립0건/실제전환PASS/native update 수용은 아니다. P09의 게시2.13.3·격리 신규 설치 기준은 보존하며 과거 업데이트·실제 롤백 수용은 미검증이다. AF05 전체와 기능 로드맵 동결은 유지한다.
 
@@ -273,7 +273,7 @@ AF05-B 공개 수용 — P09와 차기 AF 배포에 의존:
 - [x] **DT01-B / 공격적 계획 검토·보완:** fresh Astra max 최초 Critical0·Important1·Minor1. 기존 runner의 disposable profile cleanup 한계를 승인/증거 범위에 명시하고 weak-alias 검사는 구조 대조·정규compiler4회로 구체화했다. [계획 검토 기록](docs/superpowers/validation/2026-10-13-dt01b-plan-review.md). 수정 후 독립0건·구현/신규proof PASS는 아님.
 - [x] **DT01-B / 계획·실행 방식 승인:** 사용자2026-10-13 Native2task 순차 구현·격리 후보 검사·최종 Astra max와 기존 설치형 runner의 종료 미확인 시 disposable profile 삭제 가능 한계를 함께 승인. root dist/실제 시청/native 기준 프로필 보존; 기능 negative PASS와 cleanup 증거 분리.
 - [x] **DT01-B / 구현·격리 검증·최종 검토:** 정상/partial/raw oracle·20개 정적 오용·내부5곳 any control, 집중132/132·전체990개 중989pass/실패0/기존skip1, 합성14/18/12·설치positive/negative 확인. Astra max 최종 Critical0·Important0·Minor0. [검증 기록](docs/superpowers/validation/2026-10-13-dt01b-quality-report-contracts.md). 제품2.13.3·root dist·ZIP·동결 증거 보존.
-- [ ] **DT01-B / 공개 CI/통합:** 같은 PR의 최종 head Windows/Ubuntu foundation·전체 verify 성공 후 승인 범위에서 병합. 이후 B2 정합성 재확인; B2 구현·실행 승인은 별도.
+- [x] **DT01-B / 공개 CI/통합 게이트:** [PR #40](https://github.com/Do-hyeon/cheese-knife/pull/40)의 `283c022`에서 [run 38282283191](https://github.com/Do-hyeon/cheese-knife/actions/runs/38282283191) Windows/Ubuntu foundation·전체 verify 통과. 문서 갱신 후 최종 head checks 성공시에만 승인 범위에서 병합하며 최신 결과·병합 여부는 해당 PR 기준. 이후 B2 정합성 재확인; B2 구현·실행 승인은 별도.
 - [ ] **DT01-C / WAITING-DEPENDENCY:** artifact 부분 report projection·comparison과 owned-files 연결은 별도 설계. 기존 부분 report 허용·비교 허용치·감사 대상 보존.
 - [ ] **DT01-S / BACKLOG-BLOCKED:** settings fixture/reply는 별도 유지보수 후보로 보류하며 오디오 작업에 함께 끌어오지 않는다.
 - [ ] **NUM01 / PLAN-REVIEW:** rmsEnvelope의 NaN sampleRate/windowMs 입력에서 NaN·Infinity 결과가 남는 기존 한계 확인. 타입 이전과 분리한 숫자 입력 오류 정책·회귀 설계 후보이며 제품 결함/보안 취약점으로 확대 해석하지 않는다.

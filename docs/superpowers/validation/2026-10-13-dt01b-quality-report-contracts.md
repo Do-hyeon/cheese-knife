@@ -5,7 +5,13 @@ one final Astra max whole-branch review, and one implementation PR.
 Base: `997c5b411f329f24b331c047bb0fe6963980570e`.
 Code checkpoints: `8169037` (contracts) and `d37a25a` (CLI connection).
 Final review checkpoint: `fea2c52ad51b925783d1b87ec5d3bae4646ff8ea`.
-Public integration is pending final-head CI.
+Public PR: [#40](https://github.com/Do-hyeon/cheese-knife/pull/40).
+Run [38282283191](https://github.com/Do-hyeon/cheese-knife/actions/runs/38282283191)
+at `283c02295f5884dec6bb77405091027a6323a2ee` passed Windows/Ubuntu foundation
+and verify, including full tests/build/package/synthetic audio/installed controls.
+After these documentation-only updates, the PR's latest-head checks must pass
+again before the approved merge. Its checks and merge state are the authority
+for final integration; no second status-only PR is needed.
 
 ## Scope and actual guarantees
 
@@ -113,7 +119,7 @@ the identical gate blob at original spec, fixture and branch baselines, inspecte
 direct-call diagnostic targeting, all five internal mutation sites and the
 retained same-code logs/reports. It did not rerun tests/builds/browsers/scans.
 All 138 synthetic measured channels have full-scale count0. Subsequent changes
-are documentation only; public CI remains the final integration gate.
+are documentation only; latest-head public CI remains the integration gate.
 
 ## Checker cost
 

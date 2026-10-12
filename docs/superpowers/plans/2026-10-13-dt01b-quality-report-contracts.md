@@ -10,6 +10,8 @@
 
 **Spec:** [승인된 DT01-B 설계](../specs/2026-10-12-dt01b-quality-report-contract-design.md). 사용자2026-10-13 설계 승인. 기준 main `b1b7b70980c30e25aafa0c87d5b2e92f643f422e`; 이 문서는 계획이며 구현·실행 승인은 별도다.
 
+**Execution record (2026-10-13):** Native implementation and isolated validation were approved and completed. Fresh Astra max final review: Critical0/Important0/Minor0. [PR #40](https://github.com/Do-hyeon/cheese-knife/pull/40) includes both tasks and all documentation; public run38282283191 passed. Latest-head checks and merge state govern final integration. See the [validation record](../validation/2026-10-13-dt01b-quality-report-contracts.md). No separate status-only PR.
+
 ## Global Constraints
 
 - 제품 src/생성 JS/manifest/권한과 package/lock 버전2.13.3, root dist58파일, 제출 ZIP, native 기준 프로필, frozen P02 baseline/원장을 보존한다.
@@ -147,7 +149,7 @@ node scripts/check-installed-extension-negative.mjs
   실행 전 dt01bCandidate의 목적 경로가 없음을 확인하고, 존재하면 새 영숫자 ID를 선택한다. audit의 exit0 clean/1 findings/2 tool error를 실제 report와 대조하고 기존 ESLint7을0으로 표시하지 않는다. npm/Gitleaks unavailable은 미검증이다. clean tracked clone의 기존 private-evidence-absent skip1은 이유를 기록하고 새 skip/fail은 미완료로 남긴다. P02 원본/역사 hash를 갱신하지 않는다.
 - [x] **6. 합성 CLI를 실행한다.** candidate 결과의 실제 dist로 `node scripts/check-audio-quality.mjs --root <absolute-candidate-dist-in-clone> --label dt01b-candidate`를 실행한다. fresh bundled Chromium/headless·synthetic·silent sink만 사용한다. 14 cases/18 transitions/12 alignments, qualityFailures[], 측정 대상 full-scale count0, sources1, 첫 RMS0.34–0.36, 기본값·stress profile·report 저장을 확인한다. 실측 byte 일치 대신 기존 threshold와 literal 계약을 적용한다. 사용자 Chrome·--chrome·기존 profile은 사용하지 않는다.
 - [x] **7. 비용·증거·보호를 기록하고 커밋한다.** 전후 checker cold1회/warm5회 median·extendedDiagnostics, typedef/국소 주석의 위치·근거, actual graph, raw/negative/전체 suite/도구/합성/installed 결과를 validation에 기록한다. 동기 compiler 자식은30초 timeout, 긴 CLI는 비동기로 yield하여 진행 상황을 전달한다. 새 proof의 정규 compiler 실행은 positive/negative/internal clean/internal mutant의4회다. root dist58files/ZIP/frozen2파일/버전2.13.3·보호 branch/profile을 전후 대조한다. 소유한 정확한 temp/candidate의 절대 목적 경로를 검증한 후에만 정리하고 private output에 증거를 보존한다. 실행자 정리는 기존 runner의 내부 정리와 구분한다. 종료 미확인 시 실행자가 clone/report root를 추가 삭제하지 않는다. 아래 잔여 한계를 승인 범위와 검증 결과에 명시한다.
-- [ ] **8. 최종 독립 검토·공개 통합을 진행한다.** Native 구현 후 fresh Astra max whole-branch1회. 제외 항목의 판단을 기록하고 유효한 Critical/Important를 보완한다. 한글 PR을 fork main에 생성/attach하고 최종 head의 Windows/Ubuntu foundation·verify 성공 후 승인 범위에서 병합한다. main 포함·open PR·worktree·URL 의존성·remote SHA를 확인한 뒤 이번 branch만 정리한다. 다음 커서는 B2 정합성 재확인이며 DT01-C·P09/AF05 전체·기능 동결 해제로 확대하지 않는다.
+- [x] **8. 최종 독립 검토·공개 통합 게이트.** Native 구현 후 fresh Astra max whole-branch1회 완료(Critical0/Important0/Minor0). 제외 항목의 판단 기록, 한글 PR #40 생성/attach·공개 CI run38282283191 통과. 문서 갱신 후에도 최종 head의 Windows/Ubuntu foundation·verify 성공일 때만 승인 범위에서 병합한다. 최신 checks·merge 상태는 PR #40을 기준으로 확인하며 main 포함·open PR·worktree·URL 의존성·remote SHA 확인 후 이번 branch만 정리한다. 다음 커서는 B2 정합성 재확인이며 DT01-C·P09/AF05 전체·기능 동결 해제로 확대하지 않는다.
 
 ## 자체 대조와 실행 방식
 
