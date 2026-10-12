@@ -26,12 +26,15 @@
 2. 롤백 수용은 **같은 격리 프로필·동일 개발용 확장 ID의 설치본에서 이전 코드로 복귀하는 검증**을 출시 전 합격 조건으로 삼는다. 실제 스토어 플랫폼 롤백은 장애 대응 절차로 준비하되, 실행 전까지 **미검증**으로 공개 기록에 남긴다. 이 분리 승인이 없으면 AF05-B 완료를 선언하지 않는다.
 3. 이 기준 변경 승인은 실제 게시·계정 조작·플랫폼 롤백 승인이 아니다. F00–F05 동결 해제도 최종 결과 확인 뒤 별도 사용자 결정이다.
 
+승인 뒤 P09의 소유 범위는 게시 ID/version·메일 표시 시각의 한계·ZIP/CRX/설치 파일 연결·native 신규 설치 파일 근거·과거 업데이트 미검증 수용 기록이다. 이 문서의 written-spec 승인 내용과 근거 문서를 연결한 후 P09를 ‘배포 증거 고정 완료’로 닫는다. **차기 실제 업데이트·설정 보존·격리 rollback 결과는 AF05-B가 소유**하며 P09 완료를 그 결과의 선행 조건과 후행 조건으로 동시에 사용하지 않는다. 승인 전 PLANS의 P09 상태와 완료 기준은 유지한다.
+
 ## 3. 산출물·경로·도구 경계
 
 - 원본 ZIP은 hash/inventory를 확인한 뒤 새 private 작업 디렉터리에만 해제한다. traversal·duplicate·link·크기 상한을 유지한다. 원본 파일과 현재 root dist에 쓰지 않는다.
+- clean CI의 원본은 [고정 공개 릴리즈 ZIP](https://github.com/Do-hyeon/cheese-knife/releases/download/v2.13.3-community.1/cheese-knife-community-recovery-2.13.3-fb15f967.zip)이다. 공개 API에서201802 bytes·위 SHA-256 digest를 재확인했다. 준비 단계에서 HTTPS 다운로드 후 고정 hash를 검사하고 fixture 실행 중에는 네트워크를 닫는다. hash 불일치/자산 부재는 FAIL이며 최신 main이나 다른 ZIP으로 대체하지 않는다. 현재 checkout의 private output 파일을 CI의 선행 조건으로 삼지 않는다.
 - 후보는 승인된 버전 변경을 포함한 immutable commit에서 `scripts/verify-candidate.mjs`와 기존 `buildChecked`/패키지 검사로 만든다. builder는 대상 source root의 dist를 지우므로 **후보/임시 복제에서만** 호출한다.
 - source SHA, manifest/package version, toolchain/lock 해시, 일반 파일별 SHA-256·inventory, ZIP SHA-256을 한 검증 기록에 연결한다. 두 독립 후보의 파일 해시를 대조한다. 압축 컨테이너의 timestamp 차이를 runtime 재현 실패로 오인하지 않는다.
-- `npm version`, 기존 POSIX `postversion`, `publish:chrome`은 사용하지 않는다. 승인된 구현에서 package.json·package-lock.json의 루트 version·manifest.json/version_name만 명시적으로 갱신하고 검사한다. upload/publish는 별도 사용자 게이트다.
+- `npm version`, 기존 POSIX `postversion`, `publish:chrome`, 기존 Publish workflow의 수동 dispatch는 사용하지 않는다. 승인된 구현에서 package.json/version·package-lock.json/version 및 packages[""].version·manifest.json/version_name만 명시적으로 갱신하고 검사한다. upload/publish·공개 태그/릴리즈 생성은 별도 사용자 게이트다.
 - 새 스크립트가 필요하면 전환 시나리오용 단일 runner로 한정한다. `owned-files`, `verify-candidate`, `extension-e2e/harness`, fixture-router와 기존 검사기를 사용하며 일반 배포 엔진·임의 경로 CLI를 만들지 않는다.
 
 ## 4. 저장 호환성: 실제 두 버전의 경계 대조
@@ -45,8 +48,8 @@
 | 빈 storage | 각 버전의 default snapshot 동일; 예기치 않은 저장/삭제 없음 |
 | 비기본 config·style·parameter·revision | 초기화 후 raw 값·UI snapshot 보존, 수정한 필드만 변경 |
 | 알 수 없는 config/style/parameter·별도 top-level 키 | 원본 raw 값 보존; UI 노출과 보존을 구분 |
-| legacy t=0·resizeChat | 두 버전의 기대 migration과 commit→cleanup 순서 일치; 재시작 반복은 no-op |
-| 손상 revision·지원하지 않는 값 | 기존 거부/정규화 결과 유지; 손상을 자동 초기화하거나 삭제하지 않음 |
+| legacy t=0·t=null·t='invalid'·resizeChat의 truthy/false 값 | 기존 변환/정리 규칙을 고정 기대값으로 검사. own t는 invalid/null에서도 제거되며 config commit이 없는 cleanup도 가능. 유효 migration에 저장 변경이 있으면 commit 뒤 cleanup; 재시작 반복은 no-op |
+| 손상 revision·지원하지 않는 비-legacy 값 | 기존 거부/정규화 결과 유지; 손상 revision과 관계없는 raw 키를 초기화/삭제하지 않음. 앞 행의 기존 legacy 정리를 새 보존 규칙으로 바꾸지 않음 |
 | CSS 등록 실패·storage 쓰기 실패·다중 화면 경합 | 기존 오류·직렬 쓰기·복구 계약 유지; 성공 응답만으로 내구 저장을 주장하지 않음 |
 
 기대값은 서로 비교하는 두 구현에만 의존하지 않고 기존 고정 테스트의 값·호출 순서로도 대조한다. 한쪽의 같은 버그를 다른 쪽이 공유하면 단순 differential은 통과할 수 있기 때문이다.
@@ -64,9 +67,13 @@
 3. 후보 UI로 다른 필드를 저장한 뒤 context를 닫고 이전 코드 기반 rollback payload로 교체한다. 로컬 rollback용 manifest는 후보보다 높은 가상 version2.13.5로 표시하며 원본2.13.3 ZIP은 변경하지 않는다. 이 payload는 스토어에 제출하지 않는다.
 4. 같은 프로필에서 이전 코드·동일 ID·후보가 남긴 raw 저장값·UI·CSS·추가 저장·fresh MAIN 기동을 확인한다.
 
+**각 launch 전과 해당 phase context 종료 후**, 고정 설치 디렉터리의 전체 일반 파일 inventory·SHA-256을 그 phase의 기대 payload와 대조한다. old와 rollback의 runtime·CSS·locale·아이콘·라이선스는 frozen old payload와 정확히 같아야 한다. rollback의 예외는 명시한 manifest version/version_name 값만이며 변형 manifest의 기대 object/hash를 따로 고정한다. candidate는 immutable 후보의 전체 payload와 일치해야 한다. extra/missing/mixed 파일·link·hash 불일치는 동작 결과를 채택하기 전에 FAIL이다. version/ID 표시만으로 이전 코드를 실제 실행했다고 판정하지 않는다.
+
 profile 복사/초기화, uninstall/reinstall, storage snapshot 재주입으로 정상 전환을 흉내 내지 않는다. ID·저장소가 바뀌면 FAIL이다. context 종료/파일 교체 실패는 전환 실패로 기록하며 성공 보고서로 덮지 않는다. 경로 교체는 fresh 작업 디렉터리의 실제 일반 파일만 허용하며 사용자 폴더는 대상이 아니다.
 
 negative control은 정상 흐름의 실제 설치 경계에서 seeded 설정 하나를 의도적으로 잃는 별도 시험 후보를 실행해 정확한 저장 보존 실패를 요구한다. 현재 positive/MAIN-missing negative E2E와 신규 전환 negative는 별도 게이트다. 원본 후보·정상 프로필은 변형하지 않는다.
+
+positive와 negative는 각각 fresh 소유 작업 디렉터리/프로필을 사용한다. 성공·실패 모두 finally에서 열린 context를 닫고 새 fixture 프로필(Windows bundled Chromium 복사 포함)·해제/교체 디렉터리·후보를 정리한다. 기존 E2E runner의 정리는 harness 자체에 포함돼 있지 않으므로 신규 runner가 이를 명시적으로 소유한다. 첫 실패를 유지하고 cleanup 실패/제한시간 초과는 PASS를 차단한다. 이미 존재하는 경로를 인수하거나 덮지 않으며, 실행당 고정 상한의 summary/실패 trace·screenshot만 private artifact로 남긴다. 별도 native 기준 프로필·원본 ZIP·root dist는 정리하지 않는다.
 
 이 검사는 설치된 unpacked/bundled Chromium의 **코드 전환/복귀** 근거다. Google 배포 CRX의 서명·native 자동 업데이트·확장 in-place reload·열린 이전 content script 정리를 검증한 것으로 표현하지 않는다. 실제 업데이트의 열린 페이지/컨텍스트 오류는 아래 native 수용에서 별도로 확인한다.
 
@@ -88,6 +95,8 @@ candidate commit부터 ZIP까지 hash를 연결하고 CI 결과가 그 commit을
 
 승인된 native 격리 프로필의 실제 스토어2.13.3에만 비기본 검사 값을 설정하고 변경 전/후의 값과 종류를 기록한다. 개인정보 없는 fixture 값만 사용한다. 새 설치용 프로필은 업데이트용과 별개로 생성한다.
 
+**스토어 제출·공개 게시의 선행 조건은 성공한 native preflight**다. 승인된 관측 방법을 실제 기존2.13.3에서 한 번 실행해 package/version/ID/from_webstore·실행 manifest version·seeded raw storage·UI 기대값·CSS 상태를 연결해 저장해야 한다. 향후 연결 가능하다는 추정이나 method 이름 확인만으로 충족하지 않는다. raw API snapshot 없이 screenshot/‘정상’ 보고만 있으면 preflight 미완료이며 제출/게시를 대기한다. 이 방법이 확보되지 않으면 로컬 구현·격리 검증까지만 진행한다. native 조회는 해당 테스트 설정 키·검사용 값과 대상 metadata로 좁히고 전체 개인 프로필·쿠키·다른 확장 저장소를 읽거나 공개하지 않는다.
+
 게시 후 실제 CRX/payload·원본 ZIP·Chrome 설치 파일을 대조한다. JSON/아이콘 설치 정규화·외부 metadata는 P09처럼 bytes/내용 근거를 구분한다. native 설치 기록의 from_webstore·같은 ID·version·승인 권한을 좁게 확인하고, worker/UI/API에서 실제 실행 version·설정 snapshot을 관찰할 수 있어야 runtime 수용으로 판정한다.
 
 native2.13.3→후보 업데이트는 기존 설치를 제거하거나 새 설치로 대체하지 않는다. 열린 검사 페이지가 남아 있는 상태의 업데이트, 이후 페이지 reload/fresh startup, 설정 보존·두 화면 병합·원래 대상만 style reload·컨텍스트 오류를 확인한다. 원래 시청 탭과 설정은 변경하지 않는다.
@@ -108,7 +117,7 @@ native2.13.3→후보 업데이트는 기존 설치를 제거하거나 새 설�
 - [ ] 정확한 파일·fixture·명령·negative control·순차 커밋 단위의 구현 계획 작성/검토와 실행 방식 승인.
 - [ ] immutable 후보2.13.4·저장 호환성·격리 설치 전환/복귀·기존 전체 게이트·독립 최종 품질 검토.
 - [ ] 한글 PR·CI·병합과 ZIP/version/hash 고정.
-- [ ] 실제 native 검사용 설치/설정 조작 승인과 관찰 경로 확인.
+- [ ] 실제 native 검사용 설치/설정 조작 승인과 성공한2.13.3 runtime/seeded 저장 preflight; 미완료면 스토어 제출·게시 금지.
 - [ ] 스토어 제출/수동 게시 각각의 승인과 게시 package 대조.
 - [ ] native 신규 설치·실제2.13.3→후보 업데이트·설정/페이지/오류 수용.
 - [ ] 미검증 이력·플랫폼 rollback 미실행·기타 공개 지원 제한을 남긴 최종 결과 사용자 승인.
@@ -120,4 +129,14 @@ native2.13.3→후보 업데이트는 기존 설치를 제거하거나 새 설�
 
 주 실행자 자체 대조: root dist 삭제 위험, 혼합 버전/다른 ID 증거, 모의 저장 재주입, lower-version 롤백, 실제 게시/메일 수신 시각, frozen 감사 덮어쓰기, 검사용 전 사용자 롤백과 제어 연결 부재를 구분했다. 아직 구현·설치·업데이트 PASS를 선언한 문서는 아니다.
 
-Astra max 독립 설계 검토 결과와 조치는 검토 완료 후 이 절에 기록한다. 문서 검토만으로 제품 전체 보안·정책 적합성 인증을 주장하지 않는다.
+Astra max는 `38da1f4..78250d0`와 연결된 builder/harness/settings/P09 문서를 읽기 전용으로 검토했다. 최초 결과는 **Critical0·Important3·Minor2, Important 보완 전 written-spec 승인 불가**였다. 지적은 제품 취약점 발견이나 보안 scan 결과가 아니다.
+
+- Important1: 현재 native 연결 부재에서 baseline 없이 공개될 여지 → 실제2.13.3 API/seeded storage preflight를 제출/게시의 선행 조건으로 고정했다.
+- Important2: manifest만 바꾼 mixed rollback이 통과할 여지 → 모든 phase launch 전/종료 후 전체 payload inventory/hash와 제한된 manifest 예외를 요구했다.
+- Important3: unsupported 값의 무삭제 약속이 기존 legacy 정리와 충돌 → invalid/null t·commit 없는 cleanup·resizeChat truthiness의 기존 기대값을 분리했다. 원본/현재 broker를 직접 대조했다.
+- Minor1: harness에 없는 신규 runner cleanup 소유권 → positive/negative 각각 finally·소유 경로·첫 실패/cleanup 실패와 artifact 상한을 명시했다.
+- Minor2: P09가 차기 AF05-B 결과를 기다리는 순환 게이트 → 승인 후 P09는 배포 근거/과거 미검증 수용을, AF05-B는 차기 update/rollback 결과를 소유하도록 분리했다.
+
+주 실행자는 기존 runner finally·old/current broker·공개 릴리즈 digest·lockfile 두 version 위치를 대조해 위 지적과 후속 권고를 문서에 반영했다. 이는 **주 실행자 보완이며 수정 후 독립 재검토0건 판정이 아니다**.
+
+검토 보류 항목의 처리: 실제 update/rollback/저장 내구성/CSS/오류는 구현·설치 수용에 남긴다. native 관측은 실행 전 preflight가 증명해야 한다. 공개/심사 버전과 rollback 자격은 실행 시 대상 항목만 확인한다. 모든 AF 기능의 동일성은 향후 기존 전체 게이트와 별도 smoke로 검사한다. 제품 전체 보안·정책 인증/역사 감사 정확성은 이 설계 검토의 결론이 아니다. 정확한 runner API·테스트 명령·CI wiring은 승인 후 구현 계획에 남긴다. reviewer는 테스트·빌드·실제 설치·스토어 조작을 실행하지 않았고 파일/프로필을 변경하지 않았다.

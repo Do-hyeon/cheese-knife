@@ -216,7 +216,7 @@ AF05-B 공개 수용 — P09와 차기 AF 배포에 의존:
 
 - [x] 차기 배포 수용의 설계·검토 진행 승인. 제품·버전·설치·스토어 변경은 제외.
 - [x] [차기 배포 수용 상세 설계](docs/superpowers/specs/2026-10-12-af05b-release-acceptance-design.md) 작성. 기존2.13.3 보존·후보2.13.4 제안·저장 호환성·동일 ID 격리 전환·실제 스토어 업데이트와 플랫폼 롤백 분리.
-- [ ] Astra max 독립 설계 검토와 지적 보완.
+- [x] Astra max 독립 설계 검토 Critical0·Important3·Minor2와 주 실행자 보완. native baseline 선행·각 phase payload hash·legacy 정리·finally cleanup·P09/AF05-B 소유권 반영. 수정 후 독립0건 판정이나 실제 전환 PASS를 주장하지 않음.
 - [ ] written-spec 승인: 과거 native2.13.2 경로의 미검증 수용 및 격리 rollback/미실행 플랫폼 rollback의 완료 기준 분리 포함. 승인 전 P09/AF05 완료 기준은 바꾸지 않음.
 - [ ] 상세 구현 계획 작성/검토·사용자 승인과 실행 방식 선택.
 - [ ] 새 설치·기존 설치 업데이트·설정 보존·롤백 설치 수용.
