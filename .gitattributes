@@ -9,3 +9,4 @@ web/runtime.js text eol=lf
 web/site-adapter.js text eol=lf
 web/audio.js text eol=lf
 web/player.js text eol=lf
+web/preview.js text eol=lf

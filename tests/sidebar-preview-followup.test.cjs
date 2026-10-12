@@ -216,6 +216,7 @@ test('waiting diagnostics contain playback metrics, never stream URLs or respons
   assert.ok(events.some(event => event.type === 'waiting' && typeof event.readyState === 'number'));
   fixture.instances[0].emit('error', { type: 'networkError', details: 'fragLoadError', fatal: false,
     url: 'https://media.invalid/private?token=SECRET', response: { code: 503, data: 'SECRET' } });
+  fixture.instances[0].emit('error', { type: 'networkError', details: 'https://media.invalid/private?token=SECRET', fatal: false });
   assert.equal(JSON.stringify(fixture.preview.diagnostics).includes('SECRET'), false);
 });
 
