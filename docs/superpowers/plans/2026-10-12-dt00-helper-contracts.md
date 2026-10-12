@@ -51,23 +51,23 @@
 - `clock(dom: JSDOM): { advance(ms: number): Promise<void> }` — 함수 callback만 쓰는 기존 fixture 타이머 경계를 좁게 표현한다. Node 타이머 핸들을 브라우저 숫자 ID와 혼동하지 않는다.
 - bridge 로컬 fixture는 `TestContext`, `() => Promise<{ config: Record<string, unknown>; styleParameters: Record<string, unknown> }>`와 `(changes: unknown) => void` 계약을 명시한다. 등록·deferred read 완료를 assertion으로 좁히고 기존 4개 assertion 경로를 보존한다.
 
-- [ ] **1. 실패 검사 작성:** `tests/development-types.test.cjs`에서 개발 설정 존재와 `files`에 helper·bridge·두 새 검사 포함, `typecheck:development`의 정확한 명령, 양 OS foundation 연결을 assert한다. 존재하지 않는 설정/명령 때문에 실패하는지 `node --test tests/development-types.test.cjs`로 확인한다.
-- [ ] **2. 집중 실행 검사 작성:** `tests/helper-contracts.test.cjs`에 아래 실제 assertion을 넣는다. 새 assertion 없이 기존 테스트를 타입 편의상 삭제·축소하지 않는다.
+- [x] **1. 실패 검사 작성:** `tests/development-types.test.cjs`에서 개발 설정 존재와 `files`에 helper·bridge·두 새 검사 포함, `typecheck:development`의 정확한 명령, 양 OS foundation 연결을 assert한다. 존재하지 않는 설정/명령 때문에 실패하는지 `node --test tests/development-types.test.cjs`로 확인한다.
+- [x] **2. 집중 실행 검사 작성:** `tests/helper-contracts.test.cjs`에 아래 실제 assertion을 넣는다. 새 assertion 없이 기존 테스트를 타입 편의상 삭제·축소하지 않는다.
   - 생성 `web/runtime.js` 로드 전 `runtime(dom) === undefined`, 로드 후 requestId가 string, pagehide 후 다시 undefined. `assert.throws(() => deliver(dom), { code: 'ERR_ASSERTION' })`로 로드 전 helper 실패 검사.
   - 정상 `deliver(dom, { arrowSeek: false }, 2)` 후 configReady true·arrowSeek false. config `null`, 배열, 문자열과 revision `'3'`, NaN, Infinity를 전달해도 기존 config를 덮어쓰지 않음. 실패 payload는 `unknown`으로 주고 전송 전 교정하지 않음.
   - clock에서 같은 시각 두 callback의 등록 순서 `[1, 2]`, 취소된 callback 미실행, callback의 microtask가 재예약한 타이머도 advance 안에서 관측. 종료 전 예약 시각 미도달이면 실행하지 않음. DOM MutationObserver를 진짜 DOM으로 관측.
-- [ ] **3. 실행 기준 확인:** `node --test tests/helper-contracts.test.cjs tests/bridge.test.cjs tests/multi-page-settings.test.cjs tests/following-settlement.test.cjs`. 제품 동작 검사는 현재 코드에서 통과해야 하며 새 helper assertion만 실패하는 것을 확인한다.
-- [ ] **4. 선언 의존성 고정:** 기존 npm CLI 위치를 확인한다(현재 세션 PATH에 npm은 없다). 필요할 때 공식 npm CLI를 작업용 임시 위치에 준비한다. 선언 패키지만 `--save-dev --save-exact --ignore-scripts`로 설치한다. lockfile의 추가 transitive 선언, 두 undici-types 범위, license·integrity·정확한 변경을 확인하고 관계없는 package 갱신을 거부한다. checker를 위해 기존 제품 의존성 버전을 바꾸지 않는다.
-- [ ] **5. 별도 타입 설정 작성:** `allowJs`, `checkJs`, `noEmit`, `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `useUnknownInCatchVariables` 모두 true; target ES2022; lib ES2023+DOM; module/moduleResolution Node16; types node; typeRoots `./node_modules/@types`; `skipLibCheck` 사용 안 함. `files`는 위 helper·bridge·두 새 검사 네 파일만 명시한다. type-only로 연결되는 제품 interface는 검사하지만 runtime entry를 실행/import하지 않는다.
-- [ ] **6. helper·소비자 계약 강화:** 위 Interfaces대로 JSDoc·좁은 local fixture 타입을 적용한다. runtime 부재는 소비자가 실제 setup 이후 assertion으로 좁힌다. malformed 입력용 경로와 동적 외부 값은 unknown으로 유지한다. 타이머·로드·대기 시간·DOM/fake의 기존 의미는 바꾸지 않는다.
-- [ ] **7. 실제 컴파일 거부 증명:** `tests/development-types.test.cjs`는 로컬 tsc를 `process.execPath` + `node_modules/typescript/bin/tsc`로 실행한다. 정상 개발 설정은 status0. ignored `output/development-types-*` 임시 디렉터리에 설정을 extends한 **각각의** 오용 파일을 만들어 비zero status와 해당 파일의 기대 진단을 검사하고 `t.after`로 정리한다. 유효한 대조 파일은 status0이어야 한다.
+- [x] **3. 실행 기준 확인:** `node --test tests/helper-contracts.test.cjs tests/bridge.test.cjs tests/multi-page-settings.test.cjs tests/following-settlement.test.cjs`. 제품 동작 검사는 현재 코드에서 통과해야 하며 새 helper assertion만 실패하는 것을 확인한다.
+- [x] **4. 선언 의존성 고정:** 기존 npm CLI 위치를 확인한다(현재 세션 PATH에 npm은 없다). 필요할 때 공식 npm CLI를 작업용 임시 위치에 준비한다. 선언 패키지만 `--save-dev --save-exact --ignore-scripts`로 설치한다. lockfile의 추가 transitive 선언, 두 undici-types 범위, license·integrity·정확한 변경을 확인하고 관계없는 package 갱신을 거부한다. checker를 위해 기존 제품 의존성 버전을 바꾸지 않는다.
+- [x] **5. 별도 타입 설정 작성:** `allowJs`, `checkJs`, `noEmit`, `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `useUnknownInCatchVariables` 모두 true; target ES2022; lib ES2023+DOM; module/moduleResolution Node16; types node; typeRoots `./node_modules/@types`; `skipLibCheck` 사용 안 함. `files`는 위 helper·bridge·두 새 검사 네 파일만 명시한다. type-only로 연결되는 제품 interface는 검사하지만 runtime entry를 실행/import하지 않는다.
+- [x] **6. helper·소비자 계약 강화:** 위 Interfaces대로 JSDoc·좁은 local fixture 타입을 적용한다. runtime 부재는 소비자가 실제 setup 이후 assertion으로 좁힌다. malformed 입력용 경로와 동적 외부 값은 unknown으로 유지한다. 타이머·로드·대기 시간·DOM/fake의 기존 의미는 바꾸지 않는다.
+- [x] **7. 실제 컴파일 거부 증명:** `tests/development-types.test.cjs`는 로컬 tsc를 `process.execPath` + `node_modules/typescript/bin/tsc`로 실행한다. 정상 개발 설정은 status0. ignored `output/development-types-*` 임시 디렉터리에 설정을 extends한 **각각의** 오용 파일을 만들어 비zero status와 해당 파일의 기대 진단을 검사하고 `t.after`로 정리한다. 유효한 대조 파일은 status0이어야 한다.
   - `page(42)`와 `load(page(), 42)`는 TS2345.
   - `clock(page()).advance('30')`는 TS2345.
   - `const api = runtime(page()); assert.ok(api); api.nonexistentField`는 TS2339.
   - 부재를 좁히지 않은 `runtime(page()).requestId`는 TS2532/TS18048.
   - config/revision을 `unknown`으로 전달하는 대조 파일은 허용한다. 실패를 무관한 missing-module 진단으로 대신하지 않는다. 임시 설정은 include를 빈 배열로 override해 선택한 파일만 추가하며 공용 helper도 실제 검사한다.
-- [ ] **8. CI 연결:** npm script `typecheck:development`는 `tsc -p tsconfig.development.json`. foundation의 기존 `npm run typecheck` 직후에 추가하고 package 순서 검사를 반영한다. 기존 runtime/build proof·설치형 E2E·테스트 glob은 유지한다. 기존 보안 감사 설정은 변경하지 않는다.
-- [ ] **9. 집중·전체 검증:** 개발·제품 타입 검사, 새 두 검사+bridge+multi-page+following+type-foundation+package 회귀, 공개-checkout 전체 테스트, 격리 후보 build/package와 설치형 positive/negative E2E를 수행한다. 생성 JS16개 diff0·root dist 불변·제품 권한 불변을 확인한다. 기존 private P02 evidence를 다시 생성하거나 덮어쓰지 않는다.
+- [x] **8. CI 연결:** npm script `typecheck:development`는 `tsc -p tsconfig.development.json`. foundation의 기존 `npm run typecheck` 직후에 추가하고 package 순서 검사를 반영한다. 기존 runtime/build proof·설치형 E2E·테스트 glob은 유지한다. 기존 보안 감사 설정은 변경하지 않는다.
+- [x] **9. 집중·전체 검증:** 개발·제품 타입 검사, 새 두 검사+bridge+multi-page+following+type-foundation+package 회귀, 공개-checkout 전체 테스트, 격리 후보 build/package와 설치형 positive/negative E2E를 수행한다. 생성 JS16개 diff0·root dist 불변·제품 권한 불변을 확인한다. 기존 private P02 evidence를 다시 생성하거나 덮어쓰지 않는다.
 - [ ] **10. 실효성 기록·검토:** 전후 checker 소요 시간, 직접·transitive 의존성, 주석/단언 위치·남은 동적 경계, 오용 진단과 유지한 raw 입력·기존38개 결과를 validation에 기록한다. 광범위한 ignore/단언·대형 fake 재작성 없이는 통과 못하면 실험을 멈추고 결과와 작은 대안을 기록한다. 주 실행자 순차 구현 뒤 Astra max 독립 whole-branch 검토 한 번으로 확인한다.
 - [ ] **11. 이력·공개 CI:** 집중 검증 후 커밋하고 한글 PR을 생성·연결한다. 최종 Windows·Ubuntu foundation과 전체 verify 통과 후 기존 승인 범위에서 병합한다. DT01 확대 여부는 실효성 근거로 결정하고 언어 비율을 이유로 자동 확대하지 않는다.
 
