@@ -3,7 +3,8 @@
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
-import {measureSignal,channelDifferenceRms,rmsEnvelope,audioQualityFailures} from './audio-metrics.mjs';
+import {audioQualityFailures} from './audio-metrics.mjs';
+import {summarizeCapture} from './audio-signal.mjs';
 import {openOwnedRoot} from './owned-files.mjs';
 import {AUDIO_ARTIFACT_FILES,describeAudioArtifact,parseAudioQualityArgs} from './audio-artifacts.mjs';
 const require=createRequire(import.meta.url);
@@ -101,8 +102,6 @@ try {
     if(covered.some(value=>!value))throw new Error('Incomplete audio capture window');
     return {rate,start,end,channels:channels.map(channel=>Array.from(channel))};
   },{start,end});
-  const summarize=(data,frequency)=>({sampleRate:data.rate,windowSeconds:(data.end-data.start)/data.rate,
-    channels:data.channels.map(channel=>({...measureSignal(channel,data.rate,frequency),envelope8ms:rmsEnvelope(channel,data.rate)})),channelDifferenceRms:channelDifferenceRms(...data.channels)});
   const cases=[];
   for(const [frequency,amplitude,gain,enabled,stereo,bursts] of [
     [1000,0.5,1,false,'identical',false],
@@ -114,7 +113,7 @@ try {
     [5000,0.8,1.5,true,'identical',false],[1000,0.5,1.5,true,'left-only',false],
     [1000,0.98,1.5,true,'identical',true]]){
     await signal({frequency,amplitude,stereo,bursts});await run(enabled,gain);await page.waitForTimeout(1750);
-    cases.push({frequency,inputAmplitude:amplitude,gain,enabled,stereo,bursts,...summarize(await windowSamples(),bursts?null:frequency)});
+    cases.push({frequency,inputAmplitude:amplitude,gain,enabled,stereo,bursts,...summarizeCapture(await windowSamples(),bursts?null:frequency)});
   }
   const transitions=[];
   for(const frequency of [250,750,1000]){
@@ -129,9 +128,9 @@ try {
       await page.waitForTimeout(300);
       const rate=await page.evaluate(()=>window.__quality.context.sampleRate);
       transitions.push({frequency,kind,value,
-        before:summarize(await windowSamples(frame-Math.round(rate*0.08),frame-Math.round(rate*0.04))),
-        change:summarize(await windowSamples(frame-Math.round(rate*0.02),frame+Math.round(rate*0.04))),
-        after:summarize(await windowSamples(frame+Math.round(rate*0.1),frame+Math.round(rate*0.14)))});
+        before:summarizeCapture(await windowSamples(frame-Math.round(rate*0.08),frame-Math.round(rate*0.04))),
+        change:summarizeCapture(await windowSamples(frame-Math.round(rate*0.02),frame+Math.round(rate*0.04))),
+        after:summarizeCapture(await windowSamples(frame+Math.round(rate*0.1),frame+Math.round(rate*0.14)))});
     }
   }
   const alignments=await page.evaluate(async()=>{
@@ -162,7 +161,7 @@ try {
     window.__quality.defaultConfig=runtime.config;
     runtime.config={...runtime.config,compressorThreshold:0,compressorKnee:0,compressorRatio:1};runtime.audio.configure();});
   await signal({frequency:1000,amplitude:0.98});await run(true,2);await page.waitForTimeout(1750);
-  const stress={profile:'threshold0/knee0/ratio1/gain2',...summarize(await windowSamples(),1000)};
+  const stress={profile:'threshold0/knee0/ratio1/gain2',...summarizeCapture(await windowSamples(),1000)};
   await page.evaluate(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];runtime.config=window.__quality.defaultConfig;runtime.audio.configure();});
   const nodes=await page.evaluate(()=>({sources:window.__quality.sources,
     compressor:window.__quality.compressors.map(node=>({threshold:node.threshold.value,knee:node.knee.value,
