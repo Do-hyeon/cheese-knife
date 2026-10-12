@@ -1,20 +1,20 @@
 vendor/hls.light.private.js text eol=lf
 src/settings/*.ts text eol=lf
-settings-contract.js text eol=lf
-settings-client.js text eol=lf
-settings-broker.js text eol=lf
+/settings-contract.js text eol=lf linguist-generated=true
+/settings-client.js text eol=lf linguist-generated=true
+/settings-broker.js text eol=lf linguist-generated=true
 build-proof/*.ts text eol=lf
 src/main/**/*.ts text eol=lf
-web/runtime.js text eol=lf
-web/site-adapter.js text eol=lf
-web/audio.js text eol=lf
-web/player.js text eol=lf
-web/preview.js text eol=lf
-web/inject.js text eol=lf
-config.js text eol=lf
-style-schema.js text eol=lf
-background.js text eol=lf
-permission.js text eol=lf
-popup.js text eol=lf
-styles.js text eol=lf
-web/main.js text eol=lf
+web/runtime.js text eol=lf linguist-generated=true
+web/site-adapter.js text eol=lf linguist-generated=true
+web/audio.js text eol=lf linguist-generated=true
+web/player.js text eol=lf linguist-generated=true
+web/preview.js text eol=lf linguist-generated=true
+web/inject.js text eol=lf linguist-generated=true
+/config.js text eol=lf linguist-generated=true
+/style-schema.js text eol=lf linguist-generated=true
+/background.js text eol=lf linguist-generated=true
+/permission.js text eol=lf linguist-generated=true
+/popup.js text eol=lf linguist-generated=true
+/styles.js text eol=lf linguist-generated=true
+web/main.js text eol=lf linguist-generated=true
