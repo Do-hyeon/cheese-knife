@@ -14,5 +14,5 @@
   "web/player.js": "e1c809db8c90368c3199c20a2ace88f95851d013f383c2ca30e59d9e16ff9835",
   "web/preview.js": "9041cb92052d082a162b6d6d172fa994f1fdedd0d807f34f8d3a0232080aff39",
   "web/runtime.js": "7d965f3deedf55d9d0b3e7edf6e3922c7774e97402c477499b225bcd5ebd5cd2",
-  "web/site-adapter.js": "766b20895ca8cfe58217afceb6d7cd566ac9407e0398f05aaf847db3ffbf1ae7"
+  "web/site-adapter.js": "ade546c8df9b45239e74365cf7e76117219e4ab4de0299078c8b26ca3117d3d1"
 }
