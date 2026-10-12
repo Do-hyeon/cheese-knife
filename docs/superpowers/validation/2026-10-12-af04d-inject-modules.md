@@ -97,7 +97,14 @@ Astra max는 `main...8535c30`의 전체 inject 이전과 호출자·테스트를
 
 ## 공개 PR과 병합
 
-로컬 제품 검증은 완료됐다. 한글 PR, 공개 Windows·Ubuntu foundation·전체 verify와 merge commit은 완료 뒤 별도 상태 고정 PR에서 이 절과 `PLANS.md`에 기록한다. AF04는 그 전까지 `DOING`이다.
+- 한글 PR: [#19 AF04-D: inject 런타임을 기능별 TypeScript 모듈로 이전](https://github.com/Do-hyeon/cheese-knife/pull/19)
+- 공개 CI: [run 38195194642](https://github.com/Do-hyeon/cheese-knife/actions/runs/38195194642), 최종 결론 `success`
+  - Ubuntu foundation: 17초, 통과
+  - Windows foundation: 33초, 통과
+  - 전체 verify: 3분 14초, 통과
+- 병합: 2026-10-12 11:21:38 KST, merge commit `5326ff4b86857c331fa45c25acd9207a1888852e`
+
+공개 CI는 최초 실행에서 모든 필수 작업을 통과했고, 로컬 수용 결과와 제품·권한·데이터 경계를 변경하지 않았다. AF04-A부터 D까지 모두 병합돼 AF04를 완료한다.
 
 ## 재현 명령
 
@@ -120,4 +127,4 @@ git -c core.safecrlf=false diff --check
 
 ## 롤백
 
-제품 범위는 `1e95bc1..09d2b39`이다. 병합 전에는 branch를 배포하지 않는다. 병합 뒤에는 최신 `main` 기반 복구 branch에서 `git revert -m 1 <AF04-D merge commit>`을 실행하고 전체 gate를 다시 검증한다. 강제 reset은 사용하지 않으며 manifest, 사용자 storage와 기존 스토어 배포물을 직접 수정하지 않는다. 정확한 merge SHA는 상태 고정 PR에서 기록한다.
+제품 범위는 `1e95bc1..09d2b39`이다. AF04-D를 되돌릴 때는 최신 `main` 기반 복구 branch에서 `git revert -m 1 5326ff4b86857c331fa45c25acd9207a1888852e`를 실행하고 전체 gate를 다시 검증한다. 강제 reset은 사용하지 않으며 manifest, 사용자 storage와 기존 스토어 배포물을 직접 수정하지 않는다.
