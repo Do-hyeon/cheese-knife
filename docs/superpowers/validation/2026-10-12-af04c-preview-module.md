@@ -110,9 +110,14 @@ Astra max는 `fa2dd9c..5fca47d`의 preview diff, runtime·adapter·inject 호출
 
 ## 공개 PR과 병합
 
-- 한글 PR: 대기
-- 공개 Windows/Ubuntu foundation·전체 verify: 대기
-- 병합·상태 고정: 대기
+- 한글 PR: [#17 AF04-C: 미리보기 런타임을 TypeScript 모듈로 이전](https://github.com/Do-hyeon/cheese-knife/pull/17)
+- 공개 CI: [run 38191280752](https://github.com/Do-hyeon/cheese-knife/actions/runs/38191280752), 최종 결론 `success`
+  - Ubuntu foundation: 14초, 통과
+  - Windows foundation: 32초, 통과
+  - 전체 verify: 2분 50초, 통과
+- 병합: 2026-10-12 10:20:42 KST, merge commit `c526296731ef949e3f0393669102d513307eab7d`
+
+공개 CI는 최초 실행에서 모든 필수 작업을 통과했고, 로컬 수용 결과와 제품·권한·데이터 경계를 변경하지 않았다. AF04-D의 기준점은 위 merge commit이다.
 
 ## 재현 명령
 
@@ -136,4 +141,4 @@ git -c core.safecrlf=false diff --check
 
 ## 롤백
 
-제품 범위는 `fa2dd9c..0ebc970`이다. 병합 전에는 이 branch를 배포하지 않는다. 병합 뒤 문제가 발견되면 최신 `main` 기반 복구 branch에서 AF04-C merge commit 하나를 `git revert -m 1 <AF04-C merge commit>`로 되돌리고 전체 gate를 다시 검증한다. 강제 reset은 사용하지 않으며 manifest, 사용자 storage와 기존 스토어 배포물을 직접 수정하지 않는다. 정확한 merge commit과 공개 CI는 상태 고정 PR에서 이 문서에 추가한다.
+제품 범위는 `fa2dd9c..0ebc970`이다. AF04-C를 되돌릴 때는 최신 `main` 기반 복구 branch에서 `git revert -m 1 c526296731ef949e3f0393669102d513307eab7d`을 실행하고 전체 gate를 다시 검증한다. 강제 reset은 사용하지 않으며 manifest, 사용자 storage와 기존 스토어 배포물을 직접 수정하지 않는다.
