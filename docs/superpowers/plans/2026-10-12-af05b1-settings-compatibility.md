@@ -167,4 +167,4 @@ valid seeds의빈값/비기본/unknown/migration마다old→new→old 연속 저
 - [x] 구현 단위는 출처reader와fixture/compatibility의2개. 새 기능·ZIP 추상화·DT 전체 타입화를 추가하지 않는다.
 - [x] Astra max 독립 계획 검토 Critical0·Important3·Minor0. 예약작업gap·전체schema oracle·post-commit/response 실패를주실행자가보완했다. [기록](../validation/2026-10-12-af05b1-plan-review.md). 수정후독립0건판정/새B1 PASS를주장하지않는다.
 - [x] 사용자B1 계획·Native 실행 방식 승인. 주 실행자가순차구현한후Astra max 최종검토를진행한다. 과거미검증수용·전체AF05-B/실제배포승인은포함하지않는다.
-- [ ] 승인 후Task1→Task2→최종whole-branch 검토→CI/merge. B1 합격만으로P09/AF05-B 완료·로드맵 동결 해제를 선언하지 않는다.
+- [x] 승인 후 Task1→Task2→최종 whole-branch 검토→공개 CI 완료. [PR #36](https://github.com/Do-hyeon/cheese-knife/pull/36)·`8257c113`의 공개 run `38254502868` 통과. 문서 갱신 이후 최종 head checks·병합 상태는 해당 PR의 최신 기록을 따른다. 최종 checks PASS 전에는 병합하지 않으며 B1만으로 P09/AF05-B 완료·로드맵 동결 해제를 선언하지 않는다.

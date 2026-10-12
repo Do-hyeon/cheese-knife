@@ -54,5 +54,5 @@
 - 기존역사P02 불일치는원장을고쳐지우지않음. 제외없는새tracked 조건전체검사를별도로유지했다.
 - 집중검사후코드checkpoint를먼저commit해immutable tracked clone을만들고전체게이트/문서commit을이어갔다;중간commit은출시승인이아니다.
 - Astra max는 `46eb672..b29fc0b8124074295132f088a2d6bf2f0c8b74c4`의whole-branch를한번검토했다. **Critical0·Important0·Minor0, 최종공개CI 통과후병합권고**다. 수정요청은없다. 독립호환성72/72·실제메모리내size/EOL/cleanup hold/미처리요청/accessor/held callback 반례와네후보hash를확인했고HEAD/파일을변경하지않았다. 전체suite/build/audio/설치/audit를독립재실행한것은아니며주실행자의보존log를대조했다.
-- 한글PR의최종head 공개CI·병합은대기다. 검토0건판정을native/출시/보안인증으로확대하지않는다.
+- 한글 [PR #36](https://github.com/Do-hyeon/cheese-knife/pull/36)의 `8257c113f624649c67cd1c584689d1c468c4a1a4`에서 [공개 CI run 38254502868](https://github.com/Do-hyeon/cheese-knife/actions/runs/38254502868)이 통과했다. Ubuntu foundation20초·Windows foundation46초·verify3분34초. 전체913개/912pass/실패0/기존private자료부재skip1, 고정 baseline fetch·build/package/audio·설치positive16개·negative의 예상 `main-runtime-missing` 탐지를 확인했다. 문서 갱신 이후 최종 head checks·병합은 PR #36의 최신 상태가 근거이며, 최종 checks PASS 전에 병합하지 않는다. 검토0건 판정을 native/출시/보안인증으로 확대하지 않는다.
 - B2 전체payload/background/구UI/설치전환·native preflight/실제update·플랫폼rollback·과거미검증수용승인은별도미완료다. B1만으로P09/AF05-B를닫거나F00–F05 동결을해제하지않는다.
