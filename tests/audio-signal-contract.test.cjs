@@ -87,7 +87,7 @@ function compile(config, args = []) {
 test('audio checker and CI keep strict settings and the test discovery path', async () => {
   const config = JSON.parse(await fs.readFile('tsconfig.audio-tools.json', 'utf8'));
   assert.equal(config.extends, './tsconfig.development.json');
-  assert.deepEqual(config.files, ['scripts/audio-signal.mjs', 'scripts/audio-metrics.mjs', 'tests/audio-signal-contract.test.cjs', 'tests/audio-quality-contract.test.cjs']);
+  assert.deepEqual(config.files, ['scripts/audio-signal.mjs', 'scripts/audio-metrics.mjs', 'scripts/audio-artifact-core.mjs', 'tests/audio-signal-contract.test.cjs', 'tests/audio-quality-contract.test.cjs', 'tests/audio-artifact-contract.test.cjs']);
   assert.deepEqual(config.include, []);
   const result = compile('tsconfig.audio-tools.json', ['--showConfig']);
   assert.equal(result.status, 0, result.stdout + result.stderr);
@@ -103,7 +103,7 @@ test('audio checker and CI keep strict settings and the test discovery path', as
   assert.match(ci, /npm run check:build-proof && npm run typecheck:audio-tools(?:\r?\n|$)/);
 });
 
-test('strict audio checker has no diagnostics and contains only the pure repository graph', () => {
+test('strict audio checker has no diagnostics and contains only the bounded repository graph', () => {
   const checked = compile('tsconfig.audio-tools.json');
   assert.equal(checked.status, 0, checked.stdout + checked.stderr);
   assert.equal(checked.stdout + checked.stderr, '');
@@ -111,7 +111,7 @@ test('strict audio checker has no diagnostics and contains only the pure reposit
   assert.equal(listed.status, 0, listed.stdout + listed.stderr);
   const files = listed.stdout.trim().split(/\r?\n/).map(file => path.relative(process.cwd(), file).split(path.sep).join('/'))
     .filter(file => !file.startsWith('../') && !path.isAbsolute(file) && !file.startsWith('node_modules/'));
-  assert.deepEqual(files.sort(), ['scripts/audio-metrics.mjs', 'scripts/audio-signal.mjs', 'tests/audio-quality-contract.test.cjs', 'tests/audio-signal-contract.test.cjs']);
+  assert.deepEqual(files.sort(), ['scripts/audio-artifact-core.mjs', 'scripts/audio-metrics.mjs', 'scripts/audio-signal.mjs', 'tests/audio-artifact-contract.test.cjs', 'tests/audio-quality-contract.test.cjs', 'tests/audio-signal-contract.test.cjs']);
 });
 
 for (const proof of [

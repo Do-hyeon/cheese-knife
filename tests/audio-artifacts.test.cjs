@@ -6,6 +6,103 @@ const { spawnSync } = require('node:child_process');
 
 const load = () => import('../scripts/audio-artifacts.mjs');
 
+const artifactPaths=['config.js','web/runtime.js','web/site-adapter.js','web/audio.js','web/player.js'];
+const rawReport=()=>({artifact:{label:'source',root:'fixture',files:artifactPaths.map(path=>({path,sha256:'a'.repeat(64)}))},qualityFailures:[]});
+const rawPair=(left,right)=>[{...rawReport(),...left},{...rawReport(),...right}];
+function rawInputs() {
+  const repeated={...rawReport(),nodes:{sampleRate:Infinity}};
+  const equality=1.0000010000009999e-7;
+  return {
+    omitted:undefined,nonArray:{},empty:[],single:[rawReport()],emptyPair:[{},{}],nullPair:[null,null],
+    undefinedPair:[undefined,undefined],normal:rawPair({},{}),
+    missingQuality:rawPair({qualityFailures:undefined},{qualityFailures:null}),
+    duplicateHash:rawPair({artifact:{label:'source',files:[...rawReport().artifact.files,{path:'config.js',sha256:'b'.repeat(64)}]}},{}),
+    ignoredExtraFile:rawPair({}, {artifact:{label:'source',files:[...rawReport().artifact.files,{path:'ignored',sha256:'b'}]}}),
+    mixed:rawPair({qualityFailures:['a','a']},{qualityFailures:['b','b'],artifact:{label:'candidate',files:[]},nodes:1}),
+    arrayLength:rawPair({nodes:[1]},{nodes:[1,2]}),keySet:rawPair({nodes:{a:1}},{nodes:{b:1}}),
+    sortedKeys:rawPair({nodes:{z:1,a:1}},{nodes:{z:2,a:2}}),
+    alignNull:rawPair({alignments:[null,undefined,,{}]},{alignments:[null,undefined,,{}]}),
+    alignExtra:rawPair({alignments:[{extra:1}]},{alignments:[{extra:2}]}),
+    repeated:[repeated,repeated],cloned:[repeated,structuredClone(repeated)],
+    nan:rawPair({nodes:NaN},{nodes:NaN}),negativeInfinity:rawPair({nodes:-Infinity},{nodes:-Infinity}),
+    signedZero:rawPair({nodes:-0},{nodes:0}),scalarType:rawPair({nodes:0},{nodes:'0'}),
+    sameSymbol:(()=>{const value=Symbol('same');return rawPair({nodes:value},{nodes:value});})(),
+    nullUndefined:rawPair({nodes:null},{nodes:undefined}),
+    absoluteNoise:rawPair({nodes:0},{nodes:5e-8}),relativeNoise:rawPair({nodes:1},{nodes:1.0000005}),
+    equality:rawPair({nodes:0},{nodes:equality}),excess:rawPair({nodes:0},{nodes:equality+1e-15}),
+    partialChannel:rawPair({cases:[{channels:[{rms:0.25}]}]},{cases:[{channels:[{rms:0.25}]}]}),
+    nullableChannel:rawPair({cases:[{channels:[null,undefined,,{}]}]},{cases:[{channels:[null,undefined,,{}]}]}),
+    explicitUndefined:rawPair({cases:[{frequency:undefined}]},{cases:[{}]}),
+    ignoredDiagnostics:rawPair({cases:[{channels:[{mean:1,rmsDbfs:1,thdnPercent:1}]}]},{cases:[{channels:[{mean:2,rmsDbfs:2,thdnPercent:2}]}]}),
+    steadyThd:rawPair({cases:[{channels:[{thdPercent:1}]}]},{cases:[{channels:[{thdPercent:2}]}]}),
+    envelopeExtra:rawPair({cases:[{channels:[{envelope8ms:{extra:1}}]}]},{cases:[{channels:[{envelope8ms:{extra:2}}]}]}),
+    transitionIgnored:rawPair({transitions:[{before:{channels:[{rms:1,thdPercent:1}]}}]},{transitions:[{before:{channels:[{rms:2,thdPercent:2}]}}]}),
+    stressThd:rawPair({stress:{channels:[{thdPercent:1}]}},{stress:{channels:[{thdPercent:2}]}}),
+    filesObject:rawPair({artifact:{files:{}}},{}),fileNull:rawPair({artifact:{files:[null]}},{}),
+    casesObject:rawPair({cases:{}},{}),caseNull:rawPair({cases:[null]},{}),
+    transitionsObject:rawPair({transitions:{}},{}),transitionNull:rawPair({transitions:[null]},{}),
+    stressObject:rawPair({stress:{}},{stress:{}}),stressChannelsObject:rawPair({stress:{channels:{}}},{}),
+    rawStressFalsy:rawPair({stress:0},{stress:false}),
+  };
+}
+
+test('literal raw artifact oracle preserves results exceptions order and plain inputs',async()=>{
+  const {compareAudioArtifactReports}=await load();
+  const expected=require('./fixtures/audio-artifact-compatibility.json');
+  const inputs=rawInputs();
+  assert.deepEqual(Object.keys(inputs),Object.keys(expected));
+  for(const [name,input] of Object.entries(inputs)) {
+    let before;
+    if(name!=='sameSymbol')before=structuredClone(input);
+    let actual;
+    try {actual={value:compareAudioArtifactReports(input)};}
+    catch(error){actual={error:{name:error.name,message:error.message}};}
+    assert.deepEqual(actual,expected[name],name);
+    if(name!=='sameSymbol')assert.deepEqual(input,before,`${name} input mutation`);
+  }
+});
+
+test('selected projection getters retain baseline and candidate access order',async()=>{
+  const {compareAudioArtifactReports}=await load(),trace=[];
+  const report=label=>{
+    const channel=Object.fromEntries(['rms','peak','overFullScaleSamples','maxAdjacentStep','thdPercent','envelope8ms']
+      .map(key=>[key,{get(){trace.push(`${label}.channel.${key}`);return undefined;},enumerable:true}]));
+    const item={}; Object.defineProperties(item,Object.fromEntries(['frequency','inputAmplitude','gain','enabled','stereo','bursts','sampleRate','windowSeconds','channelDifferenceRms','channels']
+      .map(key=>[key,{get(){trace.push(`${label}.case.${key}`);return key==='channels'?[Object.defineProperties({},channel)]:undefined;},enumerable:true}])));
+    const result=rawReport();
+    for(const key of ['nodes','cases','transitions','alignments','stress'])Object.defineProperty(result,key,{get(){trace.push(`${label}.${key}`);return key==='cases'?[item]:undefined;},enumerable:true});
+    return result;
+  };
+  assert.deepEqual(compareAudioArtifactReports([report('baseline'),report('candidate')]),[]);
+  const suffix=['nodes','cases','case.frequency','case.inputAmplitude','case.gain','case.enabled','case.stereo','case.bursts','case.sampleRate','case.windowSeconds','case.channelDifferenceRms','case.channels','channel.rms','channel.peak','channel.overFullScaleSamples','channel.maxAdjacentStep','channel.thdPercent','channel.envelope8ms','transitions','alignments','stress'];
+  assert.deepEqual(trace,[...suffix.map(value=>`baseline.${value}`),...suffix.map(value=>`candidate.${value}`)]);
+});
+
+test('legacy artifact exports retain core function frozen list and constant identity',async()=>{
+  const legacy=await load(),core=await import('../scripts/audio-artifact-core.mjs');
+  for(const key of ['compareAudioArtifactReports','AUDIO_ARTIFACT_FILES','AUDIO_COMPARISON_ABSOLUTE_TOLERANCE','AUDIO_COMPARISON_RELATIVE_TOLERANCE'])assert.equal(legacy[key],core[key],key);
+  assert.equal(Object.isFrozen(core.AUDIO_ARTIFACT_FILES),true);
+});
+
+test('independent raw oracle catches tolerance and selected THD mutations in actual core',async()=>{
+  const crypto=require('node:crypto'),original=await fs.readFile('scripts/audio-artifact-core.mjs','utf8');
+  const expected=require('./fixtures/audio-artifact-compatibility.json');
+  const comparator=source=>{
+    assert.equal(source.split("import crypto from 'node:crypto';").length,2);
+    return Function('crypto',source.replace("import crypto from 'node:crypto';",'').replace(/^export /gm,'')+'\nreturn compareAudioArtifactReports;')(crypto);
+  };
+  const clean=comparator(original);
+  for(const [name,input]of Object.entries(rawInputs())){
+    let actual;try{actual={value:clean(input)};}catch(error){actual={error:{name:error.name,message:error.message}};}
+    assert.deepEqual(actual,expected[name],name);
+  }
+  const controls=[{from:'ABSOLUTE_TOLERANCE = 1e-7',to:'ABSOLUTE_TOLERANCE = 0',name:'absoluteNoise',want:['source/numeric/nodes']},
+    {from:'RELATIVE_TOLERANCE = 1e-6',to:'RELATIVE_TOLERANCE = 0',name:'relativeNoise',want:['source/numeric/nodes']},
+    {from:'thdPercent: channel.thdPercent',to:'thdPercent: undefined',name:'steadyThd',want:[]}];
+  for(const control of controls){assert.equal(original.split(control.from).length,2);const mutated=comparator(original.replace(control.from,control.to));assert.deepEqual(mutated(rawInputs()[control.name]),control.want);assert.notDeepEqual(control.want,expected[control.name].value);assert.deepEqual(mutated(rawInputs().transitionIgnored),[]);}
+  assert.equal(await fs.readFile('scripts/audio-artifact-core.mjs','utf8'),original);
+});
+
 async function artifactFixture(t, suffix = '') {
   await fs.mkdir(path.join(process.cwd(), 'output'), { recursive: true });
   const root = await fs.mkdtemp(path.join(process.cwd(), 'output', 'test-audio-artifact-'));
