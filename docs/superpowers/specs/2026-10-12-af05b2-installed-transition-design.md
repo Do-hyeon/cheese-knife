@@ -48,8 +48,8 @@
 | phase | manifest.version | 나머지 payload |
 | --- | --- | --- |
 | seed + old | 원본 `2.13.3` | 58개 bytes가 frozen 원본과 동일 |
-| new | 가상 T=`2.13.3.1` | AF 후보 58개, manifest의 version/version_name만 예외 |
-| rollback | 가상 R=`2.13.3.2` | 이전 코드 58개, manifest의 version/version_name만 예외 |
+| new | 가상 T=`2.13.4` | AF 후보 58개, manifest의 version/version_name만 예외 |
+| rollback | 가상 R=`2.13.5` | 이전 코드 58개, manifest의 version/version_name만 예외 |
 
 T/R은 **TEST ONLY**이며 제품/출시 번호가 아니다. private 복사본의 version_name은 각각 `AF05-B2 TEST ONLY new`, `AF05-B2 TEST ONLY rollback`이다. manifest는 원본 object를 clone하고 두 값만 바꿔 `JSON.stringify(object,null,2)+'\n'`으로 저장해 기대 hash를 만든다. 다른 key·권한·key/스토어 ID·파일은 바꾸지 않는다. 원본 manifest는 bytes 그대로다. [Chrome version 규칙](https://developer.chrome.com/docs/extensions/reference/manifest/version)에 맞는 로컬 식별값이며 플랫폼 downgrade/rollback을 증명하지 않는다.
 
@@ -58,6 +58,8 @@ T/R은 **TEST ONLY**이며 제품/출시 번호가 아니다. private 복사본�
 새 worker에서 `chrome.runtime.id`, 실제 manifest.version, `createSettingsBroker.toString()`을 관측한다. B1과 같은 고정 `var createSettingsBroker = ` 이후 function expression과 비교하여, 현재 파일을 읽기만 한 것이 아니라 기대 broker 함수가 실행 context에 있음을 확인한다. 임의 실행 sentinel/product 주입은 하지 않는다. 이것만으로 모든58파일의 모든 코드 경로 실행을 주장하지 않는다. 물리 전체 hash + 실제 UI/protocol/storage/CSS/MAIN 동작이 각각 별도 근거다.
 
 ## 5. 연속 저장·UI·CSS oracle
+
+사용자2026-10-13 지시에 따라 private 시험값도 기존 세 자리 `major.minor.patch` 형식을 유지한다. T/R은 현재 제품2.13.3의 변경이나 차기 출시 번호 확정이 아니다. 원본 manifest·원래 dist·스토어·릴리즈의 버전 표기는 그대로다.
 
 2026-10-13 실행 보완: 격리 Chromium은 manifest T를 관측하면서도 이전 imported broker worker를 유지했다(실제7622자/후보7970자, EOL 차이 아님). 각 새 context에서 **시험 확장만** `chrome.runtime.reload()`하고 기존 harness로 이전 worker 재사용 없이 새 worker를 취득한 다음 provenance/seed/UI 검사를 시작한다. 같은 profile/extension 경로·ID·raw storage는 유지하고 직접 저장 보정은 하지 않는다. 이는 시험 준비의 worker 갱신이며 스토어/native 자동 업데이트나 열린 이전 content script의 in-place 정리 성공을 증명하지 않는다. launch/정상 close ACK·실패 보존 규칙은 그대로다.
 

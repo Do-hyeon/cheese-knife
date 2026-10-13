@@ -97,7 +97,7 @@ test('independent UI CSS MAIN and execution mutations cannot satisfy the oracle'
   for (const [change, code] of [
     [value => { value.execution.brokerMatches = false; }, 'transition-execution'],
     [value => { value.execution.extensionId = 'b'.repeat(32); }, 'transition-execution'],
-    [value => { value.execution.version = '2.13.3.1'; }, 'transition-execution'],
+    [value => { value.execution.version = '2.13.4'; }, 'transition-execution'],
     [value => { value.ui.secondPreviewVolume = 10; }, 'transition-ui'],
     [value => { value.css.registrations = [{ id: 'styles', css: [] }]; }, 'transition-css'],
     [value => { value.css.reloads = [1, 1]; }, 'transition-css'],
@@ -116,6 +116,7 @@ test('font0 raw zero and registration contract are independently retained', asyn
   assert.deepEqual(expected.css, { registrations: [{ id: 'styles', css: ['styles/hide-ranking.css'],
     matches: ['https://chzzk.naver.com/*'], runAt: 'document_start', js: [] }], font: ['0px', '0px', '0px', '0px'], ranking: 'none', reloads: [0, 0] });
   assert.deepEqual(expected.raw.styleParameters, { future: 9, 'chat-font-size': 0 });
+  assert.equal(expected.execution.version, '2.13.4');
   const value = structuredClone(expected); delete value.raw.styleParameters['chat-font-size'];
   assert.throws(() => assertTransitionState(value, expected), { code: 'transition-storage-preservation' });
   for (const mutate of [css => { css.registrations[0].js = ['wrong.js']; }, css => { css.registrations[0].runAt = 'document_idle'; },

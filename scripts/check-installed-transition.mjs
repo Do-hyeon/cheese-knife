@@ -36,7 +36,7 @@ export function phasePayload(payload, phase, control) {
     let bytes = Buffer.from(entry.bytes);
     if (entry.name === 'manifest.json' && phase !== 'old') {
       const manifest = JSON.parse(bytes);
-      manifest.version = phase === 'new' ? '2.13.3.1' : '2.13.3.2';
+      manifest.version = phase === 'new' ? '2.13.4' : '2.13.5';
       manifest.version_name = `AF05-B2 TEST ONLY ${phase}`;
       bytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
     }

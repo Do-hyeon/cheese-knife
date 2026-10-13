@@ -18,7 +18,7 @@
 - 공개 JSON metadata의 canonical hash `669cc7f64599e748f4d3ec86e45472786cf331e4a0b207914619a03f849a652c`; ordinal `[name,sha256]` 목록 hash `a7a23d74b79132479b53d80b3cac2d71ab89a3cdb15b68cdda81732e6064ddd2`. localeCompare를 쓰지 않는다.
 - archive1MiB·entry raw1MiB·합계2MiB·metadata64KiB. 검증→해제→hash→owned write 순서를 지킨다. 일반 ZIP parser/새 dependency/새 외부 account/브라우저 정책 우회 없음.
 - 새 root의 고정 profile/extension 경로·같은 worker ID, 초기 seed1회 후 실제 UI 저장만. profile 복사/초기화/uninstall/repair 재주입 금지.
-- private 복사본 T=`2.13.3.1`, R=`2.13.3.2`; version_name=`AF05-B2 TEST ONLY new|rollback`. 원본 manifest bytes 불변, 변형 manifest는 두 값만 clone/canonical JSON으로 변경. 스토어 제출용 아님.
+- private 복사본 T=`2.13.4`, R=`2.13.5`; version_name=`AF05-B2 TEST ONLY new|rollback`. 시험값에도 기존 세 자리 형식을 유지한다(사용자2026-10-13 지시). 원본 manifest bytes 불변, 변형 manifest는 두 값만 clone/canonical JSON으로 변경. 제품/출시 번호 확정이나 스토어 제출용 아님.
 - wait15초/phase120초/close10초/CLI600초/kill 확인5초. 실패와 cleanup 실패를 PASS·negative 탐지로 바꾸지 않는다.
 - launch-intent/parent ACK 후에만 browser launch. 성공한 context.close만 close-success ACK다. runner exit로 detached Chromium 종료를 추정하지 않고 미확인root는보존·cleanup-unconfirmed/nonzero로남긴다.
 - root dist에서 build하지 않는다. code checkpoint를 commit한 후 clean tracked clone에서 실제 전체 게이트를 실행한다. 별도 새 GPT security scan은 실행하지 않는다.

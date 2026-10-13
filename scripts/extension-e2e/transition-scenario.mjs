@@ -62,7 +62,7 @@ export function expectedTransitionState(caseId, phase, step, runNonce, extension
   if (ranking) cssFiles.push('styles/hide-ranking.css');
   if (raw.styles.includes('chat-resize')) cssFiles.push('styles/chat-resize.css');
   return { raw,
-    execution: { extensionId, version: phase === 'old' ? '2.13.3' : phase === 'new' ? '2.13.3.1' : '2.13.3.2', brokerMatches: true },
+    execution: { extensionId, version: phase === 'old' ? '2.13.3' : phase === 'new' ? '2.13.4' : '2.13.5', brokerMatches: true },
     ui: { popupPhase: repair ? 'repair-required' : 'ready', stylesPhase: repair ? 'repair-required' : 'ready',
       arrowSeek: repair ? true : known.arrowSeek, previewVolume: repair ? 5 : known.previewVolume, brightness: repair ? 1 : 1.25,
       hideRanking: repair ? false : ranking, fontSize: repair ? 0 : font ?? 0,

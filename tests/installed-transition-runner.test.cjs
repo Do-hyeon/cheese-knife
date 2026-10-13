@@ -80,11 +80,12 @@ test('test-only manifests change only two fields and loss insertion keeps backgr
   const payload = await readPublishedPayload();
   const original = structuredClone(payload);
   const input = payload.entries.find(e => e.name === 'manifest.json').bytes;
-  for (const [phase, version] of [['old', '2.13.3'], ['new', '2.13.3.1'], ['rollback', '2.13.3.2']]) {
+  for (const [phase, version] of [['old', '2.13.3'], ['new', '2.13.4'], ['rollback', '2.13.5']]) {
     const entries = phasePayload(payload, phase, phase === 'new' ? 'storage-loss' : undefined);
     const manifest = JSON.parse(entries.find(e => e.name === 'manifest.json').bytes);
     const originalManifest = JSON.parse(input);
     assert.equal(manifest.version, version);
+    assert.equal(manifest.version.split('.').length, 3);
     if (phase !== 'old') assert.equal(manifest.version_name, `AF05-B2 TEST ONLY ${phase}`);
     delete manifest.version; delete manifest.version_name; delete originalManifest.version; delete originalManifest.version_name;
     assert.deepEqual(manifest, originalManifest);
