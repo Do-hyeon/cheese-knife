@@ -78,7 +78,7 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어는 같�
 | DT02 | 선택적 native TS 실행 | 조건부 보류 판단 승인 | DEFERRED | 지금은 JSDoc/checkJs 유지, 실제 유지보수 이득·검사/실행 경계 보존 조건에서 재검토; native 구현 완료 아님 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **AF05-B2 local 완료 → native preflight 계획 작성·검토 → 계획/로컬 구현 승인 대기**. 사용자2026-10-13 수용 기준 분리 승인으로 P09 배포 증거 고정은 종료했으며 과거 업데이트 미검증/플랫폼 롤백 미실행은 남긴다. [native 계획](docs/superpowers/plans/2026-10-13-af05b-native-preflight.md)은 로컬 probe/checker와 별도 승인 후 일반 UI/DevTools JSON 관측을 나눈다. 실제 native 연결/실행은 아직 확보·검증하지 않았다. [B2 현재 기록](docs/superpowers/validation/2026-10-12-af05b2-installed-transition.md): c707af6 실제5case/15phase 전환·정확한 storage-loss control PASS, 전체1107개 중1106pass/실패0/기존skip1·최종연결111/111·foundation9/기존설치/audio/도구/보존 대조. 이전 실패·Astra max 최초0/6/0 및 작성자 보완을 구분하며 native/공개 CI·전체 카테고리 수용은 미완료다. AF05-B 전체 완료 전 push·PR 금지, 릴리즈·스토어 배포 금지와 DT02 보류는 유지한다.
+현재 커서: **AF05-B2 local 완료 → native preflight Task1 로컬 도구 완료 → Task2 실제 Chrome/프로필 실행 승인 대기**. 사용자2026-10-13 수용 기준 분리 승인으로 P09 배포 증거 고정은 종료했으며 과거 업데이트 미검증/플랫폼 롤백 미실행은 남긴다. [native 계획](docs/superpowers/plans/2026-10-13-af05b-native-preflight.md)과 [Task1 검증 기록](docs/superpowers/validation/2026-10-13-af05b-native-preflight.md): ccff650 전체1171개 중1170pass/실패0/기존skip1·연결108/108·foundation9·새 lint0·보호 불변, Astra max 최초0/3/1 지적의 작성자 RED→GREEN 보완. 실제 native profile/process 접근·관측은 미실행, synthetic PASS를 실제 PASS로 간주하지 않는다. [B2 기록](docs/superpowers/validation/2026-10-12-af05b2-installed-transition.md)의 c707af6 실제5case/15phase 전환과 storage-loss control은 격리 bundled 결과다. native/공개 CI·전체 카테고리 수용은 미완료이며 AF05-B 전체 완료 전 push·PR 금지, 릴리즈·스토어 배포 금지와 DT02 보류를 유지한다.
 
 B1은 PR #36 최종 CI run `38255250513`과 merge `b38ec388`로 완료했다. B2 설계·계획은 PR #37로 병합됐으며 최초 Astra max Critical0·Important3·Minor1 보완 기록과 구현·실행 승인 게이트를 보존한다. 수정 후 독립0건/실제전환PASS/native update 수용은 아니다. P09의 게시2.13.3·격리 신규 설치 기준은 보존하며 과거 업데이트·실제 롤백 수용은 미검증이다. AF05 전체와 기능 로드맵 동결은 유지한다.
 
@@ -249,8 +249,9 @@ AF05-B 공개 수용 — P09와 차기 AF 배포에 의존:
 - [x] **B2 / 읽기 전용 준비 진단:** 사용자 후속 승인, fresh fixture별 단일 reload·worker/popup 및 관리 화면 상태 관측. before ENABLED/after DISABLED, unsupportedDeveloperExtension=true 확인. 정책/손상/Manifest 버전 사유false·쓰기0·close/cleanup·보호 대조 확인. throwaway 진단이며 실제 전환 PASS 아님.
 - [x] **B2 / 정상 개발용 준비 설정 승인·보완:** 별도 사용자 승인 후 새 owned fixture에만 정상 관리 UI Developer mode ON·old-worker close·같은 ID/실행 version/활성 상태 확인·popup/새 worker provenance 적용. UI version_name과 숫자 manifest.version 분리, 실제 Probe7/positive/control 성립. 잠금/timeout/cleanup은 FAIL, 직접 profile 편집·force flag·정책 우회·seed 재주입 없음.
 - [x] **후속 / native preflight 계획 작성·검토:** 사용자2026-10-13 승인, [상세 계획](docs/superpowers/plans/2026-10-13-af05b-native-preflight.md) 작성·자체 대조. fresh Astra max Critical0/Important6/Minor1과 작성자 보완: 단계4→8→12·CSS 실패 표시·outcome journal·수동 profile/context 한계·seed 후 중단·HTML 포함52개/허용 inventory. [검토 기록](docs/superpowers/validation/2026-10-13-af05b-native-preflight.md). 수정 후 독립0건/native PASS가 아님.
-- [ ] **native / 계획·Task1 로컬 구현 승인:** 검토 보완 계획과 기존 Native 실행 방식 확인. 실제 Chrome/프로필 변경은 별도 Task2 실행 묶음 승인.
-- [ ] **native / 구현·실행:** Task1 probe/checker 검증, Task2 지정 P09 프로필의 일반 UI/DevTools 관측·현재 설치/실행/저장/CSS 등록·cold 근거. 연결 불가/누락이면 대기, 추정으로 PASS 처리하지 않음.
+- [x] **native / 계획·Task1 로컬 구현 승인:** 사용자2026-10-13 승인. 실제 Chrome/프로필 변경은 별도 Task2 실행 묶음 승인.
+- [x] **native / Task1 로컬 완료:** read-only probe/offline checker/private CLI·frozen broker/실제 popup/styles DOM·durable attempt·정제된 startup 실패·쓰기 전 budget 보완. 새64/64·연결108/108·전체1171중1170pass/0fail/기존skip1·foundation9·새 lint0·보호 불변. Astra max 최초Critical0/Important3/Minor1은 작성자 한 차례 RED→GREEN 보완, 수정 후 독립0건/native PASS 아님. 기본 inspect-native는 unavailable.
+- [ ] **native / Task2 실제 실행 승인·검증:** 지정 P09 프로필의 정상 열기/Developer mode/Inspect·네 UI 값 저장·seed 유지/종료·재시작, 좁은 현재 설치/실행/저장/CSS 등록/cold 사실 조회는 별도 묶음 승인 필요. 연결 불가/누락이면 대기, 추정으로 PASS 처리하지 않음. seed-start 뒤 실패는 상태 보존·별도 재개 계획 승인.
 - [ ] **후속 / 공개 준비:** native PASS 이후 AF05-B 전체 공개 범위/공개 후 수용의 순환 경계를 사용자에게 확인. 제품 버전·push/단일 PR·스토어 제출·게시 각각 별도 승인. 현재 공개 금지 유지.
 - [ ] 새 설치·기존 설치 업데이트·설정 보존·롤백 설치 수용.
 - [ ] **AF05-B 전체 종료·단일 PR:** 위 잔여 작업·검증·승인된 수용 기준을 전체 대조하고 미해결/미승인 항목을 분리한 뒤 공개 승인을 확인해 한글 PR 하나로 묶는다. 현재 배포 금지·미승인 native 실행·공개 후 수용 경계 때문에 전체 DONE으로 표시하거나 공개 게이트를 생략하지 않는다. 공개 후 최종 head CI 확인·병합은 별도 승인 범위로 수행한다.
@@ -348,8 +349,8 @@ git -c core.safecrlf=false diff --check
 
 INC01은 사용자 재등록·설정 유지 확인과 PR #30·공개 CI·main 병합으로 종료했다. 원래 dist의58파일과 현재 시험판·설정은 계속 보존한다. 이 수용을 모든 방송 기능·기존 스토어 버전 업데이트 검사로 확대하지 않는다.
 
-전체 유지보수 영역은 PR #42의 최종 head/병합 후 main CI 통과와 승인된 병합·해당 브랜치 정리까지 완료했다. PR #41은 닫힌 상태로 두고 DT02 조건부 보류·원래 시험판/root dist/P09 profile·보호 브랜치는 유지한다. B2 로컬 검증을 마치고 native 사전검증 계획/검토 단계이며 카테고리 전체 완료 전 push·PR은 하지 않는다. 수용 기준 분리 승인과 실제 native 조작·릴리즈·스토어 배포 승인은 별개다.
+전체 유지보수 영역은 PR #42의 최종 head/병합 후 main CI 통과와 승인된 병합·해당 브랜치 정리까지 완료했다. PR #41은 닫힌 상태로 두고 DT02 조건부 보류·원래 시험판/root dist/P09 profile·보호 브랜치는 유지한다. B2와 native 사전검증 Task1 로컬 도구는 완료했으며 Task2 실제 실행 승인 대기다. 카테고리 전체 완료 전 push·PR은 하지 않는다. 수용 기준 분리 승인과 실제 native 조작·릴리즈·스토어 배포 승인은 별개다.
 
 게시 완료 알림의14:55는 표시 시각이고 실제 처리 시각·시간대·초는 미확정이다. 추가 시각 자료 요청은 종료했다. 실제 롤백·차기 설치/업데이트·스토어 제출/게시에는 각각 별도 승인이 필요하다. B2는 새 private bundled 프로필·UI 저장·손실 control·cleanup·Native 구현/격리검증/최종 Astra max 묶음 승인을 받았으며 그 범위에서만 실행한다. 종료 미확인 시 root 보존/수동 종료 필요 가능성은 유지한다. native/공개 실행·과거 미검증 수용·AF05-B 전체 완료 기준 변경은 별도 게이트다.
 
-AF05 내부 작업과 P09 배포 증거 고정은 완료됐다. 기존 시청 Chrome에는 사용자 보고상 로컬 시험판만 있으므로 존재하지 않는 스토어 설치본의 업데이트 조작을 요청하지 않는다. 로컬 시험판은 그대로 유지하고 격리 프로필의 스토어2.13.3을 차기 업데이트 기준으로 보존한다. 구 스토어2.13.2→2.13.3 설정 보존 미검증·실제 플랫폼 롤백 미실행은 승인된 별도 제한으로 남긴다. B2 코드 전환/복귀 결과는 native 업데이트를 대체하지 않는다. 다음은 native 사전검증 계획 승인과 로컬 도구 구현이며 실제 프로필 열기·Developer mode·설정/Inspect·seed 유지에는 별도 실행 묶음 승인을 받는다. Google 로그인/동기화나 브라우저 접근 정책 우회는 하지 않는다. 실제 공개 설치·차기 배포·AF05 전체 종료·로드맵 동결 해제 조건은 유지한다.
+AF05 내부 작업과 P09 배포 증거 고정은 완료됐다. 기존 시청 Chrome에는 사용자 보고상 로컬 시험판만 있으므로 존재하지 않는 스토어 설치본의 업데이트 조작을 요청하지 않는다. 로컬 시험판은 그대로 유지하고 격리 프로필의 스토어2.13.3을 차기 업데이트 기준으로 보존한다. 구 스토어2.13.2→2.13.3 설정 보존 미검증·실제 플랫폼 롤백 미실행은 승인된 별도 제한으로 남긴다. B2 코드 전환/복귀와 Task1 synthetic 결과는 native 업데이트를 대체하지 않는다. 다음은 Task2 실제 프로필 열기·Developer mode·설정/Inspect·네 UI 값 저장/seed 유지·종료/재시작과 좁은 설치/프로세스 사실 조회의 별도 실행 묶음 승인이다. Google 로그인/동기화나 브라우저 접근 정책 우회는 하지 않는다. 실제 공개 설치·차기 배포·AF05 전체 종료·로드맵 동결 해제 조건은 유지한다.
