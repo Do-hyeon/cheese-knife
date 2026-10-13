@@ -110,6 +110,8 @@ assert.throws(()=>assertTransitionState(lostRaw,expected),{code:'transition-stor
 
 ## 승인 묶음·자체 대조·인계
 
+2026-10-13 후속 승인/보완: `scripts/extension-e2e/transition-preparation.mjs`가 B2만의 정상 Developer mode UI 준비를 소유하며 기존 runner의 `refreshTransitionWorker` export를 유지한다. UI 잠금·대상 부재·작동 없는 toggle·old-worker 종료 부재·ID/version/활성 mismatch·popup·reload·close 오류의 DOM 회귀 검사와 parent 준비 증거 mutation을 RED→GREEN으로 대조한다. 기존 두 최소 refresh double은 확장된 실제 DOM 경계 검사로 대체한다. 실제 첫 fixture의 성립 확인 뒤5case positive/storage-loss와 기존 전체 gate를 다시 실행한다. child seed/phase와 parent admission은 `{developerMode:true,workerClosed:true,extensionId,version,state:'ENABLED'}`를 유지한다. 사용자 Chrome/P09/제품/권한/버전·스토어에는 적용하지 않으며 미완료를 PASS로 바꾸지 않는다.
+
 - [x] 사용자2026-10-13 written B2 spec·구현 계획 승인. 새 bundled Chromium fixture 프로필5case+control·T/R test-copy·기계적 UI seed/수정·실제 삭제 negative·owned process/directory cleanup. 종료미확인시실패/root보존과private시험browser 수동종료필요가능성포함. 기존 시청/native 프로필·스토어는 제외.
 - [x] 사용자2026-10-13 Native 구현·격리검증·최종 Astra max 검토 묶음 승인. 설계 작성만으로 실행 승인을 추정한 것이 아님.
 - [ ] 구현 후 최종 Astra max 검토. 공개CI·단일 PR/통합은 AF05-B 전체 카테고리 완료 후 승인 범위에서 수행. 상위 AF05-B의waiver/플랫폼롤백완료기준은 별도.

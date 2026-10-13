@@ -93,6 +93,8 @@ fixture HTTP(S)는 기존3개 고정 URL만 fulfill, 다른 application 요청�
 
 ## 6. 설치 경계의 negative control
 
+2026-10-13 후속 실행 승인: 새 owned fixture 프로필에만 정상 Chrome 관리 UI로 Developer mode를 켠다. read-only 진단에서 command-line 등록의 runtime.reload 후 DISABLED/unsupportedDeveloperExtension=true를 관측했다. 직접 profile 편집·force flag·정책 우회는 하지 않으며 UI가 잠겨 있으면 FAIL이다. B2 준비 helper는 old-worker close를 요청 전에 구독하고, 종료 후 새 management 문서에서 같은 ID/기대 version·ENABLED/제한 없음·Developer mode ON을 관측한 뒤 popup wake/새 worker provenance를 진행한다. seed와 모든 completed phase의 preparation 증거를 parent도 재검증한다. 이전 broker가 남은 상태나 실행 환경 실패는 계속 FAIL이다. 실제 환경 성립은 새 설치 전환 검사로 확인할 때까지 미합격이다.
+
 정상 positive와 다른 새 root/profile/extension에서 valid-ui를 실행한다. new 시험 복사본의 **settings-broker.js**에서 initialize의 기존 `boot = enqueue(async () => {` callback 안, 첫 `const raw = await read(true), revision = contract.readRevision(raw.settingsRevision);` 바로 앞에 `await chromeApi.storage.local.remove('config');` 한 줄만 삽입한다. 정확한 insertion point가 한 개임을 먼저 검사하며 0/복수면 control-preparation 실패다. original background의 동기 importScripts/listener 등록은 그대로다. 삭제 완료 뒤 실제 broker boot가 raw를 읽으므로 삭제와 read의 경쟁을 만들지 않는다. remove 실패도 별도 control 실패다. 정상·원본·제품 파일은 바꾸지 않는다. 이 변형 broker hash/function source는 **negative phase의 별도 기대 inventory/provenance**에만 반영한다.
 
 old raw/revision8 저장 성공과 정상 종료 후 new를 실행하고, 같은 preservation oracle가 candidate-init 단계의 **`transition-storage-preservation`**으로 거부해야 한다. 실제 raw에서 config 손실도 확인한다. inventory 실패·MAIN/worker timeout·브라우저 부재·cleanup 실패를 기대 실패로 인정하지 않는다. negative 보고서의 `ok:true`는 control 탐지 합격이지 positive 전환 합격이 아니다. 정상 positive와 기존 MAIN-missing negative도 각각 실행한다.

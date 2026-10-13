@@ -61,9 +61,10 @@ async function fixture(t, fault) {
       const worker = { evaluate: (fn, value) => vm.runInNewContext(`(${fn.toString()})(value)`, { value, chrome: { storage: { local: {
         get: async () => structuredClone(storage), set: async raw => { writes++; events.push('seed-write'); Object.assign(storage, structuredClone(raw)); },
       } } } }) };
-      return { context, worker, extensionId: fault === 'identity' && phase === 'new' ? 'b'.repeat(32) : id };
+      return { context, worker, fixtureVersion: manifest.version, extensionId: fault === 'identity' && phase === 'new' ? 'b'.repeat(32) : id };
     },
-    refreshTransitionWorker: async launched => launched,
+    refreshTransitionWorker: async ({ fixtureVersion, ...launched }) => ({ ...launched,
+      preparation: { developerMode: true, workerClosed: true, extensionId: launched.extensionId, version: fixtureVersion, state: 'ENABLED' } }),
     runTransitionPhase: async args => {
       events.push(`scenario:${args.phase}`);
       if (['loss', 'postclose-inventory'].includes(fault) && args.phase === 'new') throw Object.assign(faultError('transition-storage-preservation'), {
@@ -86,6 +87,8 @@ test('child workflow seeds once, preserves path identity and closes before each 
   assert.ok(f.paths.every(value => value[0] === f.paths[0][0] && value[1] === f.paths[0][1]));
   const result = f.messages.at(-1).result; assert.equal(result.failure, undefined); assert.deepEqual(result.secondaryErrors, []);
   assert.equal(result.seeds.length, 1); assert.equal(result.phases.length, 3);
+  assert.deepEqual(result.seeds[0].preparation, { developerMode: true, workerClosed: true, extensionId: id, version: '2.13.3', state: 'ENABLED' });
+  assert.deepEqual(result.phases.map(value => value.preparation.version), ['2.13.3', '2.13.4', '2.13.5']);
 });
 
 for (const [fault, code] of [['prepare', 'test-prepare'], ['second-build', 'test-second-build'], ['partial-install', 'test-partial-install'],

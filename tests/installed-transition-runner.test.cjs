@@ -1,7 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
-const vm = require('node:vm');
 const { fork, spawnSync } = require('node:child_process');
 const fs = require('node:fs/promises');
 const path = require('node:path');
@@ -186,34 +185,6 @@ test('parent refuses missing/mutated final evidence even when child result claim
   }
 });
 
-test('isolated phase setup retires cached worker without clearing storage or changing ID', async () => {
-  const { refreshTransitionWorker } = await subject();
-  const events = [], saved = { futureTop: 'keep', config: { previewVolume: 25 } };
-  const context = { newPage: async () => ({ goto: async url => { assert.equal(url, `chrome-extension://${'a'.repeat(32)}/popup.html`); }, close: async () => {} }) };
-  const worker = { evaluate: fn => vm.runInNewContext(`(${fn.toString()})()`, { chrome: {
-    runtime: { reload() { events.push('reload'); } }, storage: { local: { clear() { throw Error('must not clear'); } } } } }) };
-  const next = { marker: 'new-worker' }, id = 'a'.repeat(32);
-  const reacquire = async (actualContext, actualWorker, ms, options) => {
-    assert.equal(actualContext, context); assert.equal(actualWorker, worker); assert.equal(ms, 15000);
-    assert.deepEqual(options, { reusePrevious: false }); events.push('fresh-worker'); return { worker: next, extensionId: id };
-  };
-  const actual = await refreshTransitionWorker({ context, worker, extensionId: id }, reacquire);
-  assert.equal(actual.worker, next); assert.equal(actual.extensionId, id);
-  assert.deepEqual(events, ['reload', 'fresh-worker']); assert.deepEqual(saved, { futureTop: 'keep', config: { previewVolume: 25 } });
-  await assert.rejects(refreshTransitionWorker({ context, worker, extensionId: id }, async () => ({ worker: next, extensionId: 'b'.repeat(32) })), { code: 'transition-execution' });
-  await assert.rejects(refreshTransitionWorker({ context, worker: { evaluate: async () => { throw Object.assign(Error('reload'), { code: 'reload-failed' }); } }, extensionId: id }, reacquire), { code: 'reload-failed' });
-});
-
-test('isolated refresh wakes lazy MV3 worker through read-only packaged popup before reacquiring', async () => {
-  const { refreshTransitionWorker } = await subject(); const events = [], id = 'a'.repeat(32), newWorker = {};
-  const worker = { evaluate: async fn => vm.runInNewContext(`(${fn.toString()})()`, { chrome: { runtime: { reload: () => events.push('reload') } } }) };
-  const context = { newPage: async () => ({ goto: async url => { assert.equal(url, `chrome-extension://${id}/popup.html`); events.push('popup-wake'); }, close: async () => { events.push('popup-close'); } }) };
-  const result = await refreshTransitionWorker({ context, worker, extensionId: id }, async () => {
-    assert.deepEqual(events, ['reload', 'popup-wake']); events.push('fresh-worker'); return { worker: newWorker, extensionId: id };
-  });
-  assert.equal(result.worker, newWorker); assert.deepEqual(events, ['reload', 'popup-wake', 'fresh-worker', 'popup-close']);
-});
-
 test('parent revalidates every action observation identity hash and no-reseed sequence', async () => {
   const { validateTransitionResult } = await subject();
   const { expectedTransitionState, transitionSeed } = await import('../scripts/extension-e2e/transition-scenario.mjs');
@@ -222,15 +193,19 @@ test('parent revalidates every action observation identity hash and no-reseed se
   const records = steps.map((step, index) => ({ step, ...(index === 5 ? { reloaded: true } : {}),
     observation: expectedTransitionState('valid-ui', 'old', step, nonce, id, { reloaded: index === 5, reloads: index === 5 ? [1, 0] : [0, 0] }) }));
   const result = { source: { sourceCommit: 'a'.repeat(40) }, after: { sourceCommit: 'a'.repeat(40) }, candidateInventory: hash,
-    seeds: [{ caseId: 'valid-ui', raw: transitionSeed('valid-ui', nonce), extensionId: id, writes: 1 }],
-    phases: [{ caseId: 'valid-ui', phase: 'old', records, final: records.at(-1).observation, extensionId: id, inventorySha256: hash, manifestSha256: hash }] };
+    seeds: [{ caseId: 'valid-ui', raw: transitionSeed('valid-ui', nonce), extensionId: id, writes: 1,
+      preparation: { developerMode: true, workerClosed: true, extensionId: id, version: '2.13.3', state: 'ENABLED' } }],
+    phases: [{ caseId: 'valid-ui', phase: 'old', records, final: records.at(-1).observation, extensionId: id, inventorySha256: hash, manifestSha256: hash,
+      preparation: { developerMode: true, workerClosed: true, extensionId: id, version: '2.13.3', state: 'ENABLED' } }] };
   const launches = ['seed', 'old', 'new'].map(phase => ({ caseId: 'valid-ui', phase }));
   assert.equal(validateTransitionResult(result, nonce, 'storage-loss', launches), undefined);
   for (const mutate of [v => { v.seeds[0].writes = 2; }, v => { v.phases[0].records.pop(); },
     v => { v.phases[0].records[1].observation.raw.config.futureFlag = 'lost'; },
     v => { v.phases[0].records[1].observation.runtime.ready = false; },
     v => { v.phases[0].extensionId = 'b'.repeat(32); }, v => { v.phases[0].manifestSha256 = ''; },
-    v => { v.after.sourceCommit = 'b'.repeat(40); }, v => { v.phases[0].records[5].observation.css.reloads = [1, 1]; }]) {
+    v => { v.after.sourceCommit = 'b'.repeat(40); }, v => { v.phases[0].records[5].observation.css.reloads = [1, 1]; },
+    v => { v.seeds[0].preparation.developerMode = false; }, v => { v.phases[0].preparation.workerClosed = false; },
+    v => { v.phases[0].preparation.version = '2.13.4'; }]) {
     const value = structuredClone(result); mutate(value); assert.throws(() => validateTransitionResult(value, nonce, 'storage-loss', launches));
   }
 });
@@ -276,8 +251,10 @@ test('parent storage-loss PASS is vetoed by a later protocol or inventory fault'
       return { failure: { code: 'transition-storage-preservation', caseId: 'valid-ui', phase: 'new', step: 'startup', stage: 'candidate-init', cleanupErrors: [],
         observation: { raw, execution: { extensionId: id, version: '2.13.4', brokerMatches: true } } },
         result: { source: { sourceCommit: 'a'.repeat(40) }, after: { sourceCommit: 'a'.repeat(40) }, candidateInventory: hash,
-          seeds: [{ caseId: 'valid-ui', raw: transitionSeed('valid-ui', n), extensionId: id, writes: 1 }],
-          phases: [{ caseId: 'valid-ui', phase: 'old', records, final: records.at(-1).observation, extensionId: id, inventorySha256: hash, manifestSha256: hash }],
+          seeds: [{ caseId: 'valid-ui', raw: transitionSeed('valid-ui', n), extensionId: id, writes: 1,
+            preparation: { developerMode: true, workerClosed: true, extensionId: id, version: '2.13.3', state: 'ENABLED' } }],
+          phases: [{ caseId: 'valid-ui', phase: 'old', records, final: records.at(-1).observation, extensionId: id, inventorySha256: hash, manifestSha256: hash,
+            preparation: { developerMode: true, workerClosed: true, extensionId: id, version: '2.13.3', state: 'ENABLED' } }],
           secondaryErrors: later === 'inventory' ? [{ code: 'transition-inventory' }] : [], cleanupErrors: [] },
         secondaryErrors: later === 'protocol' ? [{ code: 'transition-ipc' }] : [], cleanupErrors: [], normalExit: true, unconfirmedRoots: [],
         launches: ['seed', 'old', 'new'].map(phase => ({ caseId: 'valid-ui', phase })) };

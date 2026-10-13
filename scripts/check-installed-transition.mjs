@@ -7,7 +7,9 @@ import { chromium } from 'playwright';
 import { openOwnedRoot } from './owned-files.mjs';
 import { verifyCandidate, removeCandidate } from './verify-candidate.mjs';
 import { loadFixtureResponses } from './extension-e2e/fixture-router.mjs';
-import { launchInstalledExtension, parseInstalledE2EArgs, reacquireExtensionWorker } from './extension-e2e/harness.mjs';
+import { launchInstalledExtension, parseInstalledE2EArgs } from './extension-e2e/harness.mjs';
+import { refreshTransitionWorker } from './extension-e2e/transition-preparation.mjs';
+export { refreshTransitionWorker };
 import { readPublishedPayload, PUBLISHED_PAYLOAD_BASELINE } from './extension-e2e/published-payload.mjs';
 import { TRANSITION_CASES, transitionSeed, expectedTransitionRaw, expectedTransitionState, assertTransitionState, runTransitionPhase } from './extension-e2e/transition-scenario.mjs';
 
@@ -61,18 +63,6 @@ export function matchesStorageLoss(failure, nonce, extensionId) {
     isDeepStrictEqual(failure.observation?.raw, expected);
 }
 
-export async function refreshTransitionWorker(launched, reacquire = reacquireExtensionWorker) {
-  // Persistent unpacked Chromium can keep imported worker scripts across a versioned relaunch.
-  await launched.worker.evaluate(() => chrome.runtime.reload());
-  const wake = await launched.context.newPage();
-  try {
-    await wake.goto(`chrome-extension://${launched.extensionId}/popup.html`, { waitUntil: 'domcontentloaded', timeout: 15000 });
-    const fresh = await reacquire(launched.context, launched.worker, 15000, { reusePrevious: false });
-    if (fresh.extensionId !== launched.extensionId) throw fail('transition-execution');
-    return { ...launched, ...fresh };
-  } finally { await wake.close(); }
-}
-
 export function validateTransitionResult(result, nonce, control, launches) {
   const cases = control ? ['valid-ui'] : TRANSITION_CASES;
   if (!result?.source?.sourceCommit || !isDeepStrictEqual(result.source, result.after) ||
@@ -81,12 +71,15 @@ export function validateTransitionResult(result, nonce, control, launches) {
   for (const caseId of cases) {
     const seed = result.seeds.find(value => value.caseId === caseId), phases = result.phases.filter(value => value.caseId === caseId);
     if (!seed || seed.writes !== 1 || !/^[a-p]{32}$/.test(seed.extensionId || '') || !isDeepStrictEqual(seed.raw, transitionSeed(caseId, nonce)) ||
+        !isDeepStrictEqual(seed.preparation, { developerMode: true, workerClosed: true, extensionId: seed.extensionId, version: '2.13.3', state: 'ENABLED' }) ||
         !isDeepStrictEqual(phases.map(value => value.phase), control ? ['old'] : ['old', 'new', 'rollback']) ||
         !isDeepStrictEqual(launches.filter(value => value.caseId === caseId).map(value => value.phase), control ? ['seed', 'old', 'new'] : ['seed', 'old', 'new', 'rollback'])) throw fail('transition-result-incomplete');
     for (const phase of phases) {
       const steps = caseId !== 'valid-ui' ? ['startup'] : phase.phase === 'old' ? ['startup', 'arrow-off', 'volume25', 'hide-ranking-on', 'font8', 'font8'] :
         phase.phase === 'new' ? ['startup', 'two-popup-merge', 'font0', 'font0'] : ['startup', 'volume26', 'rollback-font8', 'rollback-font8', 'rollback-font0'];
       if (phase.extensionId !== seed.extensionId || !/^[a-f0-9]{64}$/.test(phase.inventorySha256 || '') ||
+          !isDeepStrictEqual(phase.preparation, { developerMode: true, workerClosed: true, extensionId: seed.extensionId,
+            version: phase.phase === 'old' ? '2.13.3' : phase.phase === 'new' ? '2.13.4' : '2.13.5', state: 'ENABLED' }) ||
           !/^[a-f0-9]{64}$/.test(phase.manifestSha256 || '') || !Array.isArray(phase.records) ||
           !isDeepStrictEqual(phase.records.map(value => value.step), steps)) throw fail('transition-result-incomplete');
       let reloaded = false;
@@ -240,6 +233,7 @@ export async function executeTransitionChild(options, dependencies = {}) {
   const noticeFailure = async error => {
     if (noticed.has(error)) return;
     noticed.add(error);
+    for (const cleanup of (error?.cleanupErrors || []).slice(0, 32)) cleanupErrors.push({ code: String(cleanup.code).slice(0, 240), caseId: active?.caseId || null, phase: active?.phase || null });
     const next = error?.failure || { ...genericFailure(error), ...active };
     if (failure) { if (secondaryErrors.length < 32) secondaryErrors.push(next); return; }
     failure = next;
@@ -287,11 +281,11 @@ export async function executeTransitionChild(options, dependencies = {}) {
             const seed = transitionSeed(assigned.caseId, options.nonce);
             await launched.worker.evaluate(value => chrome.storage.local.set(value), seed);
             if (!isDeepStrictEqual(await launched.worker.evaluate(() => chrome.storage.local.get(null)), seed)) throw fail('transition-seed-write');
-            seeds.push({ caseId: assigned.caseId, raw: seed, extensionId: expectedId, writes: 1 });
+            seeds.push({ caseId: assigned.caseId, raw: seed, extensionId: expectedId, writes: 1, preparation: launched.preparation });
           } else {
             const result = await deps.runTransitionPhase({ ...launched, responses, caseId: assigned.caseId, phase,
               runNonce: options.nonce, expectedBrokerSource: entries.find(entry => entry.name === 'settings-broker.js').bytes.toString('utf8') });
-            phases.push({ ...result, extensionId: expectedId, inventorySha256: beforeHash,
+            phases.push({ ...result, extensionId: expectedId, inventorySha256: beforeHash, preparation: launched.preparation,
               manifestSha256: entries.find(entry => entry.name === 'manifest.json').sha256 });
           }
         } catch (error) {
