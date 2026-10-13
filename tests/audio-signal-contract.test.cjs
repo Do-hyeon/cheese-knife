@@ -67,12 +67,36 @@ test('numeric boundaries retain real failure behavior', async () => {
   assert.throws(() => rmsEnvelope([0], 1000, 2), { message: 'invalid envelope window' });
 });
 
-test('NUM01 remains a separate policy without JSON coercion', async () => {
+test('NUM01 rejects nonfinite and nonpositive sample rates before envelope arithmetic', async () => {
   const { rmsEnvelope } = await signal();
-  for (const result of [rmsEnvelope([0.5, -0.5], NaN, 2), rmsEnvelope([0.5, -0.5], 1000, NaN)]) {
-    assert.ok(Number.isNaN(result.windowSamples));
-    assert.equal(result.min, Infinity); assert.equal(result.max, 0);
+  for (const rate of [NaN, Infinity, -Infinity, 0, -0, -1000])
+    assert.throws(() => rmsEnvelope([0.5, -0.5], rate, 2), { message: 'invalid sample rate' });
+  // Negative factors must not cancel into a valid positive window.
+  assert.throws(() => rmsEnvelope([0.5, -0.5], -1000, -2), { message: 'invalid sample rate' });
+});
+
+test('NUM01 rejects nonfinite and nonpositive windows without returning invalid measurements', async () => {
+  const { rmsEnvelope } = await signal();
+  for (const window of [NaN, Infinity, -Infinity, 0, -0, -2])
+    assert.throws(() => rmsEnvelope([0.5, -0.5], 1000, window), { message: 'invalid envelope window' });
+});
+
+test('NUM01 preserves buffer values default fractional rounding and existing window bounds', async () => {
+  const { rmsEnvelope } = await signal();
+  for (const samples of [[0.5, -0.5], new Float32Array([0.5, -0.5]), new Float64Array([0.5, -0.5])]) {
+    assert.deepEqual(rmsEnvelope(samples, 1000, 2), { windowSamples: 2, min: 0.5, max: 0.5 });
+    assert.deepEqual(rmsEnvelope(samples, 1000, 1.5), { windowSamples: 2, min: 0.5, max: 0.5 });
+    assert.deepEqual(rmsEnvelope(samples, 1000.25, 2), { windowSamples: 2, min: 0.5, max: 0.5 });
+    assert.deepEqual(Array.from(samples), [0.5, -0.5]);
   }
+  const samples=Array(8).fill(0.5);
+  assert.deepEqual(rmsEnvelope(samples, 1000), { windowSamples: 8, min: 0.5, max: 0.5 });
+  assert.deepEqual(rmsEnvelope(samples, 1000, undefined), { windowSamples: 8, min: 0.5, max: 0.5 });
+  /** @type {Array<[number,number]>} */ const bounds=[[1,1],[1000,3],[Number.MAX_VALUE,Number.MAX_VALUE]];
+  for (const [rate,window] of bounds)
+    assert.throws(() => rmsEnvelope([0.5, -0.5], rate, window), { message: 'invalid envelope window' });
+  assert.throws(() => rmsEnvelope([],1000,1), { message: 'invalid envelope window' });
+  assert.throws(() => rmsEnvelope([0,NaN],1000,1), { message: 'non-finite audio sample' });
 });
 
 /** @param {string} config @param {string[]} [args] */
@@ -87,7 +111,7 @@ function compile(config, args = []) {
 test('audio checker and CI keep strict settings and the test discovery path', async () => {
   const config = JSON.parse(await fs.readFile('tsconfig.audio-tools.json', 'utf8'));
   assert.equal(config.extends, './tsconfig.development.json');
-  assert.deepEqual(config.files, ['scripts/audio-signal.mjs', 'scripts/audio-metrics.mjs', 'tests/audio-signal-contract.test.cjs', 'tests/audio-quality-contract.test.cjs']);
+  assert.deepEqual(config.files, ['scripts/audio-signal.mjs', 'scripts/audio-metrics.mjs', 'scripts/audio-artifact-core.mjs', 'tests/audio-signal-contract.test.cjs', 'tests/audio-quality-contract.test.cjs', 'tests/audio-artifact-contract.test.cjs']);
   assert.deepEqual(config.include, []);
   const result = compile('tsconfig.audio-tools.json', ['--showConfig']);
   assert.equal(result.status, 0, result.stdout + result.stderr);
@@ -103,7 +127,7 @@ test('audio checker and CI keep strict settings and the test discovery path', as
   assert.match(ci, /npm run check:build-proof && npm run typecheck:audio-tools(?:\r?\n|$)/);
 });
 
-test('strict audio checker has no diagnostics and contains only the pure repository graph', () => {
+test('strict audio checker has no diagnostics and contains only the bounded repository graph', () => {
   const checked = compile('tsconfig.audio-tools.json');
   assert.equal(checked.status, 0, checked.stdout + checked.stderr);
   assert.equal(checked.stdout + checked.stderr, '');
@@ -111,7 +135,7 @@ test('strict audio checker has no diagnostics and contains only the pure reposit
   assert.equal(listed.status, 0, listed.stdout + listed.stderr);
   const files = listed.stdout.trim().split(/\r?\n/).map(file => path.relative(process.cwd(), file).split(path.sep).join('/'))
     .filter(file => !file.startsWith('../') && !path.isAbsolute(file) && !file.startsWith('node_modules/'));
-  assert.deepEqual(files.sort(), ['scripts/audio-metrics.mjs', 'scripts/audio-signal.mjs', 'tests/audio-quality-contract.test.cjs', 'tests/audio-signal-contract.test.cjs']);
+  assert.deepEqual(files.sort(), ['scripts/audio-artifact-core.mjs', 'scripts/audio-metrics.mjs', 'scripts/audio-signal.mjs', 'tests/audio-artifact-contract.test.cjs', 'tests/audio-quality-contract.test.cjs', 'tests/audio-signal-contract.test.cjs']);
 });
 
 for (const proof of [
