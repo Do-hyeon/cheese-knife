@@ -172,3 +172,13 @@ DT00/A/B는 이미 main 기반이므로 중복 반영하지 않고 C/S/NUM01·�
 전체 종료 근거를 한 건에 묶는다. 추가 push·PR 생성·병합은 하지 않았다.
 새 PR 공개 지시 이후 최종 head의 Windows/Ubuntu foundation·verify가
 필요하며 이 후속 gate는 미완료다. AF05-B/B2 구현·출시는 별도 승인이다.
+
+## 승인된 전체 영역 공개 후속
+
+2026-10-13 사용자 명시 승인: 전체 범위로 push하고 새 한글 PR 하나를
+생성하며 최종 head 공개 CI까지 확인한다. **병합은 하지 않는다.** 기존
+브랜치·fork main을 사용하고 닫힌 PR41 재사용·개별 PR·force push·원본
+저장소 쓰기·배포·브랜치 삭제는 하지 않는다. 승인 checkpoint에서 원격
+main9b8640f/기존 feature a42aefe·열린 같은 head PR 없음·PR41 CLOSED를
+읽기 전용으로 확인했다. 217개 기술 입력과 원래 보호 snapshot도 재확인했다.
+실제 PR/최종 CI 결과는 이후 기록하며 이전의 미공개 문구는 로컬 checkpoint다.
