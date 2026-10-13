@@ -58,11 +58,81 @@ controlled load order. Broker still consumes the unknown post-eval slot, not a
 cached typed API. No global Window augmentation/double cast/ignore/broad any.
 Broker initialization and generated constructors are explicit ABI assumptions.
 
-## Pending Task2
+## Task2 — integration and isolated validation
 
-Real package/CI RED→GREEN connection; immutable clone nine gates/full suite/tools;
-candidate/synthetic/installed checks; cost measurements; final fresh Astra max;
-protected artifact comparisons and maintenance handoff. Existing runner may
-delete its own disposable profile/candidate on close failure: functional PASS
-is not retention/termination proof. Native update/rollback, NUM01, DT02 native
-implementation, release/publication and security certification remain outside.
+Real package/CI connection RED exit1 from missing script, then GREEN with
+typecheck:settings-fixture invoked once after runtime inventory. Actual pinned
+npm CLI runs the new checker offline. Old DT00 substring/audio tail/discovery
+and offline matrix environment remain unchanged; focused connection run9/9.
+Implementation checkpoint3c90b9c807a33e570fd8d7edad19f73b55e66b5e.
+
+Two local --no-hardlinks immutable clones: candidate
+`output/dt01s-validation-20261013a` at3c90b9c; baseline
+`output/dt01s-baseline-20261013a` at051aad1. Pinned node_modules/npm/Gitleaks
+physically copied, representative file inode differs/nlink1/bytes match; no
+junction/install/fetch. Existing published fb15f967 object present.
+
+- All nine offline foundation gates exit0. Full candidate clone suite:
+  **1014tests / 1013pass / fail0 / existing skip1**, duration66484.9788ms.
+  Sole skip: P02 warning ledger private audit evidence intentionally absent
+  from public checkout. No old test/config/exclusion was weakened.
+- ESLint10.12.0: findings7/exit1, complete matched snapshot. Catalog entries,
+  messages, IDs and severity exactly match prior DT01-C report
+  `output/dt01c-validation-20261013/output/tool-audit/run-2026-10-13T00-23-12-729Z-xTwH3W/summary.json`.
+  All seven are owned-files dynamic-path pattern observations, not certified
+  vulnerabilities or clean results. New fixture/tests remain outside unchanged
+  scanner static inventory; no scanner coverage claim for them.
+- Gitleaks8.30.1 directory/history: pass0/0 findings. Dependency inputs unchanged;
+  no new npm registry audit/transmission. Earlier npm evidence is not a fresh
+  audit result. No model security scan/security certification.
+- Candidate dt01sCandidate:58files/resources20; root is inside candidate clone.
+- Silent bundled Chromium151.0.7922.34:14cases/18transitions/12alignments,
+  qualityFailures[], sources1;138 channel measurements all overFullScaleSamples0.
+  Calibration stereo RMS0.3535495743240479 within0.34–0.36.
+- Installed dt01sInstalled:oktrue, storage/bridge/runtime/settings/multi-window/
+  target reload/cleanup scenarios pass, duration65454ms. Wake reused worker and
+  did not observe idle suspension; BFCache persisted was synthetic. Fresh-context
+  reload fallback passes, genuine in-place reload not observed. These existing
+  limitations do not become native update/rollback or natural suspension PASS.
+- Negative dt01sNegative:oktrue, observedFailure main-runtime-missing.
+  Functional negative PASS is not profile retention/termination proof. Existing
+  runner still removes its disposable profile/candidate after close failure.
+
+The first sandbox attempt to resolve cloned roots returned EPERM; authorized
+local-only retry succeeded. That failure is not PASS or a timing sample. An
+initial shell guard mistook ESLint's expected findings exit1 for a tool failure;
+its complete matched report/catalog was verified before later phases. No
+incomplete/failed scanner result was relabeled clean.
+
+## Cost and protection
+
+Matched physical pinned dependencies, Node24.19.0; no concurrent heavy work
+launched by this executor. First invocation is not purged OS cache. Warm5
+paired baseline/candidate runs retain every sample including the candidate
+last-run outlier. Direct offline foundation commands, with extendedDiagnostics
+on TS commands; no failed unannotated S baseline speed comparison.
+
+| Workflow | First ms | Five warm ms | Warm median ms |
+| --- | --- | --- | --- |
+| Baseline8gates | 2810.8467 | 2343.2683,2282.2656,2293.3024,2271.2721,2292.4405 | 2292.4405 |
+| Candidate9gates | 3224.1012 | 2831.0100,2771.3636,2761.0831,2752.4224,4344.8730 | 2771.3636 |
+
+Additional S checker warm median501.9399ms; final257total files/13owned,
+160465KiB/check0.286s. Old product/development/audio warm medians:
+baseline415.3928/494.6732/451.3598ms; candidate423.7885/487.1505/454.1085ms.
+Small local samples/outlier do not establish a speed SLA or runtime slowdown.
+
+Protected comparison matches all prior DT01-C values except package.json's
+approved sole checker script delta: dist58 digest
+d01bd672ff9bb9ffab808099432129b9429f5baa2fbf256e612531e358086c60,
+release ZIP67ae9c1512fef7e0ca651c150e3b4e3052a73e7d96b7ed988adc85114cdb1d51,
+frozen P02f027a9e8a8c7b44df1a0d8104a7354c9c787a8f6b62b4f532131fb7bcd193dd8,
+ledger4c312e3e66bb773470816779ef1868b4356b344f645a0efaf44bc5e49ebc0401,
+manifest/lock, two protected branch SHAs, P09 directory metadata, versions2.13.3.
+No original dist build, user Chrome/profile/account or store action occurred.
+
+## Pending final review and maintenance handoff
+
+Final fresh Astra max and closeout remain pending. Native update/rollback,
+NUM01, DT02 native implementation, release/publication and security certification
+remain outside. No automatic AF05-B implementation or push/PR authority.
