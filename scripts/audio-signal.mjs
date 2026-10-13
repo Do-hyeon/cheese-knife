@@ -73,6 +73,8 @@ export function channelDifferenceRms(left, right) {
 
 /** @param {Samples} samples @param {number} sampleRate @param {number} [windowMs] @returns {RmsEnvelope} */
 export function rmsEnvelope(samples,sampleRate,windowMs=8) {
+  if(!Number.isFinite(sampleRate)||sampleRate<=0)throw new Error('invalid sample rate');
+  if(!Number.isFinite(windowMs)||windowMs<=0)throw new Error('invalid envelope window');
   const windowSamples=Math.round(sampleRate*windowMs/1000);
   if(windowSamples<1||samples.length<windowSamples)throw new Error('invalid envelope window');
   let squares=0,min=Infinity,max=0;

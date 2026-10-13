@@ -12,7 +12,7 @@ const { page, load, flush, clock } = require('./helpers.cjs');
 /** @typedef {{reached:Promise<unknown>,wait:Promise<void>,release:(value?:void)=>void,fail:()=>void,entered:(args:unknown)=>void}} FixtureGate */
 /** @typedef {{kind:string,args:unknown}} FixtureCall */
 /** @typedef {{current:number,max:number}} FixtureMetric */
-// The fake merges partial fields; Chrome's exclusive js/css variants do not survive spread.
+// Partial merges retain explicit undefined fields under exactOptionalPropertyTypes.
 /** @typedef {{[K in keyof chrome.scripting.RegisteredContentScript]?:chrome.scripting.RegisteredContentScript[K]|undefined}&{id:string}} FixtureScript */
 /** @typedef {{id:number,windowId:number,url?:string|undefined}} FixtureTab */
 /** @typedef {Pick<ReturnType<typeof createSettingsBroker>,'initialize'|'invalidateStyles'>&{listener:(message:unknown,sender:unknown,respond:(response:unknown)=>void)=>boolean}} FixtureBroker */

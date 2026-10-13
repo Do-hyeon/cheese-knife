@@ -150,8 +150,9 @@ resolver, rejection catch, timeout or deferred helper. Callback ordering remains
 Annotate gates/arrays/Map/Set/WeakMap entries, call logs `{kind:string,args:unknown}`,
 raw transport replies, storage changes and numeric metrics. Registration maps
 allow partial existing Chrome RegisteredContentScript fields plus required id;
-use an optional mapped field bag with explicit undefined, not the upstream
-exclusive js/css union that the existing partial-record spread cannot preserve.
+use an optional mapped field bag with explicit undefined: under
+exactOptionalPropertyTypes the existing partial-record spread can produce fields
+not assignable to the upstream Partial union. Both js and css arrays are allowed.
 foreign registrations need not have matches. Tabs retain id/windowId and optional
 url; get after has may use a local erased assertion, query may include an absent
 tab. Restore only array/entry information erased by built-in narrowing and only

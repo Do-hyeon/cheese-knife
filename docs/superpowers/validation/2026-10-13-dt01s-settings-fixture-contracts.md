@@ -41,11 +41,12 @@ installation. Cost: less source isolation; full verification uses immutable
 clones and protects original dist/profiles/evidence.
 
 Ruling: FixtureScript uses actual optional Chrome field types plus stringid,
-including explicitundefined. The upstream exclusive js/css Partial union cannot
-type the fake's existing partial spread even after map membership narrowing.
-No unsafe merge cast/guard/runtime rewrite: positive accepts mixed fields and
-negative id42 is rejected. Cost: this fake permits combinations Chrome rejects,
-already true at runtime; complete Chrome API compatibility is not claimed.
+including explicitundefined. The existing partial spread can produce both
+present undefined fields that the upstream Partial union cannot type under
+exactOptionalPropertyTypes, even after map membership narrowing. Both js and css
+arrays are allowed by the upstream type. No unsafe merge cast/guard/runtime
+rewrite: positive accepts mixed fields and negative id42 is rejected. Cost:
+this is a partial fake, not a complete Chrome registration-validation contract.
 
 Erased-assertion inventory: initial object→raw indexed store; typed owned empty
 collections/events/maps; checked four-source record; synchronously assigned
@@ -145,13 +146,14 @@ the script-field distinction and independently reproduced old Partial merge
 TS2345; both current and old aliases accept mixed js/css arrays. Bench medians
 and synthetic counts were recomputed from retained reports, not new executions.
 
-**Deferred Minor1:** fixture line15/spec154 and the historical rationale above
-call Chrome's js/css union exclusive. That is inaccurate: both arrays are
+**Minor1, corrected at maintenance closeout:** the reviewed fixture comment,
+spec and rationale called Chrome's js/css union exclusive. Both arrays are
 allowed. The actual old-Partial failure is explicit undefined under
 exactOptionalPropertyTypes; a merge can produce both present undefined fields.
-The mapped-field refinement is still justified and minimal. Explanation/comment
-correction is deferred under the one-pass Minor policy, not a functional or type
-fix. No Critical/Important fix pass or re-review was needed.
+The mapped-field refinement is still justified and minimal. The user then
+requested finishing the entire type-maintenance scope and publishing one PR;
+that follow-up corrects only the comment/explanation, not types or behavior.
+The original independent verdict remains0/0/1, not a new zero-finding review.
 
 Every declined judgment has an executor ruling, in review order:
 
@@ -181,9 +183,9 @@ Every declined judgment has an executor ruling, in review order:
     Cost: S local completion does not authorize or finish them.
 
 Earlier checkout/field-contract rulings remain above; the inaccurate exclusive
-wording is explicitly identified here rather than accepted as fact. No new
-dependency/guard/runtime conversion was introduced. The one deferred Minor is
-not hidden by the local completion status.
+wording has been corrected at the user's maintenance-closeout request. No new
+dependency/guard/runtime conversion was introduced. The original finding and
+its author correction are recorded separately.
 
 ## Local closeout and remaining gates
 
