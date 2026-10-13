@@ -4,6 +4,8 @@
 
 **Goal:** 게시 전체 payload와 후보를 같은 private Chromium profile/개발용 ID에서 old→new→old로 실행해 실제 raw 저장·구/새 UI·CSS 보존과 저장 손실 negative 탐지를 증명한다.
 
+**실행 상태:** 사용자 후속 승인에 따른 정상 UI 준비·표시/실행 버전 분리 보완 뒤 c707af6 로컬 검증 완료. Task3 최종111/111·전체1106pass/실패0/기존skip1·실제5case/15phase/control·기존 gate/보존 확인. 아래 단계는 원래 계획이며 정확한 실행 이력·현재 체크리스트는 PLANS.md와 [검증 기록](../validation/2026-10-12-af05b2-installed-transition.md)을 기준으로 한다. 독립 최초0/6/0의 작성자 보완 결과이지 수정 후 독립0건 판정·native/공개 CI/전체 AF05-B 수용이 아니다.
+
 **Architecture:** 고정 hash/offset table로 공개 ZIP58파일만 읽고 기존 후보 builder·owned-files·Chromium harness·fixture-router를 재사용한다. 별도 순수 oracle/설치 phase와 단일 supervised runner를 추가한다. 기존 E2E의 storage repair 재주입 시나리오는 연속 전환에 호출하지 않는다.
 
 **Tech Stack:** Node24.19.0, built-in crypto/zlib/child_process, 현재 Playwright1.62.1, node:test, 기존 JS/JSDoc 도구. 제품 TS/JS·의존성·버전은 변경하지 않는다.

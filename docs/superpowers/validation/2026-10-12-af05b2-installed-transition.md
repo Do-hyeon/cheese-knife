@@ -1,15 +1,37 @@
-# AF05-B2 — 실행·검증 및 미완료 게이트
+# AF05-B2 — 로컬 검증 완료·별도 수용 게이트
 
-실행일2026-10-13 / Asia-Seoul. 기반 main `6b919e1c62661ec49a12ce6df2c02e11273af41d`, 로컬 작업 브랜치 `codex/af05b-acceptance`. 사용자 승인 범위는 B2 설계·Native(주 실행자 직접) 구현·새 bundled fixture 프로필/복사본·UI seed/저장 손실 control·owned cleanup·최종 Astra max 검토다. **스토어 native 업데이트 검사가 아니며 B2 전체 완료/PASS도 아직 아니다.** 중간 push·PR·배포는 하지 않는다.
+실행일2026-10-13 / Asia-Seoul. 기반 main `6b919e1c62661ec49a12ce6df2c02e11273af41d`, 로컬 브랜치 `codex/af05b-acceptance`. **B2 로컬 구현·격리 검증 완료**, 검증 checkpoint `c707af658b37636c4d31be3eb990700cd793c516`. 사용자 후속 승인으로 새 시험 프로필의 정상 Developer mode UI 준비를 보완했다. 아래 현재 결과와 보완 전 실패 이력을 구분한다. 스토어 native 업데이트/플랫폼 롤백·공개 CI·전체 AF05-B 수용은 아니다. push·PR·배포는 하지 않았다.
 
-## 현재 구현·독립 기대값
+## 최종 로컬 결과
+
+| 검사 | 결과·근거 |
+| --- | --- |
+| 준비 성립 | 새 Probe7의 정상 관리 UI Developer mode ON·단일 reload·old-worker 종료·새 worker/같은 ID·실제2.13.3·ENABLED 확인. 원본 broker hash/빈 저장소 불변·정리 성공 |
+| 실제 정상 전환 | `B2developerPositive` PASS:5case/15phase, 각 case의 동일 profile/path/ID·실제 old2.13.3→T2.13.4→R2.13.5, raw/UI/CSS/MAIN/실행 출처/준비 증거·whole58 inventory 모두 parent 검증 |
+| 실제 손실 control | `B2developerNegative` PASS: old UI revision8 이후 new startup/candidate-init에서 transition-storage-preservation. raw own config만 손실, nonce/styles/parameter/revision8 유지, 같은 ID·T2.13.4·변형 brokerMatches=true. timeout/환경 오류 대체 아님 |
+| 수명·source | 두 실행 cleanupErrors/secondaryErrors/retainedRoots0, child 정상 종료·모든 launch close ACK 확인. sourceCommit/전체 source/lock/manifest/toolchain attestation 전후 동일 |
+| Task3 최종 연결 | 111/111, 실패/skip0, task-done 기록. 새 준비 DOM·display-version·parent admission·child 수명 검사 포함 |
+| 전체 Node | 기본 명령 `node --test tests/*.test.cjs`,1107개 중1106pass/실패0/기존private 자료 부재skip1. 이번 checkpoint에서는 병렬 명령도 통과. 이전 EPERM 실패를 삭제하지 않음 |
+| foundation9 | toolchain/runtime inventory/settings fixture/product/development/audio typecheck·settings/MAIN 생성 대조·build-proof 모두 성공 |
+| build/package/audio | 검증 clone만 build, 제품2.13.3·58파일/entry resource20·합성14case/18transition/12alignment 품질 gate 성공 |
+| 기존 설치 검사 | `B2devExisting` PASS65.387s, `B2devExistingNegative` main-runtime-missing 탐지 PASS. 기존 기본 E2E의 inPlaceReloadObserved=false 한계는 그대로 |
+| 현재 도구 감사 | npm0·ESLint8·Gitleaks dir0/git0·snapshot matched=true. raw exit1은 아래 검증된 owned boundary8개, 새 준비 module/caller lint0. 보안 인증 아님 |
+| 보존 | 원래 dist/ZIP·package/lock/manifest2.13.3·frozen 자료·보호 브랜치·P09 profile 메타데이터 전후 동일 |
+
+rollback 최종 literal/실제 revision은 valid-ui14(font0), legacy-valid5(t/resizeChat 정리), legacy-null4/legacy-invalid4(t cleanup-only), damaged-revision='invalid-b2'(쓰기 제한)다. 각 nonce/unknown 값은 그대로다. source SHA `7b6093eb21376c0e91cf556434bd3b19403b8eba9ad00a7ea10915ef3b985098`, 후보 ordinal inventory `4762b36ee9d93a54795fdfbf56a7514fb95b2fd7139a97ec20ec2cd80852e748`. private T/R은 시험값이며 공개 제품 번호 결정이 아니다.
+
+현재 감사: `output/af05b2-validation-20261013/output/tool-audit/run-2026-10-13T08-34-56-407Z-qN92CI/summary.json`.8개 모두 scripts/owned-files.mjs의26/27/45/74/79/94/115/125줄 dynamic fs 경계이며125는 배타적 완성 파일 게시다. 이전 원장을 고치거나 스캐너를 완화하지 않았다. 새 module은 실제 감사 source inventory에 포함됐다.
+
+Astra max 최초 whole-branch 판정 **Critical0/Important6/Minor0**은 보존한다. 6건은 작성자 RED→GREEN·현재 전체/실제 설치 gate로 보완·검증했으며, 이를 수정 후 독립0건 판정으로 표현하지 않는다. 이번 국소 준비 보완도 같은 작성자 검증 범위다. 네이티브 preflight·역사 업데이트 미검증 수용 기준·공개 버전/스토어/플랫폼 롤백·전체 카테고리 단일 PR/공개 CI·F00 동결 해제는 별도 미완료다.
+
+## 보완 전 구현·독립 기대값 이력
 
 - Task1 commit `21ddb65`: 고정 공개 ZIP58파일 reader/cache preparation·JSON offset metadata·출처/입력/상한/변조/cache/link/redirect/deadline/IO negative·CI prepare. 실제 anonymous 다운로드201802bytes와 SHA를 검사했으며 private 원본 fallback은 없다. 집중96/96 통과, 새 lint 경고0.
 - Task2 commit `9b86487`: 5case seed·정확한 revision4→8→11→14·unknown/nonce·legacy/손상 제한·raw/UI/CSS/MAIN/worker oracle와 packaged phase. 집중99/99 통과. 실제 전체 브라우저 전환의 성공과 구분한다.
 - Task3 감독 구현 checkpoint `b0096de`, 후속 진단/worker 보정/버전 형식 변경을 포함한 현재 기술 checkpoint `4c774ce9af296498b03c2307584df9e7527c07a3`. parent/child launch/close ACK·600s/phase deadline·owned cleanup·실제 UI seed1회·awaited config 삭제 control·종합 증거 admission을 구현했다. 현재 집중79/79지만 아래 실제 전환은 미완료다.
 - 제품/시험값 모두 세 자리 버전 형식 유지(사용자2026-10-13 수정 지시). 원본 제품2.13.3 불변, private T2.13.4/R2.13.5는 TEST ONLY이며 출시 번호 결정이 아니다. 초기 private 실패 보고서의 이전 시험 표기는 역사 기록으로 남긴다.
 
-## 현재 확인한 게이트
+## 보완 전 확인한 게이트
 
 검증 복제본 `output/af05b2-validation-20261013`은 로컬 immutable checkpoint의 clean checkout과 고정 의존성의 물리 복사본이다. root dist를 빌드/정리하지 않았다.
 
@@ -25,7 +47,7 @@
 | 도구 감사 | 현재 `4c774ce`, npm0·ESLint7·Gitleaks dir0/git0·snapshot matched | raw exit1은 기존 findings.7개 모두 unchanged owned-files dynamic-FS 관측26/27/45/74/79/94/115줄. 새 보안 인증/경고0 주장 아님 |
 | 보존 | 전후 JSON 동일: root dist58·원본 ZIP·package/lock/manifest2.13.3·frozen 자료·보호 브랜치·P09 profile 생성/수정 시각 | 실제 개인 프로필 내용을 검사하거나 변경하지 않음 |
 
-## 실제 B2 실패·중단 지점
+## 실제 B2 실패·중단 이력
 
 1. `B2positive`/`B2probe1`: old valid-ui 저장/reload 뒤 candidate-init의 `transition-execution`. manifest 시험 T를 읽지만 실제 broker7622자(게시 원본 길이), 후보7970자. EOL 정규화 차이 아님. 실제 실행 출처 대조가 cached old worker를 거부했으며 PASS로 바꾸지 않았다.
 2. 주 실행자가 private 시험 확장 runtime.reload 후 새 worker 취득을 준비 절차로 추가했다. `B2positive2`: worker-reacquire timeout. 실제 시청/native 기준 확장은 대상이 아니다.
@@ -92,17 +114,17 @@ Probe4 ms 사건: popup ready3099 → 관리 화면 before 읽기3351 → reload
 
 공식 [Chromium registrar](https://raw.githubusercontent.com/chromium/chromium/main/extensions/browser/extension_registrar.cc)는 reload 시 DisableExtension 후 delegate load를 호출한다. [delegate](https://raw.githubusercontent.com/chromium/chromium/main/chrome/browser/extensions/chrome_extension_registrar_delegate.cc)는 unpacked path를 재로딩하고, [UnpackedInstaller](https://raw.githubusercontent.com/chromium/chromium/main/extensions/browser/unpacked_installer.cc)는 command-line location과 unpacked location을 다르게 처리한다. 최신 main 참고 코드이며 설치된 정확한 빌드 내부를 독립 인증한 것은 아니다. 이 출처와 UI 관측은 개발자 모드를 쓰는 정상 개발용 설정이 필요하다는 가설을 뒷받침한다. [Chrome 공식 개발용 설치 안내](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world)도 관리 화면의 Developer mode를 사용한다.
 
-### 다음 국소 수정안 — 설정 변경·구현 승인 대기
+### 정상 개발용 국소 준비안 — 승인 후 구현·검증 완료
 
 새 owned fixture 프로필만 `chrome://extensions`의 **정상 UI**로 Developer mode를 켜고 상태를 확인한 뒤 기존 단일 runtime.reload 준비를 수행한다. 사용자 시청 Chrome·P09에는 적용하지 않는다. 직접 Preferences 편집·숨은 privileged API·force-enable flag·CDP/정책 우회·설정 seed 재주입은 없다. UI toggle이 정책으로 잠겨 있거나 대상 ID가 없으면 FAIL이며 강제 활성화하지 않는다.
 
 재로드 요청의 반환을 완료로 보지 않는다. old worker 종료와 관리 화면의 해당 ID 활성/재로드 제한 없음, 같은 ID·기대 version을 제한시간 내 확인한 후에만 popup wake/새 worker provenance/seed/UI 검사로 진행한다. 대기 실패를 재시도·sleep·캐시 초기화로 숨기지 않는다. 변경 범위는 B2 준비 helper·연결 테스트와 문서뿐이며 공용 기본 E2E/제품/권한/버전은 바꾸지 않는다.
 
-승인 후 RED→GREEN으로 UI off/on/no-op·잠긴 toggle·잘못된 ID·시간 초과·old worker 종료 없이 ready 가장·popup 접근 실패·정리 실패를 검증한다. 한 fresh fixture의 성립 검사 이후 정상5case/storage-loss와 기존 전체 게이트를 다시 실행하며 어느 실패도 B2 PASS로 바꾸지 않는다. **새 시험 프로필의 정상 UI 설정 변경까지 포함한 구현·격리 검증 승인**이 필요하다. 이번 읽기 전용 진단 승인을 설정 변경 승인으로 확대하지 않았다.
+별도의 사용자 후속 승인 후 RED→GREEN으로 UI off/on/no-op·잠긴 toggle·잘못된 ID·시간 초과·old worker 종료 없이 ready 가장·popup 접근 실패·정리 실패를 검증했다. Chrome 관리 화면의 version은 실제 manifest.version이 아니라 version_name 표시였다(Probe6 및 Chromium ExtensionInfoGenerator 대조). 표시 문자열은 manifest.version_name||version과 비교하고 실제 세 자리 실행 version은 새 worker에서 따로 재검증한다. 해당 계약 반례도 RED→GREEN이다. Probe5/6의 준비 timeout은 실패 이력으로 보존하고 Probe7 성립 후 정상5case/storage-loss와 현재 전체 gate를 통과했다. 읽기 전용 승인만으로 UI 설정 변경을 추정하지 않았다.
 
 검토자가 판정하지 않은 범위의 처리: 실제 스토어 업데이트/서명/스토어 ID/과거2.13.2/P09/native 롤백은 별도 게이트로 보류; 실행 옵션의 실제 환경 성립은 작성자 설치 검사로 확인; broker+inventory를 모든 코드 경로 실행 증명으로 확대하지 않음; 실제 방송/인증/OS 네트워크 격리·보안 인증/Daybreak/HLS 검토는 범위 밖; 보호 파일/빌드/audio는 작성자 별도 검사; 동시 악의적 filesystem 교체/엄격 임시 trace quota·다중 사용자 부하는 owned 로컬/CI 계약 밖으로 남긴다.
 
-설치형 새 positive5case 및 B2 실제 storage-loss negative는 **아직 합격하지 않았다**. 현재 CI의 새 두 명령도 공개에서 검증한 상태가 아니다. 실제 native/CRX/스토어 ID 연속성·열린 old content script 정리·플랫폼 rollback·차기 배포·F00 해제는 별도 미완료/미승인이다.
+보완 전 checkpoint의 positive/control 실패는 위 이력으로 보존한다. 후속 c707af6의 실제5case/control은 최종 로컬 결과처럼 통과했으며, CI의 새 두 명령을 공개에서 검증한 상태는 아니다. 실제 native/CRX/스토어 ID 연속성·열린 old content script 정리·플랫폼 rollback·차기 배포·F00 해제는 별도 미완료/미승인이다.
 
 ## 구현 과정의 판단·비용
 
@@ -112,6 +134,6 @@ Probe4 ms 사건: popup ready3099 → 관리 화면 before 읽기3351 → reload
 - font0은 네 변수0px, 손상 UI는 snapshot 없는 기본 brightness1/MAIN은 실제 normalized brightness1.25로 대조. 제품을 잘못된 oracle에 맞추지 않음. 비용: 실제 설치 gate의 재확인 필요.
 - 전체 fake browser를 만들지 않고 순수 상태 mutation/polling/오류 단위와 실제 packaged phase를 분리. 비용: UI/concurrency 완전 실행은 현재 막힌 Task3에 남음.
 - parent는 새 root/candidate 컨테이너를 먼저 소유하고 preparation/build도 supervised child600s 안에서 실행. 비용: build 전 생성한 미사용 root 정리와 비정상 child 종료 시 보수적 보존.
-- worker runtime.reload는 private 준비 보정만의 판단이며 native/in-place 성공 증거 아님. 실제 현재 준비 절차도 실패했으므로 독립 검토/수정 후 전환 gate를 다시 통과해야 한다.
+- worker runtime.reload는 정상 Developer mode UI와 수명/출처 대조를 포함한 private 준비다. 보완 전 실패와 후속 성립을 구분하며 native/in-place 성공 증거로 확대하지 않는다.
 
 원문 실행 원장·RED/GREEN·보고서는 `.superpowers/sdd/2026-10-12-af05b2-installed-transition/` 및 `output/af05b2-execution-20261013/`에 private 보존한다. 보존 경로/개인 자료는 공개 artifact 대상이 아니다.
