@@ -75,7 +75,30 @@ hard link는 새 의존성 없는 Node 기본 기능이다. 새 guarded filesyst
 2. 단 한 번의 reload 요청 전후 worker close/new-worker·popup navigation 실패 시점을 bounded record로 기록해 초기 접근 차단, reload 과도기, 재기동 실패를 구분한다. 고정 sleep/반복 재시도나 기대값 채우기는 하지 않는다.
 3. 근거로 준비 절차 수정안을 작성하고 사용자 승인 후에만 구현·실행한다. ID/profile/저장/whole58 inventory/oracle/종료 증거 요구는 완화하지 않는다. 새 방법도 성립하지 않으면 환경 미지원으로 명시하고 실제 전환 완료를 주장하지 않는다.
 
-사용자 Chrome·native P09·제품·권한·스토어·storage reset/repair·CDP/브라우저 정책 우회는 제외한다. 이 진단의 **상세 설계·실행 승인**이 다음 의사결정 게이트다. 지금 이 제안을 실제 재실행하거나 Task3을 완료하지 않았다.
+사용자 Chrome·native P09·제품·권한·스토어·storage reset/repair·CDP/브라우저 정책 우회는 제외한다. 사용자 후속 승인으로 아래 읽기 전용 진단을 실행했다. 진단 완료를 Task3 완료로 확대하지 않는다.
+
+### 승인된 읽기 전용 진단 결과
+
+2026-10-13, 공개 제품 코드 수정이 아닌 throwaway spike. 기존 Playwright1.62.1/Chromium151.0.7922.34·frozen58파일을 새 owned root에 넣고 parent supervisor60s/phase55s·close10s·worker15s로 실행했다. 각 root에서 runtime.reload 요청1회, 진단 코드의 storage 쓰기0회. 계정·실제 방송·기존 프로필·설정 버튼·정책·새 도구 설치는 사용하지 않았다.
+
+- Probe1: 재로드 전 popup ready/빈 저장소·broker7622자 확인. 요청 후 old worker close, popup ERR_BLOCKED_BY_CLIENT,15s 내 new worker 없음.
+- Probe2: 같은 읽기 진단에 browser DEBUG를 요청했으나 child stderr가 ignore여서 브라우저 로그를 수집하지 못했다. 원인 증거로 채택하지 않음.
+- Probe3: child stderr만 private log에 보존. GCM DEPRECATED_ENDPOINT 로그가 있으나 extension 실패 사유는 없었으며 이를 원인으로 연결하지 않았다.
+- Probe4: 같은 fresh fixture의 Chrome 관리 화면에서 해당 ID의 상태/오류 모델만 읽었다. 재로드 전 ENABLED, 후 DISABLED이며 **unsupportedDeveloperExtension=true**. blockedByPolicy/corruptInstall/unsupportedManifestVersion/updateRequired와 나머지 표시된 사유는 false, runtime/manifest/install warnings는 빈 배열이다.
+
+Probe4 ms 사건: popup ready3099 → 관리 화면 before 읽기3351 → reload 요청3352/return3354 → old worker close3377 → popup 접근 시작3393/차단3404 → new worker timeout18367 → 관리 화면 after 읽기18583 → context close18899. 이는 초기 popup 설치 실패가 아니라 개발용 확장의 재로드/지원 상태 문제를 입증한다. 제한시간 뒤 영구 실패나 다른 플랫폼에서도 같은 원인이라고 단정하지 않는다.
+
+네 실행 모두 child 정상 종료·close ACK·cleanup 확인, 미확인 root/secondary/cleanup 오류0·전체 payload hash 불변. Probe4 종료 후 `probe4-final-protection.json`은 기존 before-protection과 동일하다. private 산출물은 `output/af05b2-validation-20261013/output/playwright/reload-diagnostic-Probe1..4/summary.json`; throwaway script/log는 `output/af05b2-execution-20261013/`에 보존하며 공개 코드/CI에 추가하지 않는다.
+
+공식 [Chromium registrar](https://raw.githubusercontent.com/chromium/chromium/main/extensions/browser/extension_registrar.cc)는 reload 시 DisableExtension 후 delegate load를 호출한다. [delegate](https://raw.githubusercontent.com/chromium/chromium/main/chrome/browser/extensions/chrome_extension_registrar_delegate.cc)는 unpacked path를 재로딩하고, [UnpackedInstaller](https://raw.githubusercontent.com/chromium/chromium/main/extensions/browser/unpacked_installer.cc)는 command-line location과 unpacked location을 다르게 처리한다. 최신 main 참고 코드이며 설치된 정확한 빌드 내부를 독립 인증한 것은 아니다. 이 출처와 UI 관측은 개발자 모드를 쓰는 정상 개발용 설정이 필요하다는 가설을 뒷받침한다. [Chrome 공식 개발용 설치 안내](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world)도 관리 화면의 Developer mode를 사용한다.
+
+### 다음 국소 수정안 — 설정 변경·구현 승인 대기
+
+새 owned fixture 프로필만 `chrome://extensions`의 **정상 UI**로 Developer mode를 켜고 상태를 확인한 뒤 기존 단일 runtime.reload 준비를 수행한다. 사용자 시청 Chrome·P09에는 적용하지 않는다. 직접 Preferences 편집·숨은 privileged API·force-enable flag·CDP/정책 우회·설정 seed 재주입은 없다. UI toggle이 정책으로 잠겨 있거나 대상 ID가 없으면 FAIL이며 강제 활성화하지 않는다.
+
+재로드 요청의 반환을 완료로 보지 않는다. old worker 종료와 관리 화면의 해당 ID 활성/재로드 제한 없음, 같은 ID·기대 version을 제한시간 내 확인한 후에만 popup wake/새 worker provenance/seed/UI 검사로 진행한다. 대기 실패를 재시도·sleep·캐시 초기화로 숨기지 않는다. 변경 범위는 B2 준비 helper·연결 테스트와 문서뿐이며 공용 기본 E2E/제품/권한/버전은 바꾸지 않는다.
+
+승인 후 RED→GREEN으로 UI off/on/no-op·잠긴 toggle·잘못된 ID·시간 초과·old worker 종료 없이 ready 가장·popup 접근 실패·정리 실패를 검증한다. 한 fresh fixture의 성립 검사 이후 정상5case/storage-loss와 기존 전체 게이트를 다시 실행하며 어느 실패도 B2 PASS로 바꾸지 않는다. **새 시험 프로필의 정상 UI 설정 변경까지 포함한 구현·격리 검증 승인**이 필요하다. 이번 읽기 전용 진단 승인을 설정 변경 승인으로 확대하지 않았다.
 
 검토자가 판정하지 않은 범위의 처리: 실제 스토어 업데이트/서명/스토어 ID/과거2.13.2/P09/native 롤백은 별도 게이트로 보류; 실행 옵션의 실제 환경 성립은 작성자 설치 검사로 확인; broker+inventory를 모든 코드 경로 실행 증명으로 확대하지 않음; 실제 방송/인증/OS 네트워크 격리·보안 인증/Daybreak/HLS 검토는 범위 밖; 보호 파일/빌드/audio는 작성자 별도 검사; 동시 악의적 filesystem 교체/엄격 임시 trace quota·다중 사용자 부하는 owned 로컬/CI 계약 밖으로 남긴다.
 
