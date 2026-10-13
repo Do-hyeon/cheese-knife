@@ -5,7 +5,9 @@ Base: `9b8640fc004888ebd9e65106046b4b8795d62ca2`.
 Task1: `d90af7f54f4159e458596f54ab6f9f7c18ded63c`.
 Implementation/isolated target: `a2b68909823a5030ab4d00fe00521ce90836ccdc`.
 Implementation tree: `983d3448a8ceee0c9fecacc45b93b3beb64f24fa`.
-Final independent review is pending; this record is the pre-review evidence.
+Final review checkpoint: `a9c9882f985b17a5b0750b35f411caf8013942f5`.
+Fresh GPT-6 Astra max: **Critical0 / Important0 / Minor0**, local unit ready.
+Subsequent changes are documentation/evidence bookkeeping only.
 
 ## Changes and TDD
 
@@ -164,10 +166,57 @@ ledger `4c312e3e66bb773470816779ef1868b4356b344f645a0efaf44bc5e49ebc0401`,
 both protected branch SHAs and native P09 profile directory metadata. User Chrome
 settings were not accessed. Product source/runtime/permissions/version unchanged.
 
-## Remaining gates
+## Final independent review and rulings
 
-Fresh Astra max final whole-branch review pending. Public CI/merge not run:
-**no push/PR without explicit user instruction**. Local C completion does not
-close DT01-S/DT02 decisions, implement NUM01 or unfreeze AF05-B/F00-F05.
-Unchecked provider/browser producer, malformed/cycle/resource policy and runner
-retention/native acceptance limits remain explicit, not type-safety claims.
+Fresh GPT-6 Astra max reviewed `9b8640f..a9c9882`, connected modules/callers and
+retained evidence: **Critical0 / Important0 / Minor0; local unit ready**. It
+independently used installed TypeScript7 virtual filesystem inputs in RAM:
+clean actual core diagnostic0, all nine actual-source targets produced their
+intended diagnostic, and weakening each boundary to any removed precisely that
+diagnostic. All nine controls are falsifiable. No files were written; suites,
+builds, audits and browsers were not rerun by the reviewer. No fix pass/re-review
+or deferred Minor is needed. Baseline item annotation was confirmed as legitimate
+declared-type restoration, not a whole-report consumer/facade cast.
+
+Executor rulings on every declined-to-judge item, in review order:
+
+1. Keep provider/browser whole typing and hostile filesystem replacement out of
+   C: only the approved consumer graph moved. Cost: outside code unchecked and
+   existing filesystem guards non-atomic; no stronger claim.
+2. Keep malformed/coercion/numeric policy unchanged: this unit is type maintenance.
+   Cost: unchecked native exceptions/permissive behavior and identity skip remain.
+3. Keep cycles/hostile getters/proxies/stability/recursion budgets out of C:
+   preserve observed access order without a new decoder. Cost: readonly and
+   trace tests do not enforce stable/acyclic/bounded runtime inputs.
+4. Keep natural suspension, genuine in-place reload/BFCache, native update/rollback
+   and cleanup redesign outside C: existing installed observations are retained.
+   Cost: fallback/synthetic and negative success do not prove those states or
+   failure-time retention.
+5. Do not claim broader security certification: keep actual scanner evidence.
+   Cost: seven owned-files observations remain observations, not resolved
+   vulnerabilities or evidence of absence of vulnerabilities.
+6. Keep DT01-S/DT02/NUM01/AF05-B separately gated: respect maintenance sequencing.
+   Cost: local C completion does not close all maintenance or unfreeze work.
+7. Keep public CI/integration instruction-gated: no push/PR/merge in this run.
+   Cost: local readiness is not public-CI/merged acceptance.
+
+Earlier execution rulings: Task heading spaces were corrected for the bundled
+brief parser only (no runtime cost); preservation-test CRLF normalization was
+selected for Windows/Linux portability (newline-only differences need the
+separate unchanged Git-blob check). All rulings are retained in the execution
+ledger and archive. **Deferred minors: none.**
+
+## Local completion and remaining gates
+
+DT01-C local implementation, genuine misuse/integration verification and final
+review are complete. Public CI/merge not run: **no push/PR without explicit user
+instruction**. Results remain on `codex/dt01c-artifact-contracts`; no merge or
+branch deletion. DT01-S/DT02 decisions are the next maintenance handoff, not
+automatically approved implementations. NUM01 remains separate; AF05-B/F00-F05
+remain frozen under their previous gates.
+
+The two isolated clones/reports remain under output. After final local evidence
+checkpoint, only this plan's generated scratch is archived to
+`output/dt01c-execution-record-20261013` and removed; its verified disposable
+dt01cCandidate may be cleaned with the existing owned helper. Root dist and
+other plans' scratch are not cleanup targets.

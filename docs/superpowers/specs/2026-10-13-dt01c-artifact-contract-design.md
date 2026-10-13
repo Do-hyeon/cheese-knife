@@ -4,6 +4,9 @@ Date: 2026-10-13 Asia/Seoul. Base: `9b8640fc004888ebd9e65106046b4b8795d62ca2`.
 The user approved the core/read-boundary direction and design review, not an
 implementation plan or browser execution. The subsequent user instruction to
 continue accepted the amended written spec for implementation planning only.
+Later the user approved the completed plan and Native/isolated execution;
+[implementation validation](../validation/2026-10-13-dt01c-artifact-contracts.md)
+records local completion and final Astra max, separate from publication.
 
 ## 1. Intent and sequencing
 
@@ -249,7 +252,7 @@ version2.13.3, root dist58, released ZIP, frozen P02 baseline/ledger and protect
 branches/profiles remain unchanged. No new dependency, data collection, account
 operation, store submission, extension reload or native update/rollback.
 
-This phase writes/reviews the spec and updates PLANS only. Written-spec approval
+The design phase wrote/reviewed the spec and PLANS only. Written-spec approval
 permits the implementation plan; plan/Native/isolated execution approval still
 precedes code/tests/config/browser work. Design-stage commits stay local in this
 branch. Do not push or open any PR without an explicit user instruction.
@@ -274,4 +277,6 @@ not compilation of a not-yet-written core or implementation PASS.
 [Review and scope decisions](../validation/2026-10-13-dt01c-design-review.md).
 Amendments are author corrections, not a second independent zero-finding review.
 The user subsequently requested the recommended next step: implementation
-planning and its review. Plan/Native/isolated execution approval remains separate.
+planning and its review. Plan/Native/isolated execution approval was subsequently
+obtained; local implementation/final review is complete, with publication still
+instruction-gated.
