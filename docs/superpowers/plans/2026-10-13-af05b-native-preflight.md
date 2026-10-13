@@ -10,7 +10,7 @@
 
 **Spec:** [AF05-B 상위 설계](../specs/2026-10-12-af05b-release-acceptance-design.md) §2·3·6·7·9, [P09 게시/설치 근거](../validation/2026-10-12-p09-store-publication.md). B2의 c707af6 로컬 전환 결과는 별도 [검증 기록](../validation/2026-10-12-af05b2-installed-transition.md)이다.
 
-2026-10-13 / Asia-Seoul. **Task1 로컬 완료, 기존 P09 프로필에 한정한 Task2 실행 승인·구현/검증 진행 중.** 현재 제품2.13.3을 유지한다. 실제 native PASS가 아니며 push/PR/배포는 하지 않는다. 결과는 [검증 기록](../validation/2026-10-13-af05b-native-preflight.md)에 분리한다.
+2026-10-13 / Asia-Seoul. **Task1 로컬 완료, Task2 코드/현재 출처 조회 후 첫 probe의 Chrome paste 보호로 BLOCKED-CAPABILITY.** 기존 P09만 실행 승인됐으며 actual API JSON·runtime/baseline/seeded/cold는 없다. 보호 우회 없이 중지, 원래 Developer modefalse 복원/검사 창 종료 정리는 확인 대기다. 제품2.13.3을 유지하고 push/PR/배포하지 않는다. 결과는 [검증 기록](../validation/2026-10-13-af05b-native-preflight.md)에 분리한다.
 
 ## Global Constraints
 
@@ -97,7 +97,7 @@ worker identity는 ID·숫자 version·display version·MV3·background file·�
 - [x] **Step3 / CLI RED:** `tests/native-preflight-runner.test.cjs`에 fresh run·4→8→12 정상 CLI 진행(STAGE-ACCEPTED→STAGE-ACCEPTED→최종 PASS)을 작성한다. 기존 run 재사용·link/escape·잘못된 runId·missing/wrong ZIP·1MiB 초과·필수 단계 하나 누락·parse 실패·출처 mismatch·first failure 뒤 성공/cleanup failure·ordinal/time 역전·finalize unknown·post-check source drift는 각각 nonzero여야 한다. 이전 단계 합격이 최종 PASS를 만들면 실패한다. 검토 보완의 clock 회복/이중 IO 오류/startup metadata/쓰기 전 크기 제한도 RED를 확인했다.
 - [x] **Step4 / 최소 CLI:** prepare는 fresh owned run·32hex nonce·frozen ZIP 해시/예상 broker hash와12개 probe를 쓴다. source input은 신규 helper/CLI/순수 contract와 재사용 published-payload/transition-scenario/fixture-router/owned-files 및 frozen metadata JSON, 총8개 name/hash·Node version으로 고정하며 check 전후 같아야 한다. record/check는 고정 outcome과 durable attempt를 배타적 ordinal 파일에 기록하며 native profile/process는 조회하지 않는다. 각 JSON 최대1MiB·run artifact 합계16MiB·event/attempt 각각 최대64개, no overwrite. inspector JSON은 쓰기 전 크기와 고정 기록4KiB 여유를 대조한다. 오류는 최종 실패이며 불확실한 산출물은 보존한다.
 - [x] **Step5 / GREEN·연결:** `node --test tests/native-preflight.test.cjs tests/native-preflight-runner.test.cjs tests/installed-transition-scenario.test.cjs tests/published-payload.test.cjs tests/owned-files.test.cjs`가 실패0이어야 한다. 생성 probe의 금지 call spy와 정상 frozen broker/DOM fixture를 연결했다. 제품 입력과 root dist 전후 해시 불변을 확인했다. 기존 감사 제외/skip 확대 없음. 실제 결과는 검증 기록 참조.
-- [x] **Step6 / local commit:** 위 코드/테스트와 검증 기록만 로컬 commit. push/PR 없음. actual native PASS 없음. Task2는 별도 묶음 승인 대기다.
+- [x] **Step6 / local commit:** 위 코드/테스트와 검증 기록만 로컬 commit. push/PR 없음. actual native PASS 없음. Task2 별도 실행 승인은 후속2026-10-13에 받았다.
 
 ## Task 2: Approved native observation and cold restart
 
@@ -108,7 +108,7 @@ worker identity는 ID·숫자 version·display version·MV3·background file·�
   - 설치 manifest 공개키의 ID는 Node crypto/해시로 계산해 target ID와 대조한다. runtime MV3/version/background/permissions와 설치 manifest 및 P09 고정 근거를 연결한다. manifest 공개키는 서명 검증 근거라고 부르지 않는다.
   - 고정 ZIP58개 중 manifest/locale2개/icon3개를 제외한 **52개 일반 파일 모두** 설치 SHA-256이 같아야 한다. JS/CSS46개뿐 아니라 HTML3개와 나머지 게시 resource/라이선스도 포함한다. 허용 file inventory는 frozen58개와 `_metadata/verified_contents.json`, `_metadata/computed_hashes.json`만이며 extra/missing/link/추가 runtime 파일은 실패다. manifest는 key/update_url 외 object, locale2개는 parsed object가 같아야 한다. P09의 icon 설치 정규화/Chrome metadata 예외는 명시적으로 유지하되 이번 검사로 아이콘 pixels나 독립 CRX 서명 인증을 다시 완료했다고 주장하지 않는다. 설치 파일은 쓰지 않는다.
   - 필요한 from_webstore 경로가 현재 설치 container와 다르면 다른 개인 파일을 탐색하지 말고 STOP/계획 변경으로 처리한다. 실제 프로필 대상 접근과 설치 IO는 CLI 전체 유닛 테스트에서 owned fixture로 대체한다.
-- [ ] **Step3 / GREEN·출처만 확인:** focused tests 실패0 후 승인된 정확한 P09 Chrome만 일반 방식으로 열고 `--inspect-native=before`로 변경 전 출처/Developer mode/root identity를 기록한다. 로그인·동기화·방송/계정 탐색 없음. 도구는 브라우저 제어 연결을 만들지 않는다. 해당 프로필을 특정할 수 없으면 STOP하며 원래 시청 Chrome을 사용하지 않는다.
+- [x] **Step3 / GREEN·출처만 확인:** d9866c2 focused123/123·전체1186중1185pass/0fail/기존skip1·foundation9·새 lint0, Astra max Critical0/Important0/Minor0 후 승인된 정확한 P09 Chrome만 일반 방식으로 열었다. `P09Native20261013A`의 `--inspect-native=before`로 현재2.13.3/fromWebstore/공개키ID/정확한60 inventory·52파일/권한·Developer mode 원상태 false·유일한 target root를 기록했다. 로그인·동기화·방송/계정 탐색·제어 연결 없음. 이것은 runtime/API native PASS가 아니다. 다음은 사용자의 정상 UI profile/context 및 Console 준비 확인이다.
 - [ ] **Step4 / baseline(4 JSON):** profile/context 수동 확인과 각 probe requested event 뒤 worker-before → popup → styles → worker-after를 받는다. `--check=baseline`의 STAGE-ACCEPTED만 다음 단계 진입을 허용한다. raw 네 키 absent·UI default·ready·discard hidden·styles retry hidden/popup retry 없음(null)·CSS[]와 current identity를 확인한다. 존재하는 값은 없애지 않고 STOP한다. partial 판정은 native PASS가 아니다.
 - [ ] **Step5 / seeded(4 JSON):** seed-start confirmed event를 **저장 조작 전** 기록한다. 같은 popup에서 방향키 OFF·volume25, styles에서 hide-ranking ON·font8을 순서대로 변경하며 각 저장을 기다린다. 마지막 raw 네 값 literal·revision R safe/4 이상·before/after 동일을 요구한다. worker-before → popup → styles → worker-after 뒤 `--check=seeded` STAGE-ACCEPTED를 요구한다. 동기화/경합은 이 단계 판정이 아니다. target 없는 reload 버튼을 누르지 않고 실제 페이지 적용을 흉내 내지 않는다.
 - [ ] **Step6 / cold(4 JSON):** 모든 Inspect/popup/styles와 **검사용 프로필의 창만** 사용자에게 닫도록 요청한다. `--inspect-native=closed`는 before에서 특정된 정확한 user-data-dir의 Chrome browser root process 부재를 좁은 process metadata로 확인할 수 있을 때만 `closedObserved=true`를 기록한다. unrelated 탭/명령행을 출력하지 않는다. launcher PID 종료만으로 browser 종료를 추정하지 않는다. before의 root identity/조회 권한을 확보하지 못하면 `cold=UNVERIFIED`로 남긴다. 다른 Chrome 전체 kill 금지.
