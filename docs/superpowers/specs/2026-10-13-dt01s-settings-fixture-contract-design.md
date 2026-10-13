@@ -2,8 +2,9 @@
 
 Date: 2026-10-13 Asia/Seoul. Local baseline: `66821c8`.
 The user approved the fixture-plus-consumer design direction and DT02 conditional
-deferral. This written spec still needs approval before implementation planning.
-No implementation, Native/browser execution or publication is approved here.
+deferral. The user approved this amended written spec on2026-10-13 and requested
+detailed implementation planning plus Astra max review. No implementation,
+Native/browser execution or publication is approved here.
 
 ## 1. Intent and chosen boundary
 
