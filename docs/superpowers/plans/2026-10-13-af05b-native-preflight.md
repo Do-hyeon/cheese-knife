@@ -10,7 +10,7 @@
 
 **Spec:** [AF05-B 상위 설계](../specs/2026-10-12-af05b-release-acceptance-design.md) §2·3·6·7·9, [P09 게시/설치 근거](../validation/2026-10-12-p09-store-publication.md). B2의 c707af6 로컬 전환 결과는 별도 [검증 기록](../validation/2026-10-12-af05b2-installed-transition.md)이다.
 
-2026-10-13 / Asia-Seoul. **계획 작성·검토 승인, 구현/프로필 조작 승인 대기.** 현재 제품2.13.3을 유지한다. 사용자 이번 승인은 과거 업데이트 미검증과 실제 플랫폼 롤백 미실행의 수용 기준 분리 및 이 계획의 작성·검토만 포함한다.
+2026-10-13 / Asia-Seoul. **계획·Task1 로컬 구현/검증 승인, Task1 검증 진행 중. Task2 프로필 조작 승인 대기.** 현재 제품2.13.3을 유지한다. 실제 Chrome/프로필 변경은 별도 승인 대상이며 push/PR/배포는 하지 않는다.
 
 ## Global Constraints
 
@@ -48,6 +48,7 @@ probe는 `chrome.runtime.id/getManifest()`, `chrome.permissions.getAll()`, `chro
 | Create `scripts/check-native-preflight.mjs` | `--prepare`로 새 private run/probe 생성, `--check=<stage>`로 단계 판정, 승인 뒤 `--inspect-native`로 좁은 사실 조회, `--record`로 고정 outcome 기록. native 실행/프로필 쓰기 없음 |
 | Create `tests/native-preflight.test.cjs` | VM/JSDOM에서 생성된 **실제 probe** 실행·읽기 전용 호출 대조·literal oracle·오류/혼합 증거 negative |
 | Create `tests/native-preflight-runner.test.cjs` | owned 경로·입력 크기·frozen baseline·설치 출처 projection·실패/cleanup·증거 ledger 검사; 실제 프로필 대신 owned fixture |
+| Create `tests/native-preflight-fixture.cjs` | 두 test 파일의 hand-checked literal 관측/순차 outcome 입력. 제품 helper를 기대값 생성기로 사용하지 않음 |
 | Modify `docs/superpowers/validation/2026-10-13-af05b-native-preflight.md`, `PLANS.md` | 리뷰·승인·실행 결과와 한계, 완료/미실행 체크박스 |
 
 기존 `readPublishedPayload()`, `PUBLISHED_PAYLOAD_BASELINE`, `brokerFunctionSource(source)`, `openOwnedRoot()`를 사용한다. 기존 B2 launch/Developer mode helper는 bundled fixture 전용이므로 native 프로필에 재사용하지 않는다. package scripts/CI/제품 manifest·settings·build 입력은 변경하지 않는다. 이 검사는 native 수동 관측용이며 CI가 native PASS를 생산하지 않는다.
@@ -80,7 +81,7 @@ worker identity는 ID·숫자 version·display version·MV3·background file·�
 
 **Files:** 위 신규 `.mjs`2개·test2개. **Produces:** `createNativePreflightProbe`, `assertNativePreflight`, `executeNativePreflight`와 새 private run의 `manifest.json`/probe text. **Consumes:** 고정 ZIP reader·broker function parser·owned-files. 이 Task는 native 프로필 IO/launch를 실행하지 않는다.
 
-- [ ] **Step1 / RED:** `tests/native-preflight.test.cjs`에 다음 literal assertion을 작성한다. 존재하지 않는 export 때문에 실패하는 것을 확인한다: `node --test tests/native-preflight.test.cjs`.
+- [x] **Step1 / RED:** `tests/native-preflight.test.cjs`에 다음 literal assertion을 작성한다. 존재하지 않는 export 때문에 실패하는 것을 확인한다: `node --test tests/native-preflight.test.cjs`.
   - `baseline is absent, not normalized defaults`: raw 네 키 모두 absent(관측 sentinel `{present:false}`), UI arrowtrue/volume5/rankingfalse/font0·ready/enabled·retry/discard hidden, CSS 등록[]; baseline의 `{config:{}}`, revision0 explicit 또는 다른 기존 값도 STOP한다.
   - `seeded and cold keep the exact raw write`: raw config=`{arrowSeek:false,previewVolume:25}`, styles=`['hide-ranking','chat-font-size']`, parameters=`{'chat-font-size':8}`, revision R은safe integer이며4 이상. UI false/25/true/8, 각 control enabled/phase ready. styles 등록 하나: id styles·CSS `styles/chat-font-size.css`,`styles/hide-ranking.css` 순서·matches chzzk·document_start·JS[]. raw styles는 수정 순서, CSS는 frozen schema 순서다. seeded의 R을 고정해 cold에서 정확히 같아야 한다. 수동 range 입력은 여러 input event를 만들 수 있어 revision4만 강제하지 않는다.
   - `real probes make no writes`: 생성 string을 VM/JSDOM에서 실행해 위 결과 확인. set/remove/clear/runtime.reload/sendMessage/fetch/register/update/unregister 호출은 모두 throwing spy, 호출0. worker에서만 broker hash와 storage/permission/CSS read를 허용한다. unknown context/API reject/timeout은 failed JSON·고정 code이며 secret exception message가 없어야 한다.
@@ -112,7 +113,7 @@ worker identity는 ID·숫자 version·display version·MV3·background file·�
 
 ## 전체 종료·다음 게이트
 
-- [ ] 계획 승인 및 Native 방식 유지 확인(이미 선택한 실행 방식은 재선택하지 않는다).
+- [x] 계획·Task1 로컬 구현/검증 승인 및 기존 Native 방식 유지. Task2 실제 Chrome/프로필 변경은 미승인.
 - [ ] Task1 구현/로컬 검사 완료. native는 아직 미실행.
 - [ ] Task2 실행 묶음 승인. 실제 스토어 설치/업데이트 승인은 별도.
 - [ ] native preflight PASS와 승인된 seed baseline 고정. 실패/미검증이면 version/스토어 제출/게시 대기.
