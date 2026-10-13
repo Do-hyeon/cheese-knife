@@ -6,7 +6,7 @@ import { openOwnedRoot } from './owned-files.mjs';
 import { NATIVE_STAGES, NATIVE_CONTEXTS, NATIVE_CODES } from './extension-e2e/native-preflight-contract.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const sourceFiles = ['scripts/check-native-preflight.mjs','scripts/extension-e2e/native-preflight.mjs','scripts/extension-e2e/native-preflight-contract.mjs','scripts/extension-e2e/published-payload.mjs',
+const sourceFiles = ['scripts/check-native-preflight.mjs','scripts/extension-e2e/native-preflight.mjs','scripts/extension-e2e/native-preflight-contract.mjs','scripts/extension-e2e/native-profile.mjs','scripts/extension-e2e/published-payload.mjs',
   'scripts/extension-e2e/transition-scenario.mjs','scripts/extension-e2e/fixture-router.mjs','scripts/owned-files.mjs','tests/fixtures/installed-extension/published-payload.json'];
 const fail = code => Object.assign(new Error(code), { code });
 const need = (value, code = 'native-evidence-invalid') => { if (!value) throw fail(code); };
@@ -114,7 +114,7 @@ async function finishAttempt(files, attempt, outcome, code) {
     JSON.stringify({ schema: 1, runNonce: attempt.runNonce, ordinal: attempt.ordinal, outcome, code }), { flag: 'wx' });
 }
 
-/** Local artifact IO only. Native access has no default implementation in Task1. */
+/** Artifact actions stay local; only explicit inspect-native reads the fixed P09 profile. */
 export async function executeNativePreflight(args, dependencies = {}) {
   const options = parse(args), now = dependencies.now || Date.now;
   const repository = dependencies.repository || await openOwnedRoot(root);
@@ -161,8 +161,10 @@ export async function executeNativePreflight(args, dependencies = {}) {
     }
     next(events, event, 'confirmed');
     if (options.action === '--inspect-native') {
-      if (!dependencies.inspectNative) throw fail('native-unavailable');
-      const facts = await dependencies.inspectNative(options.value, manifest.runNonce);
+      const inspect = Object.hasOwn(dependencies,'inspectNative') ? dependencies.inspectNative : async (phase,runNonce) =>
+        (await import('./extension-e2e/native-profile.mjs')).readNativeFacts({repository,baseline,phase,runNonce,now});
+      if (!inspect) throw fail('native-unavailable');
+      const facts = await inspect(options.value, manifest.runNonce);
       need(facts?.schema === 1 && facts.runNonce === manifest.runNonce && facts.phase === options.value);
       const serialized = JSON.stringify(facts), bytes = Buffer.byteLength(serialized);
       // Reserve 4 KiB for fixed journal and attempt-result records before publishing facts.

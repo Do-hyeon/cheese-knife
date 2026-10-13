@@ -100,7 +100,7 @@ export function createNativePreflightProbe(options) {
 const origin = ['https://chzzk.naver.com/*'];
 const sameSet = (a, b) => Array.isArray(a) && a.length === b.length && new Set(a).size === a.length && b.every(value => a.includes(value));
 const time = value => Number.isSafeInteger(value) && value > 0;
-function assertInstallation(installation, baseline) {
+export function assertNativeInstallation(installation, baseline) {
   requireThat(installation?.extensionId === NATIVE_ID && installation.version === '2.13.3' && installation.publicKeyId === NATIVE_ID && installation.fromWebstore === true &&
     isDeepStrictEqual(installation.disableReasons, []) && sameSet(installation.permissions, ['scripting','storage']) && sameSet(installation.origins, origin));
   const normalized = structuredClone(installation.manifest);
@@ -136,7 +136,7 @@ export function assertNativePreflight(evidence, baseline, through) {
   for (const [index, f] of nativeFacts.entries()) {
     requireThat(f.schema === 1 && f.runNonce === nonce && f.phase === phases.at(index) && time(f.capturedAt) &&
       /^[a-f0-9]{64}$/.test(f.profileIdentity) && f.profileIdentity === nativeFacts[0].profileIdentity && typeof f.developerMode === 'boolean' && f.process?.queried === true);
-    assertInstallation(f.installation, baseline);
+    assertNativeInstallation(f.installation, baseline);
     if (['closed','after'].includes(f.phase)) requireThat(f.process.root === null);
     else requireThat(Number.isSafeInteger(f.process.root?.pid) && f.process.root.pid > 0 && time(f.process.root.startedAt) && f.process.root.startedAt <= f.capturedAt);
   }

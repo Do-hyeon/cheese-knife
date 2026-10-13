@@ -5,7 +5,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const fixture = require('./native-preflight-fixture.cjs');
 const subject = () => import('../scripts/check-native-preflight.mjs');
-const sources = ['scripts/check-native-preflight.mjs','scripts/extension-e2e/native-preflight.mjs','scripts/extension-e2e/native-preflight-contract.mjs','scripts/extension-e2e/published-payload.mjs',
+const sources = ['scripts/check-native-preflight.mjs','scripts/extension-e2e/native-preflight.mjs','scripts/extension-e2e/native-preflight-contract.mjs','scripts/extension-e2e/native-profile.mjs','scripts/extension-e2e/published-payload.mjs',
   'scripts/extension-e2e/transition-scenario.mjs','scripts/extension-e2e/fixture-router.mjs','scripts/owned-files.mjs','tests/fixtures/installed-extension/published-payload.json'];
 async function runFixture(t) {
   const { openOwnedRoot } = await import('../scripts/owned-files.mjs');
@@ -53,8 +53,8 @@ test('prepare refuses an existing run without modifying it', async t => {
   await assert.rejects(f.call(['--prepare']), { code: 'native-evidence-invalid' });
   assert.deepEqual(await f.run.readFile('manifest.json'), before); assert.equal(f.inspectCalls(), 0);
 });
-test('native inspection has no default implementation or automatic fallback', async t => {
-  const f = await runFixture(t); delete f.dependencies.inspectNative;
+test('explicitly disabled native inspection has no automatic fallback', async t => {
+  const f = await runFixture(t); f.dependencies.inspectNative=null;
   await assert.rejects(f.inspect('before'), { code: 'native-unavailable' });
   assert.equal(f.inspectCalls(), 0);
 });

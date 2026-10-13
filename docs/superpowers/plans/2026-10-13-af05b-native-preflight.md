@@ -10,7 +10,7 @@
 
 **Spec:** [AF05-B 상위 설계](../specs/2026-10-12-af05b-release-acceptance-design.md) §2·3·6·7·9, [P09 게시/설치 근거](../validation/2026-10-12-p09-store-publication.md). B2의 c707af6 로컬 전환 결과는 별도 [검증 기록](../validation/2026-10-12-af05b2-installed-transition.md)이다.
 
-2026-10-13 / Asia-Seoul. **계획·Task1 승인 및 로컬 구현/검증 완료. Task2 실제 Chrome/프로필 실행 승인 대기.** 현재 제품2.13.3을 유지한다. 실제 native PASS가 아니며 push/PR/배포는 하지 않는다. 결과는 [검증 기록](../validation/2026-10-13-af05b-native-preflight.md)에 분리한다.
+2026-10-13 / Asia-Seoul. **Task1 로컬 완료, 기존 P09 프로필에 한정한 Task2 실행 승인·구현/검증 진행 중.** 현재 제품2.13.3을 유지한다. 실제 native PASS가 아니며 push/PR/배포는 하지 않는다. 결과는 [검증 기록](../validation/2026-10-13-af05b-native-preflight.md)에 분리한다.
 
 ## Global Constraints
 
@@ -46,10 +46,12 @@ probe는 `chrome.runtime.id/getManifest()`, `chrome.permissions.getAll()`, `chro
 | --- | --- |
 | Create `scripts/extension-e2e/native-preflight.mjs` | 고정 probe 생성·입력 schema·독립 native baseline/seed/UI/CSS 판정. 브라우저 실행/프로필 접근/파일 쓰기 없음 |
 | Create `scripts/extension-e2e/native-preflight-contract.mjs` | 부작용 없는 stage/context/오류 코드 상수. fallible payload 초기화 전에 CLI 오류 경계를 구성 |
+| Create `scripts/extension-e2e/native-profile.mjs` (Task2) | 고정 P09 설치/Developer mode/현재 root 사실의 read-only projection, 공개키 ID·52파일 검증. launch/쓰기/브라우저 제어 없음 |
 | Create `scripts/check-native-preflight.mjs` | `--prepare`로 새 private run/probe 생성, `--check=<stage>`로 단계 판정, 승인 뒤 `--inspect-native`로 좁은 사실 조회, `--record`로 고정 outcome 기록. native 실행/프로필 쓰기 없음 |
 | Create `tests/native-preflight.test.cjs` | VM/JSDOM에서 생성된 **실제 probe** 실행·읽기 전용 호출 대조·literal oracle·오류/혼합 증거 negative |
 | Create `tests/native-preflight-runner.test.cjs` | owned 경로·입력 크기·frozen baseline·설치 출처 projection·실패/cleanup·증거 ledger 검사; 실제 프로필 대신 owned fixture |
 | Create `tests/native-preflight-fixture.cjs` | 두 test 파일의 hand-checked literal 관측/순차 outcome 입력. 제품 helper를 기대값 생성기로 사용하지 않음 |
+| Create `tests/native-profile.test.cjs` (Task2) | fixed-path owned 설치 fixture와 synthetic CIM provider에서 실행하는 실제 PowerShell 조회. native 원본 profile/process 미사용 |
 | Modify `docs/superpowers/validation/2026-10-13-af05b-native-preflight.md`, `PLANS.md` | 리뷰·승인·실행 결과와 한계, 완료/미실행 체크박스 |
 
 기존 `readPublishedPayload()`, `PUBLISHED_PAYLOAD_BASELINE`, `brokerFunctionSource(source)`, `openOwnedRoot()`를 사용한다. 기존 B2 launch/Developer mode helper는 bundled fixture 전용이므로 native 프로필에 재사용하지 않는다. package scripts/CI/제품 manifest·settings·build 입력은 변경하지 않는다. 이 검사는 native 수동 관측용이며 CI가 native PASS를 생산하지 않는다.
@@ -99,10 +101,10 @@ worker identity는 ID·숫자 version·display version·MV3·background file·�
 
 ## Task 2: Approved native observation and cold restart
 
-**Files:** 같은 CLI의 좁은 native read 경계·runner tests·검증 문서/PLANS. **Consumes:** Task1 준비 run/probe와 사용자 실행 승인. **Produces:** private native summary, `NATIVE-PREFLIGHT-PASS` 또는 실패/접근 대기, 승인된 seed baseline(다음 실제 업데이트용). 제품/공개 후보를 생산하지 않는다.
+**Files:** 같은 CLI와 내부 `native-profile.mjs` read 경계·runner/native-profile tests·검증 문서/PLANS. **Consumes:** Task1 준비 run/probe와 사용자 실행 승인. **Produces:** private native summary, `NATIVE-PREFLIGHT-PASS` 또는 실패/접근 대기, 승인된 seed baseline(다음 실제 업데이트용). 제품/공개 후보를 생산하지 않는다. source binding에 native reader를 추가해 현재 총9개 입력이며 실제 준비 run은 코드 고정 뒤 만든다.
 
-- [ ] **Step1 / RED:** fixture로 `native identity facts must be current`, `prepare/check/record do not inspect native profile/process`, `HTML changed or extra runtime file vetoes identity`, `inspector-open is not cold proof`, `profile-context unconfirmed cannot pass`, `user report alone is insufficient`, `failure after valid seeded observations vetoes PASS`, `post-seed abort preserves state and cannot retry absent baseline`을 추가한다. `node --test tests/native-preflight-runner.test.cjs`에서 새 negative가 실패하는지 확인한다.
-- [ ] **Step2 / 좁은 출처 경계:** 승인 뒤 `--inspect-native=before|after`만 고정 `Default/Extensions/<ID>/2.13.3_0/manifest.json`과 target 설치 기록을 read한다. Preferences/Secure Preferences container는 메모리에서 parse해 해당 ID의 from_webstore/version/disable_reasons/granted 권한만 projection한다. 전체 파일/다른 확장/다른 profile 내용은 출력·복사하지 않는다. 잘못된 JSON/복수 버전/record 부재/비-store/disabled/권한 차이는 STOP한다.
+- [x] **Step1 / RED:** 새 reader의 current target facts·HTML/extra runtime/추가 version·권한/key/preference/link·root prefix/renderer/duplicates/query failure/closed-negative를 owned fixture에 추가하고 missing module RED를 확인했다. 실제 PowerShell은 synthetic CIM provider로 실행해 조회 실패와 경로 `..`/구분자 정규화 RED→GREEN을 확인했다. Task1의 profile-context/user-report/첫 실패/seed 이후 abort negative는 그대로 재실행하며 중복 테스트를 만들지 않는다.
+- [x] **Step2 / 좁은 출처 경계:** 승인 뒤 `--inspect-native=before|closed|restarted|after`만 고정 `Default/Extensions/<ID>/2.13.3_0/manifest.json`과 target 설치 기록을 read한다. Preferences/Secure Preferences container는 메모리에서 parse해 해당 ID의 from_webstore/version/disable_reasons/granted 권한만 projection한다. 전체 파일/다른 확장/다른 profile 내용은 출력·복사하지 않는다. 잘못된 JSON/복수 버전/record 부재/비-store/disabled/권한 차이는 STOP한다. Developer mode 저장 항목 absent는 [Chromium 기본값 false](https://chromium.googlesource.com/chromium/src/+/HEAD/components/policy/test/data/pref_mapping/ExtensionDeveloperModeSettings.json)를 사용하며 present null/다른 타입은 실패다. policy 허용이나 실제 UI 상태를 추정하는 근거는 아니다.
   - 설치 manifest 공개키의 ID는 Node crypto/해시로 계산해 target ID와 대조한다. runtime MV3/version/background/permissions와 설치 manifest 및 P09 고정 근거를 연결한다. manifest 공개키는 서명 검증 근거라고 부르지 않는다.
   - 고정 ZIP58개 중 manifest/locale2개/icon3개를 제외한 **52개 일반 파일 모두** 설치 SHA-256이 같아야 한다. JS/CSS46개뿐 아니라 HTML3개와 나머지 게시 resource/라이선스도 포함한다. 허용 file inventory는 frozen58개와 `_metadata/verified_contents.json`, `_metadata/computed_hashes.json`만이며 extra/missing/link/추가 runtime 파일은 실패다. manifest는 key/update_url 외 object, locale2개는 parsed object가 같아야 한다. P09의 icon 설치 정규화/Chrome metadata 예외는 명시적으로 유지하되 이번 검사로 아이콘 pixels나 독립 CRX 서명 인증을 다시 완료했다고 주장하지 않는다. 설치 파일은 쓰지 않는다.
   - 필요한 from_webstore 경로가 현재 설치 container와 다르면 다른 개인 파일을 탐색하지 말고 STOP/계획 변경으로 처리한다. 실제 프로필 대상 접근과 설치 IO는 CLI 전체 유닛 테스트에서 owned fixture로 대체한다.
@@ -116,9 +118,9 @@ worker identity는 ID·숫자 version·display version·MV3·background file·�
 
 ## 전체 종료·다음 게이트
 
-- [x] 계획·Task1 로컬 구현/검증 승인 및 기존 Native 방식 유지. Task2 실제 Chrome/프로필 변경은 미승인.
+- [x] 계획·Task1 로컬 구현/검증 승인 및 기존 Native 방식 유지.
 - [x] Task1 구현/로컬 검사 완료. native는 아직 미실행.
-- [ ] Task2 실행 묶음 승인. 실제 스토어 설치/업데이트 승인은 별도.
+- [x] 기존 P09 검사용 프로필에 한정한 Task2 실행 묶음 승인2026-10-13. 실제 스토어 설치/업데이트 승인은 별도.
 - [ ] native preflight PASS와 승인된 seed baseline 고정. 실패/미검증이면 version/스토어 제출/게시 대기.
 - [ ] AF05-B 전체 목록의 잔여 공개 게이트를 대조하고 공개 전 로컬 준비와 공개 후 수용의 경계를 사용자에게 확인. **현재 ‘전체 완료 전 push/PR 금지’를 공개 후 실제 update 완료 전 조건으로 해석하면 순환하므로, 임의로 PR 가능으로 완화하지 않는다.** 후속 공개 시점 결정을 받을 때 이 범위를 명시한다.
 - [ ] 그 이후에만 공개 version·단일 한글 PR/push·CI/병합·스토어 upload/심사/수동 게시 각 승인을 확인한다. 지금 구체적인 차기 번호·출시일을 정하지 않는다.
