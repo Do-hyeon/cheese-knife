@@ -22,7 +22,7 @@ rollback 최종 literal/실제 revision은 valid-ui14(font0), legacy-valid5(t/re
 
 현재 감사: `output/af05b2-validation-20261013/output/tool-audit/run-2026-10-13T08-34-56-407Z-qN92CI/summary.json`.8개 모두 scripts/owned-files.mjs의26/27/45/74/79/94/115/125줄 dynamic fs 경계이며125는 배타적 완성 파일 게시다. 이전 원장을 고치거나 스캐너를 완화하지 않았다. 새 module은 실제 감사 source inventory에 포함됐다.
 
-Astra max 최초 whole-branch 판정 **Critical0/Important6/Minor0**은 보존한다. 6건은 작성자 RED→GREEN·현재 전체/실제 설치 gate로 보완·검증했으며, 이를 수정 후 독립0건 판정으로 표현하지 않는다. 이번 국소 준비 보완도 같은 작성자 검증 범위다. 네이티브 preflight·역사 업데이트 미검증 수용 기준·공개 버전/스토어/플랫폼 롤백·전체 카테고리 단일 PR/공개 CI·F00 동결 해제는 별도 미완료다.
+Astra max 최초 whole-branch 판정 **Critical0/Important6/Minor0**은 보존한다. 6건은 작성자 RED→GREEN·현재 전체/실제 설치 gate로 보완·검증했으며, 이를 수정 후 독립0건 판정으로 표현하지 않는다. 이번 국소 준비 보완도 같은 작성자 검증 범위다. 당시 남겨둔 native preflight와 역사 미검증 수용 기준 승인은 후속 완료했다. 최신 [종합 마감](2026-10-14-af05b-prepublication-closure.md)과 별개로 실제 스토어 업데이트/플랫폼 롤백·공개 CI의 실행 근거는 분리하며 F00·F01은 준비 PR의 선행 조건이 아니다.
 
 ## 보완 전 구현·독립 기대값 이력
 
@@ -124,7 +124,7 @@ Probe4 ms 사건: popup ready3099 → 관리 화면 before 읽기3351 → reload
 
 검토자가 판정하지 않은 범위의 처리: 실제 스토어 업데이트/서명/스토어 ID/과거2.13.2/P09/native 롤백은 별도 게이트로 보류; 실행 옵션의 실제 환경 성립은 작성자 설치 검사로 확인; broker+inventory를 모든 코드 경로 실행 증명으로 확대하지 않음; 실제 방송/인증/OS 네트워크 격리·보안 인증/Daybreak/HLS 검토는 범위 밖; 보호 파일/빌드/audio는 작성자 별도 검사; 동시 악의적 filesystem 교체/엄격 임시 trace quota·다중 사용자 부하는 owned 로컬/CI 계약 밖으로 남긴다.
 
-보완 전 checkpoint의 positive/control 실패는 위 이력으로 보존한다. 후속 c707af6의 실제5case/control은 최종 로컬 결과처럼 통과했으며, CI의 새 두 명령을 공개에서 검증한 상태는 아니다. 실제 native/CRX/스토어 ID 연속성·열린 old content script 정리·플랫폼 rollback·차기 배포·F00 해제는 별도 미완료/미승인이다.
+보완 전 checkpoint의 positive/control 실패는 위 이력으로 보존한다. c707af6 당시 실제5case/control은 통과했지만 공개 CI와 native 실행은 아직 남아 있었다. 이후 native 사전검증은 별도 승인·실제 PASS했고 최신 준비 상태/공개 CI는 [종합 기록](2026-10-14-af05b-prepublication-closure.md)을 따른다. CRX/스토어 업데이트의 ID 연속성·열린 old content script 정리·플랫폼 rollback·차기 배포는 별도 미완료이며 F00·F01은 준비 PR의 선행 조건이 아니다.
 
 ## 구현 과정의 판단·비용
 
@@ -132,7 +132,7 @@ Probe4 ms 사건: popup ready3099 → 관리 화면 before 읽기3351 → reload
 - 전체 AF05-B 종료 전 private 원장/log를 보존. 비용: ignored 디스크 사용량.
 - Windows cache 링크 거부 시험은 권한이 필요 없는 junction, Unix는 file symlink. skip 없음. 비용: Windows 파일-symlink 생성 권한 자체는 시험하지 않음.
 - font0은 네 변수0px, 손상 UI는 snapshot 없는 기본 brightness1/MAIN은 실제 normalized brightness1.25로 대조. 제품을 잘못된 oracle에 맞추지 않음. 비용: 실제 설치 gate의 재확인 필요.
-- 전체 fake browser를 만들지 않고 순수 상태 mutation/polling/오류 단위와 실제 packaged phase를 분리. 비용: UI/concurrency 완전 실행은 현재 막힌 Task3에 남음.
+- 전체 fake browser를 만들지 않고 순수 상태 mutation/polling/오류 단위와 실제 packaged phase를 분리. 당시 비용: UI/concurrency 완전 실행은 막힌 Task3에 남아 있었다. 후속 실제5case/control PASS로 해당 대기를 해소했으며 실사용 모든 조합의 인증은 아니다.
 - parent는 새 root/candidate 컨테이너를 먼저 소유하고 preparation/build도 supervised child600s 안에서 실행. 비용: build 전 생성한 미사용 root 정리와 비정상 child 종료 시 보수적 보존.
 - worker runtime.reload는 정상 Developer mode UI와 수명/출처 대조를 포함한 private 준비다. 보완 전 실패와 후속 성립을 구분하며 native/in-place 성공 증거로 확대하지 않는다.
 

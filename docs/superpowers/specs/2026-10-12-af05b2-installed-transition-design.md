@@ -1,6 +1,6 @@
 # AF05-B2 — 격리 설치본 코드 전환·복귀 상세 설계
 
-2026-10-12 / Asia-Seoul. 상태: **독립 설계 검토·보완 후 사용자2026-10-13 B2 설계/Native 구현·격리검증·최종 Astra max 검토 묶음 승인, 구현 중**. [상위 AF05-B 설계](2026-10-12-af05b-release-acceptance-design.md)의 과거 업데이트 미검증 수용·플랫폼 롤백 완료 기준 변경은 여전히 별도 승인 대상이다.
+2026-10-12 / Asia-Seoul. **당시 승인 상태:** 독립 설계 검토·보완 후 사용자2026-10-13 B2 설계/Native 구현·격리검증·최종 Astra max 검토 묶음 승인, 구현 중이었다. 후속 B2 실제 전환·native 사전검증과 [준비 범위 종합 마감](../validation/2026-10-14-af05b-prepublication-closure.md)은 완료했다. 승인된 과거 업데이트 미검증 수용·격리 코드 복귀/플랫폼 롤백 미실행 분리는 [상위 설계](2026-10-12-af05b-release-acceptance-design.md)를 따른다. 실제 스토어 업데이트 수용은 별도로 남긴다.
 
 ## 1. 목적·성공 기준·비목표
 
@@ -114,7 +114,7 @@ deadline/예상치 못한 child exit 시 소유한 runner만 종료한다. Windo
 - B2 로컬 완료: reader provenance·상한/부재·pure oracle/runner faults·실제5case 전환·실제 저장 손실 negative·현재 foundation9·전체 Node·기존 E2E positive/negative·합성 audio·패키지·현재 도구 감사·보호 파일 전후 hash·최종 독립 품질 검토가 모두 근거를 남김. 공개 CI/통합은 AF05-B 전체 완료 후 단일 한글 PR에서 수행하며 로컬 완료와 구분한다.
 - 전체 Node는 clean tracked clone에서 제외 없는 실행. 원래 폴더의 P02 역사 실패와 기존 guarded 도구 경고를 숨기거나 frozen 자료를 변경하지 않음. 새 경고·대상 부재·cleanup/환경 실패는 별도 보완 없이 합격시키지 않음.
 - B2 설계/계획 승인 시 새 bundled fixture 프로필·시험용 T/R payload·negative 복사본·owned cleanup이 필요한 로컬 동작임을 함께 제시한다. 종료 미확인 시 실패/프로필 보존과 private 시험 browser의 수동 종료 필요 가능성도 고지한다. Native 또는 subagent 실행 방식과 구현 후 최종 Astra max 검토도 승인 묶음에 포함해 받는다. 이는 실제 시청/native 프로필·제품 버전·스토어 조작 승인이 아니다.
-- 전체 AF05-B spec의 waiver/rollback 수용 기준, 성공한 native2.13.3 runtime/seeded storage preflight, 공개 버전, 스토어 upload/심사/게시, 실제 update/new install/플랫폼 rollback은 별도 미완료다. B2만으로 P09/AF05-B DONE·F00 동결 해제를 선언하지 않음.
-- 사용자2026-10-13 지시: AF05-B 카테고리 전체 완료 후 한글 PR 하나로 묶고 Task/B2/문서별 중간 push·PR은 하지 않는다. 현재 릴리즈·스토어 배포 금지는 유지하며 이를 이유로 미승인 native/waiver 게이트를 자동 면제하지 않는다.
+- 당시 B2 밖에 남겼던 수용 기준 승인은 후속 승인됐고 native2.13.3 runtime/seeded storage preflight도 후속 실제 PASS했다. 공개 버전·스토어 upload/심사/게시·실제 update/new install·플랫폼 rollback 실행은 여전히 별도 게이트다. B2만으로 실제 플랫폼 수용 완료를 선언하지 않는다.
+- 최신 사용자2026-10-14 지시: AF05-B 공개 전 준비 범위 전체를 단일 한글 PR로 묶고 F00·F01은 제외한다. 게시 후 수용은 준비 PR의 선행 조건이 아니다. Task/B2/문서별 PR과 병합·릴리즈·스토어 배포는 하지 않는다.
 
 설계의 플랫폼 근거: [Playwright extension guide](https://playwright.dev/docs/chrome-extensions), [persistent context API](https://playwright.dev/docs/api/class-browsertype#browser-type-launch-persistent-context). bundled Chromium과 persistent profile을 사용하고 시청 Chrome을 연결하지 않는다. 구현·현재 환경 실행으로 실제 성립 여부를 검증할 때까지 예상 동작을 PASS라고 부르지 않는다.

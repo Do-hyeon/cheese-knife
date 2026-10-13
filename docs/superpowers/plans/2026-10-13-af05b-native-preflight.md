@@ -127,12 +127,13 @@ worker identity는 ID·숫자 version·display version·MV3·background file·�
 ## 전체 종료·다음 게이트
 
 - [x] 계획·Task1 로컬 구현/검증 승인 및 기존 Native 방식 유지.
-- [x] Task1 구현/로컬 검사 완료. native는 아직 미실행.
+- [x] Task1 구현/로컬 검사 완료. 당시 native는 미실행이었고 후속 Task2에서 별도 승인·실제 검증했다.
 - [x] 기존 P09 검사용 프로필에 한정한 Task2 실행 묶음 승인2026-10-13. 실제 스토어 설치/업데이트 승인은 별도.
 - [x] native preflight PASS와 승인된 seed baseline 고정. 실제 업데이트/전체 AF05-B 완료·version/스토어 제출/게시 승인은 별도다.
 - [x] 사용자2026-10-14 지시 반영: AF05-B 자체 마감·준비 PR에서 F00·F01 의존성 제거. 최소 기능 배포 조건은 PLANS.md 로드맵으로 분리. 실제 미실행 수용을 PASS로 바꾸거나 현재 push/PR을 승인한 것은 아니다.
 - [x] 후속 사용자2026-10-14 공개 지시: AF05-B 자체 잔여 작업·종합 검증 뒤 AF05-B만 push·한글 PR 한 건·공개 CI 확인. F00·F01/병합·릴리즈·스토어 배포는 제외.
-- [ ] native 완료 근거와 B1/B2의 전체 준비 범위를 종합 대조하고 AF05-B 단일 한글 PR/push 지시를 확인한다. 해당 head 공개 CI·병합은 별도 승인으로 진행하며 F00·F01 초안/구현을 이 PR에 섞지 않는다.
+- [x] native 완료 근거와 B1/B2의 [전체 준비 범위 종합 마감](../validation/2026-10-14-af05b-prepublication-closure.md) 완료. AF05-B 단일 한글 PR/push·공개 CI 확인 지시를 받았으며 F00·F01 초안/구현과 병합·배포는 제외한다.
+- [ ] 승인 범위의 실제 push·단일 PR 생성·마지막 head 공개 CI 확인.
 - [ ] 차기 게시 단계에서 공개 version·최종 통합 게이트·스토어 upload/심사/수동 게시 승인을 별도로 확인한다. 준비 PR과 독립인 배포 로드맵을 따르며 지금 차기 번호·출시일을 정하지 않는다.
 - [ ] 게시 후의 실제2.13.3→후보 업데이트/신규 설치·열린 페이지/MAIN·대상 reload·context invalidation 오류 수용은 상위 AF05-B에 남긴다. 이번 baseline probe 결과로 닫지 않는다.
 
