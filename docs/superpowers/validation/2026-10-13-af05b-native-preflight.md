@@ -243,4 +243,4 @@ fresh gpt-6-astra/max는 ced54b2..ba715cf의 native 전체 변경6커밋과 priv
 - 자동 마감은 정확한 root 검증/normal close 요청 뒤 root 부재·endpoint 연결 거부·MCP child0·after facts를 확인한 executor outcome이다. 사용자가 추가 마감을 수동 확인했다고 주장하지 않으며 최초 profile/context 사람 확인과 구분한다.
 - 독립 reviewer는 실제 P09/포트/프로세스를 다시 조회하지 않았다. 저장된 근거의 replay를 주 실행자의 live 실행/종료 관측과 구분한다. CRX 서명·icon pixels/Chrome metadata 독립 인증·자연 worker suspension·실제 방송 MAIN/CSS/오디오·동시 client·실제 update/새 설치·플랫폼 rollback·전체 CI/보안/성능/릴리즈 인증은 별도 owning gate 또는 명시적 한계다. hostile 동시 파일 교체·위조된 수동 증거의 자동 인증도 기존 범위 밖이다.
 
-후속 사용자 지시에 따라 새 버전 공개는 최소 F00·F01 구현·검증과 새 통합 후보의 기존 게이트 뒤에 별도 승인받는다. native PASS만으로 공개하지 않는다. 실제 업데이트 수용은 게시 후 AF05-B에서 마무리한다. 이 단계는 로컬 기록만 고정하며 push/PR·병합·version/릴리즈·스토어 변경은 하지 않는다.
+사용자2026-10-14 지시로 AF05-B 공개 전 준비 범위의 마감·단일 PR은 F00·F01에 의존하지 않는다. F00·F01은 별도 기능 PR이며 최소 기능 완료 조건은 차기 버전 배포에만 적용한다. 실제 업데이트 수용은 게시 후 AF05-B에서 마무리하며 준비 PR의 선행 조건이 아니다. native PASS를 업데이트 PASS로 바꾸지 않는다. 이번 문서 변경은 로컬이며 push/PR·병합·version/릴리즈·스토어 변경은 하지 않는다.

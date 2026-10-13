@@ -10,7 +10,7 @@
 
 **Spec:** [AF05-B 상위 설계](../specs/2026-10-12-af05b-release-acceptance-design.md) §2·3·6·7·9, [P09 게시/설치 근거](../validation/2026-10-12-p09-store-publication.md). B2의 c707af6 로컬 전환 결과는 별도 [검증 기록](../validation/2026-10-12-af05b2-installed-transition.md)이다.
 
-2026-10-13 / Asia-Seoul. **Task1/Task2 native 범위 로컬 마감 완료.** 사용자 경로 확인·실제12개 JSON·revision4의 seed/UI/CSS·두 root의 종료/재시작·최종 마감에 NATIVE-PREFLIGHT-PASS. fresh Astra max 최종0/0/1의 문서 Minor는 이력 표현으로 교정했으며 수정 후 독립0건 판정은 아님. MCP/P09/endpoint 종료·Developer modefalse·설치/권한 불변과 private config 비활성/임시 flag 제거 확인. 이전 실패는 보존하며 실제 업데이트/전체 AF05-B 완료·공개 승인과 별개다. 현재2.13.3 유지, 다음은 F00·F01 설계/구현 승인·검증 순서. [최종 기록](../validation/2026-10-13-af05b-native-preflight.md#native-범위-최종-독립-품질-검토와-마감).
+2026-10-13 / Asia-Seoul. **Task1/Task2 native 범위 로컬 마감 완료.** 사용자 경로 확인·실제12개 JSON·revision4의 seed/UI/CSS·두 root의 종료/재시작·최종 마감에 NATIVE-PREFLIGHT-PASS. fresh Astra max 최종0/0/1의 문서 Minor는 이력 표현으로 교정했으며 수정 후 독립0건 판정은 아님. MCP/P09/endpoint 종료·Developer modefalse·설치/권한 불변과 private config 비활성/임시 flag 제거 확인. 이전 실패는 보존하며 실제 업데이트/전체 AF05-B 완료·공개 승인과 별개다. 현재2.13.3 유지. AF05-B는 자체 준비 범위 종합 마감·단일 PR 지시 확인으로 진행하며 F00·F01은 독립 기능 경로다. [최종 기록](../validation/2026-10-13-af05b-native-preflight.md#native-범위-최종-독립-품질-검토와-마감).
 
 ## Global Constraints
 
@@ -23,7 +23,7 @@
 - 실제 데이터는 private `output/native-preflight-<runId>/`에만 둔다. 쿠키·계정·채팅·전체 탭·다른 확장·전체 storage export를 수집하지 않는다. 공개 결과에는 기준 해시·판정·한계만 남긴다.
 - 검사 UI 저장은 `arrowSeek=false`, `previewVolume=25`, `hide-ranking=true`, `chat-font-size=8` 네 값에 한정한다. native legacy/손상/unknown 값 시험과 인위적 storage loss는 B1/B2에서만 수행한다.
 - native preflight는 스토어 baseline의 실행 worker/설정 client/CSS **등록** 근거다. 실제 방송 MAIN·화면 CSS 적용·오디오·업데이트·서명 인증·전체 보안 검증은 아니다.
-- AF05-B 전체 완료 전 중간 push/PR 금지와 별도 공개 승인 원칙을 유지한다. 후속 사용자 지시로 차기 공개는 최소 F00·F01 구현·검증까지 완료한 뒤 준비하며, AF05-B 게시 후 수용을 그 기능의 설계/구현 선행 조건으로 삼지 않는다. 각 기능 구현 승인·F02–F05 동결은 별도다.
+- 사용자2026-10-14 결정으로 AF05-B 공개 전 준비 범위 전체를 단일 한글 PR로 묶고 F00·F01은 별도 기능 PR로 진행한다. AF05-B 마감·준비 PR은 두 기능이나 게시 후 업데이트를 기다리지 않는다. Task·문서별 중간 PR 금지와 각 push/PR·병합 명시 지시 원칙은 유지하며 최소 F00·F01 조건은 차기 버전 배포 로드맵만 소유한다.
 
 ## 관측 경로와 승인 경계
 
@@ -130,9 +130,10 @@ worker identity는 ID·숫자 version·display version·MV3·background file·�
 - [x] Task1 구현/로컬 검사 완료. native는 아직 미실행.
 - [x] 기존 P09 검사용 프로필에 한정한 Task2 실행 묶음 승인2026-10-13. 실제 스토어 설치/업데이트 승인은 별도.
 - [x] native preflight PASS와 승인된 seed baseline 고정. 실제 업데이트/전체 AF05-B 완료·version/스토어 제출/게시 승인은 별도다.
-- [x] 후속 사용자2026-10-13 지시로 차기 공개는 최소 F00·F01 구현·검증 뒤에만 준비한다. AF05-B 단독 완료를 공개 조건으로 삼거나 게시 후 수용을 기능 선행 조건으로 쓰지 않는다. 현재 공개/push/PR 승인은 없다.
-- [ ] native 최종 검토 마감 후 F00·F01 상세 설계·각 구현 승인/검증·통합 회귀와 설치 전환 재검증을 진행한다. 실제 게시 후 수용은 AF05-B에 남긴다.
-- [ ] 그 이후 공개 version·단일 한글 PR/push·CI/병합·스토어 upload/심사/수동 게시 각 승인을 확인한다. 지금 구체적인 차기 번호·출시일을 정하지 않는다.
+- [x] 사용자2026-10-14 지시 반영: AF05-B 자체 마감·준비 PR에서 F00·F01 의존성 제거. 최소 기능 배포 조건은 PLANS.md 로드맵으로 분리. 실제 미실행 수용을 PASS로 바꾸거나 현재 push/PR을 승인한 것은 아니다.
+- [x] 후속 사용자2026-10-14 공개 지시: AF05-B 자체 잔여 작업·종합 검증 뒤 AF05-B만 push·한글 PR 한 건·공개 CI 확인. F00·F01/병합·릴리즈·스토어 배포는 제외.
+- [ ] native 완료 근거와 B1/B2의 전체 준비 범위를 종합 대조하고 AF05-B 단일 한글 PR/push 지시를 확인한다. 해당 head 공개 CI·병합은 별도 승인으로 진행하며 F00·F01 초안/구현을 이 PR에 섞지 않는다.
+- [ ] 차기 게시 단계에서 공개 version·최종 통합 게이트·스토어 upload/심사/수동 게시 승인을 별도로 확인한다. 준비 PR과 독립인 배포 로드맵을 따르며 지금 차기 번호·출시일을 정하지 않는다.
 - [ ] 게시 후의 실제2.13.3→후보 업데이트/신규 설치·열린 페이지/MAIN·대상 reload·context invalidation 오류 수용은 상위 AF05-B에 남긴다. 이번 baseline probe 결과로 닫지 않는다.
 
 ## 작성자 자체 대조
@@ -140,5 +141,5 @@ worker identity는 ID·숫자 version·display version·MV3·background file·�
 - [x] 상위 §2 수용 기준과 P09 소유권: 역사 미검증/미실행 구분, 차기 실제 업데이트는 AF05-B 소유.
 - [x] §3·6 경로/출처·version·공개 승인·private 증거: Task1/2와 전역 경계에 매핑. native CI 자동 PASS 없음.
 - [x] §7 runtime/seeded raw/UI/CSS 관측: Task1 literal/probe tests와 Task2 실제 JSON으로 매핑. 정책/접근 부재는 STOP이며 현재 경로 확보를 주장하지 않음.
-- [x] §9 승인·완료: 계획/구현/native 변경/public/post-public를 분리. push/PR 순환 경계는 미결정으로 명시.
+- [x] §9 승인·완료: 계획/구현/native 변경/public/post-public를 분리. 사용자2026-10-14 지시로 준비 PR과 게시 후 수용 경계 확정, F00·F01 의존성 없음.
 - [x] 다섯 Review Focus 각각 owning task negative에 연결. 고정 함수명/12개 stage-context/단계4→8→12/seed4개/revision R 일치, CSS frozen schema 순서 대조. 신규 제품 기능·일반 profile controller·배포 framework 없음.
