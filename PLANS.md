@@ -68,14 +68,14 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어는 같�
 | AF05-A | 내부 원본 종료·검증 | AF04 | DONE | 생성·strict·전체 회귀·공개 CI 유지 |
 | AF05-B | 공개 설치·업데이트·롤백 수용 | P09, 차기 AF 배포 준비 | DEFERRED-MAINTENANCE | B1 완료, B2 문서·승인 게이트 보존; 테스트·개발 도구 타입 강화 후속 마무리 후 복귀. 전체 수용 기준·실제 배포 미승인 |
 | DT01-B | 오디오 quality report 타입 계약 | DT01-A 완료·설계/실행 승인 | DONE | 구현·격리 검증·Astra max·PR #40 공개 CI 확인; 최종 head checks·병합 상태는 해당 PR 기준 |
-| DT-MAINT | 독립 유지보수 후속 — 테스트·개발 도구 타입 강화 전체 | DT00·DT01-A/B/C/S·NUM01·DT02 처리 구분 | DOING | 전체 영역 로컬 마무리 완료; 사용자 승인한 단일 PR 공개·최종 head CI 확인, 병합 금지 |
+| DT-MAINT | 독립 유지보수 후속 — 테스트·개발 도구 타입 강화 전체 | DT00·DT01-A/B/C/S·NUM01·DT02 처리 구분 | WAITING-USER | 전체 영역 구현·검토·PR #42 공개 CI 완료; 최종 head checks는 PR 기준, 사용자 지시에 따라 미병합 |
 | DT01-C | artifact description·부분 report 비교 계약 | 설계·계획·Native/격리 실행 승인 | DONE | 개별 로컬 구현/검증 완료; 전체 영역 종료·공개 수용은 미완료 |
 | DT01-S | settings fixture·callback/reply 계약 | written-spec·계획·Native/격리 실행 승인 | DONE | 개별 로컬 구현/검증·설명 Minor 교정 완료; 전체 영역 종료·공개 수용은 미완료 |
 | NUM01 | rmsEnvelope 숫자 입력 경계 보완 | bounded 설계·보완·검증 승인 | DONE | 개별 구현·검증·Astra max 완료; 전체 영역 종합 수용을 대신하지 않음 |
 | DT02 | 선택적 native TS 실행 | 조건부 보류 판단 승인 | DEFERRED | 지금은 JSDoc/checkJs 유지, 실제 유지보수 이득·검사/실행 경계 보존 조건에서 재검토; native 구현 완료 아님 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **독립 유지보수 전체 영역 단일 한글 PR 공개 → 최종 head 공개 CI 확인(병합 금지)**. 사용자2026-10-13 전체 범위 push·새 한글 PR 하나·공개 CI 확인을 명시 승인했고 병합은 하지 말라고 지시했다. 전체 목록·DT02 처리·종합 실행·Astra max0/0/1(문서 교정)의 [수용 근거](docs/superpowers/validation/2026-10-13-dt-maintenance-whole-area.md)는 유지한다. PR #41을 다시 열거나 개별/문서 PR을 생성하지 않는다. 공개 실행과 CI 결과는 실제 이후 기록하며 AF05-B/B2 구현·출시는 별도 승인이다.
+현재 커서: **독립 유지보수 전체 영역 한글 PR #42·공개 CI 완료 → 미병합 유지**. [PR #42](https://github.com/Do-hyeon/cheese-knife/pull/42)의 코드 기준 `4db6020`에서 [run 38348126225](https://github.com/Do-hyeon/cheese-knife/actions/runs/38348126225) Windows·Ubuntu foundation과 verify가 모두 통과했다. 문서 정리 이후의 실제 마지막 head checks는 PR의 최신 상태를 기준으로 확인한다. [전체 수용 근거](docs/superpowers/validation/2026-10-13-dt-maintenance-whole-area.md), DT02 보류/미구현과 원래 한계는 유지한다. 사용자 지시에 따라 병합·배포·브랜치 삭제·AF05-B/B2 구현은 하지 않는다.
 
 B1은 PR #36 최종 CI run `38255250513`과 merge `b38ec388`로 완료했다. B2 설계·계획은 PR #37로 병합됐으며 최초 Astra max Critical0·Important3·Minor1 보완 기록과 구현·실행 승인 게이트를 보존한다. 수정 후 독립0건/실제전환PASS/native update 수용은 아니다. P09의 게시2.13.3·격리 신규 설치 기준은 보존하며 과거 업데이트·실제 롤백 수용은 미검증이다. AF05 전체와 기능 로드맵 동결은 유지한다.
 
@@ -309,8 +309,8 @@ AF05-B 공개 수용 — P09와 차기 AF 배포에 의존:
 - [x] **독립 유지보수 후속 / 범위 종료 판단:** 전체 목록·기존 검토 보완·DT02 처리와 fresh 종합 실행/검토·문서 교정을 확인해 이 승인된 전체 영역의 로컬 마무리를 완료한다. 단일 NUM01 완료에 따른 조기 종료 판단과 구분한다. 전체 provider/CLI·기존10consumer·HLS·native 전면 이전이나 공개 CI/통합 완료는 아님.
 - [x] **독립 유지보수 후속 / 단일 한글 PR 안내안 준비:** 전체 영역 마무리 후 main의 DT00/A/B 기반과 새 C/S/NUM01·잔여 정정·종합 수용·DT02 보류를 한글 PR 한 건의 안내안으로 묶었다. 로컬 `output/dt-maintenance-whole-20261013/PR.ko.md`. 개별/문서 PR·중간 push는 하지 않았다.
 - [x] **독립 유지보수 후속 / 공개 지시:** 사용자2026-10-13 전체 범위 push·fork main 대상 새 한글 PR 한 건·공개 CI 확인을 명시 승인. 병합은 금지했으며 이전 C/S 지시나 닫힌 PR #41을 재사용하지 않음.
-- [ ] **독립 유지보수 후속 / 실제 push·단일 PR 생성:** 기존 브랜치의 검증된 전체 변경을 정상 push하고 새 한글 PR 한 건을 생성·연결한다. 원본 저장소 쓰기·force push·브랜치 삭제·배포는 하지 않음.
-- [ ] **독립 유지보수 후속 / 공개 CI:** 새 종합 PR의 실제 최종 head Windows·Ubuntu foundation과 전체 verify 결과를 확인한다. 취소된 PR #41과 그 CI를 이번 공개 수용으로 사용하지 않음.
+- [x] **독립 유지보수 후속 / 실제 push·단일 PR 생성:** 기존 브랜치를 정상 push하고 fork main 대상 [한글 PR #42](https://github.com/Do-hyeon/cheese-knife/pull/42) 한 건을 생성·연결했다. 전체 영역의 main 기반·C/S/NUM01·잔여 정정·종합 근거를 묶었으며 원본 쓰기·force push·브랜치 삭제·배포는 하지 않았다.
+- [x] **독립 유지보수 후속 / 공개 CI:** PR #42의 코드 기준 `4db6020`에서 [run 38348126225](https://github.com/Do-hyeon/cheese-knife/actions/runs/38348126225) Windows·Ubuntu foundation·verify SUCCESS. 전체1016개/1015pass/실패0/기존skip1, build/package·합성 오디오·설치positive/negative 통과. 문서 정리 이후의 마지막 head checks는 PR 최신 상태로 확인하며 최종 성공 전 병합하지 않음. 취소된 PR #41 CI를 전용하지 않음.
 - [ ] **독립 유지보수 후속 / 병합·통합:** 현재 사용자 지시에 따라 병합하지 않는다. 향후 별도 명시 승인 전 자동 병합·main 반영·브랜치 정리를 하지 않음.
 - [ ] **독립 유지보수 후속 / AF05-B 복귀:** 영역 전체 종료 및 종합 PR 통합 확인 후 B2 계획 정합성·별도 구현 승인 단계로 복귀한다. 문서 정리/PR 요청을 B2 구현·출시 승인으로 전용하지 않음.
 
@@ -337,7 +337,7 @@ git -c core.safecrlf=false diff --check
 
 INC01은 사용자 재등록·설정 유지 확인과 PR #30·공개 CI·main 병합으로 종료했다. 원래 dist의58파일과 현재 시험판·설정은 계속 보존한다. 이 수용을 모든 방송 기능·기존 스토어 버전 업데이트 검사로 확대하지 않는다.
 
-전체 영역의 로컬 마무리 뒤 사용자가 push·새 한글 PR 한 건·공개 CI 확인을 명시 승인했다. 이 범위는 계속 진행하며 병합은 금지한다. 새 PR 생성·최종 head CI는 실제 결과로만 기록한다. PR #41은 닫힌 상태로 두고 DT02 보류/미구현·원래 시험판·root dist·P09 profile·현재 브랜치를 보존한다. 향후 병합·AF05-B/B2 구현·출시는 별도 승인이 필요하다.
+전체 영역을 한글 PR #42 한 건으로 공개했고 코드 기준 공개 CI의 Windows·Ubuntu foundation·verify 통과를 확인했다. 문서 갱신 후 마지막 head checks는 해당 PR의 실제 최신 상태가 기준이다. 현재 병합 금지 지시가 유지되며 자동 병합도 설정하지 않았다. PR #41은 닫힌 상태로 두고 DT02 보류/미구현·원래 시험판·root dist·P09 profile·브랜치를 보존한다. 향후 병합·AF05-B/B2 구현·출시는 별도 승인이 필요하다.
 
 게시 완료 알림의14:55는 표시 시각이고 실제 처리 시각·시간대·초는 미확정이다. 추가 시각 자료 요청은 종료했다. 실제 롤백·차기 설치/업데이트·스토어 제출/게시에는 각각 별도 승인이 필요하다. B2 승인은 새 private bundled 프로필·UI 저장·손실 control·cleanup을 포함하며 종료 미확인 시 root 보존/수동 종료가 필요할 수 있다. 승인 전 reader/fixture/runner/CI 구현이나 browser 실행을 하지 않는다. native/공개 실행·과거 미검증 수용·AF05-B 전체 완료 기준 변경은 별도 게이트다.
 

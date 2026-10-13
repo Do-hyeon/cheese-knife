@@ -182,3 +182,19 @@ DT00/A/B는 이미 main 기반이므로 중복 반영하지 않고 C/S/NUM01·�
 main9b8640f/기존 feature a42aefe·열린 같은 head PR 없음·PR41 CLOSED를
 읽기 전용으로 확인했다. 217개 기술 입력과 원래 보호 snapshot도 재확인했다.
 실제 PR/최종 CI 결과는 이후 기록하며 이전의 미공개 문구는 로컬 checkpoint다.
+
+실제 공개: 기존 feature를 정상 push하고 fork main 대상 [PR #42](https://github.com/Do-hyeon/cheese-knife/pull/42)
+한 건을 생성·작업에 연결했다. Initial head `4db6020`, [run 38348126225](https://github.com/Do-hyeon/cheese-knife/actions/runs/38348126225)
+SUCCESS. Windows·Ubuntu foundation·verify 모두 완료/성공, 실제 head가
+`4db60206a0bcd9df5bc8a3260773703695bc3817`임을 API로 확인했다.
+PR OPEN/mergedAt null/autoMergeRequest null 확인. 실제 병합·배포·
+브랜치 삭제는 없다. 공개 전 동일 코드의 전체 재확인1016/1015pass/fail0/
+기존skip1,61518.3022ms; 이 로컬 결과를 원격 CI PASS로 대체하지 않는다.
+
+공개 verify도 전체1016/1015pass/fail0/기존skip1, build/package/audio 및
+installed positive/negative 통과. Negative 관측은 main-runtime-missing,
+positive57368ms/한 source 확인. 초기 코드 기준 run을 문서 정리 후 마지막
+head 수용으로 자동 전용하지 않고, 같은 PR의 최종 checks를 다시 확인한다.
+최종 head 결과는 PR #42와 그 checks가 최신 기준이다. GitHub의 Ubuntu
+hosted runner 전환 안내 annotation은 코드 실패가 아니며 이번 workflow를
+경고 은폐 목적으로 변경하지 않았다. 미병합·자동 병합 없음은 그대로 유지한다.
