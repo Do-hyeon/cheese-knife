@@ -1,4 +1,11 @@
-# NUM01 and independent maintenance closeout
+# NUM01 verification and maintenance checkpoint
+
+Current disposition,2026-10-13: NUM01's individual verification below remains
+valid, but the earlier whole-maintenance closeout/publication decision was
+withdrawn at the user's correction. PR41 was closed unmerged at the user's
+request. The whole independent maintenance area is not closed; its remaining
+checklist and publication gate are in PLANS.md. No further push/PR/merge or
+implementation/verification resumption is authorized by this document cleanup.
 
 Date:2026-10-13 Asia/Seoul. User approved the bounded NUM01 design, implementation,
 verification and fresh Astra max review, then one Korean PR with DT01-C/S.
@@ -124,12 +131,22 @@ Every declined judgment has an executor ruling, in review order:
 
 ## Maintenance scope and publication gate
 
-NUM01 implementation/verification/review now complete. DT00/A/B prior evidence,
-C/S completed contracts, corrected S explanation and accepted DT02 conditional
-deferral support ending this approved independent maintenance scope. This does
-not mean all JS/provider/CLI/HLS/old consumer/native conversion work is done.
+NUM01 implementation/verification/review is individually complete. DT00/A/B
+prior evidence, C/S completed contracts, corrected S explanation and accepted
+DT02 conditional deferral are inputs to a future whole-area closeout, not a
+completed whole-area acceptance. Native conversion remains unimplemented.
 
-The user approved publishing C/S/NUM01 together in one Korean PR to fork main.
+The earlier C/S/NUM01 publication interpretation is superseded by the user's
+requirement to finish the whole maintenance area before one Korean PR briefing.
 At this local-closeout checkpoint no push/PR had occurred. Remote main remains
 `9b8640f`, no existing PR for the feature branch. Creation/public CI must be
 recorded separately, never described as merge/deployment/version acceptance.
+
+Publication correction: [PR #41](https://github.com/Do-hyeon/cheese-knife/pull/41)
+was created prematurely from codex/dt01c-artifact-contracts to fork main at
+head `a42aefe`, then closed unmerged at the user's request on2026-10-13.
+Its task attachment was removed; its GitHub history and branch remain. The
+associated CI run38344604273 is not acceptance for a future whole-area PR.
+No merge/deployment/version change occurred. Prior no-PR statements describe
+the local checkpoint, not the subsequent publication incident. Current work
+is stopped except the authorized PR closure/document correction; no new push.
