@@ -3,11 +3,10 @@ import { fileURLToPath } from 'node:url';
 import { randomBytes, createHash } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import { openOwnedRoot } from './owned-files.mjs';
-import { readPublishedPayload, PUBLISHED_PAYLOAD_BASELINE } from './extension-e2e/published-payload.mjs';
-import { nativePreflightBaseline, createNativePreflightProbe, assertNativePreflight, NATIVE_STAGES, NATIVE_CONTEXTS, NATIVE_CODES } from './extension-e2e/native-preflight.mjs';
+import { NATIVE_STAGES, NATIVE_CONTEXTS, NATIVE_CODES } from './extension-e2e/native-preflight-contract.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const sourceFiles = ['scripts/check-native-preflight.mjs','scripts/extension-e2e/native-preflight.mjs','scripts/extension-e2e/published-payload.mjs',
+const sourceFiles = ['scripts/check-native-preflight.mjs','scripts/extension-e2e/native-preflight.mjs','scripts/extension-e2e/native-preflight-contract.mjs','scripts/extension-e2e/published-payload.mjs',
   'scripts/extension-e2e/transition-scenario.mjs','scripts/extension-e2e/fixture-router.mjs','scripts/owned-files.mjs','tests/fixtures/installed-extension/published-payload.json'];
 const fail = code => Object.assign(new Error(code), { code });
 const need = (value, code = 'native-evidence-invalid') => { if (!value) throw fail(code); };
@@ -84,15 +83,35 @@ function next(events, event, status) {
   for (const [index, e] of events.entries()) need(e.event === sequence.at(index)[0] && e.status === sequence.at(index)[1] && e.code === null && e.ordinal === index + 1, 'native-sequence-invalid');
   need(sequence.at(events.length)[0] === event && sequence.at(events.length)[1] === status, 'native-sequence-invalid');
 }
-async function verifyInputs(files, repository, manifest, baseline, now) {
+async function verifyInputs(files, repository, manifest, baseline, now, zipHash, createProbe) {
   need(manifest.schema === 1 && /^[a-f0-9]{32}$/.test(manifest.runNonce) && Number.isSafeInteger(manifest.createdAt) && manifest.createdAt > 0 && manifest.createdAt <= now());
-  need(manifest.zipSha256 === PUBLISHED_PAYLOAD_BASELINE.sha256);
+  need(manifest.zipSha256 === zipHash);
   need(isDeepStrictEqual(manifest.source, await sourceSnapshot(repository)), 'native-source-changed');
   for (const stage of NATIVE_STAGES) for (const context of NATIVE_CONTEXTS) {
-    const expected = createNativePreflightProbe({ runNonce: manifest.runNonce, stage, context, baseline });
+    const expected = createProbe({ runNonce: manifest.runNonce, stage, context, baseline });
     need(hash(await boundedRead(files, `probes/${stage}-${context}.js`)) === hash(expected), 'native-source-changed');
   }
   await artifactSize(files);
+}
+
+async function beginAttempt(files, manifest, event, status) {
+  const names = new Set(await files.readdir('attempts')); need(names.size < 128, 'native-sequence-invalid');
+  let ordinal = 1;
+  while (names.size) {
+    const stem = String(ordinal).padStart(3,'0'), intentName = `${stem}.json`, resultName = `${stem}-result.json`;
+    need(names.has(intentName) && names.has(resultName), 'native-sequence-invalid');
+    const intent = await json(files, `attempts/${intentName}`), result = await json(files, `attempts/${resultName}`);
+    need(intent.schema === 1 && intent.runNonce === manifest.runNonce && intent.ordinal === ordinal &&
+      result.schema === 1 && result.runNonce === manifest.runNonce && result.ordinal === ordinal && result.outcome === 'completed' && result.code === null, 'native-sequence-invalid');
+    names.delete(intentName); names.delete(resultName); ordinal++;
+  }
+  const intent = { schema: 1, runNonce: manifest.runNonce, ordinal, event, status };
+  await files.writeFile(`attempts/${String(ordinal).padStart(3,'0')}.json`, JSON.stringify(intent), { flag: 'wx' });
+  return intent;
+}
+async function finishAttempt(files, attempt, outcome, code) {
+  await files.writeFile(`attempts/${String(attempt.ordinal).padStart(3,'0')}-result.json`,
+    JSON.stringify({ schema: 1, runNonce: attempt.runNonce, ordinal: attempt.ordinal, outcome, code }), { flag: 'wx' });
 }
 
 /** Local artifact IO only. Native access has no default implementation in Task1. */
@@ -100,28 +119,35 @@ export async function executeNativePreflight(args, dependencies = {}) {
   const options = parse(args), now = dependencies.now || Date.now;
   const repository = dependencies.repository || await openOwnedRoot(root);
   const relative = `output/native-preflight-${options.runId}`;
-  let files, manifest;
+  let files, manifest, attempt;
   const event = options.action === '--record' ? options.value : options.action === '--check' ? `check:${options.value}` : `inspection:${options.value}`;
+  const done = async summary => { if (attempt) await finishAttempt(files, attempt, 'completed', null); return summary; };
   try {
+    if (options.action === '--prepare') need(!(await repository.lstat(relative, { optional: true })));
+    else {
+      files = await (dependencies.openRun || openOwnedRoot)(await repository.resolve(relative, { type: 'directory' }));
+      manifest = await json(files, 'manifest.json'); need(manifest.runId === options.runId && /^[a-f0-9]{32}$/.test(manifest.runNonce));
+      // An unresolved intent blocks retries even if all subsequent journal writes fail.
+      attempt = await beginAttempt(files, manifest, event, options.status || 'confirmed');
+    }
+    const { readPublishedPayload, PUBLISHED_PAYLOAD_BASELINE } = await import('./extension-e2e/published-payload.mjs');
+    const { nativePreflightBaseline, createNativePreflightProbe, assertNativePreflight } = await import('./extension-e2e/native-preflight.mjs');
+    const baseline = nativePreflightBaseline(await (dependencies.readPayload || readPublishedPayload)());
+    const verify = () => verifyInputs(files, repository, manifest, baseline, now, PUBLISHED_PAYLOAD_BASELINE.sha256, createNativePreflightProbe);
     if (options.action === '--prepare') {
-      need(!(await repository.lstat(relative, { optional: true })));
-      const payload = await (dependencies.readPayload || readPublishedPayload)(), baseline = nativePreflightBaseline(payload);
       const source = await sourceSnapshot(repository);
       await repository.ensureDirectory('output'); await repository.ensureDirectory(relative);
       files = await openOwnedRoot(await repository.resolve(relative, { type: 'directory' }));
       manifest = { schema: 1, runId: options.runId, runNonce: randomBytes(16).toString('hex'), createdAt: now(), zipSha256: PUBLISHED_PAYLOAD_BASELINE.sha256, source };
       await files.writeFile('manifest.json', JSON.stringify(manifest), { flag: 'wx' });
-      for (const folder of ['probes','observations','native','events']) await files.ensureDirectory(folder);
+      for (const folder of ['probes','observations','native','events','attempts']) await files.ensureDirectory(folder);
       for (const stage of NATIVE_STAGES) for (const context of NATIVE_CONTEXTS) {
         await files.writeFile(`probes/${stage}-${context}.js`, createNativePreflightProbe({ runNonce: manifest.runNonce, stage, context, baseline }), { flag: 'wx' });
       }
-      await verifyInputs(files, repository, manifest, baseline, now);
+      await verify();
       return { ok: true, status: 'PREPARED', complete: false, runNonce: manifest.runNonce };
     }
-    files = await openOwnedRoot(await repository.resolve(relative, { type: 'directory' }));
-    manifest = await json(files, 'manifest.json'); need(manifest.runId === options.runId);
-    const baseline = nativePreflightBaseline(await (dependencies.readPayload || readPublishedPayload)());
-    await verifyInputs(files, repository, manifest, baseline, now);
+    await verify();
     const events = await journal(files);
     if (options.action === '--record') {
       if (['requested','confirmed'].includes(options.status)) next(events, event, options.status);
@@ -131,16 +157,19 @@ export async function executeNativePreflight(args, dependencies = {}) {
         need(value.schema === 1 && value.runNonce === manifest.runNonce && value.stage === stage && value.context === context && value.outcome === 'observed' && value.code === null);
       }
       await append(files, manifest, event, options.status, options.code, now);
-      return { ok: true, status: 'RECORDED', complete: false };
+      return await done({ ok: true, status: 'RECORDED', complete: false });
     }
     next(events, event, 'confirmed');
     if (options.action === '--inspect-native') {
       if (!dependencies.inspectNative) throw fail('native-unavailable');
       const facts = await dependencies.inspectNative(options.value, manifest.runNonce);
       need(facts?.schema === 1 && facts.runNonce === manifest.runNonce && facts.phase === options.value);
-      await files.writeFile(`native/${options.value}.json`, JSON.stringify(facts), { flag: 'wx' });
+      const serialized = JSON.stringify(facts), bytes = Buffer.byteLength(serialized);
+      // Reserve 4 KiB for fixed journal and attempt-result records before publishing facts.
+      need(bytes <= 1048576 && await artifactSize(files) + bytes + 4096 <= 16777216);
+      await files.writeFile(`native/${options.value}.json`, serialized, { flag: 'wx' });
       await append(files, manifest, event, 'confirmed', null, now);
-      return { ok: true, status: 'FACTS-RECORDED', complete: false };
+      return await done({ ok: true, status: 'FACTS-RECORDED', complete: false });
     }
     const observations = [];
     const stages = options.value === 'baseline' ? NATIVE_STAGES.slice(0,1) : options.value === 'seeded' ? NATIVE_STAGES.slice(0,2) : NATIVE_STAGES;
@@ -152,16 +181,21 @@ export async function executeNativePreflight(args, dependencies = {}) {
     const nativeFacts = await Promise.all(phases.map(phase => json(files, `native/${phase}.json`)));
     need(events[0]?.recordedAt >= manifest.createdAt, 'native-sequence-invalid');
     const accepted = assertNativePreflight({ observations, events, nativeFacts }, baseline, options.value);
-    await verifyInputs(files, repository, manifest, baseline, now);
+    await verify();
     await append(files, manifest, event, 'confirmed', null, now);
-    return { ok: true, ...accepted };
+    return await done({ ok: true, ...accepted });
   } catch (error) {
     const code = NATIVE_CODES.includes(error?.code) ? error.code : 'native-owned-io-failed';
+    const secondaryCodes = [];
     if (files && manifest && options.action !== '--prepare') {
       try { await append(files, manifest, event, 'failed', code, now); }
-      catch { throw Object.assign(fail(code), { secondaryCodes: ['native-owned-io-failed'] }); }
+      catch { secondaryCodes.push('native-owned-io-failed'); }
     }
-    throw fail(code);
+    if (attempt) {
+      try { await finishAttempt(files, attempt, 'failed', code); }
+      catch { if (!secondaryCodes.length) secondaryCodes.push('native-owned-io-failed'); }
+    }
+    throw Object.assign(fail(code), { secondaryCodes });
   }
 }
 

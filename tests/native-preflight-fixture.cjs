@@ -11,7 +11,7 @@ function observation(stage, context, capturedAt, runNonce = nonce) {
       styles: { present: true, value: ['hide-ranking','chat-font-size'] }, styleParameters: { present: true, value: { 'chat-font-size': 8 } }, settingsRevision: { present: true, value: 7 } } :
       { config: { present: false }, styles: { present: false }, styleParameters: { present: false }, settingsRevision: { present: false } },
       registrations: seeded ? [{ id: 'styles', css: ['styles/chat-font-size.css','styles/hide-ranking.css'], matches: ['https://chzzk.naver.com/*'], runAt: 'document_start', js: [] }] : [] } :
-      { phase: 'ready', retryHidden: true, discardHidden: true, checked: context === 'popup' ? !seeded : seeded, value: context === 'popup' ? seeded ? 25 : 5 : seeded ? 8 : 0, firstDisabled: false, secondDisabled: false } };
+      { phase: 'ready', retryHidden: context === 'styles' ? true : null, discardHidden: true, checked: context === 'popup' ? !seeded : seeded, value: context === 'popup' ? seeded ? 25 : 5 : seeded ? 8 : 0, firstDisabled: false, secondDisabled: false } };
 }
 function facts(baseline, phase, capturedAt, runNonce = nonce) {
   return { schema: 1, runNonce, phase, capturedAt, profileIdentity: 'f'.repeat(64), developerMode: phase === 'restarted',

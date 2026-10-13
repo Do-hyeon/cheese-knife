@@ -3,13 +3,8 @@ import { runInNewContext } from 'node:vm';
 import { isDeepStrictEqual } from 'node:util';
 import { PUBLISHED_PAYLOAD_BASELINE } from './published-payload.mjs';
 import { brokerFunctionSource } from './transition-scenario.mjs';
-
-export const NATIVE_STAGES = Object.freeze(['baseline', 'seeded', 'cold']);
-export const NATIVE_CONTEXTS = Object.freeze(['worker-before', 'popup', 'styles', 'worker-after']);
-export const NATIVE_ID = 'cgfddiiffponlciljlfbiecmlagflbpe';
-export const NATIVE_CODES = Object.freeze(['native-context-invalid', 'native-read-failed', 'native-timeout', 'native-data-invalid',
-  'native-crypto-unavailable', 'native-ui-failed', 'native-evidence-invalid', 'native-sequence-invalid', 'native-source-changed',
-  'native-user-aborted', 'native-unavailable', 'native-finalization-failed', 'native-owned-io-failed']);
+import { NATIVE_STAGES, NATIVE_CONTEXTS, NATIVE_ID } from './native-preflight-contract.mjs';
+export { NATIVE_STAGES, NATIVE_CONTEXTS, NATIVE_ID, NATIVE_CODES } from './native-preflight-contract.mjs';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const fail = code => Object.assign(new Error(code), { code });
 const requireThat = (ok, code = 'native-evidence-invalid') => { if (!ok) throw fail(code); };
@@ -80,8 +75,8 @@ async function observeNative({ runNonce, stage, context, baseline }) {
         registrations: registered.map(r => ({ id: r.id, css: r.css, matches: r.matches, runAt: r.runAt, js: r.js || [] })) };
     } else {
       const node = id => { const n = document.getElementById(id); if (!n) fault('native-ui-failed'); return n; };
-      const phase = node('settings-status').dataset.phase, retryHidden = node('settings-retry').hidden, discardHidden = node('settings-discard').hidden;
-      if (phase !== 'ready' || !retryHidden || !discardHidden) fault('native-ui-failed');
+      const phase = node('settings-status').dataset.phase, retryHidden = context === 'styles' ? node('settings-retry').hidden : null, discardHidden = node('settings-discard').hidden;
+      if (phase !== 'ready' || (context === 'styles' && !retryHidden) || !discardHidden) fault('native-ui-failed');
       const first = node(context === 'popup' ? 'arrowSeek' : 'hide-ranking'), second = node(context === 'popup' ? 'previewVolume' : 'chat-font-size');
       if (first.disabled || second.disabled || !Number.isFinite(Number(second.value))) fault('native-ui-failed');
       observation = { phase, retryHidden, discardHidden, checked: first.checked, value: Number(second.value), firstDisabled: first.disabled, secondDisabled: second.disabled };
@@ -187,7 +182,7 @@ export function assertNativePreflight(evidence, baseline, through) {
         else requireThat(isDeepStrictEqual(value.observation, before));
       } else {
         const seeded = stage !== 'baseline';
-        requireThat(isDeepStrictEqual(value.observation, { phase: 'ready', retryHidden: true, discardHidden: true,
+        requireThat(isDeepStrictEqual(value.observation, { phase: 'ready', retryHidden: context === 'styles' ? true : null, discardHidden: true,
           checked: context === 'popup' ? !seeded : seeded, value: context === 'popup' ? seeded ? 25 : 5 : seeded ? 8 : 0,
           firstDisabled: false, secondDisabled: false }));
       }

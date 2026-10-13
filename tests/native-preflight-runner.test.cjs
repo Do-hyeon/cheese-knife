@@ -5,7 +5,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const fixture = require('./native-preflight-fixture.cjs');
 const subject = () => import('../scripts/check-native-preflight.mjs');
-const sources = ['scripts/check-native-preflight.mjs','scripts/extension-e2e/native-preflight.mjs','scripts/extension-e2e/published-payload.mjs',
+const sources = ['scripts/check-native-preflight.mjs','scripts/extension-e2e/native-preflight.mjs','scripts/extension-e2e/native-preflight-contract.mjs','scripts/extension-e2e/published-payload.mjs',
   'scripts/extension-e2e/transition-scenario.mjs','scripts/extension-e2e/fixture-router.mjs','scripts/owned-files.mjs','tests/fixtures/installed-extension/published-payload.json'];
 async function runFixture(t) {
   const { openOwnedRoot } = await import('../scripts/owned-files.mjs');
@@ -87,6 +87,46 @@ test('script source drift vetoes both partial and complete checks', async t => {
   await f.files.writeFile(sources[0], 'changed source');
   await assert.rejects(f.call(['--check=baseline']), { code: 'native-source-changed' });
 });
+
+test('a backward clock remains terminal after the clock recovers', async t => {
+  const f = await runFixture(t); await f.inspect('before'); await f.record('profile-context'); await f.stage('baseline');
+  const names = (await f.run.readdir('events')).sort(), last = JSON.parse(await f.run.readFile(`events/${names.at(-1)}`));
+  const original = f.dependencies.now; f.dependencies.now = () => last.recordedAt - 1;
+  await assert.rejects(f.call(['--check=baseline']), { code: 'native-sequence-invalid' });
+  f.dependencies.now = original;
+  await assert.rejects(f.call(['--check=baseline']), { code: 'native-sequence-invalid' });
+});
+
+test('unresolved intent survives primary and secondary journal write failures', async t => {
+  const f = await runFixture(t); await f.inspect('before'); await f.record('profile-context');
+  const { openOwnedRoot } = await import('../scripts/owned-files.mjs');
+  f.dependencies.openRun = async directory => {
+    const owned = await openOwnedRoot(directory);
+    return { ...owned, writeFile: async (name, ...args) => {
+      if (name.startsWith('events/') || name.endsWith('-result.json')) throw Error('private-io-sentinel');
+      return owned.writeFile(name, ...args);
+    } };
+  };
+  await assert.rejects(f.record('probe:baseline:worker-before', 'requested'), error => error.code === 'native-owned-io-failed' && !error.message.includes('private-io-sentinel'));
+  delete f.dependencies.openRun;
+  await assert.rejects(f.record('probe:baseline:worker-before', 'requested'), { code: 'native-sequence-invalid' });
+});
+
+for (const totalBudget of [false, true]) test(`inspector output respects ${totalBudget ? 'prospective run' : 'per-file'} budget before writing`, async t => {
+  const f = await runFixture(t), inspect = f.dependencies.inspectNative;
+  if (totalBudget) {
+    const manifestBytes = (await f.run.readFile('manifest.json')).length;
+    let current = manifestBytes;
+    for (const name of await f.run.readdir('probes')) current += (await f.run.lstat(`probes/${name}`)).size;
+    let remaining = 16777216 - current - 1024, index = 0;
+    while (remaining > 0) {
+      const size = Math.min(remaining,1048576);
+      await f.run.writeFile(`padding${index++}`, Buffer.alloc(size), { flag: 'wx' }); remaining -= size;
+    }
+  } else f.dependencies.inspectNative = async (...args) => ({ ...await inspect(...args), extra: 'x'.repeat(1048576) });
+  await assert.rejects(f.inspect('before'), { code: 'native-evidence-invalid' });
+  assert.deepEqual(await f.run.readdir('native'), []);
+});
 test('failed finalization cannot be replaced by a confirmed event', async t => {
   const f = await runFixture(t); await f.seededReady(); await f.inspect('closed'); await f.inspect('restarted'); await f.stage('cold'); await f.inspect('after');
   await f.record('finalize', 'failed', 'native-finalization-failed');
@@ -122,4 +162,19 @@ test('real subprocess CLI prepares only local probes and refuses native inspecti
   const blocked = spawnSync(process.execPath,[script,'--inspect-native=before','--run-id=Child'],{cwd:f.root,encoding:'utf8',timeout:15000});
   assert.equal(blocked.status,1); assert.equal(JSON.parse(blocked.stderr).code,'native-unavailable');
   assert.ok(!blocked.stderr.includes(f.root));
+});
+
+for (const malformed of [false, true]) test(`subprocess startup ${malformed ? 'malformed' : 'missing'} metadata is sanitized and terminal`, async t => {
+  const f = await runFixture(t), repo = await (await import('../scripts/owned-files.mjs')).openOwnedRoot(process.cwd());
+  await f.files.ensureDirectory('output/playwright');
+  await f.files.copyFileFrom(repo, 'output/playwright/published-payload-67ae9c1512fef7e0.zip', 'output/playwright/published-payload-67ae9c1512fef7e0.zip');
+  const script = path.join(f.root,'scripts/check-native-preflight.mjs'), metadataName = sources.at(-1), original = await f.files.readFile(metadataName);
+  const call = () => spawnSync(process.execPath,[script,'--inspect-native=before','--run-id=Local'],{cwd:f.root,encoding:'utf8',timeout:15000});
+  if (malformed) await f.files.writeFile(metadataName, 'private-startup-sentinel');
+  else await fs.unlink(await f.files.resolve(metadataName, { type: 'file' }));
+  const bad = call(); assert.equal(bad.status,1);
+  assert.equal(JSON.parse(bad.stderr).ok,false);
+  assert.ok(!bad.stderr.includes(f.root) && !bad.stderr.includes('private-startup-sentinel') && !bad.stderr.includes('Error:'));
+  await f.files.writeFile(metadataName, original);
+  const later = call(); assert.equal(later.status,1); assert.equal(JSON.parse(later.stderr).code,'native-sequence-invalid');
 });

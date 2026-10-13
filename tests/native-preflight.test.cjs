@@ -92,6 +92,30 @@ test('frozen styles UI really reports ready after a CSS initialization failure, 
   assert.equal(result.code, 'native-ui-failed'); assert.equal(result.observation, null);
 });
 
+for (const seeded of [false, true]) test(`frozen popup probe observes ${seeded ? 'seeded' : 'baseline'} without inventing a retry control`, async t => {
+  const { settingsHarness } = require('./settings-fixture.cjs'), { page, flush } = require('./helpers.cjs');
+  const mod = await subject(), p = await payload(), b = mod.nativePreflightBaseline(p);
+  const text = name => p.entries.find(e => e.name === name).bytes.toString();
+  const raw = seeded ? { config: { arrowSeek: false, previewVolume: 25 }, settingsRevision: 7 } : {};
+  const h = settingsHarness(t, raw, Object.fromEntries(['config.js','style-schema.js','settings-contract.js','settings-broker.js'].map(name => [name,text(name)])));
+  await h.initialize();
+  const dom = page(text('popup.html'), `chrome-extension://${id}/popup.html`);
+  t.after(() => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); dom.window.close(); });
+  const api = h.apiFor('popup'); api.runtime.id = id; api.runtime.getManifest = () => manifest;
+  dom.window.chrome = api;
+  for (const script of dom.window.document.querySelectorAll('script[src]')) dom.window.eval(text(script.getAttribute('src')));
+  await flush();
+  assert.equal(dom.window.document.querySelector('#settings-status').dataset.phase, 'ready');
+  assert.equal(dom.window.document.querySelector('#settings-retry'), null);
+  const probe = mod.createNativePreflightProbe({ runNonce: nonce, stage: seeded ? 'seeded' : 'baseline', context: 'popup', baseline: b });
+  const result = JSON.parse(JSON.stringify(await dom.window.eval(probe)));
+  assert.equal(result.outcome, 'observed');
+  assert.deepEqual(result.observation, { phase: 'ready', retryHidden: null, discardHidden: true,
+    checked: !seeded, value: seeded ? 25 : 5, firstDisabled: false, secondDisabled: false });
+  dom.window.document.querySelector('#settings-discard').hidden = false;
+  assert.equal((await dom.window.eval(probe)).code, 'native-ui-failed');
+});
+
 test('staged literal evidence yields partial acceptance, never premature native PASS', async () => {
   const mod = await subject(), b = mod.nativePreflightBaseline(await payload()), fixture = require('./native-preflight-fixture.cjs');
   for (const through of ['baseline','seeded','complete']) {
