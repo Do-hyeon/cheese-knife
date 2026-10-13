@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.development.json",
+  "compilerOptions": {
+    "moduleDetection": "legacy",
+    "types": ["node", "chrome"]
+  },
+  "files": ["tests/settings-fixture.cjs", "tests/settings-fixture-contracts.test.cjs"],
+  "include": []
+}

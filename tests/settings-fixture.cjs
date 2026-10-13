@@ -1,59 +1,103 @@
+/// <reference path="../src/settings/config.ts" />
+/// <reference path="../src/settings/style-schema.ts" />
+/// <reference path="../src/settings/contract.ts" />
+/// <reference path="../src/settings/client.ts" />
+/// <reference path="../src/settings/broker.ts" />
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { page, load, flush, clock } = require('./helpers.cjs');
+/** @typedef {Record<string,unknown>} RawStore */
+/** @template {unknown[]} Args @typedef {(...args:Args)=>unknown} FixtureFn */
+/** @template {unknown[]} Args @typedef {{listeners:Set<FixtureFn<Args>>,addListener:(fn:FixtureFn<Args>)=>Set<FixtureFn<Args>>,removeListener:(fn:FixtureFn<Args>)=>boolean,emit:(...args:Args)=>void}} FixtureEvent */
+/** @typedef {{reached:Promise<unknown>,wait:Promise<void>,release:(value?:void)=>void,fail:()=>void,entered:(args:unknown)=>void}} FixtureGate */
+/** @typedef {{kind:string,args:unknown}} FixtureCall */
+/** @typedef {{current:number,max:number}} FixtureMetric */
+// The fake merges partial fields; Chrome's exclusive js/css variants do not survive spread.
+/** @typedef {{[K in keyof chrome.scripting.RegisteredContentScript]?:chrome.scripting.RegisteredContentScript[K]|undefined}&{id:string}} FixtureScript */
+/** @typedef {{id:number,windowId:number,url?:string|undefined}} FixtureTab */
+/** @typedef {Pick<ReturnType<typeof createSettingsBroker>,'initialize'|'invalidateStyles'>&{listener:(message:unknown,sender:unknown,respond:(response:unknown)=>void)=>boolean}} FixtureBroker */
+/** @typedef {ReturnType<typeof createSettingsClient>} FixtureClient */
+/** @typedef {(message:KnifeSettingsRequest,callback:(response:unknown)=>void)=>void} FixtureSend */
+/** @typedef {(value:RawStore)=>Promise<void>} FixtureStorageWrite */
+/** @typedef {(value:FixtureChrome)=>FixtureClient} FixtureClientFactory */
+/** @typedef {(value:unknown)=>FixtureBroker} FixtureBrokerFactory */
+/** @typedef {{fakeTime?:boolean|undefined}} FixtureClientOptions */
+/** @typedef {{locale?:string|undefined,query?:string|undefined,target?:{tabId:number,windowId:number}|undefined,fakeTime?:boolean|undefined,setup?:((api:FixtureChrome,dom:import('jsdom').JSDOM)=>void)|undefined}} FixtureUiOptions */
+/** @typedef {{
+ * runtime:{id:string,getURL:(path:string)=>string,sendMessage:FixtureSend,lastError?:{message:string}|undefined,onMessage:FixtureEvent<[unknown,unknown,(reply:unknown)=>void]>,onInstalled:FixtureEvent<[chrome.runtime.InstalledDetails]>,onStartup:FixtureEvent<[]>},
+ * i18n:{getMessage:(key:string)=>string},
+ * storage:{onChanged:FixtureEvent<[RawStore,string]>,local:{onChanged:FixtureEvent<[RawStore,string]>,get:(keys?:string[]|RawStore|null)=>Promise<RawStore>,set:FixtureStorageWrite,remove:(key:string|string[])=>Promise<void>}},
+ * scripting:{getRegisteredContentScripts:(options?:{ids?:string[]|undefined})=>Promise<FixtureScript[]>,registerContentScripts:(scripts:FixtureScript[])=>Promise<void>,updateContentScripts:(scripts:FixtureScript[])=>Promise<void>,unregisterContentScripts:(options?:{ids?:string[]|undefined})=>Promise<void>},
+ * tabs:{get:(id:number)=>Promise<FixtureTab>,reload:(id:number)=>Promise<void>,query:(options:chrome.tabs.QueryInfo)=>Promise<(FixtureTab|undefined)[]>,sendMessage:(id:number,message:unknown)=>Promise<unknown>,create:(options:chrome.tabs.CreateProperties)=>Promise<void>},
+ * permissions:{contains:(options:chrome.permissions.Permissions)=>Promise<boolean>,onRemoved:FixtureEvent<[chrome.permissions.Permissions]>,onAdded:FixtureEvent<[chrome.permissions.Permissions]>}
+ * }} FixtureChrome */
+/** @typedef {Omit<FixtureChrome,'runtime'>&{runtime:Omit<FixtureChrome['runtime'],'sendMessage'>&Partial<Pick<FixtureChrome['runtime'],'sendMessage'>>}} ConstructingChrome */
 const extensionId = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+/** @param {string} p */
 const getURL = p => `chrome-extension://${extensionId}/${p}`;
+/** @param {string} id @param {KnifeScalar} value @returns {Extract<KnifeSettingsOperation,{type:'config'}>} */
 const config = (id, value) => ({ type: 'config', id, value });
+/** @param {string} id @param {boolean} enabled @returns {Extract<KnifeSettingsOperation,{type:'style'}>} */
 const style = (id, enabled) => ({ type: 'style', id, enabled });
+/** @param {string} id @param {number} value @returns {Extract<KnifeSettingsOperation,{type:'parameter'}>} */
 const parameter = (id, value) => ({ type: 'parameter', id, value });
+/** @template {unknown[]} Args @returns {FixtureEvent<Args>} */
 function event() {
+  /** @type {Set<FixtureFn<Args>>} */
   const listeners = new Set();
   return { addListener: fn => listeners.add(fn), removeListener: fn => listeners.delete(fn),
     emit: (...args) => { for (const fn of [...listeners]) fn(...args); }, listeners };
 }
 /** @typedef {'config.js'|'style-schema.js'|'settings-contract.js'|'settings-broker.js'} WorkerFile */
 /** @typedef {Readonly<Record<WorkerFile,string>>} WorkerSources */
-const workerFiles = ['config.js', 'style-schema.js', 'settings-contract.js', 'settings-broker.js'];
+/** @type {WorkerFile[]} */ const workerFiles = ['config.js', 'style-schema.js', 'settings-contract.js', 'settings-broker.js'];
+/** @param {unknown} value @returns {WorkerSources} */
 function validatedSources(value) {
   if (!value || typeof value !== 'object' || Reflect.ownKeys(value).length !== workerFiles.length) throw new Error('fixture-worker-sources');
   const entries = workerFiles.map(file => [file, Object.getOwnPropertyDescriptor(value, file)?.value]);
   if (!entries.every(([, source]) => typeof source === 'string' && source.trim())) throw new Error('fixture-worker-sources');
-  return Object.freeze(Object.fromEntries(entries));
+  return /** @type {WorkerSources} */ (Object.freeze(Object.fromEntries(entries)));
 }
 /** @param {import('node:test').TestContext} t @param {object} [stored] @param {WorkerSources} [workerSources] */
 function settingsHarness(t, stored = {}, workerSources) {
-  const saved = structuredClone(stored), gates = new Map(), allGates = [], changes = event();
-  const calls = [], registrations = new Map(), tabs = new Map([[7, { id: 7, windowId: 9, url: 'https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }]]);
-  const windows = [], clients = [], messages = [], metrics = new WeakMap();
-  let counter = 0, activeWrites = 0, maxWrites = 0, activeCss = 0, maxCss = 0, permissionGranted = true, worker, broker, stopInvalidation;
+  const saved = /** @type {RawStore} */ (structuredClone(stored)), gates = /** @type {Map<string,FixtureGate[]>} */ (new Map()), allGates = /** @type {FixtureGate[]} */ ([]), changes = /** @type {FixtureEvent<[RawStore,string]>} */ (event());
+  const calls = /** @type {FixtureCall[]} */ ([]), registrations = /** @type {Map<string,FixtureScript>} */ (new Map()), tabs = /** @type {Map<number,FixtureTab>} */ (new Map([[7, { id: 7, windowId: 9, url: 'https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }]]));
+  const windows = /** @type {import('jsdom').JSDOM[]} */ ([]), clients = /** @type {FixtureClient[]} */ ([]), messages = /** @type {{api:object,message:KnifeSettingsRequest,subscribers:number}[]} */ ([]), metrics = /** @type {WeakMap<object,FixtureMetric>} */ (new WeakMap());
+  let counter = 0, activeWrites = 0, maxWrites = 0, activeCss = 0, maxCss = 0, permissionGranted = true, /** @type {import('jsdom').JSDOM|undefined} */ worker, /** @type {FixtureBroker} */ broker, /** @type {(()=>boolean)|undefined} */ stopInvalidation;
   let selectedSources = workerSources === undefined ? undefined : validatedSources(workerSources);
-  let versioned = selectedSources !== undefined, activityEpoch = 0, settledEpoch, activeBoundaries = 0, pendingRequests = 0;
+  let versioned = selectedSources !== undefined, activityEpoch = 0, /** @type {number|undefined} */ settledEpoch, activeBoundaries = 0, pendingRequests = 0;
   const noteActivity = () => { activityEpoch++; };
+  /** @param {string} kind @returns {FixtureGate} */
   function holdNext(kind) {
-    let resolve, reject, entered;
-    const wait = new Promise((a, b) => { resolve = a; reject = b; });
-    const reached = new Promise(a => { entered = a; });
-    const gate = { reached, release: resolve, fail: () => reject(new Error('fixture-failure')), wait, entered };
-    if (!gates.has(kind)) gates.set(kind, []); gates.get(kind).push(gate); allGates.push(gate); return gate;
+    let /** @type {((value?:void)=>void)|undefined} */ resolve, /** @type {((reason?:unknown)=>void)|undefined} */ reject, /** @type {((args:unknown)=>void)|undefined} */ entered;
+    /** @type {Promise<void>} */ const wait = new Promise((a, b) => { resolve = a; reject = b; });
+    /** @type {Promise<unknown>} */ const reached = new Promise(a => { entered = a; });
+    // Promise executors assign these slots synchronously before this object.
+    const gate = { reached, release: /** @type {(value?:void)=>void} */ (resolve), fail: () => /** @type {(reason?:unknown)=>void} */ (reject)(new Error('fixture-failure')), wait, entered: /** @type {(args:unknown)=>void} */ (entered) };
+    if (!gates.has(kind)) gates.set(kind, []); /** @type {FixtureGate[]} */ (gates.get(kind)).push(gate); allGates.push(gate); return gate;
   }
+  /** @param {string} kind @param {unknown} args */
   async function boundary(kind, args) {
     noteActivity(); activeBoundaries++;
     try { calls.push({ kind, args: structuredClone(args) }); const g = gates.get(kind)?.shift(); if (g) { g.entered(args); await g.wait; } }
     finally { activeBoundaries--; }
   }
+  /** @param {string} kind @param {unknown} args */
   async function cssBoundary(kind, args) {
     activeCss++; maxCss = Math.max(maxCss, activeCss);
     try { await boundary(kind, args); } finally { activeCss--; }
   }
+  /** @param {RawStore} delta */
   const announce = delta => { void boundary('event', delta).then(() => changes.emit(delta, 'local')).catch(() => {}); };
+  /** @param {string} [name] @returns {FixtureChrome} */
   function apiFor(name = 'background') {
     const metric = { current: 0, max: 0 };
-    const api = {
+    /** @type {ConstructingChrome} */ const api = {
       runtime: { id: extensionId, getURL, onMessage: event(), onInstalled: event(), onStartup: event() },
       i18n: { getMessage: key => key },
       storage: { onChanged: changes, local: { onChanged: changes,
         get: async keys => {
-          const data = Array.isArray(keys) ? Object.fromEntries(keys.filter(k => Object.hasOwn(saved, k)).map(k => [k, saved[k]])) : { ...(keys || {}), ...saved };
+          const data = Array.isArray(keys) ? Object.fromEntries(/** @type {string[]} */ (keys).filter(k => Object.hasOwn(saved, k)).map(k => [k, saved[k]])) : { ...(keys || {}), ...saved };
           const snapshot = structuredClone(data); await boundary('read', { keys }); return snapshot;
         },
         set: async value => {
@@ -66,17 +110,17 @@ function settingsHarness(t, stored = {}, workerSources) {
         },
         remove: async key => {
           await boundary('remove', { key }); const keys = Array.isArray(key) ? key : [key];
-          const delta = {}; for (const k of keys) { if (Object.hasOwn(saved, k)) { delta[k] = { oldValue: saved[k] }; delete saved[k]; } } announce(delta);
+          /** @type {RawStore} */ const delta = {}; for (const k of /** @type {string[]} */ (keys)) { if (Object.hasOwn(saved, k)) { delta[k] = { oldValue: saved[k] }; delete saved[k]; } } announce(delta);
         },
       } },
       scripting: {
         getRegisteredContentScripts: async options => { await boundary('css-get', options); return structuredClone([...registrations.values()].filter(s => !options?.ids || options.ids.includes(s.id))); },
         registerContentScripts: async scripts => { await cssBoundary('css-register', scripts); for (const s of scripts) { if (registrations.has(s.id)) throw new Error('duplicate'); registrations.set(s.id, structuredClone(s)); } },
-        updateContentScripts: async scripts => { await cssBoundary('css-update', scripts); for (const s of scripts) { if (!registrations.has(s.id)) throw new Error('missing'); registrations.set(s.id, { ...registrations.get(s.id), ...structuredClone(s) }); } },
+        updateContentScripts: async scripts => { await cssBoundary('css-update', scripts); for (const s of scripts) { if (!registrations.has(s.id)) throw new Error('missing'); registrations.set(s.id, { .../** @type {FixtureScript} */ (registrations.get(s.id)), ...structuredClone(s) }); } },
         unregisterContentScripts: async options => { await cssBoundary('css-unregister', options); for (const id of options?.ids || [...registrations.keys()]) registrations.delete(id); },
       },
       tabs: {
-        get: async id => { await boundary('tab-get', { id }); if (!tabs.has(id)) throw new Error('missing-tab'); return structuredClone(tabs.get(id)); },
+        get: async id => { await boundary('tab-get', { id }); if (!tabs.has(id)) throw new Error('missing-tab'); return structuredClone(/** @type {FixtureTab} */ (tabs.get(id))); },
         reload: async id => { await boundary('tab-reload', { id }); },
         query: async options => { await boundary('tab-query', options); return [structuredClone(tabs.get(7))]; },
         sendMessage: async () => ({ statuses: { player: { state: 'ready' }, deletedChat: { state: 'limited', reason: 'jsx-adapter-unavailable' } } }), create: async options => { await boundary('tab-create', options); },
@@ -107,8 +151,10 @@ function settingsHarness(t, stored = {}, workerSources) {
         if (mutation) metric.current--; pendingRequests--; throw error;
       }
     };
-    metrics.set(api, metric); return api;
+    // Only sendMessage differed in the checked initial construction state.
+    metrics.set(api, metric); return /** @type {FixtureChrome} */ (api);
   }
+  /** @param {WorkerSources} [nextSources] */
   function startWorker(nextSources = selectedSources) {
     const sources = nextSources === undefined ? undefined : validatedSources(nextSources);
     const switchingVersion = versioned || sources !== undefined;
@@ -119,20 +165,22 @@ function settingsHarness(t, stored = {}, workerSources) {
     stopInvalidation?.(); if (switchingVersion) worker?.window.close();
     selectedSources = sources; versioned = switchingVersion; settledEpoch = undefined;
     worker = page('', getURL('background.html')); windows.push(worker);
-    worker.window.chrome = apiFor();
+    /** @type {{chrome:unknown}} */ (worker.window).chrome = apiFor();
     if (sources) for (const f of workerFiles) worker.window.eval(sources[f]);
     else {
       for (const f of ['config.js', 'style-schema.js', 'settings-contract.js']) load(worker, f);
       if (fs.existsSync('settings-broker.js')) load(worker, 'settings-broker.js');
     }
     assert.equal(typeof worker.window.createSettingsBroker, 'function', 'settings writer must exist');
-    broker = worker.window.createSettingsBroker(worker.window.chrome);
+    // Constructor ABI after eval is assumed; scripts may replace the Chrome slot.
+    broker = /** @type {FixtureBrokerFactory} */ (worker.window.createSettingsBroker)(/** @type {{chrome:unknown}} */ (worker.window).chrome);
     const activeBroker = broker;
-    const signal = delta => { if (delta.styles || delta.styleParameters || delta.settingsRevision) { noteActivity(); activeBroker.invalidateStyles(); } };
+    /** @param {RawStore} delta */ const signal = delta => { if (delta.styles || delta.styleParameters || delta.settingsRevision) { noteActivity(); activeBroker.invalidateStyles(); } };
     changes.addListener(signal); stopInvalidation = () => changes.removeListener(signal);
   }
   startWorker();
   t.after(() => { for (const c of clients) c.dispose(); stopInvalidation?.(); for (const g of allGates) g.release(); for (const dom of windows) dom.window.close(); });
+  /** @param {string} name @param {unknown} message @param {unknown} [override] @returns {Promise<unknown>} */
   function send(name, message, override) {
     noteActivity(); pendingRequests++;
     const sender = override || { id: extensionId, url: getURL(`${name}.html`), frameId: 0 };
@@ -141,26 +189,31 @@ function settingsHarness(t, stored = {}, workerSources) {
       if (!handled) resolve(undefined);
     }).finally(() => { pendingRequests--; });
   }
+  /** @param {string} name @param {string} action @param {RawStore} [payload] */
   function request(name, action, payload = {}) { return send(name, { namespace: 'cheese-knife-settings', protocol: 1, action, requestId: `fixture-${++counter}`, ...payload }); }
+  /** @param {string} [name] @param {FixtureClientOptions} [options] */
   function client(name = 'popup', { fakeTime = false } = {}) {
     const dom = page('', getURL(`${name}.html`)); windows.push(dom); const time = fakeTime ? clock(dom) : undefined;
-    const api = apiFor(name); dom.window.chrome = api;
+    const api = apiFor(name); /** @type {{chrome:unknown}} */ (dom.window).chrome = api;
     for (const f of ['config.js', 'style-schema.js', 'settings-contract.js']) load(dom, f);
     if (fs.existsSync('settings-client.js')) load(dom, 'settings-client.js');
     assert.equal(typeof dom.window.createSettingsClient, 'function', 'settings client must exist');
-    const instance = dom.window.createSettingsClient(api); clients.push(instance); let view;
+    const instance = /** @type {FixtureClientFactory} */ (dom.window.createSettingsClient)(api); clients.push(instance);
+    /** @type {KnifeSettingsView|undefined} */ let view;
     instance.subscribe(v => { view = v; });
-    return { ...instance, dom, api, time, view: () => view, maxInflight: () => metrics.get(api).max };
+    return { ...instance, dom, api, time, view: () => view, maxInflight: () => /** @type {FixtureMetric} */ (metrics.get(api)).max };
   }
+  /** @param {string} name @param {FixtureUiOptions} [options] */
   async function openUi(name, { locale = 'ko', target, query, fakeTime = false, setup } = {}) {
     const search = query ?? (target ? `?targetTabId=${target.tabId}&targetWindowId=${target.windowId}` : '');
     const dom = page(fs.readFileSync(`${name}.html`, 'utf8'), getURL(`${name}.html`) + search); windows.push(dom);
     const time = fakeTime ? clock(dom) : undefined, api = apiFor(name);
-    const translated = JSON.parse(fs.readFileSync(`_locales/${locale}/messages.json`, 'utf8'));
+    const translated = /** @type {Record<string,{message?:string}>} */ (JSON.parse(fs.readFileSync(`_locales/${locale}/messages.json`, 'utf8')));
     api.i18n.getMessage = key => translated[key]?.message || '';
-    dom.window.chrome = api; dom.window.HTMLCanvasElement.prototype.getContext = () => null;
+    /** @type {{chrome:unknown}} */ (dom.window).chrome = api; dom.window.HTMLCanvasElement.prototype.getContext = () => null;
     setup?.(api, dom);
-    for (const script of dom.window.document.querySelectorAll('script[src]')) load(dom, script.getAttribute('src'));
+    // Controlled page/load order assumes src remains present; retain native null failure.
+    for (const script of dom.window.document.querySelectorAll('script[src]')) load(dom, /** @type {string} */ (script.getAttribute('src')));
     t.after(() => dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')));
     await flush(); return { dom, api, time };
   }
@@ -168,11 +221,13 @@ function settingsHarness(t, stored = {}, workerSources) {
     get worker() { return worker; }, get broker() { return broker; },
     get maxConcurrentWrites() { return maxWrites; }, get maxConcurrentCss() { return maxCss; },
     initialize: () => { noteActivity(); return broker.initialize(); }, snapshot: (name = 'popup') => request(name, 'get-snapshot'),
+    /** @param {string} name @param {KnifeSettingsOperation[]} operations */
     patch: (name, operations) => request(name, 'patch', { operations }),
     reload: (id = 7, windowId = 9) => request('styles', 'reload-target', { targetTabId: id, targetWindowId: windowId }),
-    failNext: kind => { const g = holdNext(kind); void g.reached.then(() => g.fail()); },
-    restartBroker: startWorker, invalidate: options => { noteActivity(); broker.invalidateStyles(options); },
-    setPermission: value => { permissionGranted = value; },
+    /** @param {string} kind */ failNext: kind => { const g = holdNext(kind); void g.reached.then(() => g.fail()); },
+    restartBroker: startWorker,
+    /** @param {{retry?:boolean}} [options] */ invalidate: options => { noteActivity(); broker.invalidateStyles(options); },
+    /** @param {boolean} value */ setPermission: value => { permissionGranted = value; },
     settle: async () => {
       await flush(); const observedEpoch = activityEpoch; await flush();
       settledEpoch = observedEpoch === activityEpoch && !pendingRequests && !activeBoundaries ? activityEpoch : undefined;

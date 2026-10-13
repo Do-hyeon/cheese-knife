@@ -3,8 +3,9 @@
 Date: 2026-10-13 Asia/Seoul. Local baseline: `66821c8`.
 The user approved the fixture-plus-consumer design direction and DT02 conditional
 deferral. The user approved this amended written spec on2026-10-13 and requested
-detailed implementation planning plus Astra max review. No implementation,
-Native/browser execution or publication is approved here.
+detailed implementation planning plus Astra max review. The user subsequently
+approved the amended plan, Native/isolated execution and final Astra max on the
+same date. Publication is not approved.
 
 ## 1. Intent and chosen boundary
 
@@ -149,6 +150,8 @@ resolver, rejection catch, timeout or deferred helper. Callback ordering remains
 Annotate gates/arrays/Map/Set/WeakMap entries, call logs `{kind:string,args:unknown}`,
 raw transport replies, storage changes and numeric metrics. Registration maps
 allow partial existing Chrome RegisteredContentScript fields plus required id;
+use an optional mapped field bag with explicit undefined, not the upstream
+exclusive js/css union that the existing partial-record spread cannot preserve.
 foreign registrations need not have matches. Tabs retain id/windowId and optional
 url; get after has may use a local erased assertion, query may include an absent
 tab. Restore only array/entry information erased by built-in narrowing and only
@@ -282,7 +285,7 @@ Implementation acceptance requires:
 
 ## 7. Protection and approval gate
 
-This stage changes docs only. Future implementation changes package scripts and
+Approved execution changes the listed fixture/test/checker and package scripts/
 CI as enumerated, not dependencies/version/permissions/product TS/generated JS.
 Manifest, lockfile, original dist58, release ZIP, frozen P02/ledger, protected
 branches and P09/user Chrome profiles remain protected. No tool installation,
