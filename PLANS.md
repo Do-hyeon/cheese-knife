@@ -66,7 +66,7 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어는 같�
 | AF05-A | 내부 원본 종료·검증 | AF04 | DONE | 생성·strict·전체 회귀·공개 CI 유지 |
 | AF05-B | 공개 설치·업데이트·롤백 수용 | P09, 차기 AF 배포 준비 | DEFERRED-MAINTENANCE | B1 완료, B2 문서·승인 게이트 보존; 테스트·개발 도구 타입 강화 후속 마무리 후 복귀. 전체 수용 기준·실제 배포 미승인 |
 | DT01-B | 오디오 quality report 타입 계약 | DT01-A 완료·설계/실행 승인 | DONE | 구현·격리 검증·Astra max·PR #40 공개 CI 확인; 최종 head checks·병합 상태는 해당 PR 기준 |
-| DT01-C | artifact description·부분 report 비교 계약 | DT01-A/B 완료·보완 설계 후속 진행 요청 | WAITING-USER | 구현 계획·Astra max 검토/보완 완료 → 계획·Native/격리 실행 승인 |
+| DT01-C | artifact description·부분 report 비교 계약 | 설계·계획·Native/격리 실행 승인 | DOING | 2개 작업 구현·격리 전체 검증·최종 Astra max; 공개는 별도 명시 지시 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
 현재 커서: **DT01-C 구현 계획·Native/격리 실행 승인**. [구현 계획](docs/superpowers/plans/2026-10-13-dt01c-artifact-contracts.md) 작성·자체 검토와 fresh Astra max 계획 검토(최초 Critical0·Important1·Minor1)를 마쳤다. 실제 import graph 충돌·provider ENOENT 문구와 작성자 확인 lint 문구를 보완했다. [검토 기록](docs/superpowers/validation/2026-10-13-dt01c-plan-review.md). 수정 후 독립0건/구현 PASS가 아니며 Native 2개 작업·격리 전체 검증·최종 Astra max 실행은 승인 대기다. 독립 타입 강화 유지보수 후속을 마무리한 뒤 AF05-B로 복귀하며 B2·기존 공개 수용 기준을 보존한다. 로컬 커밋으로 보관하고 사용자 명시 지시 없이 push/PR을 하지 않는다.
@@ -281,7 +281,7 @@ AF05-B 공개 수용 — P09와 차기 AF 배포에 의존:
 - [x] **DT01-C / written-spec 후속 진행:** 보완된 [설계](docs/superpowers/specs/2026-10-13-dt01c-artifact-contract-design.md) 제시 후 사용자가 권장 후속 진행을 요청하여 구현 계획 단계로 이동. 구현·실행 승인은 아님.
 - [x] **DT01-C / 상세 구현 계획 작성·자체 검토:** [계획](docs/superpowers/plans/2026-10-13-dt01c-artifact-contracts.md)에 Native 2개 작업·정확한 부분 계약·독립 raw/hash oracle·4회 compiler/9개 내부 목표·실제 owned-root 연결·감사/격리 검증·보호/한계를 반영.
 - [x] **DT01-C / Astra max 계획 검토·보완:** fresh 최초 Critical0·Important1·Minor1. legacy 동일성 검사의 unchecked 배치로 6파일 graph 보호, provider ENOENT shape·실제 lint rule 문구 대조/보완. [검토 기록](docs/superpowers/validation/2026-10-13-dt01c-plan-review.md). 설계 검토와 별도이며 수정 후 독립0건/구현 PASS 아님.
-- [ ] **DT01-C / 구현 계획·Native 실행 승인:** 완성된 계획과 격리 candidate·합성·설치 positive/negative·최종 Astra max 실행 범위를 승인받음. DT01-B 승인 자동 전용 금지.
+- [x] **DT01-C / 구현 계획·Native 실행 승인:** 사용자2026-10-13 승인. Native 2개 작업·격리 candidate·합성·설치 positive/negative·최종 Astra max 실행. 신규 설치/의존성·사용자 Chrome 조작·push/PR은 포함하지 않음.
 - [ ] **DT01-C / 구현·검증·최종 검토:** 승인 이후 기존 결과/오류·실제 파일 읽기 연결·strict graph·전체 로컬 gate·최종 Astra max 확인. 결과와 문서는 로컬에서 유지한다.
 - [ ] **DT01-C / 공개 작업:** 사용자의 push/PR 명시 지시가 있을 때만 요청된 범위를 공개하고 해당 CI/통합 게이트를 확인한다. 구현 완료를 공개 지시로 간주하지 않음.
 - [ ] **DT01-S / BACKLOG-BLOCKED:** settings fixture/reply는 별도 유지보수 후보로 보류하며 오디오 작업에 함께 끌어오지 않는다.

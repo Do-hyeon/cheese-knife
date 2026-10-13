@@ -64,7 +64,7 @@ compareAudioArtifactReports(reports?:readonly(AudioComparisonReport|null|undefin
 
 `ComparableMeasurement` deliberately has five named keys, not an arbitrary record. Partial transition kind/value remains uncorrelated; full DT01-B producer correlation is unchanged. Arrays are not dishonest five-file/two-channel tuples. Nullable case/transition items remain raw tests, not checked fixtures. Optional fields allow explicit undefined. No whole-report cast, unknown overload, ignore directive or createRequire bridge.
 
-### Task1: Checked core and independent compatibility proofs
+### Task 1: Checked core and independent compatibility proofs
 
 **Files:** Create `scripts/audio-artifact-core.mjs`, `tests/audio-artifact-contract.test.cjs`, `tests/fixtures/audio-artifact-compatibility.json`. Modify `scripts/audio-artifacts.mjs`, `tests/audio-artifacts.test.cjs`, `tsconfig.audio-tools.json`, `tests/audio-signal-contract.test.cjs`.
 
@@ -109,7 +109,7 @@ compareAudioArtifactReports(reports?:readonly(AudioComparisonReport|null|undefin
 
 - [ ] **9. Local checkpoint.** Review the diff and commit only the six Task1 changed/new paths plus the fixture (seven paths total); no generated product files, build, push or PR. Checkpoint message `refactor: type audio artifact core contracts`.
 
-### Task2: Genuine entry integration, audit and isolated branch validation
+### Task 2: Genuine entry integration, audit and isolated branch validation
 
 **Files:** Modify `scripts/audio-artifacts.mjs`, `tests/audio-artifacts.test.cjs`, `tests/tool-warning-remediation.test.cjs`, `PLANS.md`, this plan. Create `docs/superpowers/validation/2026-10-13-dt01c-artifact-contracts.md`. Keep `owned-files.mjs`, CLI, npm/CI, manifest/package/version and product sources unchanged.
 
@@ -170,6 +170,6 @@ compareAudioArtifactReports(reports?:readonly(AudioComparisonReport|null|undefin
 - [x] Author self-review: every spec section maps to Task1 or Task2; all five Review Focus rows have tests; interfaces/nullability/reader variance agree; bounded proof count4 and nine target goals; filesystem integration and unchanged CLI are genuine, not mocked; no product/publication or maintenance-closeout scope expansion.
 - [x] Proportion review: two sequential tasks, signatures/assertions/commands rather than implementation bodies; no new proof framework, dependency or per-step PR. Task1's temporary old hash loop is removed by Task2 before unit completion.
 - [x] Fresh Astra max adversarial plan review at `a6054f9`: Critical0/Important1/Minor1 plus one author-identified lint wording correction. Confirmed and amended: legacy identity checks stay unchecked, synthesized provider ENOENT shape, actual lint rule. [Review record](../validation/2026-10-13-dt01c-plan-review.md). Author amendments are not a second independent zero-finding review or implementation PASS.
-- [ ] User confirms this plan and Native two-task execution, isolated clone/candidate/synthetic/installed checks, and one final Astra max review. Source/test/config/browser execution remains pending until then.
+- [x] User approved this plan and Native two-task execution, isolated clone/candidate/synthetic/installed checks, and one final Astra max review on 2026-10-13. No push/PR permission.
 
 Recommendation: Native, because both tasks share one small module boundary and the existing proof/isolation patterns; avoid fresh implementation/review contexts per step. Local checkpoints preserve history without generating more PRs.

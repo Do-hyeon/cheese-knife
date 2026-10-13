@@ -1,8 +1,7 @@
-import crypto from 'node:crypto';
 import path from 'node:path';
 import { openOwnedRoot } from './owned-files.mjs';
 
-import { AUDIO_ARTIFACT_FILES, AUDIO_COMPARISON_ABSOLUTE_TOLERANCE, AUDIO_COMPARISON_RELATIVE_TOLERANCE, compareAudioArtifactReports } from './audio-artifact-core.mjs';
+import { AUDIO_ARTIFACT_FILES, AUDIO_COMPARISON_ABSOLUTE_TOLERANCE, AUDIO_COMPARISON_RELATIVE_TOLERANCE, compareAudioArtifactReports, describeAudioArtifactFiles } from './audio-artifact-core.mjs';
 export { AUDIO_ARTIFACT_FILES, AUDIO_COMPARISON_ABSOLUTE_TOLERANCE, AUDIO_COMPARISON_RELATIVE_TOLERANCE, compareAudioArtifactReports };
 
 const fail = code => { throw new Error(code); };
@@ -37,13 +36,5 @@ export function parseAudioQualityArgs(argv, cwd = process.cwd()) {
 export async function describeAudioArtifact(root, label) {
   if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(label)) fail('audio-label-invalid');
   const files = await openOwnedRoot(root);
-  const descriptions = [];
-  for (const relative of AUDIO_ARTIFACT_FILES) {
-    const contents = await files.readFile(relative);
-    descriptions.push({
-      path: relative,
-      sha256: crypto.createHash('sha256').update(contents).digest('hex')
-    });
-  }
-  return { label, root: files.root, files: descriptions };
+  return describeAudioArtifactFiles(files, label);
 }

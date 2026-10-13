@@ -103,6 +103,29 @@ test('independent raw oracle catches tolerance and selected THD mutations in act
   assert.equal(await fs.readFile('scripts/audio-artifact-core.mjs','utf8'),original);
 });
 
+test('public entry delegates after label and owned root while CLI and parse body stay unchanged',async()=>{
+  const crypto=require('node:crypto'),source=(await fs.readFile('scripts/audio-artifacts.mjs','utf8')).replaceAll('\r\n','\n');
+  const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
+  assert.equal(hash(source.slice(source.indexOf('export function parseAudioQualityArgs'),source.indexOf('export async function describeAudioArtifact'))),'6a8fb8a811f17bba7a6ffbdd7f841fea21d4e7470231dd0a5f37a45959eb413b');
+  assert.equal(hash((await fs.readFile('scripts/check-audio-quality.mjs','utf8')).replaceAll('\r\n','\n')),'6f8338b5c56b2043c33babea9957c3885c76b4be706ec578d300a849b789eee6');
+  assert.match(source,/const files = await openOwnedRoot\(root\);\s+return describeAudioArtifactFiles\(files, label\);/);
+  const {parseAudioQualityArgs}=await load();
+  assert.deepEqual(parseAudioQualityArgs(['--chrome','--chrome','--label','first','--label','last'],process.cwd()),{chrome:true,root:process.cwd(),label:'last'});
+});
+
+test('public entry hashes actual disk bytes and retains label precedence missing child and link rejection',async t=>{
+  const {describeAudioArtifact}=await load(),root=await artifactFixture(t);
+  for(const relative of artifactPaths)await fs.writeFile(path.join(root,relative),'abc');
+  assert.deepEqual(await describeAudioArtifact(root,'fixture'),{label:'fixture',root:await fs.realpath(root),files:artifactPaths.map(path=>({path,sha256:'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'}))});
+  await assert.rejects(describeAudioArtifact(path.join(root,'absent'),'!'),{name:'Error',message:'audio-label-invalid'});
+  await fs.unlink(path.join(root,'web/runtime.js'));
+  await assert.rejects(describeAudioArtifact(root,'fixture'),{name:'Error',message:'ENOENT',code:'ENOENT'});
+  await fs.writeFile(path.join(root,'web/runtime.js'),'abc');
+  const actual=path.join(root,'actual-web');await fs.rename(path.join(root,'web'),actual);
+  await fs.symlink(actual,path.join(root,'web'),process.platform==='win32'?'junction':'dir');
+  await assert.rejects(describeAudioArtifact(root,'fixture'),{code:'owned-path-link'});
+});
+
 async function artifactFixture(t, suffix = '') {
   await fs.mkdir(path.join(process.cwd(), 'output'), { recursive: true });
   const root = await fs.mkdtemp(path.join(process.cwd(), 'output', 'test-audio-artifact-'));

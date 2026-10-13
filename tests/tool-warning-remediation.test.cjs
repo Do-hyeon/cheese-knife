@@ -86,13 +86,24 @@ test('development report boundaries have no generic object-injection observation
   const lint = new ESLint({ overrideConfigFile: 'eslint.security.config.mjs' });
   const config = await lint.calculateConfigForFile('scripts/audio-signal.mjs');
   assert.ok(config?.rules['security/detect-object-injection']?.[0], 'moved numeric code must remain in the real lint scope');
+  const artifactConfig=await lint.calculateConfigForFile('scripts/audio-artifact-core.mjs');
+  assert.ok(artifactConfig?.rules['security/detect-object-injection']?.[0], 'artifact core must remain in the real lint scope');
   const result = await lint.lintFiles([
-    'scripts/audio-metrics.mjs', 'scripts/audio-signal.mjs', 'scripts/check-audio-quality.mjs', 'scripts/check-store-popup.mjs',
+    'scripts/audio-metrics.mjs', 'scripts/audio-signal.mjs', 'scripts/audio-artifact-core.mjs', 'scripts/audio-artifacts.mjs', 'scripts/check-audio-quality.mjs', 'scripts/check-store-popup.mjs',
     'scripts/check-video-filters.mjs', 'scripts/tool-audit.mjs',
   ]);
   const findings = result.flatMap(file => file.messages)
     .filter(message => message.ruleId === 'security/detect-object-injection');
   assert.deepEqual(findings.map(message => `${message.line}:${message.column}`), []);
+});
+
+test('artifact core is included in actual audit source inventory and content snapshot',async()=>{
+  const {sourceFiles,snapshotInput}=await import('../scripts/tool-audit.mjs');
+  const fs=require('node:fs/promises'),crypto=require('node:crypto');
+  assert.ok((await sourceFiles(process.cwd())).includes('scripts/audio-artifact-core.mjs'));
+  const entry=(await snapshotInput(process.cwd())).find(item=>item.file==='scripts/audio-artifact-core.mjs');
+  assert.ok(entry);
+  assert.equal(entry.sha256,crypto.createHash('sha256').update(await fs.readFile('scripts/audio-artifact-core.mjs')).digest('hex'));
 });
 
 test('owned file capability contains every remaining dynamic filesystem observation', async () => {
