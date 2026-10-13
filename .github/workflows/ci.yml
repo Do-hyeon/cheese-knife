@@ -80,6 +80,12 @@ jobs:
       - name: Run installed-extension negative control
         run: npm run test:e2e:negative
 
+      - name: Run installed old-new-old transition
+        run: node scripts/check-installed-transition.mjs --run-id=B2positive
+
+      - name: Run installed storage-loss control
+        run: node scripts/check-installed-transition.mjs --run-id=B2negative --control=storage-loss
+
       - name: Upload E2E failure artifacts
         if: failure()
         uses: actions/upload-artifact@v6

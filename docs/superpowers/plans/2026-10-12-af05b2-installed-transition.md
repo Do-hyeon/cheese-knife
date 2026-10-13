@@ -1,6 +1,6 @@
 # AF05-B2 — 격리 설치본 코드 전환·복귀 구현 계획
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Astra max 독립 검토 후 주 실행자가 보완한 승인용 계획이며 구현/실행 방식 승인 전 실행하지 않는다.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this approved Native plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. 사용자2026-10-13 B2 설계·Native 구현/격리검증·최종 Astra max 묶음 승인. 중간 push·PR과 제품 배포는 하지 않는다.
 
 **Goal:** 게시 전체 payload와 후보를 같은 private Chromium profile/개발용 ID에서 old→new→old로 실행해 실제 raw 저장·구/새 UI·CSS 보존과 저장 손실 negative 탐지를 증명한다.
 
@@ -12,6 +12,7 @@
 
 ## Global Constraints
 
+- 2026-10-13 복귀 기준 main `6b919e1c62661ec49a12ce6df2c02e11273af41d`. 현재 foundation9·settings fixture 계약을 유지한다. B2 구현/Native 실행 묶음은 승인됐으며 AF05-B 전체 완료 전 중간 push·Task/B2/문서 PR은 하지 않는다. 최종 단일 한글 PR의 공개·CI·통합 승인과 실제 배포 승인은 구분한다.
 - 제품 version2.13.3 유지. package/lock/manifest·제품 TS/생성 JS·권한·root dist·원본 ZIP/CRX·시청/native 기준 profile·frozen 자료에 쓰지 않는다.
 - 고정 원본 ZIP201802bytes/SHA `67ae9c1512fef7e0ca651c150e3b4e3052a73e7d96b7ed988adc85114cdb1d51`,58파일/raw599793bytes. private file·최신 release·current source fallback/skip 없음.
 - 공개 JSON metadata의 canonical hash `669cc7f64599e748f4d3ec86e45472786cf331e4a0b207914619a03f849a652c`; ordinal `[name,sha256]` 목록 hash `a7a23d74b79132479b53d80b3cac2d71ab89a3cdb15b68cdda81732e6064ddd2`. localeCompare를 쓰지 않는다.
@@ -104,17 +105,17 @@ assert.throws(()=>assertTransitionState(lostRaw,expected),{code:'transition-stor
 - [ ] **Step 3 — runner 구현:** Node child_process의 부모/동일 script child IPC로 deadline을 소유한다. parent가 새 root의 소유권을 먼저 확보하고 child에 고정 relative directories를 전달한다. child는harness호출전intent를보내parent ACK 후launch하고정상context.close 후에만close-success를전송한다. 최종PASS는모든intent의close-success·child정상exit·관측/result/cleanup/report까지확인한다. 정상 phase 종료 확인 후 whole-tree replace, phase별 expected manifest/inventory와 actual worker/case result를 기록한다. 세대별 marker/스토어 ID 강제 주입은 하지 않는다. 5case는 각각 fresh root/profile, positive 전체와 storage-loss control은 별도 fresh 결과다. control은spec§6의단일queued initialize insertion으로config 삭제를await한뒤raw를읽는다. background import/listener를변경하지않고mutated broker hash/function을별도로pin한다. Windows child-tree/Unix runner group 종료는생성한PID만대상이며detached Chromium 종료증거가아니다. unacknowledged launch는root 보존/cleanup-unconfirmed/nonzero, 다음phase와negative PASS 금지다. TransitionFailure를IPC로먼저보내고close 뒤cleanupErrors를추가한다. summary/최종보존artifact cap·첫실패/cleanup실패를 parent finally에서 확정하고 source/protected input 전후hash도 대조한다. CLI `--run-id=ALPHANUMERIC`, 선택 `--headed`, control은 `--control=storage-loss`만 허용한다.
 - [ ] **Step 4 — GREEN·immutable checkpoint:** `node --test tests/published-payload.test.cjs tests/installed-transition-scenario.test.cjs tests/installed-transition-runner.test.cjs tests/installed-extension-runner.test.cjs tests/installed-extension-negative.test.cjs tests/owned-files.test.cjs tests/installed-extension-candidate.test.cjs tests/package-isolation.test.cjs`. Expected: 실패/새skip0. 기존 test 경로를 `rg --files tests`로 확인했다. 전체 file inventory/CLI/protected paths 확인 후 코드checkpoint commit, clean tracked validation clone·물리 dependencies를 준비한다. tests 이름 누락은 skip으로 숨기지 않는다.
 - [ ] **Step 5 — 실제 설치 GREEN/negative:** clone에서 fixed Git baseline을 명시 fetch하고 `node scripts/extension-e2e/published-payload.mjs --prepare`; `node scripts/check-installed-transition.mjs --run-id=B2positive`; `node scripts/check-installed-transition.mjs --run-id=B2negative --control=storage-loss`. Expected: positive5case의old/new/rollback 관측 및 literal oracle PASS; negative는 candidate-init의transition-storage-preservation/config loss만 탐지·cleanup 성공. negative가 positive 성공을 대체하지 않는다. 실패는 code·phase·fixture/input/output hash로 진단하고 사용자에게 기존 방송/설정을 반복 조작하도록 요구하지 않는다.
-- [ ] **Step 6 — 전체·보존·CI:** strict8 명령은 B1과 동일, clone에서 `npm test`, `npm run build`, `npm run check`, `node scripts/check-audio-quality.mjs`, `npm run test:e2e`, `npm run test:e2e:negative`, 새 `node scripts/tool-audit.mjs`, `git -c core.safecrlf=false diff --check`. Expected: 각 gate 성공/품질실패0/제외없는전체fail0, 기존private자료부재skip만 별기. 원래폴더P02 역사실패는별도유지. 도구 raw exit·현재guarded/new 관측을새report로기록; 새경고/실패미해결시공개불가. 기존rootdist58/원본ZIP/CRX/frozen/version/프로필 불변을 확인한다. verify CI에는 prepare와두새runner 명령만추가하고 기존foundation/strict/positive/MAIN-negative 유지, artifact는기존installed-extension-* summary/trace 패턴안에만 둔다.
-- [ ] **Step 7 — 기록·최종 검토·통합:** validation에 sourceCommit·old/new/testmanifest 모든hash·각phase literal/actual·identity·실제실패control·cleanup·제한·도구결과를기록한다. 구현후fresh Astra max whole-branch 검토와critical/important 보완·최종head 공개CI를확인하고 승인범위의한글PR/main 병합/참조검사후이번branch만정리한다. B2 로컬완료와native/전체수용을구분하고버전승인/스토어작업으로자동진행하지않는다.
+- [ ] **Step 6 — 전체·보존·CI:** 현재 CI의 foundation9를 clone에서 실행한다: `npm run check:toolchain`, `npm run check:runtime-js`, `npm run typecheck:settings-fixture`, `npm run typecheck`, `npm run typecheck:development`, `npm run check:settings-runtime`, `npm run check:main-runtime`, `npm run check:build-proof`, `npm run typecheck:audio-tools`. 이어 `npm test`, `npm run build`, `npm run check`, `node scripts/check-audio-quality.mjs`, `npm run test:e2e`, `npm run test:e2e:negative`, `node scripts/tool-audit.mjs`, `git -c core.safecrlf=false diff --check`. Expected: 각 gate 성공/품질실패0/제외없는전체fail0, 기존private자료부재skip만 별기. 원래폴더P02 역사실패는별도유지. 도구 raw exit·현재guarded/new 관측을새report로기록; 새경고/실패미해결시공개불가. 기존rootdist58/원본ZIP/CRX/frozen/version/프로필 불변을 확인한다. verify CI에는 prepare와두새runner 명령만추가하고 기존foundation/strict/positive/MAIN-negative 유지, artifact는기존installed-extension-* summary/trace 패턴안에만 둔다.
+- [ ] **Step 7 — 기록·최종 검토·전체 묶음 인계:** validation에 sourceCommit·old/new/testmanifest 모든hash·각phase literal/actual·identity·실제실패control·cleanup·제한·도구결과를기록한다. 구현후fresh Astra max whole-branch 검토와critical/important 보완까지 로컬에서 마친다. B2만의 push/PR/병합은 하지 않고 AF05-B 전체 카테고리 종료·공개 승인 후 단일 한글 PR에서 최종head 공개CI를확인한다. main 병합/참조검사/해당branch 정리는별도승인범위다. B2 로컬완료와native/전체수용을구분하고버전승인/스토어작업으로자동진행하지않는다.
 
 ## 승인 묶음·자체 대조·인계
 
-- [ ] 사용자 written B2 spec·구현 계획 승인. 승인 내용: 새 bundled Chromium fixture 프로필5case+control·T/R test-copy·기계적 UI seed/수정·실제 삭제 negative·owned process/directory cleanup. 종료미확인시실패/root보존과private시험browser 수동종료필요가능성포함. 기존 시청/native 프로필·스토어는 제외.
-- [ ] 실행 방식 승인: Native 권장(세 작업의 oracle/수명 계약이 연결됨, 최종 Astra max 독립 검토 유지). 이번 문서 작성 요청은 Native 구현 승인으로 간주하지 않음.
-- [ ] 구현 후 최종 Astra max 검토·공개CI·PR/통합 승인 범위 확인. 상위 AF05-B의waiver/플랫폼롤백완료기준은 별도.
+- [x] 사용자2026-10-13 written B2 spec·구현 계획 승인. 새 bundled Chromium fixture 프로필5case+control·T/R test-copy·기계적 UI seed/수정·실제 삭제 negative·owned process/directory cleanup. 종료미확인시실패/root보존과private시험browser 수동종료필요가능성포함. 기존 시청/native 프로필·스토어는 제외.
+- [x] 사용자2026-10-13 Native 구현·격리검증·최종 Astra max 검토 묶음 승인. 설계 작성만으로 실행 승인을 추정한 것이 아님.
+- [ ] 구현 후 최종 Astra max 검토. 공개CI·단일 PR/통합은 AF05-B 전체 카테고리 완료 후 승인 범위에서 수행. 상위 AF05-B의waiver/플랫폼롤백완료기준은 별도.
 - [x] B1의4파일 모의검사와B2의58파일/실제UI/storage를구분. 기존base scenario의restore 경로는사용하지않음.
 - [x] 세Task의함수/파일이연결되며각단위의RED/GREEN·실행gate를분리. 새dependency/일반ZIP/배포프레임워크 없음.
 - [x] Review Focus5건 각각소유Task에반례배정. 정상/negative·손상/legacy·phase timeout/cleanup을구분.
 - [x] Astra max 독립 설계·계획 검토 Critical0·Important3·Minor1과주실행자보완. MAIN의ready/repair 분리·동기background 유지/awaited broker loss·launch/close ACK/fail-closed 보존·실패관측IPC를반영했다. [검토 기록](../validation/2026-10-12-af05b2-design-review.md). 수정후독립0건/설치/보안인증의PASS가아니다.
 
-완성된 두 문서를 함께 검토·승인받은 뒤 선택된 방식으로 구현한다. 승인 전에는 reader/runner/fixture/CI 변경이나브라우저설치를실행하지않는다.
+승인된 B2만 Native 방식으로 구현·격리검증한다. 별도 미승인 native 기준 프로필·스토어·실제 업데이트/플랫폼 롤백·버전·공개/통합 게이트로 자동 진행하지 않는다.
