@@ -61,9 +61,13 @@ export function matchesStorageLoss(failure, nonce) {
 export async function refreshTransitionWorker(launched, reacquire = reacquireExtensionWorker) {
   // Persistent unpacked Chromium can keep imported worker scripts across a versioned relaunch.
   await launched.worker.evaluate(() => chrome.runtime.reload());
-  const fresh = await reacquire(launched.context, launched.worker, 15000, { reusePrevious: false });
-  if (fresh.extensionId !== launched.extensionId) throw fail('transition-execution');
-  return { ...launched, ...fresh };
+  const wake = await launched.context.newPage();
+  try {
+    await wake.goto(`chrome-extension://${launched.extensionId}/popup.html`, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    const fresh = await reacquire(launched.context, launched.worker, 15000, { reusePrevious: false });
+    if (fresh.extensionId !== launched.extensionId) throw fail('transition-execution');
+    return { ...launched, ...fresh };
+  } finally { await wake.close(); }
 }
 
 export function validateTransitionResult(result, nonce, control, launches) {
@@ -221,9 +225,9 @@ async function requestLaunch(message) {
 /** Parent-selected owned roots only; this runs in the supervised child. */
 async function executeChild(options) {
   const files = await openOwnedRoot(repositoryRoot), phases = [], seeds = [], cleanupErrors = [];
-  let failure, source, after, candidateInventory;
+  let failure, source, after, candidateInventory, active;
   const noticeFailure = async error => {
-    failure ||= genericFailure(error);
+    failure ||= error?.failure || { ...genericFailure(error), ...active };
     await send({ type: 'failure', nonce: options.nonce, failure });
   };
   try {
@@ -241,10 +245,13 @@ async function executeChild(options) {
       const profilePath = await work.ensureDirectory('profile'), extensionPath = await work.ensureDirectory('extension'), artifactPath = await work.ensureDirectory('trace');
       let expectedId;
       for (const phase of ['seed', 'old', 'new', 'rollback']) {
+        active = { caseId: assigned.caseId, phase, step: 'replace', stage: 'replace' };
         const entries = phasePayload(phase === 'new' ? current : published, phase === 'seed' ? 'old' : phase, phase === 'new' ? options.control : undefined);
         await replacePayload(work, entries);
+        active = { ...active, step: 'prelaunch', stage: 'inventory' };
         const beforeHash = await checkInventory(extensionPath, entries);
         const intent = { type: 'launch-intent', nonce: options.nonce, caseId: assigned.caseId, phase, launchId: `${assigned.caseId}:${phase}`, root: assigned.root };
+        active = { ...active, step: 'launch', stage: 'launch' };
         await requestLaunch(intent);
         let context, traced = false, closed = false, phaseError;
         try {
@@ -256,6 +263,7 @@ async function executeChild(options) {
           expectedId ||= launched.extensionId;
           await context.tracing.start({ screenshots: false, snapshots: true, sources: false }); traced = true;
           if (phase === 'seed') {
+            active = { ...active, step: 'seed', stage: 'seed' };
             const popup = await context.newPage();
             await popup.goto(`chrome-extension://${expectedId}/popup.html`, { waitUntil: 'domcontentloaded' });
             await popup.locator('#settings-status[data-phase="ready"]').waitFor({ timeout: 15000 });
@@ -302,7 +310,8 @@ async function executeChild(options) {
             } catch (error) { cleanupErrors.push({ code: error?.code || 'transition-close-failed', caseId: assigned.caseId, phase }); }
           }
         }
-        if (!closed) throw phaseError || fail('cleanup-unconfirmed');
+        if (!closed) { active = { ...active, step: 'close', stage: 'close' }; throw phaseError || fail('cleanup-unconfirmed'); }
+        active = { ...active, step: 'postclose', stage: 'inventory' };
         await checkInventory(extensionPath, entries);
         if (phaseError) throw phaseError;
         if (cleanupErrors.length) throw fail('transition-cleanup-failed');

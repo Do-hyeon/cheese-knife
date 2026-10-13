@@ -161,7 +161,8 @@ test('parent refuses missing/mutated final evidence even when child result claim
 
 test('isolated phase setup retires cached worker without clearing storage or changing ID', async () => {
   const { refreshTransitionWorker } = await subject();
-  const events = [], saved = { futureTop: 'keep', config: { previewVolume: 25 } }, context = {};
+  const events = [], saved = { futureTop: 'keep', config: { previewVolume: 25 } };
+  const context = { newPage: async () => ({ goto: async url => { assert.equal(url, `chrome-extension://${'a'.repeat(32)}/popup.html`); }, close: async () => {} }) };
   const worker = { evaluate: fn => vm.runInNewContext(`(${fn.toString()})()`, { chrome: {
     runtime: { reload() { events.push('reload'); } }, storage: { local: { clear() { throw Error('must not clear'); } } } } }) };
   const next = { marker: 'new-worker' }, id = 'a'.repeat(32);
@@ -174,6 +175,16 @@ test('isolated phase setup retires cached worker without clearing storage or cha
   assert.deepEqual(events, ['reload', 'fresh-worker']); assert.deepEqual(saved, { futureTop: 'keep', config: { previewVolume: 25 } });
   await assert.rejects(refreshTransitionWorker({ context, worker, extensionId: id }, async () => ({ worker: next, extensionId: 'b'.repeat(32) })), { code: 'transition-execution' });
   await assert.rejects(refreshTransitionWorker({ context, worker: { evaluate: async () => { throw Object.assign(Error('reload'), { code: 'reload-failed' }); } }, extensionId: id }, reacquire), { code: 'reload-failed' });
+});
+
+test('isolated refresh wakes lazy MV3 worker through read-only packaged popup before reacquiring', async () => {
+  const { refreshTransitionWorker } = await subject(); const events = [], id = 'a'.repeat(32), newWorker = {};
+  const worker = { evaluate: async fn => vm.runInNewContext(`(${fn.toString()})()`, { chrome: { runtime: { reload: () => events.push('reload') } } }) };
+  const context = { newPage: async () => ({ goto: async url => { assert.equal(url, `chrome-extension://${id}/popup.html`); events.push('popup-wake'); }, close: async () => { events.push('popup-close'); } }) };
+  const result = await refreshTransitionWorker({ context, worker, extensionId: id }, async () => {
+    assert.deepEqual(events, ['reload', 'popup-wake']); events.push('fresh-worker'); return { worker: newWorker, extensionId: id };
+  });
+  assert.equal(result.worker, newWorker); assert.deepEqual(events, ['reload', 'popup-wake', 'fresh-worker', 'popup-close']);
 });
 
 test('parent revalidates every action observation identity hash and no-reseed sequence', async () => {
