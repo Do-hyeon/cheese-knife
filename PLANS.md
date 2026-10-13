@@ -78,7 +78,7 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어는 같�
 | DT02 | 선택적 native TS 실행 | 조건부 보류 판단 승인 | DEFERRED | 지금은 JSDoc/checkJs 유지, 실제 유지보수 이득·검사/실행 경계 보존 조건에서 재검토; native 구현 완료 아님 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **독립 유지보수 통합 완료 → AF05-B2 계획 정합성 확인·설계/Native 실행 묶음 승인 대기**. [PR #42](https://github.com/Do-hyeon/cheese-knife/pull/42)의 최종 head `e98a3722`는 [run 38348729207](https://github.com/Do-hyeon/cheese-knife/actions/runs/38348729207), merge `6b919e1`은 [main run 38349698613](https://github.com/Do-hyeon/cheese-knife/actions/runs/38349698613)에서 Windows·Ubuntu foundation과 verify가 모두 통과했다. 병합 tree는 검증된 최종 head와 동일하다. [전체 수용 근거](docs/superpowers/validation/2026-10-13-dt-maintenance-whole-area.md), DT02 조건부 보류와 기존 한계는 유지한다. AF05-B는 전체 카테고리 완료 후 단일 한글 PR로 묶으며 중간 push·PR과 릴리즈·스토어 배포는 하지 않는다.
+현재 커서: **승인된 AF05-B2 Native 구현·격리 검증 → 실제 전환 준비 실패의 Astra max 독립 검토·보완**. [B2 현재 기록](docs/superpowers/validation/2026-10-12-af05b2-installed-transition.md): Task1/2 집중 통과, Task3 감독 구현·기반9/idle전체1075·기존 설치 positive/negative·audio·도구/보존 대조 완료. B2 실제5case 전환/storage-loss control은 미합격이며 완료로 표시하지 않는다. 직전 유지보수 [PR #42](https://github.com/Do-hyeon/cheese-knife/pull/42)는 `6b919e1`에 통합·main CI 통과·해당 브랜치 정리 완료다. AF05-B 전체 카테고리 완료 후 단일 한글 PR, 중간 push·PR·릴리즈·스토어 배포 금지와 DT02 보류/기존 한계는 유지한다.
 
 B1은 PR #36 최종 CI run `38255250513`과 merge `b38ec388`로 완료했다. B2 설계·계획은 PR #37로 병합됐으며 최초 Astra max Critical0·Important3·Minor1 보완 기록과 구현·실행 승인 게이트를 보존한다. 수정 후 독립0건/실제전환PASS/native update 수용은 아니다. P09의 게시2.13.3·격리 신규 설치 기준은 보존하며 과거 업데이트·실제 롤백 수용은 미검증이다. AF05 전체와 기능 로드맵 동결은 유지한다.
 
@@ -243,9 +243,9 @@ AF05-B 공개 수용 — P09와 차기 AF 배포에 의존:
 - [x] **B2 / 상세 설계·계획 작성:** [설계](docs/superpowers/specs/2026-10-12-af05b2-installed-transition-design.md), [구현 계획](docs/superpowers/plans/2026-10-12-af05b2-installed-transition.md). 고정 공개 ZIP58파일·실제background/구 UI·동일격리프로필/ID의old→new→old·5case literal oracle·설치경계저장손실negative·deadline/cleanup. 제품 version2.13.3·실제시청/native기준프로필 보존.
 - [x] **B2 / Astra max 독립 검토·보완:** 최초Critical0·Important3·Minor1. MAIN ready/UI repair 분리·동기background 유지/awaited broker loss·launch/close ACK와종료미확인root 보존·실패관측IPC를보완. [검토 기록](docs/superpowers/validation/2026-10-12-af05b2-design-review.md). 고정ZIP/hash는독립대조했지만수정후독립0건/실제전환PASS/보안인증은아님.
 - [x] **B2 / 설계·계획·실행 방식 승인:** 사용자2026-10-13 새bundled fixture프로필·가상T/R복사본·UI저장·실제손실control·owned cleanup·Native 구현/격리검증·최종 Astra max 검토 묶음 승인. 종료미확인시실패/root보존·private시험browser 수동종료필요가능성포함. 상위waiver/플랫폼rollback완료기준변경과실제스토어조작은별도.
-- [ ] **B2 / Task 1:** 고정58파일reader/cache preparation·provenance/상한/부재negative·CI준비. 새dependency/일반ZIP처리기없음.
-- [ ] **B2 / Task 2:** 독립raw/UI/CSS/MAIN oracle·실제phase·legacy/손상제한상태·worker실행출처 대조.
-- [ ] **B2 / Task 3:** supervised runner·같은profile/ID 전환·실제저장손실control·현재foundation9/전체gate·도구감사·보존/cleanup·최종검토. 공개 CI/통합은 아래 전체 카테고리 단일 PR 게이트에서 수행. B1·B2 결과를native update 수용으로합산하지않음.
+- [x] **B2 / Task 1:** 고정58파일reader/cache preparation·provenance/상한/부재negative·CI준비. 집중96/96·새 lint0, 고정 공개 다운로드 검증. 새dependency/일반ZIP처리기없음. 최종 전체/Astra 수용은Task3와분리.
+- [x] **B2 / Task 2:** 독립raw/UI/CSS/MAIN oracle·packaged phase·legacy/손상제한·worker출처 대조 구현. 집중99/99, 실제5case 전환 성공은Task3 미완료게이트로유지.
+- [ ] **B2 / Task 3:** supervised runner 구현·Astra max Critical0/Important6/Minor0 검토·작성자6건 보완 및 집중108/108. 실제5case 전환/storage-loss·fresh 전체gate/도구/보존 재검증 중. 공개 CI/통합은 아래 전체 카테고리 단일 PR 게이트에서 수행. B1·B2 결과를native update 수용으로합산하지않음. 수정 후 독립0건 판정 아님.
 - [ ] **후속 / native preflight·공개 준비:** 관측/설치·제품 버전·스토어 제출·게시 각각 별도 승인. 상세 계획은 앞 단계 근거를 확인한 뒤 작성.
 - [ ] 새 설치·기존 설치 업데이트·설정 보존·롤백 설치 수용.
 - [ ] **AF05-B 전체 종료·단일 PR:** 위 잔여 작업·검증·승인된 수용 기준을 전체 대조하고 미해결/미승인 항목을 분리한 뒤 공개 승인을 확인해 한글 PR 하나로 묶는다. 현재 배포 금지와 미승인 native/waiver 게이트 때문에 전체 DONE으로 표시하거나 이 게이트를 생략하지 않는다. 공개 후 최종 head CI 확인·병합은 별도 승인 범위로 수행한다.
@@ -343,8 +343,8 @@ git -c core.safecrlf=false diff --check
 
 INC01은 사용자 재등록·설정 유지 확인과 PR #30·공개 CI·main 병합으로 종료했다. 원래 dist의58파일과 현재 시험판·설정은 계속 보존한다. 이 수용을 모든 방송 기능·기존 스토어 버전 업데이트 검사로 확대하지 않는다.
 
-전체 유지보수 영역은 PR #42의 최종 head/병합 후 main CI 통과와 승인된 병합·해당 브랜치 정리까지 완료했다. PR #41은 닫힌 상태로 두고 DT02 조건부 보류·원래 시험판/root dist/P09 profile·보호 브랜치는 유지한다. AF05-B로 복귀했으며 카테고리 전체 완료 전 push·PR은 하지 않는다. B2 구현/Native 실행 묶음과 실제 native/수용 기준 변경은 별도 승인 대상이고, 릴리즈·스토어 배포 금지는 유지한다.
+전체 유지보수 영역은 PR #42의 최종 head/병합 후 main CI 통과와 승인된 병합·해당 브랜치 정리까지 완료했다. PR #41은 닫힌 상태로 두고 DT02 조건부 보류·원래 시험판/root dist/P09 profile·보호 브랜치는 유지한다. 승인된 B2 구현/격리 검증을 진행 중이며 카테고리 전체 완료 전 push·PR은 하지 않는다. 실제 native/수용 기준 변경과 릴리즈·스토어 배포 승인은 별개다.
 
-게시 완료 알림의14:55는 표시 시각이고 실제 처리 시각·시간대·초는 미확정이다. 추가 시각 자료 요청은 종료했다. 실제 롤백·차기 설치/업데이트·스토어 제출/게시에는 각각 별도 승인이 필요하다. B2 승인은 새 private bundled 프로필·UI 저장·손실 control·cleanup을 포함하며 종료 미확인 시 root 보존/수동 종료가 필요할 수 있다. 승인 전 reader/fixture/runner/CI 구현이나 browser 실행을 하지 않는다. native/공개 실행·과거 미검증 수용·AF05-B 전체 완료 기준 변경은 별도 게이트다.
+게시 완료 알림의14:55는 표시 시각이고 실제 처리 시각·시간대·초는 미확정이다. 추가 시각 자료 요청은 종료했다. 실제 롤백·차기 설치/업데이트·스토어 제출/게시에는 각각 별도 승인이 필요하다. B2는 새 private bundled 프로필·UI 저장·손실 control·cleanup·Native 구현/격리검증/최종 Astra max 묶음 승인을 받았으며 그 범위에서만 실행한다. 종료 미확인 시 root 보존/수동 종료 필요 가능성은 유지한다. native/공개 실행·과거 미검증 수용·AF05-B 전체 완료 기준 변경은 별도 게이트다.
 
 AF05 내부 작업은 완료됐다. P09의 게시 표시·게시 알림·게시 package 대조·합성 오디오와 승인된 별도 로컬 Chrome 프로필의 native 신규 설치 파일을 확인했다. 기존 시청 Chrome에는 사용자 보고상 로컬 시험판만 있으므로 존재하지 않는 스토어 설치본의 버전 확인·업데이트 조작을 요청하지 않는다. 로컬 시험판은 그대로 유지하고 격리 프로필의 스토어2.13.3을 차기 업데이트 기준으로 보존한다. 구 스토어2.13.2→2.13.3 설정 보존은 미검증으로 분리하고, 필요한 대체 검사와 실제 native 업데이트 증거를 구분해 설계한다. 확장 설치·업데이트·설정 변경이 필요해지면 해당 대상과 영향을 정해 별도 승인받는다. Google 로그인/동기화나 브라우저 접근 정책 우회는 하지 않는다. 롤백 수용과 AF 변경 후보의 차기 버전 공개 수용은 남았다. 완료된 DT01-B 설계를 다시 시작하지 않으며, 현재 AF05-B의 승인된 순서로 복귀했다. 실제 공개 설치·차기 배포·로드맵 동결 해제 조건은 유지한다.

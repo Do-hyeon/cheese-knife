@@ -119,6 +119,9 @@ test('prepare refuses network, stream and write failures and cleans only its own
     const injected = { ...files, writeFile: async (name, data, options) => {
       if ((kind === 'partial-write' && name.endsWith('/payload.zip')) || (kind === 'cache-write' && name === cache)) throw Object.assign(Error('test-io'), { code: 'test-io' });
       return files.writeFile(name, data, options);
+    }, publishFile: async (source, destination) => {
+      if (kind === 'cache-write') throw Object.assign(Error('test-io'), { code: 'test-io' });
+      return files.publishFile(source, destination);
     } };
     const fetchImpl = async () => {
       if (kind === 'fetch') throw Object.assign(Error('test-io'), { code: 'test-io' });
@@ -127,6 +130,33 @@ test('prepare refuses network, stream and write failures and cleans only its own
     };
     await assert.rejects(preparePublishedPayload({ files: injected, fetchImpl }), { code: 'test-io' });
     assert.deepEqual(await files.readdir(''), ['unrelated']);
+  }
+});
+
+test('failed partial cache write never publishes corrupt cache', async t => {
+  const { preparePublishedPayload } = await subject(); const files = await fresh(t);
+  const injected = { ...files, writeFile: async (name, data, options) => {
+    if (name === cache) { await files.writeFile(name, data.subarray(0, 17), options); throw Object.assign(Error('disk-full'), { code: 'ENOSPC' }); }
+    return files.writeFile(name, data, options);
+  } };
+  try { await preparePublishedPayload({ files: injected, fetchImpl: async () => response(await bytes()) }); }
+  catch (error) { assert.equal(error.code, 'ENOSPC'); }
+  const published = await files.lstat(cache, { optional: true });
+  if (published) { assert.equal(published.size, 201802); assert.equal(hash(await files.readFile(cache)), hash(await bytes())); }
+  else assert.deepEqual(await files.readdir(''), []);
+});
+
+test('publish failure cleans temporary bytes but never removes a concurrently created cache', async t => {
+  const { preparePublishedPayload } = await subject();
+  for (const code of ['ENOSPC', 'EEXIST']) {
+    const files = await fresh(t);
+    const injected = { ...files, publishFile: async () => {
+      if (code === 'EEXIST') await files.writeFile(cache, 'existing', { flag: 'wx' });
+      throw Object.assign(Error(code), { code });
+    } };
+    await assert.rejects(preparePublishedPayload({ files: injected, fetchImpl: async () => response(await bytes()) }), { code });
+    assert.deepEqual(await files.readdir(''), code === 'EEXIST' ? [cache] : []);
+    if (code === 'EEXIST') assert.equal(await files.readFile(cache, 'utf8'), 'existing');
   }
 });
 

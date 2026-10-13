@@ -52,10 +52,12 @@ export function phasePayload(payload, phase, control) {
   });
 }
 
-export function matchesStorageLoss(failure, nonce) {
+export function matchesStorageLoss(failure, nonce, extensionId) {
   const expected = expectedTransitionRaw('valid-ui', 'old', 'font8', nonce); delete expected.config;
   return failure?.code === 'transition-storage-preservation' && failure.caseId === 'valid-ui' && failure.phase === 'new' &&
     failure.step === 'startup' && failure.stage === 'candidate-init' && Array.isArray(failure.cleanupErrors) && failure.cleanupErrors.length === 0 &&
+    /^[a-p]{32}$/.test(extensionId || '') &&
+    isDeepStrictEqual(failure.observation?.execution, { extensionId, version: '2.13.4', brokerMatches: true }) &&
     isDeepStrictEqual(failure.observation?.raw, expected);
 }
 
@@ -112,9 +114,13 @@ export async function terminateTransitionChild(child) {
 
 export function superviseTransitionChild({ child, nonce, roots, deadlineMs = 600000, phaseTimeoutMs = 130000, killChild = terminateTransitionChild }) {
   return new Promise(resolve => {
-    const launches = new Map(), cleanupErrors = [];
+    const launches = new Map(), cleanupErrors = [], secondaryErrors = [];
     let failure = null, result, receivedResult = false, finished = false, phaseTimer;
-    const remember = error => { failure ||= genericFailure(error); };
+    const remember = error => {
+      const next = genericFailure(error);
+      if (!failure) failure = next;
+      else if (secondaryErrors.length < 32) secondaryErrors.push(next);
+    };
     const finish = normalExit => {
       if (finished) return; finished = true; clearTimeout(timer); clearTimeout(phaseTimer);
       child.removeListener('message', onMessage); child.removeListener('exit', onExit); child.removeListener('error', onError);
@@ -122,7 +128,7 @@ export function superviseTransitionChild({ child, nonce, roots, deadlineMs = 600
       if (!receivedResult) remember(fail('transition-child-result-missing'));
       if (!normalExit) remember(fail('transition-child-exit'));
       if (unconfirmedRoots.length) remember(fail('cleanup-unconfirmed'));
-      resolve({ result, failure, cleanupErrors, unconfirmedRoots, normalExit, launches: [...launches.values()] });
+      resolve({ result, failure, cleanupErrors, secondaryErrors, unconfirmedRoots, normalExit, launches: [...launches.values()] });
     };
     const expire = async code => {
       if (finished) return;
@@ -137,7 +143,7 @@ export function superviseTransitionChild({ child, nonce, roots, deadlineMs = 600
     const onMessage = message => {
       try {
         if (!message || message.nonce !== nonce || Buffer.byteLength(JSON.stringify(message)) > 1048576) throw fail('transition-ipc');
-        if (message.type === 'failure') { if (!message.failure?.code) throw fail('transition-ipc'); failure ||= message.failure; return; }
+        if (message.type === 'failure') { if (!message.failure?.code) throw fail('transition-ipc'); remember({ failure: message.failure }); return; }
         if (message.type === 'result') {
           if (receivedResult || [...launches.values()].some(value => !value.closed)) throw fail('transition-ipc');
           receivedResult = true; result = message.result; return;
@@ -224,25 +230,33 @@ async function requestLaunch(message) {
 }
 
 /** Parent-selected owned roots only; this runs in the supervised child. */
-async function executeChild(options) {
-  const files = await openOwnedRoot(repositoryRoot), phases = [], seeds = [], cleanupErrors = [];
+export async function executeTransitionChild(options, dependencies = {}) {
+  const deps = { openRepository: () => openOwnedRoot(repositoryRoot), openWorkRoot: openOwnedRoot, sourceAttestation,
+    readPublishedPayload, verifyCandidate, loadFixtureResponses, launchInstalledExtension, refreshTransitionWorker,
+    runTransitionPhase, requestLaunch, send, ...dependencies };
+  const files = await deps.openRepository(), phases = [], seeds = [], cleanupErrors = [], secondaryErrors = [];
   let failure, source, after, candidateInventory, active;
+  const noticed = new Set();
   const noticeFailure = async error => {
-    failure ||= error?.failure || { ...genericFailure(error), ...active };
-    await send({ type: 'failure', nonce: options.nonce, failure });
+    if (noticed.has(error)) return;
+    noticed.add(error);
+    const next = error?.failure || { ...genericFailure(error), ...active };
+    if (failure) { if (secondaryErrors.length < 32) secondaryErrors.push(next); return; }
+    failure = next;
+    await deps.send({ type: 'failure', nonce: options.nonce, failure });
   };
   try {
-    source = await sourceAttestation(files);
-    const published = await readPublishedPayload();
-    const first = await verifyCandidate(options.candidateIds[0], files.root);
+    source = await deps.sourceAttestation(files);
+    const published = await deps.readPublishedPayload();
+    const first = await deps.verifyCandidate(options.candidateIds[0], files.root);
     const current = await payloadFromDirectory(first.dist);
-    const second = await verifyCandidate(options.candidateIds[1], files.root);
+    const second = await deps.verifyCandidate(options.candidateIds[1], files.root);
     if (current.inventorySha256 !== (await payloadFromDirectory(second.dist)).inventorySha256) throw fail('transition-build-reproducibility');
     candidateInventory = current.inventorySha256;
-    const responses = await loadFixtureResponses(files);
+    const responses = await deps.loadFixtureResponses(files);
     let failureArtifacts = false;
     for (const assigned of options.roots) {
-      const work = await openOwnedRoot(await files.resolve(assigned.root, { type: 'directory' }));
+      const work = await deps.openWorkRoot(await files.resolve(assigned.root, { type: 'directory' }));
       const profilePath = await work.ensureDirectory('profile'), extensionPath = await work.ensureDirectory('extension'), artifactPath = await work.ensureDirectory('trace');
       let expectedId;
       for (const phase of ['seed', 'old', 'new', 'rollback']) {
@@ -253,13 +267,13 @@ async function executeChild(options) {
         const beforeHash = await checkInventory(extensionPath, entries);
         const intent = { type: 'launch-intent', nonce: options.nonce, caseId: assigned.caseId, phase, launchId: `${assigned.caseId}:${phase}`, root: assigned.root };
         active = { ...active, step: 'launch', stage: 'launch' };
-        await requestLaunch(intent);
+        await deps.requestLaunch(intent);
         let context, traced = false, closed = false, phaseError;
         try {
-          let launched = await launchInstalledExtension({ chromiumApi: chromium, extensionPath, profilePath, artifactPath, headed: options.headed });
+          let launched = await deps.launchInstalledExtension({ chromiumApi: chromium, extensionPath, profilePath, artifactPath, headed: options.headed });
           context = launched.context;
           context.setDefaultTimeout(15000);
-          launched = await refreshTransitionWorker(launched);
+          launched = await deps.refreshTransitionWorker(launched);
           if (expectedId && expectedId !== launched.extensionId) throw fail('transition-execution');
           expectedId ||= launched.extensionId;
           await context.tracing.start({ screenshots: false, snapshots: true, sources: false }); traced = true;
@@ -275,7 +289,7 @@ async function executeChild(options) {
             if (!isDeepStrictEqual(await launched.worker.evaluate(() => chrome.storage.local.get(null)), seed)) throw fail('transition-seed-write');
             seeds.push({ caseId: assigned.caseId, raw: seed, extensionId: expectedId, writes: 1 });
           } else {
-            const result = await runTransitionPhase({ ...launched, responses, caseId: assigned.caseId, phase,
+            const result = await deps.runTransitionPhase({ ...launched, responses, caseId: assigned.caseId, phase,
               runNonce: options.nonce, expectedBrokerSource: entries.find(entry => entry.name === 'settings-broker.js').bytes.toString('utf8') });
             phases.push({ ...result, extensionId: expectedId, inventorySha256: beforeHash,
               manifestSha256: entries.find(entry => entry.name === 'manifest.json').sha256 });
@@ -307,7 +321,7 @@ async function executeChild(options) {
             }
             try {
               await timeout(async () => { for (const page of context.pages()) await page.close(); await context.close(); }, 10000, 'transition-close-timeout');
-              closed = true; await send({ ...intent, type: 'close-success' });
+              closed = true; await deps.send({ ...intent, type: 'close-success' });
             } catch (error) { cleanupErrors.push({ code: error?.code || 'transition-close-failed', caseId: assigned.caseId, phase }); }
           }
         }
@@ -318,10 +332,10 @@ async function executeChild(options) {
         if (cleanupErrors.length) throw fail('transition-cleanup-failed');
       }
     }
-  } catch (error) { if (!failure) await noticeFailure(error); }
-  try { after = await sourceAttestation(files); if (source && !isDeepStrictEqual(source, after)) throw fail('transition-source-changed'); }
-  catch (error) { if (!failure) await noticeFailure(error); else cleanupErrors.push({ code: error?.code || 'transition-source-changed', caseId: null, phase: null }); }
-  await send({ type: 'result', nonce: options.nonce, result: { source, after, candidateInventory, seeds, phases, failure, cleanupErrors } });
+  } catch (error) { await noticeFailure(error); }
+  try { after = await deps.sourceAttestation(files); if (source && !isDeepStrictEqual(source, after)) throw fail('transition-source-changed'); }
+  catch (error) { await noticeFailure(error); }
+  await deps.send({ type: 'result', nonce: options.nonce, result: { source, after, candidateInventory, seeds, phases, failure, cleanupErrors, secondaryErrors } });
 }
 
 // This path is below the freshly claimed artifact root; Playwright needs an absolute output path.
@@ -340,7 +354,7 @@ export async function runInstalledTransition({ runId, headed = false, control, d
   const deps = { ...dependenciesDefault, ...dependencies }, files = await deps.openRepository();
   const nonce = randomBytes(16).toString('hex'), artifact = `output/playwright/installed-extension-transition-${runId}`;
   const claim = `output/playwright/installed-transition-claim-${runId}.lock`, candidateIds = [`B2${runId}A`, `B2${runId}B`];
-  const roots = [], candidates = [], cleanupErrors = [];
+  const roots = [], candidates = [], cleanupErrors = [], secondaryErrors = [];
   let claimed = false, artifactCreated = false, supervision, primary, child, report;
   try {
     await files.ensureDirectory('output/playwright');
@@ -363,13 +377,15 @@ export async function runInstalledTransition({ runId, headed = false, control, d
     const result = supervision.result;
     if (!result || !result.source || !isDeepStrictEqual(result.source, result.after)) primary ||= genericFailure(fail('transition-source-changed'));
     if (Array.isArray(result?.cleanupErrors)) cleanupErrors.push(...result.cleanupErrors);
+    secondaryErrors.push(...(supervision.secondaryErrors || []), ...(result?.secondaryErrors || []));
     cleanupErrors.push(...supervision.cleanupErrors);
-    if (control && primary && supervision.normalExit && !supervision.unconfirmedRoots.length && !cleanupErrors.length && matchesStorageLoss(primary, nonce)) {
+    if (control && primary && supervision.normalExit && !supervision.unconfirmedRoots.length && !cleanupErrors.length && !secondaryErrors.length &&
+        matchesStorageLoss(primary, nonce, result?.seeds?.[0]?.extensionId)) {
       validateTransitionResult(result, nonce, control, supervision.launches);
       const old = result?.phases;
       if (old?.length !== 1 || old[0].caseId !== 'valid-ui' || old[0].phase !== 'old' || old[0].final?.raw?.settingsRevision !== 8) throw fail('transition-control-old-baseline');
       report = { ok: true, control, detected: primary, result }; primary = null;
-    } else if (!primary) {
+    } else if (!primary && !secondaryErrors.length) {
       if (control) throw fail('transition-control-unexpected-pass');
       validateTransitionResult(result, nonce, control, supervision.launches);
       report = { ok: true, result };
@@ -394,8 +410,8 @@ export async function runInstalledTransition({ runId, headed = false, control, d
       catch (error) { cleanupErrors.push({ code: error?.code || 'transition-claim-cleanup', caseId: null, phase: null }); }
     }
   }
-  report = { ...(report || {}), ...(supervision?.result ? { result: supervision.result } : {}), ok: !primary && cleanupErrors.length === 0, runId, ...(control ? { control } : {}),
-    ...(primary ? { failure: primary } : {}), cleanupErrors: cleanupErrors.slice(0, 32),
+  report = { ...(report || {}), ...(supervision?.result ? { result: supervision.result } : {}), ok: !primary && cleanupErrors.length === 0 && secondaryErrors.length === 0, runId, ...(control ? { control } : {}),
+    ...(primary ? { failure: primary } : {}), cleanupErrors: cleanupErrors.slice(0, 32), secondaryErrors: secondaryErrors.slice(0, 32),
     retainedRoots: roots.filter(value => supervision?.unconfirmedRoots.includes(value.root) || (child && !supervision?.normalExit)),
     limits: ['bundled-code-relaunch-not-native-update', 'no-platform-rollback', 'detached-browser-needs-close-ack'] };
   if (artifactCreated) {
@@ -410,7 +426,7 @@ export async function runInstalledTransition({ runId, headed = false, control, d
 if (process.argv[1] && path.resolve(process.argv[1]) === scriptPath) {
   if (process.send) {
     process.once('message', options => {
-      void executeChild(options).then(() => process.disconnect()).catch(error => {
+      void executeTransitionChild(options).then(() => process.disconnect()).catch(error => {
         console.error(error?.code || error?.message); process.exitCode = 1; process.disconnect();
       });
     });

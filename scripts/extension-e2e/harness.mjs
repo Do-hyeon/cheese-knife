@@ -40,6 +40,7 @@ export function extensionLaunchOptions(extensionPath, headed) {
   return {
     channel: 'chromium',
     headless: !headed,
+    ignoreDefaultArgs: ['--disable-extensions'],
     args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
   };
 }

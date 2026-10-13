@@ -15,7 +15,8 @@ function observed(raw = seed, repair = false) {
     execution: { extensionId, version: '2.13.3', brokerMatches: true },
     ui: { popupPhase: repair ? 'repair-required' : 'ready', stylesPhase: repair ? 'repair-required' : 'ready',
       arrowSeek: true, previewVolume: 5, brightness: repair ? 1 : 1.25, hideRanking: false, fontSize: 0,
-      popupDisabled: repair, stylesDisabled: repair, secondArrowSeek: true, secondPreviewVolume: 5 },
+      popupArrowDisabled: repair, popupVolumeDisabled: repair, secondArrowDisabled: repair, secondVolumeDisabled: repair,
+      stylesRankingDisabled: repair, stylesFontDisabled: repair, secondArrowSeek: true, secondPreviewVolume: 5 },
     css: { registrations: [], font: ['', '', '', ''], ranking: 'block', reloads: [0, 0] },
     runtime: { ready: true, config: { ...normalized }, requestIdObserved: true, revisionObserved: true, duplicatedControls: false } };
 }
@@ -75,7 +76,7 @@ test('oracle validates damaged UI separately from ready normalized MAIN', async 
   const expected = expectedTransitionState('damaged-revision', 'old', 'startup', nonce, extensionId);
   assert.equal(assertTransitionState(actual, expected), undefined);
   assert.deepEqual(expected.runtime.config, normalized);
-  for (const change of [value => { value.ui.popupDisabled = false; }, value => { value.ui.stylesPhase = 'ready'; }]) {
+  for (const change of [...['popupArrowDisabled', 'popupVolumeDisabled', 'secondArrowDisabled', 'secondVolumeDisabled', 'stylesRankingDisabled', 'stylesFontDisabled'].map(field => value => { value.ui[field] = false; }), value => { value.ui.stylesPhase = 'ready'; }]) {
     const value = structuredClone(actual); change(value);
     assert.throws(() => assertTransitionState(value, expected), { code: 'transition-ui' });
   }
@@ -88,6 +89,27 @@ test('missing/lost unknown/revision/config is preservation failure, never a time
     value => { delete value.raw.config.futureFlag; }, value => { value.raw.settingsRevision = 0; }, value => { delete value.raw; }]) {
     const value = observed(); change(value);
     assert.throws(() => assertTransitionState(value, expected), { code: 'transition-storage-preservation' });
+  }
+});
+
+test('wrong execution takes precedence over simultaneous storage loss', async () => {
+  const { assertTransitionState, expectedTransitionState } = await subject();
+  const value = observed(); delete value.raw.config; value.execution.version = '2.13.4';
+  assert.throws(() => assertTransitionState(value, expectedTransitionState('valid-ui', 'old', 'startup', nonce, extensionId)), { code: 'transition-execution' });
+});
+
+test('phase refuses the wrong version before accessing any UI or storage', async () => {
+  const { runTransitionPhase } = await subject();
+  await assert.rejects(runTransitionPhase({ context: {}, worker: { evaluate: async () => ({ extensionId, version: '2.13.3', brokerSource: 'function() {}' }) },
+    extensionId, responses: {}, caseId: 'valid-ui', phase: 'new', runNonce: nonce, expectedBrokerSource: 'var createSettingsBroker = function() {};' }),
+  error => { assert.equal(error.code, 'transition-execution'); assert.equal(error.failure.observation.execution.version, '2.13.3'); return true; });
+});
+
+test('damaged state requires every writable control in both popups and styles disabled', async () => {
+  const { expectedTransitionState } = await subject();
+  const value = expectedTransitionState('damaged-revision', 'old', 'startup', nonce, extensionId);
+  for (const field of ['popupArrowDisabled', 'popupVolumeDisabled', 'secondArrowDisabled', 'secondVolumeDisabled', 'stylesRankingDisabled', 'stylesFontDisabled']) {
+    assert.equal(value.ui[field], true, field);
   }
 });
 

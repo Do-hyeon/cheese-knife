@@ -116,6 +116,15 @@ export async function openOwnedRoot(directory) {
     await inspect(relative, 'file');
     return result.path;
   }
+  async function publishFile(sourceRelative, destinationRelative) {
+    if (!sourceRelative || !destinationRelative) throw ownedError('owned-path-root-operation');
+    const source = await inspect(sourceRelative, 'file'), destination = await inspect(destinationRelative, 'missing-or-file');
+    if (source.path === destination.path) throw ownedError('owned-path-overlap');
+    if (!destination.exists && destination.missingAt !== partsOf(destinationRelative).length - 1) throw missingError();
+    // Same-root hard link publishes completed bytes atomically; an existing destination is never replaced.
+    await fs.link(source.path, destination.path); // eslint-disable-line security/detect-non-literal-fs-filename
+    return destination.path;
+  }
   async function removeTree(relative) {
     if (!relative) throw ownedError('owned-path-root-operation');
     const result = await inspect(relative, 'any');
@@ -200,7 +209,7 @@ export async function openOwnedRoot(directory) {
     return destinationPath;
   }
 
-  const capability = { root, resolve, readFile, readdir, lstat, ensureDirectory, makeTempDirectory, writeFile, removeTree, copyFile, copyTree, copyFileFrom, copyTreeFrom };
+  const capability = { root, resolve, readFile, readdir, lstat, ensureDirectory, makeTempDirectory, writeFile, publishFile, removeTree, copyFile, copyTree, copyFileFrom, copyTreeFrom };
   capabilities.set(capability, { root, inspect });
   return capability;
 }

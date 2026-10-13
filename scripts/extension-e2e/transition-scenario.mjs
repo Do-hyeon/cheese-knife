@@ -66,7 +66,9 @@ export function expectedTransitionState(caseId, phase, step, runNonce, extension
     ui: { popupPhase: repair ? 'repair-required' : 'ready', stylesPhase: repair ? 'repair-required' : 'ready',
       arrowSeek: repair ? true : known.arrowSeek, previewVolume: repair ? 5 : known.previewVolume, brightness: repair ? 1 : 1.25,
       hideRanking: repair ? false : ranking, fontSize: repair ? 0 : font ?? 0,
-      popupDisabled: repair, stylesDisabled: repair, secondArrowSeek: repair ? true : known.arrowSeek, secondPreviewVolume: repair ? 5 : known.previewVolume },
+      popupArrowDisabled: repair, popupVolumeDisabled: repair, secondArrowDisabled: repair, secondVolumeDisabled: repair,
+      stylesRankingDisabled: repair, stylesFontDisabled: repair,
+      secondArrowSeek: repair ? true : known.arrowSeek, secondPreviewVolume: repair ? 5 : known.previewVolume },
     css: { registrations: cssFiles.length ? [{ id: 'styles', css: cssFiles, matches: ['https://chzzk.naver.com/*'], runAt: 'document_start', js: [] }] : [],
       font: typeof font === 'number' ? [1, 2, 10, 20].map(divisor => `${font / divisor}px`) : ['', '', '', ''],
       ranking: ranking && (phase !== 'old' || reloaded) ? 'none' : 'block', reloads },
@@ -74,7 +76,7 @@ export function expectedTransitionState(caseId, phase, step, runNonce, extension
 }
 
 export function assertTransitionState(actual, expected) {
-  for (const [key, code] of [['raw', 'transition-storage-preservation'], ['execution', 'transition-execution'],
+  for (const [key, code] of [['execution', 'transition-execution'], ['raw', 'transition-storage-preservation'],
     ['ui', 'transition-ui'], ['css', 'transition-css'], ['runtime', 'transition-main']]) {
     const left = Object.getOwnPropertyDescriptor(actual || {}, key)?.value;
     const right = Object.getOwnPropertyDescriptor(expected || {}, key)?.value;
@@ -110,7 +112,8 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
       actualCRLF: execution.brokerSource.split('\r\n').length - 1, expectedCRLF: expectedFunction.split('\r\n').length - 1,
       matchesAfterEOLNormalization: execution.brokerSource.replaceAll('\r\n', '\n') === expectedFunction.replaceAll('\r\n', '\n') };
     delete execution.brokerSource; observation = { execution };
-    if (execution.extensionId !== extensionId || !execution.brokerMatches) { const error = fail('transition-execution'); error.diagnostic = diagnostic; throw error; }
+    const version = phase === 'old' ? '2.13.3' : phase === 'new' ? '2.13.4' : '2.13.5';
+    if (execution.extensionId !== extensionId || execution.version !== version || !execution.brokerMatches) { const error = fail('transition-execution'); error.diagnostic = diagnostic; throw error; }
     const pageErrors = [], routeErrors = [];
     const attach = page => page.on('pageerror', error => { if (pageErrors.length < 32) pageErrors.push(String(error?.message || error).slice(0, 240)); });
     for (const page of context.pages()) attach(page);
@@ -147,11 +150,13 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
           ({ id: value.id, css: value.css || [], matches: value.matches, runAt: value.runAt, js: value.js || [] }))),
         popupA.evaluate(() => ({ popupPhase: document.querySelector('#settings-status').dataset.phase,
           arrowSeek: document.querySelector('#arrowSeek').checked, previewVolume: Number(document.querySelector('#previewVolume').value),
-          brightness: Number(document.querySelector('#brightness').value), popupDisabled: document.querySelector('#arrowSeek').disabled || document.querySelector('#previewVolume').disabled })),
-        popupB.evaluate(() => ({ secondArrowSeek: document.querySelector('#arrowSeek').checked, secondPreviewVolume: Number(document.querySelector('#previewVolume').value) })),
+          brightness: Number(document.querySelector('#brightness').value), popupArrowDisabled: document.querySelector('#arrowSeek').disabled,
+          popupVolumeDisabled: document.querySelector('#previewVolume').disabled })),
+        popupB.evaluate(() => ({ secondArrowSeek: document.querySelector('#arrowSeek').checked, secondPreviewVolume: Number(document.querySelector('#previewVolume').value),
+          secondArrowDisabled: document.querySelector('#arrowSeek').disabled, secondVolumeDisabled: document.querySelector('#previewVolume').disabled })),
         styles.evaluate(() => ({ stylesPhase: document.querySelector('#settings-status').dataset.phase,
           hideRanking: document.querySelector('#hide-ranking').checked, fontSize: Number(document.querySelector('#chat-font-size').value),
-          stylesDisabled: document.querySelector('#hide-ranking').disabled || document.querySelector('#chat-font-size').disabled })),
+          stylesRankingDisabled: document.querySelector('#hide-ranking').disabled, stylesFontDisabled: document.querySelector('#chat-font-size').disabled })),
         page.evaluate(() => ({ font: [1, 2, 10, 20].map(divisor => getComputedStyle(document.documentElement).getPropertyValue(`--knife-chat-size-${divisor}`).trim()),
           ranking: getComputedStyle(document.querySelector('[class^="live_chatting_ranking_container__"]')).display })),
         page.evaluate(() => { const runtime = window[Symbol.for('cheese-knife.runtime.v1')], envelope = window.__knifeFixture.lastConfigEnvelope;

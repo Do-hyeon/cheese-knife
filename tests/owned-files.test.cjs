@@ -14,6 +14,20 @@ async function fixture(t) {
 }
 const linkDirectory = (target, link) => fs.symlink(target, link, process.platform === 'win32' ? 'junction' : 'dir');
 
+test('publishing a complete owned file is exclusive and does not create a partial destination', async t => {
+  const { openOwnedRoot } = await owned(); const { root, outside } = await fixture(t), files = await openOwnedRoot(root);
+  await files.writeFile('complete', 'complete bytes');
+  await files.publishFile('complete', 'cache');
+  await files.removeTree('complete'); assert.equal(await files.readFile('cache', 'utf8'), 'complete bytes');
+  await files.writeFile('other', 'other');
+  await assert.rejects(files.publishFile('other', 'cache'), { code: 'EEXIST' });
+  assert.equal(await files.readFile('cache', 'utf8'), 'complete bytes');
+  await linkDirectory(outside, path.join(root, 'linked'));
+  await assert.rejects(files.publishFile('other', 'linked/cache'), { code: 'owned-path-link' });
+  await assert.rejects(files.publishFile('other', '../outside/cache'), { code: 'owned-path-invalid' });
+  await assert.rejects(files.publishFile('other', 'other'), { code: 'owned-path-overlap' });
+});
+
 test('resolveOwnedPath accepts only slash-based package-relative paths inside the root', async () => {
   const { resolveOwnedPath } = await owned();
   const root = path.resolve('fixture-root');

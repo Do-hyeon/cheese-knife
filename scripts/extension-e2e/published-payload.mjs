@@ -134,7 +134,7 @@ export async function preparePublishedPayload({ files, fetchImpl = fetch, signal
     const directory = await files.makeTempDirectory('published-payload-partial-');
     partial = path.relative(files.root, directory).split(path.sep).join('/');
     await files.writeFile(`${partial}/payload.zip`, bytes, { flag: 'wx' });
-    await files.writeFile(baseline.cache, await files.readFile(`${partial}/payload.zip`), { flag: 'wx' });
+    await files.publishFile(`${partial}/payload.zip`, baseline.cache);
   } catch (error) {
     if (signal.aborted) throw fail('published-payload-timeout');
     throw error;

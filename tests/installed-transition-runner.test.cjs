@@ -105,14 +105,40 @@ test('loss control requires exact raw config removal at candidate-init with revi
   const raw = { styles: ['future-style', 'hide-ranking', 'chat-font-size'], styleParameters: { future: 9, 'chat-font-size': 8 },
     settingsRevision: 8, futureTop: { runNonce: nonce, untouched: true } };
   const failure = { code: 'transition-storage-preservation', caseId: 'valid-ui', phase: 'new', step: 'startup',
-    stage: 'candidate-init', observation: { raw }, cleanupErrors: [] };
-  assert.equal(matchesStorageLoss(failure, nonce), true);
+    stage: 'candidate-init', observation: { raw, execution: { extensionId: 'a'.repeat(32), version: '2.13.4', brokerMatches: true } }, cleanupErrors: [] };
+  assert.equal(matchesStorageLoss(failure, nonce, 'a'.repeat(32)), true);
   for (const mutate of [v => { v.stage = 'phase-action'; }, v => { v.caseId = 'legacy-null'; }, v => { v.phase = 'old'; },
     v => { delete v.observation; }, v => { v.observation.raw.config = {}; }, v => { v.observation.raw.settingsRevision = 0; },
     v => { v.observation.raw.futureTop.runNonce = 'bad'; }, v => { v.cleanupErrors.push({ code: 'close-failed' }); },
     v => { v.code = 'transition-action-timeout'; }]) {
-    const value = structuredClone(failure); mutate(value); assert.equal(matchesStorageLoss(value, nonce), false);
+    const value = structuredClone(failure); mutate(value); assert.equal(matchesStorageLoss(value, nonce, 'a'.repeat(32)), false);
   }
+});
+
+test('loss admission refuses missing or wrong execution provenance', async () => {
+  const { matchesStorageLoss } = await subject();
+  const raw = { styles: ['future-style', 'hide-ranking', 'chat-font-size'], styleParameters: { future: 9, 'chat-font-size': 8 },
+    settingsRevision: 8, futureTop: { runNonce: nonce, untouched: true } };
+  const id = 'a'.repeat(32);
+  const failure = { code: 'transition-storage-preservation', caseId: 'valid-ui', phase: 'new', step: 'startup', stage: 'candidate-init',
+    observation: { raw, execution: { extensionId: id, version: '2.13.4', brokerMatches: true } }, cleanupErrors: [] };
+  assert.equal(matchesStorageLoss(failure, nonce, id), true);
+  for (const change of [v => { delete v.observation.execution; }, v => { v.observation.execution.version = '2.13.3'; },
+    v => { v.observation.execution.extensionId = 'b'.repeat(32); }, v => { v.observation.execution.brokerMatches = false; }]) {
+    const value = structuredClone(failure); change(value); assert.equal(matchesStorageLoss(value, nonce, id), false);
+  }
+});
+
+test('protocol failure after expected loss is retained as a disqualifying secondary error', async () => {
+  const { superviseTransitionChild } = await subject(); const child = childFixture();
+  const pending = superviseTransitionChild({ child, nonce, roots, deadlineMs: 500 });
+  child.emit('message', intent());
+  child.emit('message', { type: 'failure', nonce, failure: { code: 'transition-storage-preservation' } });
+  child.emit('message', close()); child.emit('message', close());
+  child.emit('message', { type: 'result', nonce, result: {} }); exit(child);
+  const value = await pending;
+  assert.equal(value.failure.code, 'transition-storage-preservation');
+  assert.ok(value.secondaryErrors.some(error => error.code === 'transition-ipc'));
 });
 
 for (const mode of ['exit', 'hang']) test(`real detached descendant ${mode} never proves browser close`, async t => {
@@ -234,6 +260,34 @@ function parentFixture(fault) {
   };
   return { events, dependencies };
 }
+
+test('parent storage-loss PASS is vetoed by a later protocol or inventory fault', async () => {
+  const { runInstalledTransition } = await subject();
+  const { expectedTransitionState, transitionSeed, expectedTransitionRaw } = await import('../scripts/extension-e2e/transition-scenario.mjs');
+  for (const later of [null, 'protocol', 'inventory']) {
+    const fixture = parentFixture('phase'), child = childFixture(), id = 'a'.repeat(32), hash = '1'.repeat(64);
+    fixture.dependencies.forkChild = () => child;
+    fixture.dependencies.supervise = async () => {
+      await new Promise(resolve => setImmediate(resolve)); const options = child.sent[0], n = options.nonce;
+      const steps = ['startup', 'arrow-off', 'volume25', 'hide-ranking-on', 'font8', 'font8'];
+      const records = steps.map((step, i) => ({ step, ...(i === 5 ? { reloaded: true } : {}), observation: expectedTransitionState('valid-ui', 'old', step, n, id,
+        { reloaded: i === 5, reloads: i === 5 ? [1, 0] : [0, 0] }) }));
+      const raw = expectedTransitionRaw('valid-ui', 'old', 'font8', n); delete raw.config;
+      return { failure: { code: 'transition-storage-preservation', caseId: 'valid-ui', phase: 'new', step: 'startup', stage: 'candidate-init', cleanupErrors: [],
+        observation: { raw, execution: { extensionId: id, version: '2.13.4', brokerMatches: true } } },
+        result: { source: { sourceCommit: 'a'.repeat(40) }, after: { sourceCommit: 'a'.repeat(40) }, candidateInventory: hash,
+          seeds: [{ caseId: 'valid-ui', raw: transitionSeed('valid-ui', n), extensionId: id, writes: 1 }],
+          phases: [{ caseId: 'valid-ui', phase: 'old', records, final: records.at(-1).observation, extensionId: id, inventorySha256: hash, manifestSha256: hash }],
+          secondaryErrors: later === 'inventory' ? [{ code: 'transition-inventory' }] : [], cleanupErrors: [] },
+        secondaryErrors: later === 'protocol' ? [{ code: 'transition-ipc' }] : [], cleanupErrors: [], normalExit: true, unconfirmedRoots: [],
+        launches: ['seed', 'old', 'new'].map(phase => ({ caseId: 'valid-ui', phase })) };
+    };
+    if (!later) assert.equal((await runInstalledTransition({ runId: 'Control1', control: 'storage-loss', dependencies: fixture.dependencies })).ok, true);
+    else await assert.rejects(runInstalledTransition({ runId: 'Control1', control: 'storage-loss', dependencies: fixture.dependencies }), error => {
+      assert.equal(error.report.ok, false); assert.equal(error.report.secondaryErrors.length, 1); return true;
+    });
+  }
+});
 
 for (const fault of ['artifact-exists', 'candidate-exists', 'claim', 'root', 'phase', 'cleanup', 'summary', 'unconfirmed']) {
   test(`parent ${fault} never deletes an existing target or reports control PASS`, async () => {
