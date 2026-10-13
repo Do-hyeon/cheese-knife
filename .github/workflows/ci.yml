@@ -59,6 +59,9 @@ jobs:
       - name: Fetch pinned published settings baseline
         run: git fetch --no-tags --depth=1 origin fb15f9675f9ea910e98363635155bc4ff9eb1d2f
 
+      - name: Prepare pinned published payload
+        run: node scripts/extension-e2e/published-payload.mjs --prepare
+
       - name: Run tests
         run: npm test
 
