@@ -6,7 +6,7 @@ const { JSDOM } = require('jsdom');
 const subject = () => import('../scripts/check-installed-transition.mjs');
 const id = 'a'.repeat(32);
 
-function fixture(t, { enabled = false, fault } = {}) {
+function fixture(t, { enabled = false, fault, displayVersion } = {}) {
   const dom = new JSDOM('<extensions-manager></extensions-manager>', { runScripts: 'outside-only' });
   t.after(() => dom.window.close());
   const manager = dom.window.document.querySelector('extensions-manager').attachShadow({ mode: 'open' });
@@ -17,11 +17,11 @@ function fixture(t, { enabled = false, fault } = {}) {
   const list = manager.querySelector('extensions-item-list').attachShadow({ mode: 'open' });
   list.innerHTML = `<extensions-item id="${id}"></extensions-item>`;
   const item = list.querySelector('extensions-item');
-  item.data = { id, version: '2.13.3', state: 'ENABLED', disableReasons: { unsupportedDeveloperExtension: false, blockedByPolicy: false, reloading: false } };
+  item.data = { id, version: displayVersion || '2.13.3', state: 'ENABLED', disableReasons: { unsupportedDeveloperExtension: false, blockedByPolicy: false, reloading: false } };
   if (fault === 'missing-target') item.remove();
   const events = [], writes = [], worker = new EventEmitter(); let clicked = 0;
   toggle.addEventListener('click', () => { clicked++; if (fault !== 'toggle-noop') toggle.checked = !toggle.checked; events.push('mode-click'); });
-  const chrome = { runtime: { id, getManifest: () => ({ version: '2.13.3' }), reload: () => {
+  const chrome = { runtime: { id, getManifest: () => ({ version: '2.13.3', ...(displayVersion ? { version_name: displayVersion } : {}) }), reload: () => {
     events.push('reload');
     if (fault === 'reload') throw Object.assign(Error('reload-failed'), { code: 'test-reload' });
     if (!toggle.checked) { item.data.state = 'DISABLED'; item.data.disableReasons.unsupportedDeveloperExtension = true; }
@@ -44,7 +44,7 @@ function fixture(t, { enabled = false, fault } = {}) {
     locator: selector => ({ click: async () => { assert.equal(selector, 'extensions-toolbar #devMode'); toggle.click(); } }),
     close: async () => { events.push('page-close'); if (fault === 'close' || fault === 'popup-and-close') throw Object.assign(Error('page-close'), { code: 'test-page-close' }); },
   }) };
-  const next = {}, reacquire = async (actual, previous, milliseconds, options) => {
+  const next = { evaluate: async fn => vm.runInNewContext(`(${fn.toString()})()`, { chrome }) }, reacquire = async (actual, previous, milliseconds, options) => {
     assert.equal(actual, context); assert.equal(previous, worker); assert.deepEqual(options, { reusePrevious: false });
     assert.ok(events.includes('old-close')); assert.ok(events.includes('popup-wake')); events.push('fresh-worker');
     return { worker: next, extensionId: fault === 'wrong-id' ? 'b'.repeat(32) : id };
@@ -58,6 +58,12 @@ for (const enabled of [false, true]) test(`normal UI mode preparation enabled=${
   assert.equal(result.worker, f.next); assert.equal(f.clicked(), enabled ? 0 : 1); assert.deepEqual(f.writes, []);
   assert.ok(f.events.indexOf('old-close') < f.events.indexOf('popup-wake'));
   assert.deepEqual(result.preparation, { developerMode: true, workerClosed: true, extensionId: id, version: '2.13.3', state: 'ENABLED' });
+});
+
+test('Chrome display version_name is distinct from the preserved three-component execution version', async t => {
+  const { refreshTransitionWorker } = await subject(), f = fixture(t, { displayVersion: '2.13.3 sidebar follow-up preview' });
+  const result = await refreshTransitionWorker(f.launched, f.reacquire, 25);
+  assert.equal(result.preparation.version, '2.13.3'); assert.equal(f.clicked(), 1); assert.deepEqual(f.writes, []);
 });
 
 for (const [fault, code] of [['locked', 'transition-developer-mode-locked'], ['missing-target', 'transition-preparation-timeout'],
