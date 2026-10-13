@@ -17,7 +17,8 @@ const fail = code => Object.assign(new Error(code), { code });
 const execFileAsync = promisify(execFile);
 const slash = value => value.split(path.sep).join('/');
 const genericFailure = error => error?.failure || { code: String(error?.code || 'transition-failed').slice(0, 240),
-  caseId: null, phase: null, step: 'prepare', stage: 'prepare', cleanupErrors: [] };
+  caseId: null, phase: null, step: 'prepare', stage: 'prepare',
+  diagnostic: { name: String(error?.name || 'Error').slice(0, 80), message: String(error?.message || '').replaceAll(repositoryRoot, '<repository>').slice(0, 240) }, cleanupErrors: [] };
 const relative = (files, absolute) => {
   const value = slash(path.relative(files.root, absolute));
   if (!value || value === '..' || value.startsWith('../') || path.isAbsolute(value)) throw fail('transition-owned-path');
