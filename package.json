@@ -16,6 +16,7 @@
     "typecheck": "tsc -p tsconfig.json",
     "typecheck:development": "tsc -p tsconfig.development.json",
     "typecheck:audio-tools": "tsc -p tsconfig.audio-tools.json",
+    "typecheck:settings-fixture": "tsc -p tsconfig.settings-fixture.json",
     "check:build-proof": "node scripts/check-build-proof.mjs",
     "test:e2e": "node scripts/check-installed-extension.mjs",
     "test:e2e:negative": "node scripts/check-installed-extension-negative.mjs",

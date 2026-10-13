@@ -304,3 +304,16 @@ test('fixture actual internal bindings reject five goals and each one-boundary w
   assert.equal([...allTargets.values()].reduce((sum,targets)=>sum+targets.size,0),25); diagnostics(compile(project),allTargets);
   assert.equal(fs.readFileSync(fixturePath,'utf8').replaceAll('\r\n','\n'),original);
 });
+
+test('fixture checker connects once to both offline foundation platforms without changing old gates', () => {
+  const pkg=JSON.parse(fs.readFileSync('package.json','utf8')), ci=fs.readFileSync('.github/workflows/ci.yml','utf8');
+  assert.equal(pkg.scripts['typecheck:settings-fixture'],'tsc -p tsconfig.settings-fixture.json');
+  assert.equal(pkg.scripts.test,'node --test tests/*.test.cjs');
+  assert.match(ci,/os: \[windows-latest, ubuntu-latest\]/);
+  const foundation=ci.split('\n  verify:')[0]; assert.ok(foundation);
+  const command=/run: (npm run check:toolchain[^\r\n]+)/.exec(foundation)?.[1]; assert.ok(command);
+  assert.equal(command,'npm run check:toolchain && npm run check:runtime-js && npm run typecheck:settings-fixture && npm run typecheck && npm run typecheck:development && npm run check:settings-runtime && npm run check:main-runtime && npm run check:build-proof && npm run typecheck:audio-tools');
+  assert.equal((ci.match(/npm run typecheck:settings-fixture/g)||[]).length,1);
+  assert.match(command,/npm run typecheck && npm run typecheck:development/); assert.ok(command.endsWith('npm run typecheck:audio-tools'));
+  for(const fragment of ['npm_config_offline: "true"','HTTP_PROXY: http://127.0.0.1:9','HTTPS_PROXY: http://127.0.0.1:9','NO_PROXY: ""']) assert.ok(foundation.includes(fragment));
+});
