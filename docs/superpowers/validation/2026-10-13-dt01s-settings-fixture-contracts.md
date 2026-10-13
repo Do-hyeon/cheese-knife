@@ -131,8 +131,76 @@ ledger4c312e3e66bb773470816779ef1868b4356b344f645a0efaf44bc5e49ebc0401,
 manifest/lock, two protected branch SHAs, P09 directory metadata, versions2.13.3.
 No original dist build, user Chrome/profile/account or store action occurred.
 
-## Pending final review and maintenance handoff
+## Final independent review
 
-Final fresh Astra max and closeout remain pending. Native update/rollback,
-NUM01, DT02 native implementation, release/publication and security certification
-remain outside. No automatic AF05-B implementation or push/PR authority.
+Fresh Astra max reviewed e1fc0d3..2205ecc, actual connected source/callers and
+retained evidence. **Critical0 / Important0 / Minor1; ship for approved local
+DT01-S scope.** No child reviewers, persisted proofs, suites, browsers, audits
+or source edits by the reviewer. HEAD/source stayed frozen and working tree clean.
+
+Independent RAM TypeScript query: exact13 owned graph, configuration/syntax/
+binding/global/semantic diagnostics0. Actual storage data/snapshot remain
+unknown-valued records and delta old/new entries unknown. The reviewer checked
+the script-field distinction and independently reproduced old Partial merge
+TS2345; both current and old aliases accept mixed js/css arrays. Bench medians
+and synthetic counts were recomputed from retained reports, not new executions.
+
+**Deferred Minor1:** fixture line15/spec154 and the historical rationale above
+call Chrome's js/css union exclusive. That is inaccurate: both arrays are
+allowed. The actual old-Partial failure is explicit undefined under
+exactOptionalPropertyTypes; a merge can produce both present undefined fields.
+The mapped-field refinement is still justified and minimal. Explanation/comment
+correction is deferred under the one-pass Minor policy, not a functional or type
+fix. No Critical/Important fix pass or re-review was needed.
+
+Every declined judgment has an executor ruling, in review order:
+
+1. Preserve existing callback repetition/counter/retained error/rejected chains:
+   type maintenance must not silently repair behavior. Cost: those old behaviors
+   still exist, now tested.
+2. Keep complete/future Chrome overload compatibility outside selected contracts:
+   generated constructor ABI is declared. Cost: partial fake is not full Chrome.
+3. Keep arbitrary worker-program/external-locale validation outside controlled
+   fixture inputs. Cost: no safe general-purpose execution/catalogue facility.
+4. Keep ten old consumer bodies/UI/bridge/background outside S checker.
+   Cost: thirteen-file check is not whole-test-suite typing.
+5. Do not reopen unrelated C/product defects. Cost: this review is not their
+   renewed audit; unchanged connected behavior is exercised by regressions.
+6. Preserve native update/rollback, natural wake/BFCache/in-place-reload limits.
+   Cost: synthetic/fallback PASS cannot prove those real states.
+7. Keep runner redesign outside S. Cost: abnormal-close termination/retention
+   remain unproved; own disposable files may already be removed by runner.
+8. Keep fresh advisories/security certification outside unchanged-dependency
+   maintenance. Cost: scanner inventory excludes tests and is not complete
+   security coverage; reports are observations, not an absence guarantee.
+9. Keep remote CI/other toolchains instruction-gated. Cost: local Node24.19.0
+   results/config inspection are not remote Windows/Ubuntu acceptance.
+10. Keep production/perceptual performance claims outside local/synthetic data.
+    Cost: tooling measurements/audio metrics are not actual broadcast acceptance.
+11. Keep DT02 native/NUM01 policy/maintenance closure/AF05/publication separate.
+    Cost: S local completion does not authorize or finish them.
+
+Earlier checkout/field-contract rulings remain above; the inaccurate exclusive
+wording is explicitly identified here rather than accepted as fact. No new
+dependency/guard/runtime conversion was introduced. The one deferred Minor is
+not hidden by the local completion status.
+
+## Local closeout and remaining gates
+
+Final task-done acceptance reran the immutable clone's entire suite:
+1014tests/1013pass/fail0/same skip1, duration60937.8863ms. No code changed after
+review. Owned scratch archival is recorded at closeout. Original
+dist/profile/ZIP/old evidence remain protected; no push/PR/merge/branch deletion.
+DT02 remains accepted deferral, not native implementation; NUM01 input-policy
+decision and maintenance closure/AF05-B return are separately gated. Existing
+B2 plan/execution and release conditions are not relaxed.
+
+Both isolated clones and their reports remain under output. This plan's123
+scratch/proof/log files were copied to `output/dt01s-execution-record-20261013`,
+compared by exact relative path/SHA256/count, and only the physically verified
+owned scratch directory with matching plan marker was removed. The standalone
+dt01sCandidate was removed with the existing owned helper after exact absolute
+path verification inside the new candidate clone. Other plans/old evidence/
+profiles/root dist were never cleanup targets. Final after-cleanup protection
+JSON exactly matches this run's final snapshot, including approved package hash.
+Branch remains codex/dt01c-artifact-contracts; no public CI or integration.

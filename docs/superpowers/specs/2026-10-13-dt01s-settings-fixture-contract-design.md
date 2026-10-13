@@ -293,7 +293,9 @@ remote transmission, account/store operation or user extension reload.
 
 Written-spec approval permits detailed implementation planning and its review;
 completed-plan/execution approval must precede source/tests/config/Native work.
-Current branch is reused; local document commit only, no push/PR/merge/deletion.
+Current branch is reused; approved implementation/evidence local commits only,
+no push/PR/merge/branch deletion. Owned scratch/candidate cleanup does not change
+that branch policy.
 Maintenance closeout is still pending DT01-S execution and explicit remaining
 candidate dispositions. DT02 accepted deferral is not native implementation
 completion. AF05-B/B2 existing approval and release gates remain intact.

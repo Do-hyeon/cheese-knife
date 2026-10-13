@@ -169,7 +169,7 @@ Allowed erased assertions are exactly the spec's boundaries: stored object index
 
   Also run the ten existing direct fixture consumers plus settings-contract, preserving all214 existing cases, and development-types/audio-signal contract tests. Expected exit0/fail0/new skip0; four proof calls plus one inventory call, actual13 graph. List is fixture/new test/helpers, five settings sources, and runtime/site-adapter/audio/player/preview contracts. Do not import published-baseline/owned-files/tools into the checked test; legacy compatibility tests own that boundary. Token equivalence/literal oracle/internal controls must all pass, not just public typing. If body checking requires an unsupported cast/runtime rewrite, stop for a spec revision.
 
-- [ ] **9. Local implementation checkpoint.** Stage only fixture/new test/new config and approved execution docs; commit `test: type settings fixture and consumer contracts`. Keep the token/oracle RED→GREEN evidence. No generated files, push, PR or per-task review in recommended Native execution.
+- [x] **9. Local implementation checkpoint.** Stage only fixture/new test/new config and approved execution docs; commit `test: type settings fixture and consumer contracts`. Keep the token/oracle RED→GREEN evidence. No generated files, push, PR or per-task review in recommended Native execution.
 
 ### Task 2: Real CI connection and isolated whole-branch validation
 
@@ -177,15 +177,15 @@ Allowed erased assertions are exactly the spec's boundaries: stored object index
 
 **Interfaces:** Consume Task1 checker/consumer. Produce `typecheck:settings-fixture` package command and the nine-gate offline foundation sequence, with unchanged product behavior and explicitly measured additional maintenance cost.
 
-- [ ] **1. Write real connection RED.** In the checked test, assert package script equals `tsc -p tsconfig.settings-fixture.json`; CI has the new command exactly once immediately after runtime inventory and before product typecheck, on both foundation platforms under existing offline env. Assert old development substring/audio tail and existing npm-test discovery remain unchanged. Run only this new connection test; before integration its missing script/CI assertions must fail. Do not rewrite old regex/tests to pass.
+- [x] **1. Write real connection RED.** In the checked test, assert package script equals `tsc -p tsconfig.settings-fixture.json`; CI has the new command exactly once immediately after runtime inventory and before product typecheck, on both foundation platforms under existing offline env. Assert old development substring/audio tail and existing npm-test discovery remain unchanged. Run only this new connection test; before integration its missing script/CI assertions must fail. Do not rewrite old regex/tests to pass.
 
-- [ ] **2. Add only the script and CI invocation.** Preserve dependencies/lock/version and every old command/order/timeout/env. Run actual new checker command through existing npm CLI, plus package/development/audio contract connection regressions. Commit implementation before clone validation so its target is immutable.
+- [x] **2. Add only the script and CI invocation.** Preserve dependencies/lock/version and every old command/order/timeout/env. Run actual new checker command through existing npm CLI, plus package/development/audio contract connection regressions. Commit implementation before clone validation so its target is immutable.
 
-- [ ] **3. Capture protected baseline and build fresh isolated clones.** Preserve exact original dist58 digest `d01bd672ff9bb9ffab808099432129b9429f5baa2fbf256e612531e358086c60`, release ZIP SHA `67ae9c1512fef7e0ca651c150e3b4e3052a73e7d96b7ed988adc85114cdb1d51`, frozen P02 `f027a9e8a8c7b44df1a0d8104a7354c9c787a8f6b62b4f532131fb7bcd193dd8`, ledger `4c312e3e66bb773470816779ef1868b4356b344f645a0efaf44bc5e49ebc0401`, manifest/lock, protected branches and P09 profile metadata. Verify package delta is only the script; original package hash is not expected after that approved edit. Do not rewrite old final-protection JSON.
+- [x] **3. Capture protected baseline and build fresh isolated clones.** Preserve exact original dist58 digest `d01bd672ff9bb9ffab808099432129b9429f5baa2fbf256e612531e358086c60`, release ZIP SHA `67ae9c1512fef7e0ca651c150e3b4e3052a73e7d96b7ed988adc85114cdb1d51`, frozen P02 `f027a9e8a8c7b44df1a0d8104a7354c9c787a8f6b62b4f532131fb7bcd193dd8`, ledger `4c312e3e66bb773470816779ef1868b4356b344f645a0efaf44bc5e49ebc0401`, manifest/lock, protected branches and P09 profile metadata. Verify package delta is only the script; original package hash is not expected after that approved edit. Do not rewrite old final-protection JSON.
 
   After execution approval, unique ignored `output/dt01s-validation-<run>` clone at implementation SHA and `output/dt01s-baseline-<run>` at051aad1, --no-hardlinks, existing physical pinned node_modules/tool copies, no junction/install/fetch. Confirm local published fb15f967 object and absent destinations; resolve every candidate/profile/output target inside the new clone, not original checkout or prior C folders.
 
-- [ ] **4. Run actual foundation/full tests/tools in the candidate clone.**
+- [x] **4. Run actual foundation/full tests/tools in the candidate clone.**
 
   ```powershell
   node scripts/check-toolchain.mjs
@@ -204,7 +204,7 @@ Allowed erased assertions are exactly the spec's boundaries: stored object index
 
   Expected nine gates0, full failures0 with only existing missing-private-P02 skip1, no new skip or modified frozen assertion. Report existing ESLint7 IDs/severity unchanged, Gitleaks actual observations and available npm evidence separately; tool failure is unverified, not clean. No npm registry transmission is necessary for unchanged dependencies; if a new audit is needed, follow its existing explicit authorization gate, not a fabricated fresh clean result. Tests/config remain outside the old static inventory; no exclusions broadened or scanner coverage claimed for the typed fake.
 
-- [ ] **5. Run silent candidate/installed regressions only inside that clone.**
+- [x] **5. Run silent candidate/installed regressions only inside that clone.**
 
   ```powershell
   node scripts/verify-candidate.mjs dt01sCandidate
@@ -215,11 +215,11 @@ Allowed erased assertions are exactly the spec's boundaries: stored object index
 
   Fresh alphanumeric IDs/no --chrome or --headed. Candidate58/package20, synthetic14/18/12 with failures[], sources1, calibration RMS0.34–0.36 and all measured full-scale excess0. Positive/negative functional PASS must be separate from runner lifecycle/cleanup limitations; negative main-runtime-missing is not retention proof. Existing runner can delete disposable profile/candidate after close failure. Preserve clone/reports and stop additional cleanup/phases on abnormal termination; describe anything already deleted by the runner honestly. Root dist/ZIP/user profiles unchanged.
 
-- [ ] **6. Measure cost and record assertion/source evidence.** Cold1/warm5 in matched baseline/candidate environments, no parallel heavy workload: compare the old eight-gate versus new nine-gate workflow and unchanged development/audio/product checks, recording elapsed/check time/memory where provided. Time the candidate's additional S checker separately with extendedDiagnostics. There was no baseline S checker: do not compare a failed91-diagnostic prototype to final strict0 or claim faster typing across unequal graphs. Label first invocation, not a promise of purged OS cache. Record actual13 graph, source/tree SHAs, four proof-call results/25 internal targets/18 public targets and localized annotation/ABI assumptions.
+- [x] **6. Measure cost and record assertion/source evidence.** Cold1/warm5 in matched baseline/candidate environments, no parallel heavy workload: compare the old eight-gate versus new nine-gate workflow and unchanged development/audio/product checks, recording elapsed/check time/memory where provided. Time the candidate's additional S checker separately with extendedDiagnostics. There was no baseline S checker: do not compare a failed91-diagnostic prototype to final strict0 or claim faster typing across unequal graphs. Label first invocation, not a promise of purged OS cache. Record actual13 graph, source/tree SHAs, four proof-call results/25 internal targets/18 public targets and localized annotation/ABI assumptions.
 
-- [ ] **7. One fresh Astra max final review and local evidence closeout.** Whole local branch/spec/plan, read-only, no child reviewers. Confirm findings against original code/evidence; fix valid Critical/Important scope defects with targeted RED/GREEN, preserve unapproved callback-policy changes as separate decisions. Commit actual evidence/checklists only when verified; repeat protection after any authorized own-output cleanup. No public CI/merge or security certification claim.
+- [x] **7. One fresh Astra max final review and local evidence closeout.** Whole local branch/spec/plan, read-only, no child reviewers. Final Critical0/Important0/Minor1; explanation correction explicitly deferred, not a type/runtime defect. Preserve unapproved callback-policy changes as separate decisions. Commit actual evidence/checklists only when verified; repeat protection after any authorized own-output cleanup. No public CI/merge or security certification claim.
 
-- [ ] **8. Hand off remaining maintenance.** DT01-S local completion requires whole-body checking, independent oracles/controls and final review, not just exit0. DT02 remains accepted deferral; NUM01/maintenance-closeout/AF05-B and existing B2 execution gates remain distinct. Stop at any new authority/user action requirement; do not silently implement or declare backlog complete.
+- [x] **8. Hand off remaining maintenance.** DT01-S local completion requires whole-body checking, independent oracles/controls and final review, not just exit0. DT02 remains accepted deferral; NUM01/maintenance-closeout/AF05-B and existing B2 execution gates remain distinct. Stop at any new authority/user action requirement; do not silently implement or declare backlog complete.
 
 ## Plan self-review and execution handoff
 

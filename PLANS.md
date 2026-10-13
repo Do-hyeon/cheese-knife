@@ -67,11 +67,11 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어는 같�
 | AF05-B | 공개 설치·업데이트·롤백 수용 | P09, 차기 AF 배포 준비 | DEFERRED-MAINTENANCE | B1 완료, B2 문서·승인 게이트 보존; 테스트·개발 도구 타입 강화 후속 마무리 후 복귀. 전체 수용 기준·실제 배포 미승인 |
 | DT01-B | 오디오 quality report 타입 계약 | DT01-A 완료·설계/실행 승인 | DONE | 구현·격리 검증·Astra max·PR #40 공개 CI 확인; 최종 head checks·병합 상태는 해당 PR 기준 |
 | DT01-C | artifact description·부분 report 비교 계약 | 설계·계획·Native/격리 실행 승인 | DONE | 로컬 구현·격리 검증·최종 Astra max 완료; 공개/CI/통합은 명시 지시 별도 |
-| DT01-S | settings fixture·callback/reply 계약 | written-spec·계획·Native/격리 실행 승인 | DOING | fixture/연결 consumer·CI·격리 검증 → 최종 Astra max; 공개 미승인 |
+| DT01-S | settings fixture·callback/reply 계약 | written-spec·계획·Native/격리 실행 승인 | DONE | 로컬 구현·격리 검증·최종 Astra max 완료; 비차단 설명 Minor1 보류, 공개 미승인 |
 | DT02 | 선택적 native TS 실행 | 조건부 보류 판단 승인 | DEFERRED | 지금은 JSDoc/checkJs 유지, 실제 유지보수 이득·검사/실행 경계 보존 조건에서 재검토; native 구현 완료 아님 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **DT01-S Native 구현·검증**. 사용자2026-10-13 written-spec과 [계획](docs/superpowers/plans/2026-10-13-dt01s-settings-fixture-contracts.md)·Native2task·격리 검증·기존 cleanup 한계·최종 Astra max를 승인했다. 최초 계획 검토 Critical0·Important1·Minor1 보완 [기록](docs/superpowers/validation/2026-10-13-dt01s-plan-review.md)을 보존한다. fixture 전체·연결 consumer·13파일 graph·raw/realm/nullable·18외부 오용/5내부 목표와 약화 대조·원본 호환·실제 CI·격리/비용/보호를 순차 실행한다. 기준 조회/회귀를 구현 PASS로 전용하지 않는다. DT02 조건부 보류, NUM01·유지보수 종료·AF05-B/B2·공개 게이트는 보존한다.
+현재 커서: **DT01-S 로컬 완료 → 독립 유지보수 종료·후속 게이트 판단**. 사용자 승인한 [계획](docs/superpowers/plans/2026-10-13-dt01s-settings-fixture-contracts.md)의 Native2task를 완료했다. 실제13파일 strict0·외부 오용18·내부25대조·전체1014개 중1013pass/실패0/기존skip1·후보/합성/설치 검사와 최종 Astra max Critical0·Important0·Minor1 [근거](docs/superpowers/validation/2026-10-13-dt01s-settings-fixture-contracts.md)를 보존한다. js/css 배타성 설명은 부정확하여 비차단 Minor로 명시 보류했고 실제 타입은 explicitundefined partial merge 근거로 유효하다. DT02 조건부 보류, NUM01·유지보수 종료·AF05-B/B2·공개 게이트는 별도로 남는다.
 
 B1은 PR #36 최종 CI run `38255250513`과 merge `b38ec388`로 완료했다. B2 설계·계획은 PR #37로 병합됐으며 최초 Astra max Critical0·Important3·Minor1 보완 기록과 구현·실행 승인 게이트를 보존한다. 수정 후 독립0건/실제전환PASS/native update 수용은 아니다. P09의 게시2.13.3·격리 신규 설치 기준은 보존하며 과거 업데이트·실제 롤백 수용은 미검증이다. AF05 전체와 기능 로드맵 동결은 유지한다.
 
@@ -294,7 +294,8 @@ AF05-B 공개 수용 — P09와 차기 AF 배포에 의존:
 - [x] **DT01-S / 상세 구현 계획 작성·자체 검토:** [계획](docs/superpowers/plans/2026-10-13-dt01s-settings-fixture-contracts.md). Native 권장2task·실제 메서드/콜백/nullable 계약·13파일 graph·원본 clone/예외/slot/src 호환·18외부 목표·5내부 목표/개별 약화 대조·실제 CI·9gate/격리/비용·보호/cleanup 한계 명시.
 - [x] **DT01-S / Astra max 계획 검토·보완:** 최초 Critical0·Important1·Minor1. 실제 CI는051aad1을 가져오지 않으므로 일회성 baseline 조회의 정규화 해시를 고정하고 일반 검사의 Git 이력 의존을 제거했다. jsdom close만으로 늦은 구독 호출이 멈추지 않음을 독립 재현해 dispose→close→gate 해제 순서/관측값을 명시했다. [검토 기록](docs/superpowers/validation/2026-10-13-dt01s-plan-review.md). 작성자 보완이며 수정 후 독립0건/실제 strict0·구현 PASS는 아님.
 - [x] **DT01-S / 계획·실행 방식 승인:** 사용자2026-10-13 Native2task 순차 구현·격리 후보/합성/설치 positive/negative·최종 Astra max·기존 close-failure cleanup 한계를 함께 승인. push/PR/병합/사용자 Chrome 조작은 제외.
-- [ ] **DT01-S / 구현·검증·최종 검토:** 승인된 계획 범위 실행 후 실제 근거로 표시. 전체 fixture 실현 가능성·strict0·비용·Astra max 최종 검토는 미검증.
+- [x] **DT01-S / 구현·검증·최종 검토:** 전체 fixture/연결 consumer13파일 strict0·외부18/내부25오용·호환성·실제 CI 연결, 집중35/35·기존214/214·격리 전체1014개 중1013pass/실패0/기존skip1, 후보58/자원20·합성14/18/12·138채널fullscale0·설치positive/negative. 최종 Astra max Critical0·Important0·Minor1. [검증 기록](docs/superpowers/validation/2026-10-13-dt01s-settings-fixture-contracts.md). 원래 dist·프로필·증거·버전2.13.3 보존; 공개 없이 로컬 보관.
+- [ ] **DT01-S / 비차단 설명 Minor1:** fixture 주석·spec·이전 판단의 ‘js/css 배타적’ 설명은 틀림. 실제 문제는 explicitundefined를 포함한 partial merge의 exactOptionalPropertyTypes 정합이다. 타입/동작 수정이 아닌 설명 교정이며 한 번의 검토 정책에 따라 보류를 명시. 별도 처리 시 관련 문구만 좁게 수정하고 문서만으로 push/PR하지 않음.
 - [ ] **NUM01 / PLAN-REVIEW:** rmsEnvelope의 NaN sampleRate/windowMs 입력에서 NaN·Infinity 결과가 남는 기존 한계 확인. 타입 이전과 분리한 숫자 입력 오류 정책·회귀 설계 후보이며 제품 결함/보안 취약점으로 확대 해석하지 않는다.
 - [x] **DT02 / 현행 호환·검사 조사:** Node native stripping과 실제 명령·감사 확장자 범위 대조. 동일 RAM 코드의 cjs→cts rename에서 TS2345/helper graph가 사라지는 반례 확인; 안전한 재설계 전체를 불가능하다고 판단한 것은 아님.
 - [x] **DT02 / 조건부 보류 승인:** 사용자2026-10-13 승인. 지금은 JSDoc/checkJs 유지. 해결 안 되는 실제 주석 중복/가독성 문제가 확인되고 import 실제 검사·발견·lint/parser·snapshot/provenance·strict/runtime 보존이 함께 설계됐을 때 선택 파일만 재검토. native 이전 구현 완료/영구 제외는 아님.
@@ -323,7 +324,7 @@ git -c core.safecrlf=false diff --check
 
 INC01은 사용자 재등록·설정 유지 확인과 PR #30·공개 CI·main 병합으로 종료했다. 원래 dist의58파일과 현재 시험판·설정은 계속 보존한다. 이 수용을 모든 방송 기능·기존 스토어 버전 업데이트 검사로 확대하지 않는다.
 
-DT01-S written-spec·계획·Native2task/격리 검증·최종 Astra max와 DT02 조건부 보류는 사용자 승인됐다. 승인 범위에서 사용자 개입 없이 순차 실행한다. 기존 runner는 close 실패 시 자기 disposable profile/candidate를 삭제할 수 있어 functional PASS와 종료/보존 보장을 분리하며, 비정상 종료 시 추가 단계/cleanup을 멈추고 남은 clone/report를 보존한다. NUM01·유지보수 종료·AF05-B 복귀/기존 B2 실행·공개는 별도 게이트다. 원래 시험판·root dist·P09 profile·스토어·현재 브랜치는 유지하고 명시 지시 없이 push/PR/병합/브랜치 삭제를 하지 않는다.
+DT01-S 승인 범위는 로컬 완료했고 비차단 설명 Minor1만 보류 목록에 남겼다. DT02 조건부 보류는 승인됐으며 NUM01·전체 유지보수 종료·AF05-B 복귀/기존 B2 실행·공개는 별도 판단/승인 게이트다. 기존 runner의 functional PASS와 종료/보존 보장은 구분한다. 원래 시험판·root dist·P09 profile·스토어·현재 브랜치는 유지하고 명시 지시 없이 push/PR/병합/브랜치 삭제를 하지 않는다.
 
 게시 완료 알림의14:55는 표시 시각이고 실제 처리 시각·시간대·초는 미확정이다. 추가 시각 자료 요청은 종료했다. 실제 롤백·차기 설치/업데이트·스토어 제출/게시에는 각각 별도 승인이 필요하다. B2 승인은 새 private bundled 프로필·UI 저장·손실 control·cleanup을 포함하며 종료 미확인 시 root 보존/수동 종료가 필요할 수 있다. 승인 전 reader/fixture/runner/CI 구현이나 browser 실행을 하지 않는다. native/공개 실행·과거 미검증 수용·AF05-B 전체 완료 기준 변경은 별도 게이트다.
 
