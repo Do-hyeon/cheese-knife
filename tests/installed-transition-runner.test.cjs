@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
+const vm = require('node:vm');
 const { fork, spawnSync } = require('node:child_process');
 const fs = require('node:fs/promises');
 const path = require('node:path');
@@ -156,6 +157,23 @@ test('parent refuses missing/mutated final evidence even when child result claim
   for (const result of [{}, { source: {}, after: {}, seeds: [], phases: [], cleanupErrors: [] }]) {
     assert.throws(() => validateTransitionResult(result, nonce, undefined, []), { code: 'transition-result-incomplete' });
   }
+});
+
+test('isolated phase setup retires cached worker without clearing storage or changing ID', async () => {
+  const { refreshTransitionWorker } = await subject();
+  const events = [], saved = { futureTop: 'keep', config: { previewVolume: 25 } }, context = {};
+  const worker = { evaluate: fn => vm.runInNewContext(`(${fn.toString()})()`, { chrome: {
+    runtime: { reload() { events.push('reload'); } }, storage: { local: { clear() { throw Error('must not clear'); } } } } }) };
+  const next = { marker: 'new-worker' }, id = 'a'.repeat(32);
+  const reacquire = async (actualContext, actualWorker, ms, options) => {
+    assert.equal(actualContext, context); assert.equal(actualWorker, worker); assert.equal(ms, 15000);
+    assert.deepEqual(options, { reusePrevious: false }); events.push('fresh-worker'); return { worker: next, extensionId: id };
+  };
+  const actual = await refreshTransitionWorker({ context, worker, extensionId: id }, reacquire);
+  assert.equal(actual.worker, next); assert.equal(actual.extensionId, id);
+  assert.deepEqual(events, ['reload', 'fresh-worker']); assert.deepEqual(saved, { futureTop: 'keep', config: { previewVolume: 25 } });
+  await assert.rejects(refreshTransitionWorker({ context, worker, extensionId: id }, async () => ({ worker: next, extensionId: 'b'.repeat(32) })), { code: 'transition-execution' });
+  await assert.rejects(refreshTransitionWorker({ context, worker: { evaluate: async () => { throw Object.assign(Error('reload'), { code: 'reload-failed' }); } }, extensionId: id }, reacquire), { code: 'reload-failed' });
 });
 
 test('parent revalidates every action observation identity hash and no-reseed sequence', async () => {

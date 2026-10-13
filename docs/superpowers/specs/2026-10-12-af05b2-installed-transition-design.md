@@ -59,6 +59,8 @@ T/R은 **TEST ONLY**이며 제품/출시 번호가 아니다. private 복사본�
 
 ## 5. 연속 저장·UI·CSS oracle
 
+2026-10-13 실행 보완: 격리 Chromium은 manifest T를 관측하면서도 이전 imported broker worker를 유지했다(실제7622자/후보7970자, EOL 차이 아님). 각 새 context에서 **시험 확장만** `chrome.runtime.reload()`하고 기존 harness로 이전 worker 재사용 없이 새 worker를 취득한 다음 provenance/seed/UI 검사를 시작한다. 같은 profile/extension 경로·ID·raw storage는 유지하고 직접 저장 보정은 하지 않는다. 이는 시험 준비의 worker 갱신이며 스토어/native 자동 업데이트나 열린 이전 content script의 in-place 정리 성공을 증명하지 않는다. launch/정상 close ACK·실패 보존 규칙은 그대로다.
+
 각 case의 seed phase에서 실제 원본 popup의 ready·get-snapshot 응답을 읽기 전용 fence로 기다려 최초 broker boot 완료를 확인하고 **raw storage가 여전히 빈 것을 재확인한 뒤 초기 seed를 한 번만** `chrome.storage.local.set`으로 넣는다. 이 fence는 UI 저장/repair를 하지 않는다. `futureTop.runNonce`에는 run별 random128bit 값을 넣고 이후 모든 phase에 그 값을 기대한다. 즉시 raw 값 확인→페이지 전부 close→context close→old 재기동으로 startup migration을 관찰한다. 이후 writes는 실제 UI 조작뿐이다. storage 재주입·repair·직접 broker 호출로 저장을 대체하지 않는다. popup UI는 packaged `popup.html`/JS/client, styles는 packaged `styles.html`/JS/client다.
 
 공통 초기값: config `{futureFlag:'keep',brightness:1.25}`, styles `['future-style']`, styleParameters `{future:9}`, revision4, futureTop `{runNonce:<nonce>,untouched:true}`. UI range step과 맞는 brightness1.25를 사용한다. B1의 fractional1.225 계약 검사는 별도로 유지한다.

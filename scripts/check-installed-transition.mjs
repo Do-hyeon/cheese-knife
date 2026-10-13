@@ -7,7 +7,7 @@ import { chromium } from 'playwright';
 import { openOwnedRoot } from './owned-files.mjs';
 import { verifyCandidate, removeCandidate } from './verify-candidate.mjs';
 import { loadFixtureResponses } from './extension-e2e/fixture-router.mjs';
-import { launchInstalledExtension, parseInstalledE2EArgs } from './extension-e2e/harness.mjs';
+import { launchInstalledExtension, parseInstalledE2EArgs, reacquireExtensionWorker } from './extension-e2e/harness.mjs';
 import { readPublishedPayload, PUBLISHED_PAYLOAD_BASELINE } from './extension-e2e/published-payload.mjs';
 import { TRANSITION_CASES, transitionSeed, expectedTransitionRaw, expectedTransitionState, assertTransitionState, runTransitionPhase } from './extension-e2e/transition-scenario.mjs';
 
@@ -56,6 +56,14 @@ export function matchesStorageLoss(failure, nonce) {
   return failure?.code === 'transition-storage-preservation' && failure.caseId === 'valid-ui' && failure.phase === 'new' &&
     failure.step === 'startup' && failure.stage === 'candidate-init' && Array.isArray(failure.cleanupErrors) && failure.cleanupErrors.length === 0 &&
     isDeepStrictEqual(failure.observation?.raw, expected);
+}
+
+export async function refreshTransitionWorker(launched, reacquire = reacquireExtensionWorker) {
+  // Persistent unpacked Chromium can keep imported worker scripts across a versioned relaunch.
+  await launched.worker.evaluate(() => chrome.runtime.reload());
+  const fresh = await reacquire(launched.context, launched.worker, 15000, { reusePrevious: false });
+  if (fresh.extensionId !== launched.extensionId) throw fail('transition-execution');
+  return { ...launched, ...fresh };
 }
 
 export function validateTransitionResult(result, nonce, control, launches) {
@@ -240,9 +248,10 @@ async function executeChild(options) {
         await requestLaunch(intent);
         let context, traced = false, closed = false, phaseError;
         try {
-          const launched = await launchInstalledExtension({ chromiumApi: chromium, extensionPath, profilePath, artifactPath, headed: options.headed });
+          let launched = await launchInstalledExtension({ chromiumApi: chromium, extensionPath, profilePath, artifactPath, headed: options.headed });
           context = launched.context;
           context.setDefaultTimeout(15000);
+          launched = await refreshTransitionWorker(launched);
           if (expectedId && expectedId !== launched.extensionId) throw fail('transition-execution');
           expectedId ||= launched.extensionId;
           await context.tracing.start({ screenshots: false, snapshots: true, sources: false }); traced = true;
