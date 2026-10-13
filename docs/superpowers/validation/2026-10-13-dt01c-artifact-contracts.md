@@ -215,8 +215,11 @@ branch deletion. DT01-S/DT02 decisions are the next maintenance handoff, not
 automatically approved implementations. NUM01 remains separate; AF05-B/F00-F05
 remain frozen under their previous gates.
 
-The two isolated clones/reports remain under output. After final local evidence
-checkpoint, only this plan's generated scratch is archived to
-`output/dt01c-execution-record-20261013` and removed; its verified disposable
-dt01cCandidate may be cleaned with the existing owned helper. Root dist and
-other plans' scratch are not cleanup targets.
+The two isolated clones/reports remain under output. This plan's30 generated
+scratch files were copied to `output/dt01c-execution-record-20261013`, compared
+by relative path/SHA256, and only the exact physically verified owned scratch
+directory was removed. Its marker used the equivalent Git Bash absolute plan
+path; ownership was verified, not relaxed. The disposable dt01cCandidate was
+removed with the existing owned helper after absolute scope verification. Root
+dist and other plans' scratch were not cleanup targets. Final protected snapshot
+still matches; branch retained, working tree clean at the local closeout.
