@@ -104,8 +104,13 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
     expectedTransitionRaw(caseId, phase, step, runNonce);
     const execution = await worker.evaluate(() => ({ extensionId: chrome.runtime.id,
       version: chrome.runtime.getManifest().version, brokerSource: createSettingsBroker.toString() }));
-    execution.brokerMatches = execution.brokerSource === brokerFunctionSource(expectedBrokerSource); delete execution.brokerSource;
-    if (execution.extensionId !== extensionId || !execution.brokerMatches) throw fail('transition-execution');
+    const expectedFunction = brokerFunctionSource(expectedBrokerSource);
+    execution.brokerMatches = execution.brokerSource === expectedFunction;
+    const diagnostic = { actualLength: execution.brokerSource.length, expectedLength: expectedFunction.length,
+      actualCRLF: execution.brokerSource.split('\r\n').length - 1, expectedCRLF: expectedFunction.split('\r\n').length - 1,
+      matchesAfterEOLNormalization: execution.brokerSource.replaceAll('\r\n', '\n') === expectedFunction.replaceAll('\r\n', '\n') };
+    delete execution.brokerSource; observation = { execution };
+    if (execution.extensionId !== extensionId || !execution.brokerMatches) { const error = fail('transition-execution'); error.diagnostic = diagnostic; throw error; }
     const pageErrors = [], routeErrors = [];
     const attach = page => page.on('pageerror', error => { if (pageErrors.length < 32) pageErrors.push(String(error?.message || error).slice(0, 240)); });
     for (const page of context.pages()) attach(page);
@@ -193,7 +198,7 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
   } catch (error) {
     error.code ||= 'transition-phase-failed';
     error.failure = { code: String(error.code).slice(0, 240), caseId, phase, step,
-      stage: step === 'startup' ? stageFor(phase) : 'phase-action', ...(observation ? { observation } : {}), cleanupErrors: [] };
+      stage: step === 'startup' ? stageFor(phase) : 'phase-action', ...(observation ? { observation } : {}), ...(error.diagnostic ? { diagnostic: error.diagnostic } : {}), cleanupErrors: [] };
     throw error;
   }
 }

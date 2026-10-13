@@ -375,7 +375,7 @@ export async function runInstalledTransition({ runId, headed = false, control, d
       catch (error) { cleanupErrors.push({ code: error?.code || 'transition-claim-cleanup', caseId: null, phase: null }); }
     }
   }
-  report = { ...(report || {}), ok: !primary && cleanupErrors.length === 0, runId, ...(control ? { control } : {}),
+  report = { ...(report || {}), ...(supervision?.result ? { result: supervision.result } : {}), ok: !primary && cleanupErrors.length === 0, runId, ...(control ? { control } : {}),
     ...(primary ? { failure: primary } : {}), cleanupErrors: cleanupErrors.slice(0, 32),
     retainedRoots: roots.filter(value => supervision?.unconfirmedRoots.includes(value.root) || (child && !supervision?.normalExit)),
     limits: ['bundled-code-relaunch-not-native-update', 'no-platform-rollback', 'detached-browser-needs-close-ack'] };
