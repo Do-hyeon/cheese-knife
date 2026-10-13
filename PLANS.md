@@ -70,7 +70,7 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어는 같�
 | AF04 | 기능별 모듈 이전 | AF03 | DONE | 생성·strict·설치형 E2E·공개 CI 유지 |
 | AF05 | 이행 종료·설치 수용 | AF05-A, AF05-B 자체 수용 | WAITING-DEPENDENCY | 내부 완료; 실제 업데이트 수용은 게시 후 진행. F00·F01은 AF 작업의 선행 조건이 아님 |
 | AF05-A | 내부 원본 종료·검증 | AF04 | DONE | 생성·strict·전체 회귀·공개 CI 유지 |
-| AF05-B | 공개 설치·업데이트·롤백 수용 | P09·자체 승인된 수용 계획 | DOING | 공개 전 준비 범위 종합 마감·push/단일 한글 PR 승인. 게시 후 실제 업데이트는 후행 수용으로 별도 추적 |
+| AF05-B | 공개 설치·업데이트·롤백 수용 | P09·자체 승인된 수용 계획 | DOING | 준비 범위 PR #43·초기 공개 CI 통과. 테스트 fixture 보완 후 최신 CI·승인된 병합/해당 브랜치 정리; 게시 후 실제 수용은 별도 |
 | DT01-B | 오디오 quality report 타입 계약 | DT01-A 완료·설계/실행 승인 | DONE | 구현·격리 검증·Astra max·PR #40 공개 CI 확인; 최종 head checks·병합 상태는 해당 PR 기준 |
 | DT-MAINT | 독립 유지보수 후속 — 테스트·개발 도구 타입 강화 전체 | DT00·DT01-A/B/C/S·NUM01·DT02 처리 구분 | DONE | 전체 영역 구현·검토·PR #42/main CI·병합·해당 브랜치 정리 완료; DT02 조건부 보류 유지 |
 | DT01-C | artifact description·부분 report 비교 계약 | 설계·계획·Native/격리 실행 승인 | DONE | 전체 영역 PR #42로 통합, 기존 계약·검증 유지 |
@@ -269,7 +269,8 @@ AF05-B 공개 전 준비와 게시 후 수용 — P09 기준을 사용하며 F00
 - [x] **후속 / 작업 의존성 분리:** 사용자2026-10-14 지시로 AF05-B의 마감·PR에서 F00·F01 완료 조건을 제거했다. 최소 F00·F01 조건은 아래 배포 로드맵만 소유한다. 실제 미실행 수용 항목의 삭제/PASS 변경이나 push·PR 승인은 아니다.
 - [x] **AF05-B 공개 지시:** 사용자2026-10-14 자체 잔여 작업·종합 검증을 마친 뒤 AF05-B만 push·단일 한글 PR·공개 CI 확인 승인. F00·F01 제외, 병합·릴리즈·스토어 배포 금지.
 - [x] **AF05-B 공개 전 준비 범위 종합 마감:** [종합 기록](docs/superpowers/validation/2026-10-14-af05b-prepublication-closure.md). fresh1186/1185pass/실패0/기존skip1·foundation9·품질/설치/전환/손실 control·native 순수 replay·경고8 동일·보존 확인. Astra max 전체0/0/1과 역사 상태 문구 구분, 수정 후 독립0건 주장 없음. F00·F01 미포함.
-- [ ] **AF05-B 단일 PR:** 승인된 push·한글 PR 한 건·마지막 head 공개 CI 확인을 실제 진행한다. F00 초안/기능 구현을 섞지 않으며 병합·브랜치 정리·릴리즈·스토어 배포는 하지 않는다.
+- [x] **AF05-B 단일 PR:** [PR #43](https://github.com/Do-hyeon/cheese-knife/pull/43) 생성·push 완료. 초기 head `413f585`의 [공개 CI](https://github.com/Do-hyeon/cheese-knife/actions/runs/38427660948)는 Windows/Ubuntu foundation·verify SUCCESS. 후속 커밋은 이 결과를 전용하지 않고 최신 head checks로 확인한다. F00 초안/기능 구현은 제외한다.
+- [x] **AF05-B 병합·정리 승인:** 사용자2026-10-14 승인으로 Windows 테스트 fixture 보완·재검증·기존 PR #43 반영 후 최신 CI 성공을 확인하고 fork main 병합·`codex/af05b-acceptance` 원격/로컬 브랜치만 정리한다. 실제 실행 결과는 해당 PR의 merge/checks와 로컬 refs를 확인한다. 초기 병합 금지는 이 후속 승인으로 대체하며 릴리즈·스토어 배포·버전 변경은 계속 금지한다. 게시 후 실제 수용 미실행 항목은 유지한다.
 - [ ] **게시 후 실제 수용:** 차기 게시본의 새 설치·기존 설치 업데이트·설정/열린 페이지/오류 수용. 게시와 실제 검사 승인이 있어야 실행하며 준비 PR의 선행 조건으로 쓰지 않는다.
 - [ ] **AF05-B 최종 수용 종료:** 게시 후 결과와 승인된 과거 업데이트 미검증·격리 코드 복귀/플랫폼 롤백 미실행 한계를 대조한다. 준비 PR이 병합됐다는 이유로 전체 실제 업데이트 검증을 DONE 처리하지 않는다.
 

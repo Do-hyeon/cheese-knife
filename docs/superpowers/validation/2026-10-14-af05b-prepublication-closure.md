@@ -1,6 +1,6 @@
 # AF05-B — 공개 전 준비 범위 종합 마감
 
-2026-10-14 / Asia-Seoul. 사용자 승인 범위는 **AF05-B 자체 잔여 작업·종합 검증 → push·단일 한글 PR → 공개 CI 확인**이다. F00·F01 설계/구현, 병합·브랜치 정리·릴리즈·스토어 배포·제품 버전 변경은 제외한다.
+2026-10-14 / Asia-Seoul. 최초 승인 범위는 **AF05-B 자체 잔여 작업·종합 검증 → push·단일 한글 PR → 공개 CI 확인**이었다. 같은 날 후속 승인으로 테스트 fixture 보완·최신 CI 확인 후 PR #43 병합과 해당 브랜치 정리까지 허용됐다. F00·F01 설계/구현·릴리즈·스토어 배포·제품 버전 변경은 계속 제외한다.
 
 검증 범위: main `6b919e1c62661ec49a12ce6df2c02e11273af41d` → immutable head `83a19103f38b76128bb82eceac149b8239130b9a`. B1은 이미 main에 있으며 이번 PR은 잔여 B2·native 도구·회귀/CI·현재 상태 정합화를 하나로 묶는다. 제품 `src/`, 생성 runtime `web/`, manifest/package/lock 변경은 없다. 로컬 F00 설계 파일은 이 범위의 Git tree에 없으며 공개하지 않는다.
 
@@ -50,7 +50,15 @@ Minor1은 과거 ‘구현 중/미승인·미실행/Task3 blocked’ 문구가 �
 
 - [x] AF05-B 공개 전 준비 범위 종합 마감·fresh 전체 게이트·독립 최종 검토와 상태 정합화.
 - [x] 사용자2026-10-14 AF05-B만 push·단일 한글 PR·공개 CI 확인 승인.
-- [ ] 실제 push·PR 생성과 마지막 head 공개 CI 확인. 이 기록은 실행 전에 작성했으며 공개 결과는 후속 기록으로 고정한다.
+- [x] 실제 push·[PR #43](https://github.com/Do-hyeon/cheese-knife/pull/43) 생성. 최초 head `413f585`의 [run38427660948](https://github.com/Do-hyeon/cheese-knife/actions/runs/38427660948)에서 Windows/Ubuntu foundation·verify SUCCESS. 후속 커밋의 CI는 최신 head checks로 별도 확인한다.
 - [ ] 게시 후 실제 새 설치·2.13.3→후보 업데이트·설정/열린 페이지/오류 수용. 준비 PR의 선행 조건이 아님.
 
-AF05-B 공개 전 준비 마감과 실제 업데이트 수용 전체 완료는 다르다. 최소 F00·F01 완료는 차기 버전 배포 로드맵에만 적용하며 이 PR의 의존성이 아니다. 현재 제품2.13.3 유지, 병합·브랜치 정리·릴리즈·스토어 배포 없음.
+AF05-B 공개 전 준비 마감과 실제 업데이트 수용 전체 완료는 다르다. 최소 F00·F01 완료는 차기 버전 배포 로드맵에만 적용하며 이 PR의 의존성이 아니다. 현재 제품2.13.3 유지, 릴리즈·스토어 배포 없음. 실제 병합/브랜치 정리 결과는 PR #43과 Git refs를 기준으로 확인한다.
+
+## 병합 전 Windows fixture 보완
+
+최초 head를 격리 clone에서 전체 재검사했을 때 `public entry hashes actual disk bytes and retains label precedence missing child and link rejection`의 임시 `web` 디렉터리 rename에서 EPERM, 다음 전체 실행의 같은 경로 junction 생성에서 EBUSY를 관측했다. 후자의 결과는1186개/1184pass/실패1/기존skip1이며 분리 실행13/13은 통과했다. 구체적인 Windows 잠금 주체는 미확정이다.
+
+사용자 승인에 따라 이미 읽고 이동한 디렉터리의 경로를 재사용하지 않고, 새 `linked-artifact` root의 비어 있는 `web` 경로에 실제 기존 `web`을 가리키는 junction/symlink를 생성하도록 fixture만 수정했다. 정상 bytes/hash·label 우선순위·ENOENT·`owned-path-link` 거부 assertion을 유지하며 retry·skip·timeout 완화나 제품 코드 변경은 없다. 후속 검증은 이 수정본의 전체 테스트·최신 공개 CI를 기준으로 하며 위 원래 실패를 삭제하거나 Windows 환경 전체의 잠금 문제가 해결됐다고 주장하지 않는다.
+
+수정본의 격리 Windows 전체 병렬 실행은1186개/1185pass/실패0/기존skip1·exit0(54.85초), 집중 검사13/13이었다. 링크를 정상 디렉터리 복사로 바꾼 격리 대조에서는 같은 assertion이 `Missing expected rejection`으로 실패하고, 실제 링크로 복원한 재실행은1/1 통과했다. root dist58·제품2.13.3·원본 ZIP/CRX·보호 브랜치·로컬 F00 초안 hash는 불변이다. 최신 커밋의 공개 CI·병합 결과는 PR #43의 실제 checks/merge 정보가 소유하며 이 로컬 검사로 대체하지 않는다.
