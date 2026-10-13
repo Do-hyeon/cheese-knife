@@ -1,11 +1,12 @@
 # NUM01 verification and maintenance checkpoint
 
 Current disposition,2026-10-13: NUM01's individual verification below remains
-valid, but the earlier whole-maintenance closeout/publication decision was
-withdrawn at the user's correction. PR41 was closed unmerged at the user's
-request. The whole independent maintenance area is not closed; its remaining
-checklist and publication gate are in PLANS.md. No further push/PR/merge or
-implementation/verification resumption is authorized by this document cleanup.
+valid. The earlier premature whole-maintenance/publication decision was
+withdrawn and PR41 closed unmerged. The user subsequently resumed the WHOLE
+remaining area; its separate verification/review and actual local closeout are
+recorded in [whole-area acceptance](2026-10-13-dt-maintenance-whole-area.md).
+This individual NUM01 record does not supply that whole-area verdict. Current
+publication/integration gates are in PLANS.md; no new push/PR/merge occurred.
 
 Date:2026-10-13 Asia/Seoul. User approved the bounded NUM01 design, implementation,
 verification and fresh Astra max review, then one Korean PR with DT01-C/S.
