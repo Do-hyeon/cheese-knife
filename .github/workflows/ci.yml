@@ -59,6 +59,9 @@ jobs:
       - name: Fetch pinned published settings baseline
         run: git fetch --no-tags --depth=1 origin fb15f9675f9ea910e98363635155bc4ff9eb1d2f
 
+      - name: Prepare pinned published payload
+        run: node scripts/extension-e2e/published-payload.mjs --prepare
+
       - name: Run tests
         run: npm test
 
@@ -76,6 +79,12 @@ jobs:
 
       - name: Run installed-extension negative control
         run: npm run test:e2e:negative
+
+      - name: Run installed old-new-old transition
+        run: node scripts/check-installed-transition.mjs --run-id=B2positive
+
+      - name: Run installed storage-loss control
+        run: node scripts/check-installed-transition.mjs --run-id=B2negative --control=storage-loss
 
       - name: Upload E2E failure artifacts
         if: failure()

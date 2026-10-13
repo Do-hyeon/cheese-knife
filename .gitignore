@@ -95,6 +95,8 @@ dist
 dist-firefox/
 output/
 .playwright-cli/
+# Local MCP endpoints and machine-specific executable paths.
+.codex/config.toml
 
 # Gatsby files
 .cache/
