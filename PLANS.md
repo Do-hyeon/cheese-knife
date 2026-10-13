@@ -69,7 +69,7 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어는 같�
 | DT01-C | artifact description·부분 report 비교 계약 | 설계·계획·Native/격리 실행 승인 | DOING | 2개 작업 구현·격리 전체 검증·최종 Astra max; 공개는 별도 명시 지시 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **DT01-C 구현 계획·Native/격리 실행 승인**. [구현 계획](docs/superpowers/plans/2026-10-13-dt01c-artifact-contracts.md) 작성·자체 검토와 fresh Astra max 계획 검토(최초 Critical0·Important1·Minor1)를 마쳤다. 실제 import graph 충돌·provider ENOENT 문구와 작성자 확인 lint 문구를 보완했다. [검토 기록](docs/superpowers/validation/2026-10-13-dt01c-plan-review.md). 수정 후 독립0건/구현 PASS가 아니며 Native 2개 작업·격리 전체 검증·최종 Astra max 실행은 승인 대기다. 독립 타입 강화 유지보수 후속을 마무리한 뒤 AF05-B로 복귀하며 B2·기존 공개 수용 기준을 보존한다. 로컬 커밋으로 보관하고 사용자 명시 지시 없이 push/PR을 하지 않는다.
+현재 커서: **DT01-C Native 구현·격리 검증 완료, 최종 Astra max 검토**. 사용자 승인한 [구현 계획](docs/superpowers/plans/2026-10-13-dt01c-artifact-contracts.md)에 따라 core·실제 연결·6파일 graph를 구현했다. 집중151/151, 격리 전체 재검사1002개 중1001pass/실패0/기존skip1, 8기반 gate·도구·후보·합성·설치 positive/negative 확인. 최초 MAIN 임시 폴더 rename EPERM 실패와 재검사·도구 관찰/runner 한계를 [검증 기록](docs/superpowers/validation/2026-10-13-dt01c-artifact-contracts.md)에 보존한다. 최종 독립 검토 전 전체 C 완료가 아니며 공개는 명시 지시 없이 하지 않는다. 독립 유지보수 후속을 마무리한 뒤 AF05-B로 복귀하고 B2·기존 수용 기준은 유지한다.
 
 B1은 PR #36 최종 CI run `38255250513`과 merge `b38ec388`로 완료했다. B2 설계·계획은 PR #37로 병합됐으며 최초 Astra max Critical0·Important3·Minor1 보완 기록과 구현·실행 승인 게이트를 보존한다. 수정 후 독립0건/실제전환PASS/native update 수용은 아니다. P09의 게시2.13.3·격리 신규 설치 기준은 보존하며 과거 업데이트·실제 롤백 수용은 미검증이다. AF05 전체와 기능 로드맵 동결은 유지한다.
 
@@ -312,7 +312,7 @@ git -c core.safecrlf=false diff --check
 
 INC01은 사용자 재등록·설정 유지 확인과 PR #30·공개 CI·main 병합으로 종료했다. 원래 dist의58파일과 현재 시험판·설정은 계속 보존한다. 이 수용을 모든 방송 기능·기존 스토어 버전 업데이트 검사로 확대하지 않는다.
 
-DT01-B와 DT01-C 상세 설계·구현 계획의 검토/보완은 완료했다. 현재 개입은 완성된 C 계획과 Native 2개 작업·격리 candidate/합성/설치 positive·negative·최종 Astra max 실행 승인이다. 그 전까지 source/test/config 구현·빌드·설치·신규 도구·시청 Chrome/native 기준 profile·스토어는 건드리지 않는다. 기존 runner의 종료/임시 profile 한계와 root dist 보호는 유지한다. 결과는 로컬에서 유지하며 사용자 명시 지시 없이는 push/PR을 하지 않는다. AF05-B는 독립 타입 강화 유지보수 후속 마무리까지 보류하며 B2의 기존 승인 게이트는 보존한다.
+DT01-C의 Native·격리 실행은 승인됐고 최종 Astra max 검토까지 사용자 개입 없이 진행한다. npm registry 의존성 정보 전송은 자동 검토 차단 후 사용자의 명시적 별도 허용을 받아 실행했다. 사용자 Chrome/native 기준 profile·스토어·root dist는 변경하지 않는다. 결과는 로컬에서 유지하며 사용자 명시 지시 없이는 push/PR을 하지 않는다. DT01-S/DT02 후보의 범위·보류 판단과 AF05-B 복귀는 후속 별도 게이트이며 C 완료로 전체 유지보수를 종료하지 않는다.
 
 게시 완료 알림의14:55는 표시 시각이고 실제 처리 시각·시간대·초는 미확정이다. 추가 시각 자료 요청은 종료했다. 실제 롤백·차기 설치/업데이트·스토어 제출/게시에는 각각 별도 승인이 필요하다. B2 승인은 새 private bundled 프로필·UI 저장·손실 control·cleanup을 포함하며 종료 미확인 시 root 보존/수동 종료가 필요할 수 있다. 승인 전 reader/fixture/runner/CI 구현이나 browser 실행을 하지 않는다. native/공개 실행·과거 미검증 수용·AF05-B 전체 완료 기준 변경은 별도 게이트다.
 
