@@ -16,7 +16,8 @@
 
 - 제품과 private 시험 복사본 모두 기존 세 자리 `major.minor.patch` 버전 형식을 유지한다(사용자2026-10-13 지시). 현재 제품2.13.3은 변경하지 않으며 B2 시험 T=`2.13.4`/R=`2.13.5`를 공개 제품·스토어·릴리즈 번호로 사용하지 않는다. 차기 공개 번호는 배포 단계의 별도 승인 대상이다.
 - 복구판은 Google Chrome만 지원한다. Firefox 구현·빌드·배포는 복구하지 않는다.
-- AF00–AF05를 완료하기 전에는 F00–F05 기능 로드맵을 구현하지 않는다.
+- AF 내부 기반과 native preflight 최종 검토를 마친 뒤 F00·F01 상세 설계로 진행한다. 게시 후에만 가능한 AF05-B 실제 업데이트 수용을 기능 설계·구현의 선행 조건으로 삼지 않는다. 각 구현은 별도 승인된 설계·계획 안에서 수행한다.
+- **차기 버전 공개는 최소 F00·F01 구현과 검증까지 완료한 뒤 준비한다**(사용자2026-10-13 지시). AF05-B 완료만으로 공개하거나 AF05-B 전체 완료를 차기 공개의 조건으로 삼지 않는다. 기존 전체 회귀·도구 감사·설치 수용·별도 버전/push/PR/배포 승인은 유지한다.
 - TypeScript는 장기 목표지만 전면 일괄 변환은 하지 않는다. 설치형 E2E로 현재 동작을 보호한 뒤 계약 경계부터 점진적으로 이전한다.
 - 테스트·개발 도구의 전면 TS 이전은 필수 조건이 아니다. 공용 계약과 연결된 호출자부터 타입 검사 효과를 확인하며, DT 후속 작업을 AF05·F00의 새 선행 게이트로 추가하지 않는다.
 - React/Vue를 도입하지 않는다. Webpack/Vite 자체를 목표로 삼지 않고 출력 계약에 필요한 최소 도구만 별도 proof 뒤 선택한다.
@@ -67,18 +68,20 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어는 같�
 | AF02 | 계약 우선 TypeScript 전환 | AF01 | DONE | 생성·drift·strict·설치형 E2E 게이트 유지 |
 | AF03 | MAIN runtime·site adapter 분리 | AF02 | DONE | 생성·strict·설치형 E2E·공개 CI 유지 |
 | AF04 | 기능별 모듈 이전 | AF03 | DONE | 생성·strict·설치형 E2E·공개 CI 유지 |
-| AF05 | 이행 종료·공개 게이트 | AF05-A, AF05-B | WAITING-DEPENDENCY | 내부 완료, 공개 설치 수용 대기 |
+| AF05 | 이행 종료·설치 수용 | AF05-A, AF05-B | WAITING-DEPENDENCY | 내부 완료; F00·F01을 포함한 차기 게시본의 실제 업데이트 수용은 게시 후 진행 |
 | AF05-A | 내부 원본 종료·검증 | AF04 | DONE | 생성·strict·전체 회귀·공개 CI 유지 |
-| AF05-B | 공개 설치·업데이트·롤백 수용 | P09, 차기 AF 배포 준비 | DOING | B2 설계/Native 구현·격리검증·최종 Astra max 묶음 승인2026-10-13. 전체 카테고리 완료 후 단일 PR, 실제 배포 금지 유지 |
+| AF05-B | 공개 설치·업데이트·롤백 수용 | P09, 차기 F00·F01 통합 배포 준비 | DOING | native preflight 최종 검토; 최소 F00·F01 검증 뒤 별도 공개 승인. 실제 업데이트 수용은 게시 후, 중간 push/PR 금지 유지 |
 | DT01-B | 오디오 quality report 타입 계약 | DT01-A 완료·설계/실행 승인 | DONE | 구현·격리 검증·Astra max·PR #40 공개 CI 확인; 최종 head checks·병합 상태는 해당 PR 기준 |
 | DT-MAINT | 독립 유지보수 후속 — 테스트·개발 도구 타입 강화 전체 | DT00·DT01-A/B/C/S·NUM01·DT02 처리 구분 | DONE | 전체 영역 구현·검토·PR #42/main CI·병합·해당 브랜치 정리 완료; DT02 조건부 보류 유지 |
 | DT01-C | artifact description·부분 report 비교 계약 | 설계·계획·Native/격리 실행 승인 | DONE | 전체 영역 PR #42로 통합, 기존 계약·검증 유지 |
 | DT01-S | settings fixture·callback/reply 계약 | written-spec·계획·Native/격리 실행 승인 | DONE | 전체 영역 PR #42로 통합, foundation settings-fixture 게이트 유지 |
 | NUM01 | rmsEnvelope 숫자 입력 경계 보완 | bounded 설계·보완·검증 승인 | DONE | 개별 구현·검증·Astra max 완료; 전체 영역 종합 수용을 대신하지 않음 |
 | DT02 | 선택적 native TS 실행 | 조건부 보류 판단 승인 | DEFERRED | 지금은 JSDoc/checkJs 유지, 실제 유지보수 이득·검사/실행 경계 보존 조건에서 재검토; native 구현 완료 아님 |
-| F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
+| F00 | 전역·프리셋·채널·계정별 저장 계약 | 내부 AF 기반·native 최종 검토 | READY | 다음 상세 설계·공격적 검토·구현 계획 승인; 차기 공개 필수 범위 |
+| F01 | EQ·노멀라이저·오디오 프리셋 | F00 저장 계약·객관 오디오 기준 | WAITING-DEPENDENCY | 설계/구현·객관 검증·F00 통합; 차기 공개 필수 범위 |
+| F02–F05 | 이후 기능 | F00·F01 검증과 해당 범위 승인 | BACKLOG-BLOCKED | 별도 기능 설계·구현 승인, 지금 선행 구현하지 않음 |
 
-현재 커서: **AF05-B2/Task1 local 완료 → Task2 로컬 코드/현재 native 출처 확인 완료 → 첫 API 관측의 Chrome paste 보호로 BLOCKED-CAPABILITY**. 기존 P09 프로필만의 Task2 실행 승인2026-10-13. [native 계획](docs/superpowers/plans/2026-10-13-af05b-native-preflight.md)과 [검증 기록](docs/superpowers/validation/2026-10-13-af05b-native-preflight.md): d9866c2 전체1186중1185pass/0fail/기존skip1·연결123/123·foundation9·새 lint0·Astra max Critical0/Important0/Minor0. 실제 before 설치2.13.3/store/공개키ID/60파일·52파일/권한/전용 root 조회 성공, Developer mode 원상태false 기록. runtime JSON0·seed-start0·baseline/seeded/cold/finalize 없음, first unknown/abort 실패 기록과 복원 확인 대기, 전체 native PASS 아님. 과거 업데이트 미검증·플랫폼 롤백 미실행은 유지한다. [B2 기록](docs/superpowers/validation/2026-10-12-af05b2-installed-transition.md)의 c707af6 전환/손실 control은 bundled 결과다. AF05-B 전체 완료 전 push·PR 금지, 릴리즈·스토어 배포 금지와 DT02 보류를 유지한다.
+현재 커서: **Task1/Task2 native 범위 로컬 마감 → F00 상세 설계·공격적 검토/승인 → F01 → 새 통합 후보 검증**. [최종 기록](docs/superpowers/validation/2026-10-13-af05b-native-preflight.md#native-범위-최종-독립-품질-검토와-마감): 실제12개 JSON·revision4의 저장/UI/CSS·cold·마감에 NATIVE-PREFLIGHT-PASS, 연결123/123·Astra max0/0/1의 문서 Minor 이력 교정. MCP/P09/endpoint 종료·Developer modefalse·설치/권한 불변, private 등록 비활성/임시 flag 제거. 이전 실패 run은 보존한다. 사용자 지시로 새 공개는 최소 F00·F01 구현·검증 뒤에만 준비하고 현재2.13.3을 유지한다. 실제 업데이트/방송 MAIN/CSS 표시/오디오·전체 AF05-B 완료를 뜻하지 않는다. 과거 미검증·플랫폼 롤백 미실행·DT02 보류 및 별도 공개 승인 유지.
 
 B1은 PR #36 최종 CI run `38255250513`과 merge `b38ec388`로 완료했다. B2 설계·계획은 PR #37로 병합됐으며 최초 Astra max Critical0·Important3·Minor1 보완 기록과 구현·실행 승인 게이트를 보존한다. 수정 후 독립0건/실제전환PASS/native update 수용은 아니다. P09의 게시2.13.3·격리 신규 설치 기준은 보존하며 과거 업데이트·실제 롤백 수용은 미검증이다. AF05 전체와 기능 로드맵 동결은 유지한다.
 
@@ -253,22 +256,43 @@ AF05-B 공개 수용 — P09와 차기 AF 배포에 의존:
 - [x] **native / Task1 로컬 완료:** read-only probe/offline checker/private CLI·frozen broker/실제 popup/styles DOM·durable attempt·정제된 startup 실패·쓰기 전 budget 보완. 새64/64·연결108/108·전체1171중1170pass/0fail/기존skip1·foundation9·새 lint0·보호 불변. Astra max 최초Critical0/Important3/Minor1은 작성자 한 차례 RED→GREEN 보완, 수정 후 독립0건/native PASS 아님. 기본 inspect-native는 unavailable.
 - [x] **native / Task2 실행 승인:** 사용자2026-10-13 기존 P09 프로필만의 정상 열기/Developer mode/Inspect·네 UI 값 저장·seed 유지/종료·재시작과 좁은 사실 조회 승인. 설치/업데이트·공개·배포 승인은 아님.
 - [x] **native / Task2 로컬 코드·before 사실:** d9866c2 fixed native reader·공개키ID/현재 파일/권한·정확한 정규화 root/실패·링크/budget 검증, 연결123/123·전체1186중1185pass/실패0/기존skip1·foundation9·새 lint0·Astra max0/0/0. private run의 실제 현재 설치/file/process before 성공. 원래 시청 프로필/제품/rootdist/릴리즈/frozen/보호 브랜치 불변. Task2 전체 또는 native PASS 아님.
-- [ ] **native / Task2 runtime·저장·cold·마감 — BLOCKED-CAPABILITY:** 사용자는 정확한 P09/Default 경로를 확인했으나 첫 probe 전에 Chrome paste 보호를 보고했다. unknown/native-unavailable 및 abort failed를 기록, actual API JSON0·seed-start0·baseline 합격 없음. allow-pasting/다른 입력/CDP로 보호를 우회하지 않는다. 원래 Developer modefalse 복원/검사 창 종료 정리는 사용자 확인 대기다. MCP 제안은 공식 문서 읽기만 했으며 설치/연결/계획 전환 미승인. native 전체 PASS·공개 게이트는 계속 미완료.
-- [ ] **후속 / 공개 준비:** native PASS 이후 AF05-B 전체 공개 범위/공개 후 수용의 순환 경계를 사용자에게 확인. 제품 버전·push/단일 PR·스토어 제출·게시 각각 별도 승인. 현재 공개 금지 유지.
+- [x] **native / Task2 runtime·저장·cold·마감:** 새 private run P09Native20261013B의12개 API JSON·source9·사용자 profile/context 확인·baseline→seeded→cold 순서·revision4·설정/UI/CSS 등록·닫힘/새 root/최종 마감을 checker로 대조해 NATIVE-PREFLIGHT-PASS. 첫 Console 실패는 별도 보존. raw storage 재주입·설치 교체·allow-pasting/보호 우회 없음. 승인된 seed를 P09에 보존한다.
+- [x] **native / Task2 최종 품질·로컬 기록 마감:** 전체 native 범위 fresh Astra max0/0/1·문서 Minor 이력 교정, 작성자 연결123/123·source/probe/순수 판정·문서/보호 불변 확인. 로컬 기록만 고정하며 수정 후 독립0건·전체 AF05-B 종료·push/PR/배포 승인은 아님.
+- [x] **MCP / 지원성·설치·권한 검토:** 사용자2026-10-13 검토/문서화 승인. 공식 고정 소스와 npm1.10.1 공개 metadata·Node24 호환 범위·project MCP allowlist 대조. worker/page 관측은 조건부 지원이며 자동 P09 고정/worker-only 수집은 보장하지 않음. [근거·승인 후보 묶음](docs/superpowers/validation/2026-10-13-af05b-native-preflight.md#p09-전용-mcp-지원성설치권한-검토). 설치·설정 변경·연결·새 실제 관측 없음.
+- [x] **MCP / 이전 실행 정리 확인:** 원래 P09 Developer modefalse·사용자 종료 답변·정확한 root 부재와 설치 불변 확인. 실패 run/journal 보존. 설정 seed 변경 없음.
+- [x] **MCP / 실행안 별도 묶음 승인:** 사용자2026-10-13 승인. 고정 버전 설치·project P09Native 등록·지정 P09 디버깅/CDP 예외/관측/종료만, global 설정·제품 권한·기존 시청 profile·로그인/동기화·보호 우회는 제외. 대상 외 확장 비활성화/삭제·패키지 filter 변경은 포함하지 않음.
+- [x] **MCP / 로컬 설치·비활성 등록·오프라인 검증:** 공식1.10.1 tarball2632790byte의 고정 SHA-512 일치·359 archive entry 경로/link 검증·직접 해제, 추가 의존성/lifecycle script 실행 없음. 실제 help/worker schema·stdio tools/list 성공(JS false17도구/true18도구). PWA=false 명시의 parser 충돌 RED→기본 OFF/도구 없음 GREEN. `.codex/config.toml`은 gitignored/private·enabled=false·list/select만, JS/metrics/CrUX/update/source maps OFF. CLI arg0/PATH-alias sandbox warning은 별도 기록. 제품 변경/Chrome 연결 없음.
+- [x] **MCP / 추가 확장 최소 식별·worker 호출 경로 검토:** 사용자2026-10-13 추가 승인 뒤 Google Docs 오프라인의 이름/설치 출처만 확인, 설정·로그·저장값·비활성화/삭제 없음. 실제 bundled TargetManager의 합성 protocol 입력에서 일반 callback=false여도 허용 worker 추적=true/제외 worker 추적=false 확인. 이 별도 분기로 앞선 callback-only 위험 판단을 보완. 정상 경로 후보는 기존 P09의 명시적 loopback endpoint+대상 extension URL allowlist이며 실제 Chrome 성공은 미검증.
+- [x] **MCP / 임시 네트워크 제한 승인·실제 연결 자격:** P09 한정 공식 allowlist의 임시 네트워크 영향과 검사 후 MCP 분리/P09 종료를 사용자 승인받았다. Chrome155·정확한 root/loopback listener 소유 PID·browser UUID를 확인했고 정상 new_page에서 target popup/styles 및 service worker 추적이 성공했다. 다른 확장 설정/계정·패키지 patch/filter 해제·새 profile/autoConnect 대체 없음. 이 결과는 API 관측이나 저장·cold 성공이 아니다.
+- [x] **MCP / 이번 실행 마감:** baseline/seeded observer와 cold observer 분리·서버 child0, 정확한 P09 root의 정상 종료 및 두 debug endpoint의 연결 거부 확인. 개발자 모드는 변경 없이 원상태false이며 설치/권한 불변. P09 종료로 임시 runtime 규칙 수명이 끝났고 private config의 임시 allowlist도 제거했다. global 설정/시청 Chrome 변경·강제 종료 없음.
+- [x] **MCP / 승인된 실제 재검증:** 새 run의12개 정제 JSON과 순차 journal/native facts에 최종 PASS. revision4의 검사용 네 값을 다음 실제 업데이트 baseline으로 보존했다. observer 분리 뒤 완전한 Chrome 종료·새 root 기동을 증명했지만 자연 worker suspension/실제 업데이트를 검증한 것은 아니다.
+- [x] **후속 / 차기 공개 최소 범위 지정:** 사용자2026-10-13 지시로 최소 F00·F01 구현·검증을 차기 공개의 조건으로 둔다. AF05-B 게시 후 수용까지 완료돼야 기능을 시작할 수 있다는 순환 조건을 제거한다. 공개/push/PR나 기능 구현 계획 승인은 아니다.
+- [ ] **후속 / 공개 준비:** native 최종 검토 → F00 → F01 → 통합 후보의 기존 전체 게이트/설정·설치 전환 재검증 → 별도 버전·push/한글 PR·스토어 제출/게시 승인. 게시 후 실제 업데이트/새 설치 수용은 AF05-B에서 닫는다. 현재 공개 금지 유지.
 - [ ] 새 설치·기존 설치 업데이트·설정 보존·롤백 설치 수용.
 - [ ] **AF05-B 전체 종료·단일 PR:** 위 잔여 작업·검증·승인된 수용 기준을 전체 대조하고 미해결/미승인 항목을 분리한 뒤 공개 승인을 확인해 한글 PR 하나로 묶는다. 현재 배포 금지·미승인 native 실행·공개 후 수용 경계 때문에 전체 DONE으로 표시하거나 공개 게이트를 생략하지 않는다. 공개 후 최종 head CI 확인·병합은 별도 승인 범위로 수행한다.
-- [ ] F00–F05 동결 해제 여부 사용자 승인.
+- [x] F00·F01을 차기 공개 선행 기능 범위로 지정. 상세 설계/구현 승인은 별도이며 F02–F05 동결을 일괄 해제하지 않는다.
 
-## 8. 동결된 기능 로드맵
+## 8. 기능 로드맵 — 차기 공개는 최소 F00·F01까지
 
 | ID | 기능 단위 | 재개 조건 |
 | --- | --- | --- |
-| F00 | 전역·프리셋·채널·계정별 저장 계약 | AF05의 typed broker/validator 기준으로 재설계 |
-| F01 | EQ·노멀라이저·오디오 프리셋 | F00와 기존 객관 오디오 게이트 유지 |
+| F00 | 전역·프리셋·채널·계정별 저장 계약 | 내부 AF typed broker/validator 기준으로 상세 설계·검토; AF05-B 게시 후 수용을 기다리지 않음 |
+| F01 | EQ·노멀라이저·오디오 프리셋 | F00 승인 계약에 연결하고 기존 객관 오디오·출력 상한/전환/저장 회귀 유지 |
 | F02 | 영상 필터·프리셋 보강 | F01 뒤 GPU·성능 경계 포함 |
 | F03 | 가려진 채팅 보강 | 제공되는 원문·삭제 종류·행 재사용 계약 확인 |
 | F04 | 2–4채널 멀티뷰 | 독립 재생·음량·화질·채팅과 부분 교체 보장 |
 | F05 | 통나무파워 조회 | 데이터 최소화·계정 분리·새 권한 별도 승인 |
+
+### F00·F01과 공개 순서 체크리스트
+
+- [x] 사용자 지정 최소 공개 범위 F00·F01 반영. AF05-B 단독 완료를 신규 버전 공개의 조건으로 삼지 않는다.
+- [ ] F00 상세 설계·공격적 검토: 설정 우선순위·저장 범위/프리셋·기존2.13.3 migration·동시 저장·개인정보 경계 확정. 새 권한·계정 수집·외부 전송 자동 승인 없음.
+- [ ] F00 구현 계획/Native 실행 승인 후 구현·타입/계약·손실 negative·설치 회귀 완료.
+- [ ] F01 상세 설계·공격적 검토: EQ/노멀라이저/프리셋의 F00 연결·컴프레서/Gain 상호작용·출력 상한/전환/수명주기·객관 합성/설치 기준 확정.
+- [ ] F01 구현 계획/Native 실행 승인 후 구현·기계적 오디오 수치/회귀·F00 통합 검증 완료. 주관적 청취만으로 완료하지 않음.
+- [ ] 최종 통합 commit에서 전체 회귀·도구 감사·패키지/설정 전환·native baseline과 제한 대조. AF-only 과거 결과를 새 기능 후보의 합격으로 전용하지 않음.
+- [ ] 버전 형식 유지·번호 별도 승인, 사용자 지시 범위의 push/한글 PR·CI·병합 및 스토어 제출/수동 게시 각각 승인. 문서/단발 Task별 PR 금지 유지.
+- [ ] 게시 후 AF05-B의 실제 신규 설치·기존2.13.3 업데이트·설정/열린 페이지/컨텍스트 수용과 전체 종료 판단.
 
 ### 독립 유지보수 후속 — 테스트·개발 도구 타입 강화
 
@@ -351,8 +375,8 @@ git -c core.safecrlf=false diff --check
 
 INC01은 사용자 재등록·설정 유지 확인과 PR #30·공개 CI·main 병합으로 종료했다. 원래 dist의58파일과 현재 시험판·설정은 계속 보존한다. 이 수용을 모든 방송 기능·기존 스토어 버전 업데이트 검사로 확대하지 않는다.
 
-전체 유지보수 영역은 PR #42의 최종 head/병합 후 main CI 통과와 승인된 병합·해당 브랜치 정리까지 완료했다. PR #41은 닫힌 상태로 두고 DT02 조건부 보류·원래 시험판/root dist/P09 설치본·보호 브랜치는 유지한다. B2/Task1은 local 완료, Task2는 기존 P09 실행 승인 후 현재 before 출처 조회까지 진행했으며 runtime/seed/cold는 사용자 준비와 실제 자료 대기다. 카테고리 전체 완료 전 push·PR은 하지 않는다. 실제 native 실행 승인도 릴리즈·스토어 배포 승인은 아니다.
+전체 유지보수 영역은 PR #42의 최종 head/병합 후 main CI 통과와 승인된 병합·해당 브랜치 정리까지 완료했다. PR #41은 닫힌 상태로 두고 DT02 조건부 보류·원래 시험판/root dist/P09 설치본·보호 브랜치는 유지한다. B2/Task1과 Task2의 실제 native preflight·MCP/P09 마감·독립 최종 검토·로컬 기록은 완료다. 사용자 지정 차기 공개의 최소 범위 F00·F01은 상세 설계/구현 승인과 검증이 남았으며 현재 카테고리 중간 push·PR·배포는 하지 않는다. native PASS도 실제 스토어 업데이트 성공이나 공개 승인은 아니다.
 
 게시 완료 알림의14:55는 표시 시각이고 실제 처리 시각·시간대·초는 미확정이다. 추가 시각 자료 요청은 종료했다. 실제 롤백·차기 설치/업데이트·스토어 제출/게시에는 각각 별도 승인이 필요하다. B2는 새 private bundled 프로필·UI 저장·손실 control·cleanup·Native 구현/격리검증/최종 Astra max 묶음 승인을 받았으며 그 범위에서만 실행한다. 종료 미확인 시 root 보존/수동 종료 필요 가능성은 유지한다. native/공개 실행·과거 미검증 수용·AF05-B 전체 완료 기준 변경은 별도 게이트다.
 
-AF05 내부 작업과 P09 배포 증거 고정은 완료됐다. 기존 시청 Chrome에는 사용자 보고상 로컬 시험판만 있으므로 존재하지 않는 스토어 설치본의 업데이트 조작을 요청하지 않는다. 로컬 시험판과 격리 스토어2.13.3은 유지한다. 구2.13.2→2.13.3 미검증·플랫폼 롤백 미실행은 승인된 별도 제한이다. B2/Task1 synthetic 결과는 native 업데이트를 대체하지 않는다. Task2 실행 승인을 받아 기존 P09를 정상 열고 현재 설치/전용 process 출처를 기록했다. 다음은 사용자의 정상 UI profile/context·Console 준비 뒤 API JSON 관측이다. 설정 seed와 cold/finalize는 아직 미실행이며 Developer mode는 마감 때 원래false로 복원해야 한다. Google 로그인/동기화·브라우저 접근 정책 우회는 하지 않는다. 실제 공개 설치·차기 배포·AF05 종료·로드맵 동결 해제 조건은 유지한다.
+AF05 내부 작업과 P09 배포 증거 고정은 완료됐다. 기존 시청 Chrome에는 사용자 보고상 로컬 시험판만 있으므로 존재하지 않는 스토어 설치본의 업데이트 조작을 요청하지 않는다. 로컬 시험판과 격리 스토어2.13.3은 유지한다. 구2.13.2→2.13.3 미검증·플랫폼 롤백 미실행은 승인된 별도 제한이다. 실제 native preflight의12개JSON·검사용 seed·cold·이번 실행 마감은 PASS. 다음은 독립 최종 검토 마감 후 F00 상세 설계·공격적 검토/승인과 F01 순서다. 사용자 지시로 차기 공개는 최소 F00·F01 구현·검증 뒤에만 준비하며 AF05-B 실제 업데이트 수용은 게시 후 진행한다. project MCP는 비활성, P09는 종료했고 Google 로그인/동기화·브라우저 접근 정책 우회는 하지 않았다. 현재2.13.3 유지·공개/push/PR·실제 설치/배포 각각의 승인 원칙은 유지한다.

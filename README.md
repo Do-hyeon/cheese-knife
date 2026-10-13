@@ -58,7 +58,7 @@ Chrome의 `chrome://extensions`에서 개발자 모드를 켜고 빌드된 `dist
 
 ## 개발 방향
 
-제품 런타임의 원본은 strict TypeScript로 관리하고, Chrome에 필요한 JavaScript를 검증·생성합니다. 현재는 AF05의 이행 종료·배포 수용 검증을 진행하며, 완료 후 기능 로드맵을 재개합니다.
+제품 런타임의 원본은 strict TypeScript로 관리하고, Chrome에 필요한 JavaScript를 검증·생성합니다. 다음은 저장 기반(F00)·오디오 기능(F01)이며, 차기 공개는 최소 두 단계의 구현·검증을 마친 뒤 준비합니다.
 
 [실행 계획](PLANS.md) · [AF00 검증 기록](docs/superpowers/validation/2026-10-11-af00-installed-extension-e2e.md) · [제3자 고지](THIRD_PARTY_NOTICES.md)
 

@@ -4,13 +4,13 @@
 
 **Goal:** 실제 스토어2.13.3의 실행 출처·비기본 저장값·설정 UI·동적 CSS 등록을 연결하는 좁은 사전검증을 마련한다.
 
-**Architecture:** 고정 게시 ZIP reader와 owned-files를 재사용한다. 로컬 준비/검사 CLI와 읽기 전용 DevTools probe만 추가하며 제품에는 코드를 넣지 않는다. 브라우저 제어 연결이 없는 현재 환경의 native 관측은 사용자가 일반 Chrome UI/DevTools에서 실행한 JSON을 로컬 checker가 검증하는 경로로 계획한다. 실제 연결 가능 여부는 실행 단계에서 증명해야 한다.
+**Architecture:** 고정 게시 ZIP reader와 owned-files를 재사용한다. 로컬 준비/검사 CLI와 읽기 전용 probe를 사용하며 제품에는 코드를 넣지 않는다. 최초 수동 Console 경로의 차단은 보존하고, 후속 승인된 공식 MCP로 실제 P09의 제한된 API JSON을 관측해 기존 checker로 검증했다.
 
-**Tech Stack:** 기존 Node24.19.0·Node test runner·JSDOM·Chrome의 공개 extension API. 새 의존성·제어 확장·CDP 연결을 추가하지 않는다.
+**Tech Stack:** 기존 Node24.19.0·Node test runner·JSDOM·Chrome의 공개 extension API. 제품 의존성/제어 확장은 추가하지 않는다. 별도 승인된 private 공식 MCP1.10.1/SDK로 실제 관측을 수행했고 등록은 비활성으로 유지했다.
 
 **Spec:** [AF05-B 상위 설계](../specs/2026-10-12-af05b-release-acceptance-design.md) §2·3·6·7·9, [P09 게시/설치 근거](../validation/2026-10-12-p09-store-publication.md). B2의 c707af6 로컬 전환 결과는 별도 [검증 기록](../validation/2026-10-12-af05b2-installed-transition.md)이다.
 
-2026-10-13 / Asia-Seoul. **Task1 로컬 완료, Task2 코드/현재 출처 조회 후 첫 probe의 Chrome paste 보호로 BLOCKED-CAPABILITY.** 기존 P09만 실행 승인됐으며 actual API JSON·runtime/baseline/seeded/cold는 없다. 보호 우회 없이 중지, 원래 Developer modefalse 복원/검사 창 종료 정리는 확인 대기다. 제품2.13.3을 유지하고 push/PR/배포하지 않는다. 결과는 [검증 기록](../validation/2026-10-13-af05b-native-preflight.md)에 분리한다.
+2026-10-13 / Asia-Seoul. **Task1/Task2 native 범위 로컬 마감 완료.** 사용자 경로 확인·실제12개 JSON·revision4의 seed/UI/CSS·두 root의 종료/재시작·최종 마감에 NATIVE-PREFLIGHT-PASS. fresh Astra max 최종0/0/1의 문서 Minor는 이력 표현으로 교정했으며 수정 후 독립0건 판정은 아님. MCP/P09/endpoint 종료·Developer modefalse·설치/권한 불변과 private config 비활성/임시 flag 제거 확인. 이전 실패는 보존하며 실제 업데이트/전체 AF05-B 완료·공개 승인과 별개다. 현재2.13.3 유지, 다음은 F00·F01 설계/구현 승인·검증 순서. [최종 기록](../validation/2026-10-13-af05b-native-preflight.md#native-범위-최종-독립-품질-검토와-마감).
 
 ## Global Constraints
 
@@ -18,14 +18,22 @@
 - native 대상은 기존 P09의 `output/p09-public-20261012152819/fresh-chrome-profile` 한 개, 확장 ID `cgfddiiffponlciljlfbiecmlagflbpe`, version `2.13.3`, version_name `2.13.3 sidebar follow-up preview`다. 없거나 변경됐으면 STOP; 새 프로필/재설치로 대체하지 않는다.
 - 원래 시청 Chrome·root dist·원본 ZIP/CRX·frozen P02·보호 브랜치는 변경하지 않는다. root에서 build하지 않는다.
 - native 기존 프로필의 열기·Developer mode·DevTools·검사용 UI 저장·seed 유지에는 실행 직전 묶음 승인을 받는다. 스토어 설치/업데이트·권한 변경·version/릴리즈/제출/게시·push/PR은 그 승인에 포함하지 않는다.
-- Browser 도구가 제한한 URL·기능을 shell/CDP/Preferences 편집/다른 도구로 우회하지 않는다. 제어 확장·force flag·원격 디버깅 포트·프로필 복제/초기화/삭제·uninstall/reinstall은 금지한다.
+- Browser 도구가 제한한 URL·기능을 shell/CDP/Preferences 편집/다른 도구로 우회하지 않는다. 제어 확장·force flag·프로필 복제/초기화/삭제·uninstall/reinstall은 금지한다. 후속 승인된 P09 loopback 디버깅/MCP만의 예외도 정확한 출처·노출 범위·정상 지원 검증 전에는 활성화하지 않는다. 다른 Chrome 포트 탐색·filter 해제/패키지 patch는 예외가 아니다.
 - 정상 native UI/DevTools가 정책으로 막히거나 사용자에게 해당 관측 경로가 없으면 `WAITING-USER` 또는 `BLOCKED-CAPABILITY`로 남긴다. 도구 제한 때문에 사용자가 대신 우회하는 절차를 제시하지 않는다.
 - 실제 데이터는 private `output/native-preflight-<runId>/`에만 둔다. 쿠키·계정·채팅·전체 탭·다른 확장·전체 storage export를 수집하지 않는다. 공개 결과에는 기준 해시·판정·한계만 남긴다.
 - 검사 UI 저장은 `arrowSeek=false`, `previewVolume=25`, `hide-ranking=true`, `chat-font-size=8` 네 값에 한정한다. native legacy/손상/unknown 값 시험과 인위적 storage loss는 B1/B2에서만 수행한다.
 - native preflight는 스토어 baseline의 실행 worker/설정 client/CSS **등록** 근거다. 실제 방송 MAIN·화면 CSS 적용·오디오·업데이트·서명 인증·전체 보안 검증은 아니다.
-- AF05-B 전체 완료 전 push/PR 금지, 기능 F00–F05 동결을 유지한다. 공개 이후에만 가능한 수용은 로컬 개발 완료와 별도로 추적한다.
+- AF05-B 전체 완료 전 중간 push/PR 금지와 별도 공개 승인 원칙을 유지한다. 후속 사용자 지시로 차기 공개는 최소 F00·F01 구현·검증까지 완료한 뒤 준비하며, AF05-B 게시 후 수용을 그 기능의 설계/구현 선행 조건으로 삼지 않는다. 각 기능 구현 승인·F02–F05 동결은 별도다.
 
 ## 관측 경로와 승인 경계
+
+2026-10-13 검토/문서화 승인 뒤 **고정 버전 설치·project MCP 등록·P09 한정 디버깅/관측/종료 묶음**의 추가 사용자 승인을 받았다. [검토·실행 기록](../validation/2026-10-13-af05b-native-preflight.md#mcp-승인-뒤-로컬-준비-결과)을 따른다. 실제 설치/비활성 설정·오프라인 metadata 협상은 완료했으나 추가 worker 노출/attach 지원 조건이 남아 연결하지 않았다. 보호 제한 STOP/기존 시청 profile·제품 불변은 유지한다. 실패 run은 보존하고 실행 경로 변경 시 새 run이 필요하다. 대상 외 확장 변경은 승인 범위가 아니다.
+
+후속2026-10-13 사용자 승인에 따라 추가 확장 이름/출처 확인과 정상 worker 경로를 대조했다. page callback 결과만으로 worker 연결 불가를 판정하지 않는다. 원래 private MCP의 공식 `--allowedUrlPattern=chrome-extension://cgfddiiffponlciljlfbiecmlagflbpe/*`를 사용하는 조건부 연결안을 검토했으나, 제외 worker에도 임시 Network 규칙을 적용하므로 이 영향/원복 범위를 승인받기 전에는 옵션 추가/연결하지 않는다. 패키지 patch·filter 해제·Docs 비활성화/삭제·보호 우회 없이 진행하며 actual worker/UI 정상 접근을 확인한 뒤에만 아래 Step4로 진입한다.
+
+**연결 준비 당시의 후속 승인/실행:** P09 한정 임시 Network 제한·검사 후 MCP 분리/P09 종료를 승인받았다. 비활성 private config에 공식 allowlist를 추가하고 검증한 browser UUID의 wsEndpoint를 in-memory로 전달했다. 정상 new_page의 popup/styles와 worker는 접근 가능했다. 재연결 때 기존 extension page가 초기 page callback에서 제외되므로 관측 UI는 정상 new_page 뒤 같은 연결에서 유지해야 했다. filter 해제나 강제 attach는 하지 않았다. 이 준비 시점에는 사용자 context 확인을 기다리며 API/seed를 시작하지 않았고 P09 종료 마감도 남아 있었다. 현재 최종 상태는 다음 마감 기록을 따른다.
+
+**이번 실행 마감:** 위 연결 준비 뒤 사용자가 정확한 P09 경로를 확인했다. 승인된 in-memory observer에서만 JS 평가/Input을 켜고 generated read-only probe와 실제 snapshot의 네 설정 control에 대한 official fill을 사용했다. 정상 창 닫기는 매번 정확한 root의 user-data-dir/PID·MCP child0를 대조한 뒤 요청했고, root 부재·이전 endpoint의 ECONNREFUSED를 별도로 확인했다. cold는 새 root/start time과12개 JSON·journal로 대조했다. 최종 Developer modefalse·설치/권한 불변과 seed 보존을 확인해 finalize/complete를 기록했다. P09와 observer는 종료했으며 private config는 enabled=false/JS=false/port0, 임시 allowlist 제거 상태다. 최초 Console 경로의 수동 절차는 이 실행에서 사용하지 않았다.
 
 [Chrome 공식 debugging 안내](https://developer.chrome.com/docs/extensions/get-started/tutorial/debug)는 일반 관리 화면의 service worker Inspect와 popup Inspect 경로를 설명한다. [service worker 안내](https://developer.chrome.com/docs/extensions/get-started/tutorial/service-worker-events)는 DevTools를 닫고 수명주기를 확인하라고 명시한다. 따라서 inspector가 열린 채 유지된 worker를 cold-start 성공으로 보지 않는다. 이것은 공개 API에 근거한 **실행 후보 경로**이지 현재 native 연결 확보 판정이 아니다.
 
@@ -109,21 +117,22 @@ worker identity는 ID·숫자 version·display version·MV3·background file·�
   - 고정 ZIP58개 중 manifest/locale2개/icon3개를 제외한 **52개 일반 파일 모두** 설치 SHA-256이 같아야 한다. JS/CSS46개뿐 아니라 HTML3개와 나머지 게시 resource/라이선스도 포함한다. 허용 file inventory는 frozen58개와 `_metadata/verified_contents.json`, `_metadata/computed_hashes.json`만이며 extra/missing/link/추가 runtime 파일은 실패다. manifest는 key/update_url 외 object, locale2개는 parsed object가 같아야 한다. P09의 icon 설치 정규화/Chrome metadata 예외는 명시적으로 유지하되 이번 검사로 아이콘 pixels나 독립 CRX 서명 인증을 다시 완료했다고 주장하지 않는다. 설치 파일은 쓰지 않는다.
   - 필요한 from_webstore 경로가 현재 설치 container와 다르면 다른 개인 파일을 탐색하지 말고 STOP/계획 변경으로 처리한다. 실제 프로필 대상 접근과 설치 IO는 CLI 전체 유닛 테스트에서 owned fixture로 대체한다.
 - [x] **Step3 / GREEN·출처만 확인:** d9866c2 focused123/123·전체1186중1185pass/0fail/기존skip1·foundation9·새 lint0, Astra max Critical0/Important0/Minor0 후 승인된 정확한 P09 Chrome만 일반 방식으로 열었다. `P09Native20261013A`의 `--inspect-native=before`로 현재2.13.3/fromWebstore/공개키ID/정확한60 inventory·52파일/권한·Developer mode 원상태 false·유일한 target root를 기록했다. 로그인·동기화·방송/계정 탐색·제어 연결 없음. 이것은 runtime/API native PASS가 아니다. 다음은 사용자의 정상 UI profile/context 및 Console 준비 확인이다.
-- [ ] **Step4 / baseline(4 JSON):** profile/context 수동 확인과 각 probe requested event 뒤 worker-before → popup → styles → worker-after를 받는다. `--check=baseline`의 STAGE-ACCEPTED만 다음 단계 진입을 허용한다. raw 네 키 absent·UI default·ready·discard hidden·styles retry hidden/popup retry 없음(null)·CSS[]와 current identity를 확인한다. 존재하는 값은 없애지 않고 STOP한다. partial 판정은 native PASS가 아니다.
-- [ ] **Step5 / seeded(4 JSON):** seed-start confirmed event를 **저장 조작 전** 기록한다. 같은 popup에서 방향키 OFF·volume25, styles에서 hide-ranking ON·font8을 순서대로 변경하며 각 저장을 기다린다. 마지막 raw 네 값 literal·revision R safe/4 이상·before/after 동일을 요구한다. worker-before → popup → styles → worker-after 뒤 `--check=seeded` STAGE-ACCEPTED를 요구한다. 동기화/경합은 이 단계 판정이 아니다. target 없는 reload 버튼을 누르지 않고 실제 페이지 적용을 흉내 내지 않는다.
-- [ ] **Step6 / cold(4 JSON):** 모든 Inspect/popup/styles와 **검사용 프로필의 창만** 사용자에게 닫도록 요청한다. `--inspect-native=closed`는 before에서 특정된 정확한 user-data-dir의 Chrome browser root process 부재를 좁은 process metadata로 확인할 수 있을 때만 `closedObserved=true`를 기록한다. unrelated 탭/명령행을 출력하지 않는다. launcher PID 종료만으로 browser 종료를 추정하지 않는다. before의 root identity/조회 권한을 확보하지 못하면 `cold=UNVERIFIED`로 남긴다. 다른 Chrome 전체 kill 금지.
+- [x] **Step4 / baseline(4 JSON):** 사용자 profile/context 확인과 requested event 뒤 worker-before → popup → styles → worker-after를 받았다. `--check=baseline` STAGE-ACCEPTED. raw 네 키 absent·UI default·ready·discard hidden·styles retry hidden/popup retry 없음(null)·CSS[]와 current identity 일치. partial 판정은 native PASS가 아니다.
+- [x] **Step5 / seeded(4 JSON):** seed-start confirmed를 저장 전 기록했다. official fill로 같은 popup의 방향키 OFF·volume25, styles의 hide-ranking ON·font8을 순서대로 저장했다. 네 raw literal·revision4·before/after·UI/CSS가 일치했고4개 관측 뒤 `--check=seeded` STAGE-ACCEPTED. 동기화/경합·실제 페이지 적용 검사가 아니며 대상 reload 버튼은 누르지 않았다.
+- [x] **Step6 / cold(4 JSON):** MCP 분리/서버 child0 뒤 검증한 정확한 P09 root에 정상 창 닫기를 요청했다. `--inspect-native=closed`의 정확한 profile root 부재와 이전 debug endpoint 연결 거부를 확인했다. 같은 profile의 새 root/start time과 restarted facts 뒤4개 관측을 받아 seeded 값/revision4·UI/CSS와 대조했다. unrelated 탭/명령행 출력·강제 종료 없음. observer 재연결을 worker 자연 suspension이나 실제 업데이트로 표현하지 않는다.
   - 같은 profile을 일반 방식으로 재시작해 `--inspect-native=restarted`로 새 browser root identity/start time과 관측 시각을 연결한다. worker-before → popup → styles → worker-after. 저장/CSS/UI가 seeded와 같고 profile/source가 같아야 한다. inspector 재연결은 그 이후 수명만 연장하며 자동 suspension 시험으로 표시하지 않는다. 프로세스 조회는 기존 PowerShell `Get-CimInstance Win32_Process`의 Chrome browser root(no --type)·parsed user-data-dir의 resolved path **정확한 일치**와 좁은 PID/start-time projection만 사용한다. 경로 prefix/launcher PID만 같음/복수 root는 실패하는 fixture를 추가하며 launcher/control API를 만들지 않는다.
-- [ ] **Step7 / 마감·보존:** inspector를 닫고 Developer mode를 이전 정상 UI 상태로 복원한 뒤 지정 창만 종료한다. seed/revision R은 승인된 다음 업데이트 baseline으로 남긴다. 실패 시 raw 재주입/삭제/재설치로 수리하지 않고 abort/부분 변경을 기록한다. **seed-start 이후 실패는 새 absent-baseline run으로 자동 재시도하지 않으며, 현 상태 보존과 별도 재개 계획 승인 대기**다. `--inspect-native=after`로 같은 설치 파일·target 권한·Developer mode 원상태·target root process 부재를 확인한 뒤 finalize confirmed/failed/unknown을 남긴다.
-- [ ] **Step8 / 최종 판정·local commit:** `--check=complete`에서12개 JSON·nonce·current 설치/실행 출처·수동 context 확인·각 단계 안정성·journal 순서·첫 실패·cold/마감 사실을 함께 대조한다. 단일 누락/불명/오류라도 native PASS 금지. private report와 public-safe 문서를 분리하며 native 자료/개인 값은 Git에 넣지 않는다. whole-scope Astra max 품질 검토 뒤 로컬 commit, push/PR 없음.
+- [x] **Step7 / 마감·보존:** cold observer/MCP child 종료 후 정확한 P09 root를 정상 종료했다. `--inspect-native=after`와 endpoint 연결 거부로 설치 파일·권한 불변·Developer mode 원상태false·root 부재를 확인했다. 네 승인 값/revision4는 다음 실제 업데이트 baseline으로 보존하며 finalize confirmed를 기록했다. seed-start 이후 실패 시 임의 재주입/삭제/재설치·absent-baseline 재시도 금지는 유지한다.
+- [x] **Step8 / 최종 판정·local commit:** `--check=complete`와 read-only 순수 재생에서12개 JSON·source9·nonce·출처/사용자 context·순서/안정성·cold/마감에 PASS. fresh 전체 native Astra max0/0/1과 문서 Minor 교정·연결123/123·보호/문서 검증을 확인해 로컬 기록만 고정한다. private report/실제 JSON은 Git에 넣지 않으며 push/PR·배포 없음.
 
 ## 전체 종료·다음 게이트
 
 - [x] 계획·Task1 로컬 구현/검증 승인 및 기존 Native 방식 유지.
 - [x] Task1 구현/로컬 검사 완료. native는 아직 미실행.
 - [x] 기존 P09 검사용 프로필에 한정한 Task2 실행 묶음 승인2026-10-13. 실제 스토어 설치/업데이트 승인은 별도.
-- [ ] native preflight PASS와 승인된 seed baseline 고정. 실패/미검증이면 version/스토어 제출/게시 대기.
-- [ ] AF05-B 전체 목록의 잔여 공개 게이트를 대조하고 공개 전 로컬 준비와 공개 후 수용의 경계를 사용자에게 확인. **현재 ‘전체 완료 전 push/PR 금지’를 공개 후 실제 update 완료 전 조건으로 해석하면 순환하므로, 임의로 PR 가능으로 완화하지 않는다.** 후속 공개 시점 결정을 받을 때 이 범위를 명시한다.
-- [ ] 그 이후에만 공개 version·단일 한글 PR/push·CI/병합·스토어 upload/심사/수동 게시 각 승인을 확인한다. 지금 구체적인 차기 번호·출시일을 정하지 않는다.
+- [x] native preflight PASS와 승인된 seed baseline 고정. 실제 업데이트/전체 AF05-B 완료·version/스토어 제출/게시 승인은 별도다.
+- [x] 후속 사용자2026-10-13 지시로 차기 공개는 최소 F00·F01 구현·검증 뒤에만 준비한다. AF05-B 단독 완료를 공개 조건으로 삼거나 게시 후 수용을 기능 선행 조건으로 쓰지 않는다. 현재 공개/push/PR 승인은 없다.
+- [ ] native 최종 검토 마감 후 F00·F01 상세 설계·각 구현 승인/검증·통합 회귀와 설치 전환 재검증을 진행한다. 실제 게시 후 수용은 AF05-B에 남긴다.
+- [ ] 그 이후 공개 version·단일 한글 PR/push·CI/병합·스토어 upload/심사/수동 게시 각 승인을 확인한다. 지금 구체적인 차기 번호·출시일을 정하지 않는다.
 - [ ] 게시 후의 실제2.13.3→후보 업데이트/신규 설치·열린 페이지/MAIN·대상 reload·context invalidation 오류 수용은 상위 AF05-B에 남긴다. 이번 baseline probe 결과로 닫지 않는다.
 
 ## 작성자 자체 대조
