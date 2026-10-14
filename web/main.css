@@ -4,6 +4,9 @@
 .knife-filter .pzp-pc__video .webplayer-internal-source-wrapper:has(> video) {
   filter: url(#knifeFilter);
 }
+[data-knife-channel-filter="owned"] {
+  filter: var(--knife-channel-filter, none) !important;
+}
 
 .knife-preview {
   aspect-ratio: 16/9;

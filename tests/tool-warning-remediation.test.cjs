@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const { ESLint } = require('eslint');
-const { page, load, runtime, deliver, playerHTML, flush } = require('./helpers.cjs');
+const { page, load, runtime, deliverScoped: deliver, playerHTML, flush } = require('./helpers.cjs');
 
 test('preview autoplay proof loads the production site adapter boundary', async () => {
   const source = await fs.readFile('scripts/check-preview-autoplay.mjs', 'utf8');
@@ -16,7 +16,7 @@ test('player controls use DOM SVG construction without an unsafe HTML assignment
   assert.equal(result.flatMap(file => file.messages).filter(message => message.ruleId === 'no-unsanitized/property').length, 0);
   const dom = page(playerHTML);
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
-  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom); load(dom, 'web/audio.js'); load(dom, 'web/player.js');
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom); load(dom, 'web/audio.js'); load(dom, 'web/player.js');
   runtime(dom).reconcile();
   for (const selector of ['.knife-ff', '.knife-comp button']) {
     const button = dom.window.document.querySelector(selector);
@@ -53,7 +53,7 @@ test('site adapter removes webpack injection without a Node dynamic-require warn
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
   let getters = 0;
   Object.defineProperty(dom.window, 'webpackChunkglive_fe_pc', { get() { getters++; throw new Error('must-not-run'); } });
-  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
   assert.equal(runtime(dom).adapter.getWebpackRequire, undefined);
   assert.equal(getters, 0);
 });

@@ -212,7 +212,7 @@ function diagnostics(result,targets) {
   for(const [file,rows] of targets) assert.deepEqual([...(seen.get(file)||[])].sort((a,b)=>a-b),[...rows.keys()].sort((a,b)=>a-b),file);
 }
 
-test('fixture checker keeps strict options and the exact F00 fourteen-file graph', () => {
+test('fixture checker keeps strict options and the exact F00 fifteen-file graph', () => {
   const project=JSON.parse(fs.readFileSync('tsconfig.settings-fixture.json','utf8')), parent=JSON.parse(fs.readFileSync('tsconfig.development.json','utf8'));
   assert.deepEqual(project,{extends:'./tsconfig.development.json',compilerOptions:{moduleDetection:'legacy',types:['node','chrome']},files:['tests/settings-fixture.cjs','tests/settings-fixture-contracts.test.cjs'],include:[]});
   for(const key of ['allowJs','checkJs','noEmit','strict','noUncheckedIndexedAccess','exactOptionalPropertyTypes','useUnknownInCatchVariables']) assert.equal(parent.compilerOptions[key],true);
@@ -222,7 +222,7 @@ test('fixture checker keeps strict options and the exact F00 fourteen-file graph
   assert.deepEqual(actual.sort(),[
     'tests/settings-fixture.cjs','tests/settings-fixture-contracts.test.cjs','tests/helpers.cjs',
     'src/settings/config.ts','src/settings/style-schema.ts','src/settings/contract.ts','src/settings/client.ts','src/settings/broker.ts',
-    'src/settings/media-profiles.ts',
+    'src/settings/media-profiles.ts','src/shared/media-contracts.ts',
     'src/main/runtime/contracts.ts','src/main/site-adapter/contracts.ts','src/main/features/audio/contracts.ts','src/main/features/player/contracts.ts','src/main/features/preview/contracts.ts',
   ].sort());
 });

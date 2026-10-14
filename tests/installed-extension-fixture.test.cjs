@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const {page}=require('./helpers.cjs');
 
 const routerModule = () => import(pathToFileURL(path.resolve('scripts/extension-e2e/fixture-router.mjs')));
 const ownedModule = () => import(pathToFileURL(path.resolve('scripts/owned-files.mjs')));
@@ -58,4 +59,22 @@ test('installed extension fixtures expose only deterministic integration anchors
   assert.match(script.body, /revision/);
   assert.doesNotMatch(script.body, /\b(fetch|XMLHttpRequest|WebSocket|EventSource)\b/);
   assert.doesNotMatch(script.body, /\.config\s*=/);
+});
+test('fixture independently witnesses published v1 and current v2 metadata without retaining values or catalogue',async t=>{
+  const {loadFixtureResponses}=await routerModule(),{openOwnedRoot}=await ownedModule();
+  const script=(await loadFixtureResponses(await openOwnedRoot(path.resolve('.')))).find(response=>response.contentType==='text/javascript; charset=utf-8');
+  const dom=page();t.after(()=>dom.window.close());dom.window.eval(script.body);
+  const send=data=>dom.window.dispatchEvent(new dom.window.MessageEvent('message',{source:dom.window,origin:dom.window.location.origin,data}));
+  send({namespace:'cheese-knife',protocol:1,type:'config',requestId:'published',revision:2,config:{private:'not retained'}});
+  const state=dom.window.__knifeFixture;assert.equal(state.lastConfigEnvelopeV1.requestId,'published');assert.equal(state.lastConfigEnvelopeV2,null);
+  const current={namespace:'cheese-knife',protocol:2,type:'config',requestId:'current',deliverySequence:4,
+    context:{documentGeneration:1,routePath:'/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',channelId:'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',playerGeneration:2},
+    version:{globalRevision:3,mediaRevision:1},audioBindingGeneration:2,mediaPhase:'ready',audioKind:'global',videoKind:'channel',
+    profileState:'scoped',revisionStatus:'ready',baseConfig:{private:'do not retain'},effectiveConfig:{private:'do not retain'},presets:['SECRET LABEL']};
+  send(current);assert.equal(state.lastConfigEnvelopeV2.deliverySequence,4);assert.equal(state.lastConfigEnvelopeV1.requestId,'published');
+  assert.equal(JSON.stringify(state.lastConfigEnvelopeV2).includes('private'),false);assert.equal(JSON.stringify(state).includes('SECRET LABEL'),false);
+  const before=JSON.stringify(state.lastConfigEnvelopeV2);
+  for(const change of [{deliverySequence:-1},{requestId:'x'.repeat(129)},{context:{...current.context,channelId:'invalid'}},
+    {context:{...current.context,routePath:'x'.repeat(2049)}},{version:{globalRevision:'bad',mediaRevision:0}},{mediaPhase:'wrong'}])send({...current,...change});
+  assert.equal(JSON.stringify(state.lastConfigEnvelopeV2),before);
 });

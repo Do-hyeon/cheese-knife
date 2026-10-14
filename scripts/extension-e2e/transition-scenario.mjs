@@ -139,8 +139,12 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
     const repair = caseId === 'damaged-revision';
     await Promise.all([popupA, popupB, styles].map(ui => ui.locator(`#settings-status[data-phase="${repair ? 'repair-required' : 'ready'}"]`).waitFor({ timeout: 15000 })));
     // Ready waits are value-independent: lost raw config must reach the oracle, not a timeout.
-    await Promise.all([page, second].map(current => current.waitForFunction(() => !!window[Symbol.for('cheese-knife.runtime.v1')]?.configReady &&
-      !!window.__knifeFixture?.lastConfigEnvelope, null, { timeout: 15000 })));
+    const expectedProtocol = phase === 'new' ? 2 : 1;
+    await Promise.all([page, second].map(current => current.waitForFunction(protocol => {
+      const runtime = window[Symbol.for('cheese-knife.runtime.v1')],fixture = window.__knifeFixture;
+      return !!runtime?.configReady && (protocol === 1 ? !!fixture?.lastConfigEnvelopeV1 :
+        runtime.ownerProtocol === 2 && runtime.media.phase !== 'pending' && !!fixture?.lastConfigEnvelopeV2);
+    },expectedProtocol,{timeout:15000})));
     const initialLoads = await Promise.all([page, second].map(current => current.evaluate(() => window.__knifeFixture.loads)));
     let reloaded = false, reloads = [0, 0];
     const capture = async () => {
@@ -159,10 +163,10 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
           stylesRankingDisabled: document.querySelector('#hide-ranking').disabled, stylesFontDisabled: document.querySelector('#chat-font-size').disabled })),
         page.evaluate(() => ({ font: [1, 2, 10, 20].map(divisor => getComputedStyle(document.documentElement).getPropertyValue(`--knife-chat-size-${divisor}`).trim()),
           ranking: getComputedStyle(document.querySelector('[class^="live_chatting_ranking_container__"]')).display })),
-        page.evaluate(() => { const runtime = window[Symbol.for('cheese-knife.runtime.v1')], envelope = window.__knifeFixture.lastConfigEnvelope;
+        page.evaluate(protocol => { const runtime = window[Symbol.for('cheese-knife.runtime.v1')], envelope = protocol === 1 ? window.__knifeFixture.lastConfigEnvelopeV1 : window.__knifeFixture.lastConfigEnvelopeV2;
           const ids = [...document.querySelectorAll('.knife-owned[id]')].map(item => item.id);
           return { ready: runtime.configReady, config: { ...runtime.config }, requestIdObserved: typeof envelope?.requestId === 'string',
-            revisionObserved: Number.isSafeInteger(envelope?.revision), duplicatedControls: new Set(ids).size !== ids.length }; }),
+            revisionObserved: Number.isSafeInteger(protocol === 1 ? envelope?.revision : envelope?.deliverySequence), duplicatedControls: new Set(ids).size !== ids.length }; },expectedProtocol),
       ]);
       reloads = await Promise.all([page, second].map(async (current, i) => await current.evaluate(() => window.__knifeFixture.loads) - initialLoads.at(i)));
       return { raw, execution, ui: { ...uiA, ...uiB, ...styleUI }, css: { registrations, ...styleView, reloads }, runtime: main };
@@ -193,8 +197,10 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
         await check(); records.push({ step, observation });
         if (step === 'font8' || step === 'font0' || step === 'rollback-font8') {
           await styles.locator('#reload').click({ timeout: 15000 });
-          await page.waitForFunction(before => window.__knifeFixture.loads === before + 1 && !!window[Symbol.for('cheese-knife.runtime.v1')]?.configReady && !!window.__knifeFixture.lastConfigEnvelope,
-            initialLoads[0], { timeout: 15000 });
+          await page.waitForFunction(({before,protocol}) => window.__knifeFixture.loads === before+1 &&
+            !!window[Symbol.for('cheese-knife.runtime.v1')]?.configReady &&
+            (protocol === 1 ? !!window.__knifeFixture.lastConfigEnvelopeV1 : !!window.__knifeFixture.lastConfigEnvelopeV2),
+            {before:initialLoads[0],protocol:expectedProtocol},{timeout:15000});
           reloaded = true; await check(); records.push({ step, reloaded: true, observation });
         }
       }

@@ -122,10 +122,13 @@
     const pzp = candidates[0];
     const video = pzp.querySelector(".pzp-pc__video video") || pzp.querySelector("video");
     const playerLayout = layout || pzp.parentElement;
+    const parent = video?.parentElement;
+    const filterTarget = parent?.matches(".webplayer-internal-source-wrapper") && parent.closest(".pzp-pc__video") ? parent : video;
     return { root, body, sidebar, player: {
       layout: playerLayout,
       pzp,
       video,
+      filterTarget,
       vue: !!ownData(pzp, "__vue__")?.value,
       reactOnLayout: !!reader.fiberOf(playerLayout)
     } };
@@ -588,7 +591,7 @@
 
   // src/main/site-adapter/entry.ts
   var runtime = window[/* @__PURE__ */ Symbol.for("cheese-knife.runtime.v1")];
-  if (runtime && !runtime.adapter) {
+  if (runtime?.ownerProtocol === 2 && !runtime.adapter) {
     runtime.adapter = createSiteCapabilities(createReactReader());
     runtime.reconcile();
   }

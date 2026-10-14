@@ -1,9 +1,8 @@
-type KnifeMediaDomain = 'audio' | 'video';
-type KnifeAudioValues = { compressorDefault: boolean; compressorThreshold: number; compressorKnee: number;
-  compressorRatio: number; compressorAttack: number; compressorRelease: number };
-type KnifeVideoValues = { brightness: number; contrast: number; saturation: number; gamma: number; sharpness: number };
+type KnifeMediaDomain = import('../shared/media-contracts').MediaDomain;
+type KnifeAudioValues = import('../shared/media-contracts').AudioValues;
+type KnifeVideoValues = import('../shared/media-contracts').VideoValues;
 type KnifeMediaValues = KnifeAudioValues | KnifeVideoValues;
-type KnifeMediaVersion = { globalRevision: number | null; mediaRevision: number | null };
+type KnifeMediaVersion = import('../shared/media-contracts').MediaVersion;
 type KnifeMediaDomainPayload = { domain: 'audio'; values: KnifeAudioValues } | { domain: 'video'; values: KnifeVideoValues };
 type KnifeMediaPatch = { domain: 'audio'; patch: Partial<KnifeAudioValues> } | { domain: 'video'; patch: Partial<KnifeVideoValues> };
 type KnifeChannelToken = { channelId: string; recordCreatedRevision: number; domainCreatedRevision: number };
@@ -37,6 +36,10 @@ type KnifeMediaMutation =
 type KnifeMediaResolution = { effectiveConfig: Record<string, KnifeScalar>;
   profileState: 'global' | 'scoped' | 'repair-required'; audioBindingKey: string;
   audioKind: 'global' | 'channel'; videoKind: 'global' | 'channel' };
+type KnifeScopedContext = import('../shared/media-contracts').ScopedContext;
+type KnifeScopedSnapshot = { baseConfig: Record<string, KnifeScalar>; effectiveConfig: Record<string, KnifeScalar>;
+  styleParameters: KnifeUnknownRecord; version: KnifeMediaVersion; profileState: KnifeMediaResolution['profileState'];
+  revisionStatus: 'ready' | 'repair-required'; audioBindingKey: string; audioKind: 'global' | 'channel'; videoKind: 'global' | 'channel' };
 type KnifeMediaMergeResult = { ok: false; code: string } | { ok: true; changed: boolean; nextStore: KnifeMediaStore;
   globalOperations?: KnifeSettingsOperation[]; channelToken?: KnifeChannelToken; recordRevision?: number; presetToken?: KnifePresetToken };
 

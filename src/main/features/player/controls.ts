@@ -34,8 +34,17 @@ export interface PlayerMount extends MountedSnapshot {
   stopHold(event?: Event | { type: string }): void;
 }
 
-const defaultRequested = new WeakSet<HTMLVideoElement>();
-const manuallyToggled = new WeakSet<HTMLVideoElement>();
+interface AudioIntent { path:string;manual:boolean;requested:boolean;automatic:boolean;binding:number;needsResume:boolean }
+const audioIntents = new WeakMap<HTMLVideoElement,AudioIntent>();
+function audioIntent(runtime: KnifeRuntime,video:HTMLVideoElement): AudioIntent {
+  const context = runtime.media.context;let intent = audioIntents.get(video);
+  // Replacing the PZP shell renews delivery authority, not the same video's audio intent.
+  if (!intent || intent.path !== context.routePath) {
+    intent = {path:context.routePath,manual:false,requested:false,automatic:false,binding:-1,needsResume:false};
+    audioIntents.set(video,intent);
+  }
+  return intent;
+}
 const labelKeys = new Set(['fastForward', 'stats', 'close', 'unknown', 'resolution', 'bitrate', 'fps',
   'measured', 'latency', 'codec', 'enableCompressor', 'disableCompressor', 'speed2x']);
 
@@ -87,7 +96,6 @@ export function mountPlayer(runtime: KnifeRuntime, snapshot: MountedSnapshot): P
     stopHold: (_event?: Event | { type: string }) => {},
   };
   scope.add(() => {
-    if (runtime.selectPlayer()?.video !== mount.video) runtime.audio?.bypass(mount.video);
     for (const node of nodes) node.remove();
   });
   const clearClick = () => {
@@ -222,7 +230,7 @@ export function syncControls(mount: PlayerMount): void {
       slider.className = 'knife-gain-slider'; slider.setAttribute('aria-label', 'Gain');
       box.append(button, slider); volume.after(box);
       scope.on(button, 'click', event => {
-        event.stopPropagation(); manuallyToggled.add(video);
+        event.stopPropagation();const intent = audioIntent(runtime,video);intent.manual = true;intent.automatic = false;intent.needsResume = !runtime.mediaCurrent();
         void audio.setEnabled(video, !['on', 'pending'].includes(audio.getState(video)));
       });
       scope.on(slider, 'input', () => audio.setGain(video, Number(slider.value)));
@@ -235,9 +243,20 @@ export function syncControls(mount: PlayerMount): void {
         slider.value = String(gain); slider.hidden = status !== 'on'; slider.title = `${Math.round(gain * 100)}%`;
       }));
     }
-    audio.configure();
-    if (runtime.config.compressorDefault === true && !defaultRequested.has(video) && !manuallyToggled.has(video) && audio.eligible(video)) {
-      defaultRequested.add(video); void audio.setEnabled(video, true);
+    const intent = audioIntent(runtime,video);
+    if (!runtime.mediaCurrent()) {
+      audio.suspend(video);intent.needsResume = true;
+    } else {
+      if (intent.binding !== runtime.media.audioBindingGeneration) {
+        if (intent.automatic && !intent.manual) { audio.bypass(video);intent.automatic = false;intent.requested = false; }
+        if (intent.manual && audio.getState(video) === 'pending') intent.needsResume = true;
+        intent.binding = runtime.media.audioBindingGeneration;
+      }
+      audio.configure();
+      if (intent.needsResume) { intent.needsResume = false;void audio.resumeWanted(video); }
+      if (runtime.config.compressorDefault === true && !intent.requested && !intent.manual && audio.eligible(video)) {
+        intent.requested = true;intent.automatic = true;void audio.setEnabled(video,true);
+      }
     }
   }
   const container = pzp.querySelector('.pzp-pc__video');
@@ -274,7 +293,7 @@ export function installPlayer(target: Window): PlayerController | null {
   const browser = target as BrowserWindow;
   const key = browser.Symbol.for('cheese-knife.runtime.v1');
   const runtime = Object.getOwnPropertyDescriptor(target, key)?.value as KnifeRuntime | undefined;
-  if (!runtime || runtime.player) return null;
+  if (runtime?.ownerProtocol !== 2 || runtime.player) return null;
   if (!runtime.adapter) runtime.setStatus('player', 'pending', 'site-adapter-unavailable');
   let current: PlayerMount | null = null;
   let unsubscribe: (() => boolean) | null = null;
@@ -300,6 +319,13 @@ export function installPlayer(target: Window): PlayerController | null {
   };
   const reconcile = (state: RuntimeState) => {
     const player = state.player;
+    if (runtime.configReady) {
+      const values = (config: Record<string,unknown>) => KnifeMediaProfiles.validateValues('video',Object.fromEntries(
+        KnifeMediaProfiles.videoFields.map(field => [field.id,Object.getOwnPropertyDescriptor(config,field.id)?.value])));
+      const base = values(runtime.baseConfig),channel = runtime.media.videoKind === 'channel' && runtime.mediaCurrent() ? values(runtime.config) : null;
+      if (base.ok && base.domain === 'video') runtime.filters?.reconcile(base.values,
+        channel?.ok && channel.domain === 'video' ? channel.values : null,player?.filterTarget ?? null);
+    }
     if (current && (!runtime.configReady || !player || current.pzp !== player.pzp || current.video !== player.video ||
         current.layout !== player.layout || current.path !== state.route?.path)) {
       current.scope.dispose(); current = null;

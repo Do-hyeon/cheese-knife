@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { page, load, runtime, deliver, playerHTML, clock } = require('./helpers.cjs');
+const { page, load, runtime, deliverScoped: deliver, playerHTML, clock } = require('./helpers.cjs');
 
 function deferred() { let resolve, reject; const promise = new Promise((a, b) => { resolve = a; reject = b; }); return { promise, resolve, reject }; }
 function fixture(t, options = {}) {
@@ -31,7 +31,7 @@ function fixture(t, options = {}) {
     livePlaybackJson: JSON.stringify({ media: [{ mediaId: 'HLS', path: 'https://media.invalid/master.m3u8' }] }) } }) };
   dom.window.fetch = () => options.fetch || Promise.resolve(info);
   for (const a of document.querySelectorAll('#sidebar a')) a.getBoundingClientRect = () => ({ left: 20, top: 30, bottom: 50, width: 180 });
-  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
   const config = { preview: true, livePreview: true, previewWidth: 400, previewDelay: 1, previewVolume: 5,
     rightClickToUnmute: true, previewStartUnmuted: true, ...options.config };
   deliver(dom, config); runtime(dom).Hls = Stream; load(dom, 'web/preview.js');

@@ -38,7 +38,7 @@ export function installAudio(target: Window): AudioController | null {
   const browser = target as AudioWindow;
   const key = browser.Symbol.for(registryName);
   const runtime = Object.getOwnPropertyDescriptor(target, key)?.value as KnifeRuntime | undefined;
-  if (!runtime || runtime.audio) return null;
+  if (runtime?.ownerProtocol !== 2 || runtime.audio) return null;
 
   const entries = new WeakMap<HTMLVideoElement, AudioEntry>();
   const connected = new Set<AudioEntry>();
@@ -93,6 +93,7 @@ export function installAudio(target: Window): AudioController | null {
   };
   const apply = (entry: AudioEntry): void => {
     if (!entry.compressor) return;
+    if (!runtime.mediaCurrent() || runtime.selectPlayer()?.video !== entry.video || !eligible(entry.video)) { bypassEntry(entry);return; }
     const parameters = [
       { parameter: entry.compressor.threshold, configured: runtime.config.compressorThreshold, min: -100, max: 0, fallback: -50 },
       { parameter: entry.compressor.knee, configured: runtime.config.compressorKnee, min: 0, max: 40, fallback: 40 },
@@ -138,6 +139,10 @@ export function installAudio(target: Window): AudioController | null {
       if (runtime.selectPlayer()?.video !== video || !eligible(video)) {
         bypassEntry(entry); announce(entry, 'unavailable', 'unsupported-media-source'); return entry.state;
       }
+      if (!runtime.mediaCurrent()) { bypassEntry(entry);announce(entry,'pending','scoped-config-pending');return entry.state; }
+      const requestId = runtime.mediaRequestId,binding = runtime.media.audioBindingGeneration;
+      const current = () => runtime.mediaCurrent() && runtime.mediaRequestId === requestId &&
+        runtime.media.audioBindingGeneration === binding && runtime.selectPlayer()?.video === video;
       announce(entry, 'pending', 'audio-context');
       try {
         const AudioContextClass = browser.AudioContext || browser.webkitAudioContext;
@@ -154,6 +159,7 @@ export function installAudio(target: Window): AudioController | null {
         }
         if (scope.disposed) { entry.wanted = false; entry.state = 'off'; return entry.state; }
         if (generation !== entry.generation || !entry.wanted) return entry.state;
+        if (!current()) { bypassEntry(entry);announce(entry,'pending','scoped-config-pending');return entry.state; }
         if (context.state !== 'running' || runtime.selectPlayer()?.video !== video || !eligible(video)) throw new Error('audio-not-ready');
         if (!entry.source) {
           entry.dry = context.createGain(); entry.dry.gain.value = 1;
@@ -163,7 +169,11 @@ export function installAudio(target: Window): AudioController | null {
           entry.gainNode = context.createGain(); entry.gainTransition = null; apply(entry);
           entry.limiter = context.createWaveShaper();
           entry.limiter.curve = limiterCurve(); entry.limiter.oversample = 'none';
+          if (!current() || generation !== entry.generation || !entry.wanted) return entry.state;
           entry.source = context.createMediaElementSource(video);
+        }
+        if (scope.disposed || !current() || generation !== entry.generation || !entry.wanted) {
+          connect(entry);bypassEntry(entry);return entry.state;
         }
         connect(entry); apply(entry);
         ramp(entry.dry!.gain, 0); ramp(entry.wet!.gain, 1);
@@ -194,6 +204,13 @@ export function installAudio(target: Window): AudioController | null {
     bypass(video) {
       const entry = entries.get(video);
       if (entry) { entry.generation++; entry.wanted = false; bypassEntry(entry); announce(entry, 'off'); }
+    },
+    suspend(video) {
+      const entry = entries.get(video);
+      if (entry) { entry.generation++;bypassEntry(entry);announce(entry,entry.wanted ? 'pending' : 'off'); }
+    },
+    resumeWanted(video) {
+      return entries.get(video)?.wanted ? controller.setEnabled(video,true) : Promise.resolve('off');
     },
     subscribe(video, callback) {
       const entry = entryFor(video);

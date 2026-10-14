@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { page, load, runtime, deliver, flush } = require('./helpers.cjs');
+const { page, load, runtime, deliverScoped: deliver, flush } = require('./helpers.cjs');
 
 const channel = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const bodyHTML = id => `<div id="layout-body" data-instance="${id}"><section><div role="tablist"><button>Videos</button></div><main><div id="live_player_layout"><div class="pzp-pc"><button class="pzp-pc__viewmode-button" aria-label="Wide screen"></button><video></video></div></div><aside id="chat-${id}"><div role="log"></div></aside><div id="banner-${id}" class="band_banner_container__fixture"></div></main></section></div>`;
@@ -37,7 +37,7 @@ function setup(t, { url = `https://chzzk.naver.com/live/${channel}`, config = {}
   dom.window.document.documentElement.style.setProperty('--knife-chat-timestamp', '1');
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
   const first = attachOwnedState(dom, dom.window.document.getElementById('layout-body'));
-  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
   deliver(dom, { updateSidebar: true, expandFollowings: false, ...config });
   const monitor = monitorInject(dom);
   return { dom, first, monitor, start() { load(dom, 'web/inject.js'); } };

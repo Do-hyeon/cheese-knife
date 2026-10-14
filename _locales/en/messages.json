@@ -344,6 +344,11 @@
   "capability_title": {
     "message": "Feature readiness on this tab"
   },
+  "capability_mediaSettings": { "message": "Channel media settings" },
+  "capability_reason_scoped_config_pending": { "message": "Waiting for the current channel's media settings." },
+  "capability_reason_scoped_config_unavailable": { "message": "Channel settings could not be confirmed; global settings are used. Reload the broadcast tab after an extension update." },
+  "capability_reason_profile_limited": { "message": "Settings metadata could not be confirmed. Only valid media values are applied; damaged source data is not overwritten." },
+  "capability_reason_reload_required": { "message": "The current tab's execution code is incompatible with this extension. Reload the broadcast tab." },
   "capability_player": {
     "message": "Player controls"
   },

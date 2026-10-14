@@ -43,7 +43,7 @@
       const result = await chrome.tabs.sendMessage(tab.id, { type: "cheese-knife-status" }, { frameId: 0 });
       const statusMap = new Map(Object.entries(result?.statuses || {}));
       let shown = 0;
-      for (const feature of ["player", "compressor", "preview", "livePreview", "chatResize", "donationChat", "deletedChat", "sidebarRefresh", "statistics"]) {
+      for (const feature of ["player", "mediaSettings", "compressor", "preview", "livePreview", "chatResize", "donationChat", "deletedChat", "sidebarRefresh", "statistics"]) {
         const status = statusMap.get(feature);
         if (!status) continue;
         const row = document.createElement("div");

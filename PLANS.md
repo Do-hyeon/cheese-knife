@@ -1,8 +1,8 @@
 # 치즈 나이프 장기 유지보수 실행 계획
 
-> **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md)과 [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
+> **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F00 Task4 — scoped runtime·필터·오디오 수명주기**. Tasks1–3의 계약/저장/UI 검증을 완료했고 Task3 전체1241/1240pass/0fail/기존skip1·9gate를 확인했다. 승인된 Tasks1–6을 계속 진행하며 실제 시청 Chrome/P09 변경·push/PR·배포는 포함하지 않는다.
+최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F00 Task5 — 실제 popup qualification·설치형 저장 보존**. Task4 전체1280/1279pass/0fail/0cancelled/기존skip1·9foundation gate·현재 입력의 실제 픽셀24/24 및 합성 WebAudio 수치 검사를 확인했다. 승인된 Tasks1–6을 계속 진행하며 실제 시청 Chrome/P09 변경·push/PR·배포는 포함하지 않는다. 실제 설치형 저장4관측과 whole-F00 Astra max는 아직 남아 있다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -56,16 +56,8 @@
 
 문서: [승인 상세 설계](docs/superpowers/specs/2026-10-14-f00-channel-media-settings-design.md) · [설계 검토/보완](docs/superpowers/validation/2026-10-14-f00-design-review.md) · [구현 계획](docs/superpowers/plans/2026-10-14-f00-channel-media-settings.md) · [계획 검토/7항목 closure](docs/superpowers/validation/2026-10-14-f00-plan-review.md).
 
-- [x] 채널별 audio/video만, 나머지 전역으로 범위 확정.
-- [x] 설계 작성·현행 소스 대조·Astra max 최초 Critical0/Important3/Minor2와5항목 targeted closure.
-- [x] 사용자 written-spec 승인2026-10-14. VOD 불명 전역 fallback·Gain F01·top-frame 이외 전역·incognito 신규 저장 금지·혼재 세대 제한 포함.
-- [x] 6task 상세 구현 계획과 root 자체 대조. 새 저장키/동일 broker queue·client ABI·base/scoped readiness·오디오 wanted·filter target·old/new 보존·검사/승인 경계 명시.
-- [x] 새 Astra max 계획 최초 Critical0/Important6/Minor1·작성자 보완·같은 검토자7항목 targeted closure/승인 가능 판정. fresh 전체0건·구현/보안 PASS는 아님.
-- [x] 사용자 written-plan/Native 실행 승인2026-10-14. 소스/생성물·로컬 커밋·격리 bundled Chromium·기존 승인 점검도구·전체 최종 검토 포함, 실제 시청 Chrome/P09/공개 제외.
-- [x] Task1 순수 미디어 계약·classic load graph·신규 active inventory·기존 frozen 기준 보존. 로컬959fdb3, [구현/검증 기록](docs/superpowers/validation/2026-10-14-f00-channel-media-settings.md). 최종 F00 수용은 아님.
-- [x] Task2 동일 queue의 v2 writer·field merge·삭제/재생성 token·unknown/손실/실패 계약. 로컬5a06b58·추가 경계16/16·전체/9gate 통과.
-- [x] Task3 별도 media client 상태·명시 scope/도메인·프리셋 UI·전역 UI 독립. 집중76/76·전체1241/1240pass/0fail/기존skip1·9gate 통과. 실제 설치형 UI는 Task5에서 별도 검증.
-- [ ] Task4 scoped bridge·실제 player context·필터 소유권·자동/수동 오디오 intent·객관 pixel/audio 검증.
+완료된 설계·계획 승인 및 Tasks1–4은 [F00 완료 단계 아카이브](docs/superpowers/archive/2026-10-14-f00-completed-stages.md)로 이동했다. 현재 실행 승인은 Tasks1–6 로컬 구현·격리 검증·최종 Astra max에 한정되며 공개와 실제 시청 Chrome/P09는 제외한다.
+
 - [ ] Task5 실제 popup qualification·격리 old→new→old→new 저장 보존·config/media 손실 negative·개인정보/사용 안내.
 - [ ] Task6 fresh 전체 회귀/9foundation·점검도구·패키지/설치·보호 대조·whole-F00 Astra max·로컬 마감. 실제 미실행 경로는 별도 기록.
 - [ ] F00 전체 범위 공개 지시를 받은 뒤 한글 PR/CI 확인. 현재 push/PR 금지; 자동 병합/배포 없음.

@@ -30,7 +30,8 @@ const waitUntil = async (read, accept, code, timeoutMs = 15000) => {
 
 const storageSnapshot = worker => worker.evaluate(() => chrome.storage.local.get(null));
 
-export async function runBaseInstalledScenario({ context, worker, extensionId, responses, restartSession, captureState }) {
+export async function runBaseInstalledScenario({ context, worker, extensionId, responses, restartSession, captureState, expectedProtocol = 2 }) {
+  assertCondition(expectedProtocol === 1 || expectedProtocol === 2,'installed-protocol-invalid');
   const pageErrors = [];
   const routeErrors = [];
   const fulfilled = [];
@@ -84,15 +85,15 @@ export async function runBaseInstalledScenario({ context, worker, extensionId, r
     'storage-setting-missing',
   );
   const main = await waitUntil(
-    () => page.evaluate(() => {
+    () => page.evaluate(protocol => {
       const runtime = window[Symbol.for('cheese-knife.runtime.v1')];
-      return runtime ? { ready: runtime.configReady, arrowSeek: runtime.config.arrowSeek } : null;
-    }),
+      return runtime ? { ready: runtime.configReady && (protocol === 1 || runtime.ownerProtocol === 2 && runtime.media.phase !== 'pending'), arrowSeek: runtime.config.arrowSeek } : null;
+    },expectedProtocol),
     value => value?.ready && value.arrowSeek === false,
     'main-setting-missing',
   );
-  const envelope = await page.evaluate(() => window.__knifeFixture?.lastConfigEnvelope || null);
-  assertCondition(envelope && typeof envelope.requestId === 'string' && Number.isSafeInteger(envelope.revision), 'isolated-bridge-metadata-missing');
+  const envelope = await page.evaluate(protocol => protocol === 1 ? window.__knifeFixture?.lastConfigEnvelopeV1 : window.__knifeFixture?.lastConfigEnvelopeV2,expectedProtocol);
+  assertCondition(envelope && typeof envelope.requestId === 'string' && Number.isSafeInteger(expectedProtocol === 1 ? envelope.revision : envelope.deliverySequence), 'isolated-bridge-metadata-missing');
 
   const beforeInvalid = await storageSnapshot(worker);
   const invalidReply = await popup.evaluate(() => new Promise(resolve => chrome.runtime.sendMessage({
@@ -102,15 +103,33 @@ export async function runBaseInstalledScenario({ context, worker, extensionId, r
   assertCondition(invalidReply?.ok === false && invalidReply.code === 'invalid-request', 'invalid-message-accepted');
   assertCondition(JSON.stringify(beforeInvalid) === JSON.stringify(afterInvalid), 'invalid-message-mutated-storage');
 
-  await page.evaluate(metadata => {
+  await page.evaluate(({metadata,protocol}) => {
     const runtime = window[Symbol.for('cheese-knife.runtime.v1')];
-    window.postMessage({
+    const message = protocol === 1 ? {
       namespace: 'cheese-knife', protocol: 1, type: 'config', requestId: metadata.requestId,
       revision: metadata.revision - 1, config: { ...runtime.config, arrowSeek: true }, i18n: {},
-    }, location.origin);
-  }, envelope);
+    } : { ...metadata,namespace:'cheese-knife',protocol:2,type:'config',deliverySequence:metadata.deliverySequence-1,
+      baseConfig:{...runtime.baseConfig,arrowSeek:true},effectiveConfig:{...runtime.config,arrowSeek:true},i18n:{...runtime.i18n} };
+    window.postMessage(message,location.origin);
+  }, {metadata:envelope,protocol:expectedProtocol});
   await page.waitForTimeout(100);
   assertCondition(await page.evaluate(() => window[Symbol.for('cheese-knife.runtime.v1')].config.arrowSeek === false), 'stale-revision-accepted');
+  if(expectedProtocol===2){
+    await page.evaluate(()=>{history.pushState(null,'','/live/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');window.dispatchEvent(new PopStateEvent('popstate'));});
+    await page.waitForFunction(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
+      return runtime?.ownerProtocol===2&&runtime.media.phase==='ready'&&runtime.media.context.channelId==='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';},null,{timeout:15000});
+    const beforeReplay=await page.evaluate(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];return JSON.stringify({context:runtime.media.context,config:runtime.config});});
+    await page.evaluate(metadata=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
+      window.postMessage({...metadata,namespace:'cheese-knife',protocol:2,type:'config',deliverySequence:metadata.deliverySequence+100,
+        baseConfig:{...runtime.baseConfig,arrowSeek:true},effectiveConfig:{...runtime.config,arrowSeek:true},i18n:{...runtime.i18n}},location.origin);
+    },envelope);
+    await page.waitForTimeout(100);
+    assertCondition(await page.evaluate(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
+      return JSON.stringify({context:runtime.media.context,config:runtime.config});})===beforeReplay,'retired-channel-envelope-accepted');
+    await page.evaluate(()=>{history.pushState(null,'','/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');window.dispatchEvent(new PopStateEvent('popstate'));});
+    await page.waitForFunction(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
+      return runtime?.media.phase==='ready'&&runtime.media.context.channelId==='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';},null,{timeout:15000});
+  }
 
   const validSnapshot = await storageSnapshot(worker);
   await worker.evaluate(() => chrome.storage.local.set({ settingsRevision: 'invalid-e2e-revision' }));

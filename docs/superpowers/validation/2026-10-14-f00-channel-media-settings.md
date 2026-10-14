@@ -27,7 +27,7 @@
 
 ## 남은 실행
 
-Task3 구현과 집중76/76·전체1241/1240pass/실패0/취소0/기존skip1·9foundation gate를 확인했다. 다음은 Task4이며 실제 설치형 popup qualification/저장4관측·최종 전체 Astra max는 아직 남아 있다.
+Tasks1–4 로컬 구현/개별 회귀를 확인했다. 현재는 Task5 진입이며 실제 설치형 popup qualification/저장4관측·최종 전체 Astra max는 아직 남아 있다.
 
 - 기존10초 callback transport를 두 client가 공유하고 v1 API는 유지한다. media client는 별도 snapshot/epoch·필드 generation·scope·pendingRequest/pendingValues를 갖는다. UNKNOWN/CONFLICT는 unsent input보다 우선이며 최신 read-back이 원래 생성 토큰/값을 확인할 때만 무쓰기 확정한다.
 - 전역을 기본으로 명시 채널/저장 채널·독립 audio/video enable/전역 상속·프리셋 생성/적용/이름 변경/삭제를 제공한다. 미설정 도메인 적용은 차단하고 VOD/시크릿/불명 target의 현재 채널 선택을 막는다. 채널 삭제 후 selector는 명시 scope를 유지하며 자동 재생성/retarget하지 않는다.
@@ -36,8 +36,22 @@ Task3 구현과 집중76/76·전체1241/1240pass/실패0/취소0/기존skip1·9f
 
 - [x] Task2 동일 broker 큐·v2 경계·저장/실패/unknown 계약. 로컬5a06b58.
 - [x] Task3 명시 scope/preset UI와 독립 client 상태.
-- [ ] Task4 scoped runtime·필터/오디오 intent·객관 적용 검사.
+- [x] Task4 scoped runtime·필터/오디오 intent·객관 적용 검사.
 - [ ] Task5 실제 popup qualification·4관측·정확한 손실 negative·고지.
 - [ ] Task6 fresh 전체/도구 감사/설치·보호 대조·whole-F00 Astra max.
 
 미실행은 별도 한계다. 버전2.13.3 유지, local commit만 승인됐고 push/PR/배포는 하지 않는다.
+
+## Task4 — 두 world 연결과 적용 소유권
+
+- 단일 bulk reader는 기존 전역 기본값과 채널 projection을 분리한다. 전역 준비가 끝나면 기존 탐색·채팅·미리보기는 사용 가능하지만 오디오 자동 ON은 scoped 응답 전에 요청하지 않는다. 손상 메타데이터는 nullable/제한 상태이며 유효한 전역 값을 지우거나 원본을 덮어쓰지 않는다.
+- 실제 route/pzp/video 문맥과 request nonce로 늦은 A→B→A·source 생성 중 전환·읽기 취소·복원을 검증했다. 같은 영상의 PZP shell 교체는 전달 권한을 갱신하되 수동 의도를 유지한다. 플레이어 문맥 변경은 이전 영상의 wet 출력/채널 overlay를 먼저 은퇴시킨다.
+- 새 응답이 전혀 없는 fallback의 자동 ON 잔류를 추가 RED로 재현했다. 제한시간 뒤에는 이전 확정 metadata/binding을 지우고 미확정 전역 fallback으로 처리한다. 이후 채널 OFF 확인 시 자동 의도만 은퇴하고 수동 ON/OFF는 유지한다.
+- `filters.ts`가 유일한 SVG 원본이다. 전역 필터는 document, 채널 필터는 실제 main filterTarget에만 적용한다. 중립 채널은 전역 필터를 한 번만 덮어쓰고 네이티브 inner-video 필터는 유지한다. 외부 marker/slot/SVG는 교체하지 않는다.
+- 실제 Chromium151 합성 픽셀 **24/24**: 기존17개 기대값/네이티브 wrapper, scoped4개, renderer 부재·두 혼재 world3개. source-wrapper fixture가 layout-body를 빠뜨린 실패와 installed-but-unapplied renderer를 absence로 오해한 기대값 실패는 별도로 남겼다.
+- 현재 입력의 실제 WebAudio **qualityFailures0**, source1·48kHz, 정상 신호14개·전환18개 및 지연 정렬·극단 설정 검사. 극단 설정 peak0.9800000190734863·full-scale 초과 sample0. 합성 출력 수치이지 사용자 하드웨어/방송 청취·모든 코덱의 인증이 아니다.
+- 실제 v1/v2 fixture metadata witness는 분리하고 bounded 문맥/seq만 기록한다. stale-current 음성 대조와 B 전환 후 A 재생 공격 대조 호출자는 구현했다. 실제 설치형 실행은 Task5–6에서 별도 확인하며 아직 PASS로 세지 않는다.
+- current helper의 실제 v2 decoder를 사용하되 legacy v1 helper·게시본 loader·동결 해시/오디오 오차·계산 본문은 보존했다. shared6개 erased data type으로 Node 개발 도구 graph가15개가 됐고 기존 오용 음성 대조는 유지한다.
+- 최종 전체 **1280건/1279통과/실패0/취소0/기존 private 자료 부재 skip1**,53.91초. **9foundation 모두 통과**. 마지막 metadata 수정과 같은 런타임 입력으로 픽셀24/24·오디오 수치도 재실행했다.
+- 이전 전체1272의 type graph/import assertion2건과 전체1278의 오디오 CLI 고정 해시1건 실패는 기록했다. CLI의 정확한 승인된 v2 bootstrap 블록만 대조에서 분리하고 나머지 전체 본문은 동일6f8338... 해시로 계속 보호한다. 역사 기준·DSP·합격 오차를 갱신해 통과시킨 것이 아니다.
+- root dist58·원본 CRX/ZIP/private 자료·보호 브랜치·manifest 권한/범위·제품2.13.3 불변; 사용자 시청/P09 프로필 접근0. 완료된 체크리스트는 F00 아카이브로 분리했다.

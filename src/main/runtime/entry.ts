@@ -13,13 +13,22 @@ export function installRuntime(target: Window): KnifeRuntime | null {
   const subscribers = new Set<(state: RuntimeState) => void>();
   let lifecycle: RuntimeLifecycle;
   let runtime: KnifeRuntime;
+  let playerGeneration = 0, requestGeneration = 0;
+  const channelId = (route: ReturnType<typeof parseRoute>) => target.top === target && route.kind === 'live' && route.id &&
+    /^\/live\/[a-f0-9]{32}\/?$/i.test(route.path) ? route.id.toLowerCase() : null;
+  const initialRoute = parseRoute(target.location.pathname);
   const status = createStatusStore(
     payload => target.postMessage(payload, target.location.origin),
     () => runtime.diagnostics(),
   );
   runtime = {
+    ownerProtocol: 2,
     requestId: `knife-${Date.now().toString(36)}`,
-    config: {}, i18n: {}, configReady: false, state: {}, statuses: status.statuses, features: {}, generation: 0,
+    config: {}, baseConfig: {}, mediaRequestId: '',
+    media: { context: { documentGeneration:1,routePath:initialRoute.path,channelId:channelId(initialRoute),playerGeneration },
+      phase:'pending',version:{globalRevision:null,mediaRevision:null},profileState:'global',revisionStatus:'repair-required',
+      audioBindingGeneration:0,audioKind:'global',videoKind:'global' },
+    i18n: {}, configReady: false, state: {}, statuses: status.statuses, features: {}, generation: 0,
     route: () => parseRoute(target.location.pathname),
     selectPlayer() {
       try { return runtime.adapter?.discover(target.document, runtime.route()).player || null; }
@@ -46,6 +55,22 @@ export function installRuntime(target: Window): KnifeRuntime | null {
         catch { runtime.setStatus('runtime', 'failed', 'feature-initialization'); }
       }
     },
+    mediaCurrent() {
+      const actual = runtime.selectPlayer(),previous = runtime.state.player;
+      return runtime.configReady && runtime.media.phase !== 'pending' && runtime.media.context.routePath === target.location.pathname &&
+        actual?.pzp === previous?.pzp && actual?.video === previous?.video;
+    },
+    revalidateMedia() {
+      runtime.media.phase = 'pending';runtime.mediaRequestId = `${runtime.requestId}-media-${++requestGeneration}`;
+      runtime.config = { ...runtime.baseConfig };
+      const video = runtime.state.player?.video;if (video) runtime.audio?.suspend(video);
+      if (runtime.configReady) {
+        const values = Object.fromEntries(KnifeMediaProfiles.videoFields.map(field => [field.id,Object.getOwnPropertyDescriptor(runtime.baseConfig,field.id)?.value]));
+        const checked = KnifeMediaProfiles.validateValues('video',values);if (checked.ok && checked.domain === 'video') runtime.filters?.reconcile(checked.values,null,null);
+      }
+      runtime.setStatus('mediaSettings','pending','scoped-config-pending');
+      lifecycle.requestMedia();
+    },
     reconcile() {
       const route = runtime.route();
       let site;
@@ -53,9 +78,19 @@ export function installRuntime(target: Window): KnifeRuntime | null {
       const body = site?.body || null, player = site?.player || null, sidebar = site?.sidebar || null;
       const previous = runtime.state;
       if (previous.route?.path === route.path && previous.body === body && previous.sidebar === sidebar &&
-          previous.player?.pzp === player?.pzp && previous.player?.video === player?.video) { runtime.notify(); return; }
+          previous.player?.pzp === player?.pzp && previous.player?.video === player?.video &&
+          previous.player?.filterTarget === player?.filterTarget) { runtime.notify(); return; }
+      const mediaChanged = previous.route?.path !== route.path || previous.player?.pzp !== player?.pzp || previous.player?.video !== player?.video;
+      if (mediaChanged) {
+        if (previous.player?.video) {
+          if (previous.player.video === player?.video && previous.route?.path === route.path) runtime.audio?.suspend(previous.player.video);
+          else runtime.audio?.bypass(previous.player.video);
+        }
+        runtime.media.context = { documentGeneration:runtime.media.context.documentGeneration,routePath:route.path,channelId:channelId(route),playerGeneration:++playerGeneration };
+      }
       runtime.generation++;
       runtime.state = { route, body, player, sidebar, generation: runtime.generation };
+      if (mediaChanged) runtime.revalidateMedia();
       runtime.notify();
     },
     schedule: () => lifecycle.schedule(),

@@ -150,3 +150,25 @@ async function getConfig(includeStyleParameters) {
   }
   return result;
 }
+async function readScopedConfig(context) {
+  const stored = await chrome.storage.local.get(["config", "styles", "styleParameters", "settingsRevision", "mediaProfiles"]);
+  const baseConfig = normalizeConfig(stored.config), read = KnifeMediaProfiles.readStore(stored.mediaProfiles);
+  const resolved = KnifeMediaProfiles.resolveMediaSettings(baseConfig, read, {
+    channelId: context.channelId,
+    topFrame: window.top === window,
+    incognito: chrome.extension?.inIncognitoContext !== false
+  });
+  const revision = stored.settingsRevision === void 0 ? 0 : stored.settingsRevision;
+  const globalRevision = KnifeMediaProfiles.isCounter(revision) && revision < Number.MAX_SAFE_INTEGER ? revision : null;
+  return {
+    baseConfig,
+    effectiveConfig: resolved.effectiveConfig,
+    styleParameters: stored.styleParameters && typeof stored.styleParameters === "object" && !Array.isArray(stored.styleParameters) ? stored.styleParameters : {},
+    version: { globalRevision, mediaRevision: read.state === "valid" || read.state === "absent" ? read.store.revision : null },
+    revisionStatus: globalRevision === null ? "repair-required" : "ready",
+    profileState: resolved.profileState,
+    audioBindingKey: resolved.audioBindingKey,
+    audioKind: resolved.audioKind,
+    videoKind: resolved.videoKind
+  };
+}

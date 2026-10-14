@@ -36,8 +36,16 @@
   }
 
   // src/main/features/player/controls.ts
-  var defaultRequested = /* @__PURE__ */ new WeakSet();
-  var manuallyToggled = /* @__PURE__ */ new WeakSet();
+  var audioIntents = /* @__PURE__ */ new WeakMap();
+  function audioIntent(runtime, video) {
+    const context = runtime.media.context;
+    let intent = audioIntents.get(video);
+    if (!intent || intent.path !== context.routePath) {
+      intent = { path: context.routePath, manual: false, requested: false, automatic: false, binding: -1, needsResume: false };
+      audioIntents.set(video, intent);
+    }
+    return intent;
+  }
   var labelKeys = /* @__PURE__ */ new Set([
     "fastForward",
     "stats",
@@ -110,7 +118,6 @@
       }
     };
     scope.add(() => {
-      if (runtime.selectPlayer()?.video !== mount.video) runtime.audio?.bypass(mount.video);
       for (const node of nodes) node.remove();
     });
     const clearClick = () => {
@@ -263,7 +270,10 @@
         volume.after(box);
         scope.on(button, "click", (event) => {
           event.stopPropagation();
-          manuallyToggled.add(video);
+          const intent2 = audioIntent(runtime, video);
+          intent2.manual = true;
+          intent2.automatic = false;
+          intent2.needsResume = !runtime.mediaCurrent();
           void audio.setEnabled(video, !["on", "pending"].includes(audio.getState(video)));
         });
         scope.on(slider, "input", () => audio.setGain(video, Number(slider.value)));
@@ -279,10 +289,30 @@
           slider.title = `${Math.round(gain * 100)}%`;
         }));
       }
-      audio.configure();
-      if (runtime.config.compressorDefault === true && !defaultRequested.has(video) && !manuallyToggled.has(video) && audio.eligible(video)) {
-        defaultRequested.add(video);
-        void audio.setEnabled(video, true);
+      const intent = audioIntent(runtime, video);
+      if (!runtime.mediaCurrent()) {
+        audio.suspend(video);
+        intent.needsResume = true;
+      } else {
+        if (intent.binding !== runtime.media.audioBindingGeneration) {
+          if (intent.automatic && !intent.manual) {
+            audio.bypass(video);
+            intent.automatic = false;
+            intent.requested = false;
+          }
+          if (intent.manual && audio.getState(video) === "pending") intent.needsResume = true;
+          intent.binding = runtime.media.audioBindingGeneration;
+        }
+        audio.configure();
+        if (intent.needsResume) {
+          intent.needsResume = false;
+          void audio.resumeWanted(video);
+        }
+        if (runtime.config.compressorDefault === true && !intent.requested && !intent.manual && audio.eligible(video)) {
+          intent.requested = true;
+          intent.automatic = true;
+          void audio.setEnabled(video, true);
+        }
       }
     }
     const container = pzp.querySelector(".pzp-pc__video");
@@ -333,7 +363,7 @@
     const browser = target;
     const key = browser.Symbol.for("cheese-knife.runtime.v1");
     const runtime = Object.getOwnPropertyDescriptor(target, key)?.value;
-    if (!runtime || runtime.player) return null;
+    if (runtime?.ownerProtocol !== 2 || runtime.player) return null;
     if (!runtime.adapter) runtime.setStatus("player", "pending", "site-adapter-unavailable");
     let current = null;
     let unsubscribe = null;
@@ -362,6 +392,17 @@
     };
     const reconcile = (state) => {
       const player = state.player;
+      if (runtime.configReady) {
+        const values = (config) => KnifeMediaProfiles.validateValues("video", Object.fromEntries(
+          KnifeMediaProfiles.videoFields.map((field) => [field.id, Object.getOwnPropertyDescriptor(config, field.id)?.value])
+        ));
+        const base = values(runtime.baseConfig), channel = runtime.media.videoKind === "channel" && runtime.mediaCurrent() ? values(runtime.config) : null;
+        if (base.ok && base.domain === "video") runtime.filters?.reconcile(
+          base.values,
+          channel?.ok && channel.domain === "video" ? channel.values : null,
+          player?.filterTarget ?? null
+        );
+      }
       if (current && (!runtime.configReady || !player || current.pzp !== player.pzp || current.video !== player.video || current.layout !== player.layout || current.path !== state.route?.path)) {
         current.scope.dispose();
         current = null;
@@ -417,6 +458,125 @@
     }
   }
 
+  // src/main/features/player/filters.ts
+  function installVideoFilters(target) {
+    const browser = target;
+    const runtime = Object.getOwnPropertyDescriptor(target, browser.Symbol.for("cheese-knife.runtime.v1"))?.value;
+    if (runtime?.ownerProtocol !== 2 || runtime.filters) return null;
+    const document = target.document;
+    let global = null, channel = null, disposed = false;
+    let element = null, slot = null, body = null, ownsBodyClass = false;
+    const svgNamespace = ["http:", "", "www.w3.org", "2000", "svg"].join(String.fromCharCode(47));
+    const create = (tag) => document.createElementNS(svgNamespace, tag);
+    const owned = (renderer2) => renderer2.svg.isConnected && renderer2.filter.parentNode === renderer2.svg && document.getElementById(renderer2.filter.id) === renderer2.filter;
+    function renderer(id, existing) {
+      if (existing) return owned(existing) ? existing : null;
+      if (document.getElementById(id) || !document.body) return null;
+      const svg = create("svg"), filter = create("filter");
+      svg.classList.add("knife-owned");
+      svg.style.display = "none";
+      filter.id = id;
+      svg.append(filter);
+      document.body.append(svg);
+      return { svg, filter };
+    }
+    function render(filter, values) {
+      const children = [];
+      for (const [kind, value] of [["brightness", values.brightness], ["contrast", values.contrast], ["gamma", values.gamma]]) {
+        if (value === 1) continue;
+        const transfer = create("feComponentTransfer");
+        for (const tag of ["feFuncR", "feFuncG", "feFuncB"]) {
+          const fn = create(tag);
+          fn.setAttribute("type", kind === "gamma" ? "gamma" : "linear");
+          if (kind === "gamma") fn.setAttribute("exponent", String(value));
+          else {
+            fn.setAttribute("slope", String(value));
+            if (kind === "contrast") fn.setAttribute("intercept", String(-value / 2 + 0.5));
+          }
+          transfer.append(fn);
+        }
+        children.push(transfer);
+      }
+      if (values.saturation !== 1) {
+        const matrix = create("feColorMatrix");
+        matrix.setAttribute("type", "saturate");
+        matrix.setAttribute("values", String(values.saturation));
+        children.push(matrix);
+      }
+      if (values.sharpness > 0) {
+        const amount = Number((values.sharpness / 5).toFixed(2)), matrix = create("feConvolveMatrix");
+        matrix.setAttribute("preserveAlpha", "true");
+        matrix.setAttribute("kernelMatrix", `0 ${-amount} 0 ${-amount} ${1 + amount * 4} ${-amount} 0 ${-amount} 0`);
+        children.push(matrix);
+      }
+      filter.replaceChildren(...children);
+      return children.length > 0;
+    }
+    function retireChannel() {
+      if (element) {
+        if (element.getAttribute("data-knife-channel-filter") === "owned") element.removeAttribute("data-knife-channel-filter");
+        if (element.style.getPropertyValue("--knife-channel-filter") === slot) element.style.removeProperty("--knife-channel-filter");
+      }
+      element = null;
+      slot = null;
+      if (channel && owned(channel)) channel.svg.remove();
+      channel = null;
+    }
+    const controller = {
+      reconcile(base, values, filterTarget) {
+        if (disposed) return;
+        if (KnifeMediaProfiles.validateValues("video", base).ok) {
+          global = renderer("knifeFilter", global);
+          if (global) {
+            const active = render(global.filter, base);
+            if (body !== document.body) {
+              if (ownsBodyClass) body?.classList.remove("knife-filter");
+              body = document.body;
+              ownsBodyClass = false;
+            }
+            if (active && body && !body.classList.contains("knife-filter")) {
+              body.classList.add("knife-filter");
+              ownsBodyClass = true;
+            } else if (!active && ownsBodyClass) {
+              body?.classList.remove("knife-filter");
+              ownsBodyClass = false;
+            }
+          }
+        }
+        const validTarget = !!values && filterTarget instanceof browser.HTMLElement && filterTarget.isConnected && runtime.selectPlayer()?.filterTarget === filterTarget;
+        if (element !== filterTarget || !values || !validTarget) retireChannel();
+        if (!values || !validTarget || !KnifeMediaProfiles.validateValues("video", values).ok) return;
+        const current = filterTarget;
+        if (element && (current.getAttribute("data-knife-channel-filter") !== "owned" || current.style.getPropertyValue("--knife-channel-filter") !== slot)) {
+          retireChannel();
+          return;
+        }
+        if (!element && (current.hasAttribute("data-knife-channel-filter") || current.style.getPropertyValue("--knife-channel-filter") || current.style.filter)) return;
+        channel = renderer("knifeChannelFilter", channel);
+        if (!channel) return;
+        slot = render(channel.filter, values) ? "url(#knifeChannelFilter)" : "none";
+        element = current;
+        current.setAttribute("data-knife-channel-filter", "owned");
+        current.style.setProperty("--knife-channel-filter", slot);
+      },
+      dispose() {
+        if (disposed) return;
+        disposed = true;
+        retireChannel();
+        if (global && owned(global)) global.svg.remove();
+        if (ownsBodyClass) body?.classList.remove("knife-filter");
+        target.removeEventListener("pagehide", onHide);
+      }
+    };
+    const onHide = (event) => {
+      if (!event.persisted) controller.dispose();
+    };
+    target.addEventListener("pagehide", onHide);
+    runtime.filters = controller;
+    return controller;
+  }
+
   // src/main/features/player/entry.ts
+  installVideoFilters(window);
   installPlayer(window);
 })();
