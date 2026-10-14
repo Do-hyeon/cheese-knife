@@ -536,10 +536,10 @@ export async function runInstalledMediaTabScenario({ context, worker, extensionI
     await styles.locator('#settings-status[data-phase="ready"]').waitFor({timeout:15000});
     const loads=await Promise.all([page,vod].map(tab=>tab.evaluate(()=>window.__knifeFixture.loads)));
     await styles.locator('#left-chat').check();await styles.locator('#settings-status[data-phase="ready"]').waitFor({timeout:15000});
-    await styles.locator('#reload').click();await vod.waitForFunction(before=>window.__knifeFixture.loads===before+1,loads[1],{timeout:15000});
+    await styles.locator('#reload').click();await vod.waitForFunction(before=>window.__knifeFixture?.loads===before+1,loads[1],{timeout:15000});
     assertCondition(await page.evaluate(()=>window.__knifeFixture.loads)===loads[0],'media-tab-vod-reloaded-other');
     await styles.locator('#left-chat').uncheck();await styles.locator('#settings-status[data-phase="ready"]').waitFor({timeout:15000});
-    await styles.locator('#reload').click();await vod.waitForFunction(before=>window.__knifeFixture.loads===before+2,loads[1],{timeout:15000});
+    await styles.locator('#reload').click();await vod.waitForFunction(before=>window.__knifeFixture?.loads===before+2,loads[1],{timeout:15000});
     const beforeRetire=await storageSnapshot(worker);
     await management.evaluate(()=>{window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true}));window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));});
     assertCondition(!(await management.locator('#brightness').isEnabled())&&await management.locator('#settings-status').getAttribute('data-phase')==='reconnect-required','media-tab-restored-ready');

@@ -277,7 +277,7 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
         await check(); records.push({ step, observation });
         if (step === 'font8' || step === 'font0' || step === 'rollback-font8') {
           await styles.locator('#reload').click({ timeout: 15000 });
-          await page.waitForFunction(({before,protocol}) => window.__knifeFixture.loads === before+1 &&
+          await page.waitForFunction(({before,protocol}) => window.__knifeFixture?.loads === before+1 &&
             !!window[Symbol.for('cheese-knife.runtime.v1')]?.configReady &&
             (protocol === 1 ? !!window.__knifeFixture.lastConfigEnvelopeV1 : !!window.__knifeFixture.lastConfigEnvelopeV2),
             {before:initialLoads[0],protocol:expectedProtocol},{timeout:15000});
