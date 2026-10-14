@@ -5,6 +5,7 @@ import { runInstalledExtensionE2E } from './check-installed-extension.mjs';
 import { loadAudioFixtureResponses, FIXTURE_AUDIO_URL, fixtureDecision } from './extension-e2e/fixture-router.mjs';
 import { validatePayloadMetadata } from './extension-e2e/published-payload.mjs';
 import { reacquireExtensionWorker } from './extension-e2e/harness.mjs';
+import { openOwnedRoot } from './owned-files.mjs';
 
 const fail = code => Object.assign(new Error(code), { code });
 const requireProof = (condition, code) => { if (!condition) throw fail(code); };
@@ -45,8 +46,23 @@ async function rangePoint(cdp) {
 async function readRange(cdp, nodeId) {
   const { object } = await cdp.send('DOM.resolveNode', { nodeId });
   try {
-    const result = await cdp.send('Runtime.callFunctionOn', { objectId: object.objectId, functionDeclaration: 'function(){return {value:Number(this.value),disabled:this.disabled};}', returnByValue: true });
+    const result = await cdp.send('Runtime.callFunctionOn', { objectId: object.objectId, functionDeclaration: 'function(){return {value:Number(this.value),disabled:this.disabled,focused:this.getRootNode().activeElement===this};}', returnByValue: true });
     return result.result.value;
+  } finally { if (object.objectId) await cdp.send('Runtime.releaseObject', { objectId: object.objectId }); }
+}
+async function observeRange(cdp, nodeId) {
+  const { object } = await cdp.send('DOM.resolveNode', { nodeId });
+  try {
+    await cdp.send('Runtime.callFunctionOn', { objectId: object.objectId, functionDeclaration: `function(){
+      const range=this, host=range.getRootNode().host, events=[];
+      globalThis.__f01GainObservations=events;
+      const record=event=>{if(events.length<128)events.push({time:performance.now(),type:event.type,key:event.key??null,
+        trusted:event.isTrusted??null,value:Number(range.value),disabled:range.disabled,
+        focused:range.getRootNode().activeElement===range,phase:host.dataset.phase});};
+      for(const type of ['pointerdown','focus','blur','keydown','keyup','input','change'])range.addEventListener(type,record,{capture:true});
+      new MutationObserver(()=>record({type:'state'})).observe(host,{attributes:true,attributeFilter:['data-phase'],subtree:true});
+      record({type:'initial'});
+    }`, returnByValue: true });
   } finally { if (object.objectId) await cdp.send('Runtime.releaseObject', { objectId: object.objectId }); }
 }
 async function scenario({ context, worker, responses, artifactPath }, mode) {
@@ -87,6 +103,7 @@ async function scenario({ context, worker, responses, artifactPath }, mode) {
   let positiveWitnesses = [], naturalWorkerReplacement = false;
   try {
     let point = await rangePoint(cdp);
+    await observeRange(cdp, point.nodeId);
     if (mode === 'qualification') {
       await page.mouse.click(point.x, point.y); await page.keyboard.press('Home');
       await wait(async () => ({ raw: await stored(), phase: await page.locator('.knife-gain-owner').getAttribute('data-phase') }),
@@ -165,6 +182,11 @@ async function scenario({ context, worker, responses, artifactPath }, mode) {
       nativeSenderFrameDocument: mode === 'qualification', ackAndReentry: mode === 'qualification', resetAndZero: mode === 'qualification', syntheticMainRejected: true,
       actualIframeRejected: true, oldDocumentRejected: true, missingOwnerProbeRejected: true, actorIdleOver60: mode === 'qualification', naturalWorkerReplacement,
       originalMuteVolumePreserved: true, physicalAudioNotEvaluated: true }, pageErrors: errors };
+  } catch (error) {
+    const events = await page.evaluate(() => globalThis.__f01GainObservations ?? []).catch(() => []);
+    const files = await openOwnedRoot(artifactPath);
+    await files.writeFile('gain-observations.json', JSON.stringify({ events, error: error.code ?? 'scenario-failed' }, null, 2) + '\n');
+    throw error;
   } finally { await cdp.detach(); }
 }
 export async function runInstalledPlayerGain(options) {

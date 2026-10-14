@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T3 플레이어 Gain·최소 protocol3 연결·Native 자격 확인 준비**. 사용자가 [한글 상세 계획](docs/superpowers/plans/2026-10-14-f01-audio-processing.md)의9Task와 Native 격리 실행 묶음을 승인했다. [fresh Astra max 계획 검토](docs/superpowers/validation/2026-10-14-f01-plan-review.md)의 Important3은 같은 reviewer 확인으로 모두 닫혔다(잔여0/0/0). 이는 실제 구현/Native 성공을 뜻하지 않는다. F00 PR #44는 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
+최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T3 입력 포커스·저장 알림 경쟁 원인 조사/보완/재검증**. 사용자가 동일 권한 경계 안의 후속 설계·회귀·새 checkpoint Native 재검증을 승인했다. 기존09f0cdf의 Gain0 성공/ArrowRight 저장 검사 실패와 private 증거는 보존하며 성공으로 재해석하지 않는다. T3 미완료·T4–T9 미착수다. [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md) 참조. F00 PR #44는 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -110,7 +110,7 @@
 
 - [x] T1 schema2·읽기 무쓰기·명시 전환/전역 alias·Gain 상속 계약. 격리 집중99/99·전체1411통과/실패0/기존 private 증거1skip·9개 기반/build/package 통과. 기존 F00 pin 보존·새 F01 pin 분리.
 - [x] T2 protocol3·기존 broker 한 queue·native probe/legacy import·Gain actor/epoch/receipt. 집중61/61·전체1433통과/실패0/기존private증거1skip·9개 기반/build/package 통과. 후보dist60/runtime18. native 문서/입력의 실제 성공은 T3에서 별도 확인한다.
-- [ ] T3 최소 production protocol3/공통 수동 master·실제 Blob/volume fixture·제한된 ISOLATED Gain UI → dist61/runtime19 로컬 checkpoint → Native qualification. 실패하면 중지/새 설계 승인, EQ/normalizer를 먼저 구현하지 않는다.
+- [ ] T3 최소 production protocol3/공통 수동 master·실제 Blob/volume fixture·제한된 ISOLATED Gain UI. checkpoint09f0cdf의 **Native qualification 실패**(`player-gain-native-keyboard-ack-missing`) 후 같은 권한 경계에서 원인 조사/보완/새 checkpoint 재검증 승인. 기존 전체1457통과/실패0/기존private증거1skip·9개 기반/build/package·dist61/runtime19는 과거 입력 결과다. EQ/normalizer 선행·권한 우회 금지.
 - [ ] T4 source1·전체/하위 상태·고정8EQ·headroom·기존 delay/limiter/ramp 보호.
 - [ ] T5 순수 RMS 제어·좌우 meter·실제 dB automation·window/hold/error·수명 정리.
 - [ ] T6 승인 TAB UI·확정 preset snapshot/confirm·legacy/upgrade·공통 수동 master 연결·최종dist62/runtime20.
@@ -126,6 +126,6 @@
 
 ## 10. 현재 사용자 개입 지점
 
-현재 추가 개입은 필요 없다. 승인된 root 순차 T1–T9, 자기 clean checkpoint/물리 후보·번들 Chromium 새 profile·close/process 증명·고정 fixture/해당 CDP 입력, 기존 승인 범위 npm/Gitleaks/ESLint, whole-F01 Astra max 최종 검토를 진행한다. 사용자 Chrome/P09·새 권한/의존성/외부 전송 확대·버전·릴리즈·스토어·push/PR은 제외한다. T3 qualification 실패 또는 수용 수치/알고리즘 변경 필요 시 중지하고 묶음 설계로 다시 승인받는다. 목업/문서·정적 검토 성공을 실제 오디오·저장·Chrome/native 성공으로 전용하지 않는다. 기존 file URL 보안 차단을 우회하지 않는다.
+T3 원인 조사/보완/새 checkpoint 재검증은 추가 승인됐다. 별도 개입이 필요하지 않으면 같은 권한·수치 계약 안에서 계속한다. 실패한 checkpoint와 private 증거는 삭제하거나 성공으로 재해석하지 않는다. 새 자격 검사 성공 전에 T4–T9로 넘어가지 않는다. 사용자 Chrome/P09·새 권한/의존성/외부 전송 확대·버전·릴리즈·스토어·push/PR은 제외한다. whole-F01 Astra max 최종 검토는 전체 구현·검증 뒤다. 목업/문서·정적 성공을 실제 음질·저장·Chrome 성공으로 전용하지 않으며 file URL 보안 차단을 우회하지 않는다.
 
 실제 설치/새로고침·P09 변경·새 의존성/권한/외부 전송·버전·공개는 별도 STOP 게이트다. 이전 MCP 연결/종료 승인이나 다른 작업의 공개 승인을 재사용하지 않는다.

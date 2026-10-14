@@ -97,6 +97,14 @@ runtime은 기존 settings transform(런타임 import/export 금지)와 MAIN bun
 - [ ] negative mode에서는 MAIN/synthetic/iframe/옛 document 시도·probe 누락/불일치의 정확한 단계/코드와 storage diff0를 검사한다. expected 거부만 PASS이며 timeout/조작 대상 없음/입력 미발생은 실패다. 프로필 종료·close/process retirement·cleanup 오류0을 기록한다.
 - [ ] qualification 실패면 이 지점에서 중지한다. iframe/WAR/권한·추가 자산·임시-only로 자동 우회하지 않고 근거와 대안 설계 승인을 요청한다. 통과 후에만 T4–T8로 진행한다. qualification 후 결과/필요 보완은 별도 로컬 커밋으로 기록하되 이미 생성한 checkpoint를 성공 이력으로 재해석하지 않는다.
 
+### T3 보완 실행 — 2026-10-15 사용자 추가 승인
+
+기존 실패09f0cdf와 증거는 보존한다. 이번 승인은 입력 포커스/저장 알림 경쟁의 원인 조사·같은 권한 경계의 보완 설계·회귀·새 checkpoint 재검증을 포함한다. Native inline을 유지하며 새 권한/자산/전송/일반 writer·기존 Chrome/P09 변경·push/PR은 없다.
+
+- [ ] 기존 runner의 동일 CDP/자기 closed range에 읽기 전용 focus/blur/key/input/phase 관측(최대128개)을 추가하고 별도 clean 진단 checkpoint로 재현한다. 원인 미확정 상태에서 생산 코드를 수정하지 않는다. 관측은 저장·포커스·입력·권한을 바꾸지 않는다.
+- [ ] 관측과 일치하는 최소 실패 테스트를 먼저 실행한다. `player-gain.ts`의 준비/저장/알림/표시 경계만 보완하며 trusted intent·fresh native probe·ticket/cold/conflict·명시 폐기·저장 손실 거부는 유지한다. unrelated focus/실제 다른 조작부로 이동한 사용자의 focus를 빼앗지 않는다.
+- [ ] 원인·보완·대조를 아래 검증 기록에 남긴다. 집중·전체·기반/생성/패키지 검사를 통과시킨 뒤 새 clean checkpoint/물리 후보에서 원래 qualification·negative를 실행한다. timeout/대상 없음/새 gate 실패를 PASS로 계산하지 않는다. 계약 확대나 새 원인으로 중지 조건이 생기면 보고한다.
+
 ## Task 4 — 전체 오디오 상태·고정 EQ·기존 출력 보호
 
 **파일:** T3에서 연결된 MAIN protocol3/일시 master API의 회귀 tests, player controls, audio contracts/controller/신규 eq.ts, shared 타입, 기존 `tests/{audio,player,scoped-media-runtime}.test.cjs`, 신규 `tests/f01-audio-graph.test.cjs`, `tests/f01-eq.test.cjs`.
