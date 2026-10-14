@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md)과 [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F00 Task1 순차 구현**. 사용자2026-10-14 written-plan/Native 실행 승인에 따라 Tasks1–6 로컬 구현·격리 검증·최종 Astra max를 진행한다. 실제 시청 Chrome/P09 변경·push/PR·배포는 포함하지 않는다.
+최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F00 Task2 — 동일 queue v2 저장 경계**. Task1은 로컬959fdb3·전체1207/1206pass/0fail/기존skip1·9gate로 마쳤다. 승인된 Tasks1–6을 계속 진행하며 실제 시청 Chrome/P09 변경·push/PR·배포는 포함하지 않는다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -62,7 +62,7 @@
 - [x] 6task 상세 구현 계획과 root 자체 대조. 새 저장키/동일 broker queue·client ABI·base/scoped readiness·오디오 wanted·filter target·old/new 보존·검사/승인 경계 명시.
 - [x] 새 Astra max 계획 최초 Critical0/Important6/Minor1·작성자 보완·같은 검토자7항목 targeted closure/승인 가능 판정. fresh 전체0건·구현/보안 PASS는 아님.
 - [x] 사용자 written-plan/Native 실행 승인2026-10-14. 소스/생성물·로컬 커밋·격리 bundled Chromium·기존 승인 점검도구·전체 최종 검토 포함, 실제 시청 Chrome/P09/공개 제외.
-- [ ] Task1 순수 미디어 계약·classic load graph·신규 active inventory·기존 frozen 기준 보존.
+- [x] Task1 순수 미디어 계약·classic load graph·신규 active inventory·기존 frozen 기준 보존. 로컬959fdb3, [구현/검증 기록](docs/superpowers/validation/2026-10-14-f00-channel-media-settings.md). 최종 F00 수용은 아님.
 - [ ] Task2 동일 queue의 v2 writer·field merge·삭제/재생성 token·unknown/손실/실패 계약.
 - [ ] Task3 별도 media client 상태·명시 scope/도메인·프리셋 UI·전역 UI 독립.
 - [ ] Task4 scoped bridge·실제 player context·필터 소유권·자동/수동 오디오 intent·객관 pixel/audio 검증.

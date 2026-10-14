@@ -305,5 +305,6 @@ var KnifeMediaProfiles = (() => {
     else channel.video = { createdRevision: binding.createdRevision, values: values.values };
     return success(true, { channelToken: { channelId: id, recordCreatedRevision: channel.createdRevision, domainCreatedRevision: binding.createdRevision }, recordRevision: channel.revision });
   }
-  return Object.freeze({ audioFields, videoFields, readStore, validateValues, resolveMediaSettings, mergeMediaOperation });
+  return Object.freeze({ audioFields, videoFields, readStore, validateValues, resolveMediaSettings, mergeMediaOperation,
+    isChannelId: channelId, isPresetId: presetId, isPresetName: label, isCounter: counter });
 })();

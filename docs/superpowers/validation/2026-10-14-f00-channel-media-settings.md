@@ -1,5 +1,13 @@
 # F00 — 채널별 미디어 설정 구현·검증
 
+## Task2 — 동일 큐 v2 저장 경계
+
+- v1 API는 유지하고 새 v2 요청을 동일64대기 큐로 직렬화했다. media 저장은 mediaProfiles 한 키만, 전역 프리셋 적용은 기존 전역 변경 키만 한 번 저장한다.
+- own document/context와 current tab의 window/origin/channel/incognito를 저장 직전 다시 확인한다. 확인 불가·시크릿 신규 저장은 차단한다. getContexts의 응답 대기는2초로 제한한다.
+- 정상 sender 기준 RED12건 → 집중107/107·추가 경계16/16 GREEN. 전체1223건:1222통과/실패0/취소0/기존 private-history skip1. 9개 foundation gate 통과.
+- unknown 전역/최상위 필드, 손상 media 원본, 도메인 reset/recreate·프리셋 ABA·쓰기/응답 유실·혼합 큐 포화와 저장 직전 context/target 변경을 확인했다. 이전 잘못된 sender/동기화/대기 경계 실패는 성공으로 세지 않는다.
+- 실제 ordinary 설정 TAB의 document/context는 격리 Chromium에서 확인했지만 실제 툴바 POPUP의 자동 제어는 아직 미검증이다. popup 생성만으로 Task5 성공을 주장하지 않는다. 전체 F00 구현·최종 Astra 검토도 아직 완료가 아니다.
+
 2026-10-14 / Native 실행 승인. 기준 main45100969200dfb5e33737db60c9a3fa7450f4450, 로컬 브랜치 codex/f00-channel-media-settings. [설계](../specs/2026-10-14-f00-channel-media-settings-design.md)·[계획](../plans/2026-10-14-f00-channel-media-settings.md). 사용자 시청 Chrome/P09·push/PR·버전·릴리즈·스토어 변경은 제외한다.
 
 ## Task1 — 순수 계약과 로드 그래프

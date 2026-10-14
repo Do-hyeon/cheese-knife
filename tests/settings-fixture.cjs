@@ -15,17 +15,17 @@ const { page, load, flush, clock } = require('./helpers.cjs');
 /** @typedef {{current:number,max:number}} FixtureMetric */
 // Partial merges retain explicit undefined fields under exactOptionalPropertyTypes.
 /** @typedef {{[K in keyof chrome.scripting.RegisteredContentScript]?:chrome.scripting.RegisteredContentScript[K]|undefined}&{id:string}} FixtureScript */
-/** @typedef {{id:number,windowId:number,url?:string|undefined}} FixtureTab */
+/** @typedef {{id:number,windowId:number,url?:string|undefined,incognito?:boolean|undefined}} FixtureTab */
 /** @typedef {Pick<ReturnType<typeof createSettingsBroker>,'initialize'|'invalidateStyles'>&{listener:(message:unknown,sender:unknown,respond:(response:unknown)=>void)=>boolean}} FixtureBroker */
 /** @typedef {ReturnType<typeof createSettingsClient>} FixtureClient */
-/** @typedef {(message:KnifeSettingsRequest,callback:(response:unknown)=>void)=>void} FixtureSend */
+/** @typedef {(message:KnifeSettingsRequest|KnifeMediaRequest,callback:(response:unknown)=>void)=>void} FixtureSend */
 /** @typedef {(value:RawStore)=>Promise<void>} FixtureStorageWrite */
 /** @typedef {(value:FixtureChrome)=>FixtureClient} FixtureClientFactory */
 /** @typedef {(value:unknown)=>FixtureBroker} FixtureBrokerFactory */
 /** @typedef {{fakeTime?:boolean|undefined}} FixtureClientOptions */
 /** @typedef {{locale?:string|undefined,query?:string|undefined,target?:{tabId:number,windowId:number}|undefined,fakeTime?:boolean|undefined,setup?:((api:FixtureChrome,dom:import('jsdom').JSDOM)=>void)|undefined}} FixtureUiOptions */
 /** @typedef {{
- * runtime:{id:string,getURL:(path:string)=>string,sendMessage:FixtureSend,lastError?:{message:string}|undefined,onMessage:FixtureEvent<[unknown,unknown,(reply:unknown)=>void]>,onInstalled:FixtureEvent<[chrome.runtime.InstalledDetails]>,onStartup:FixtureEvent<[]>},
+ * runtime:{id:string,getURL:(path:string)=>string,getContexts:(filter:chrome.runtime.ContextFilter)=>Promise<chrome.runtime.ExtensionContext[]>,sendMessage:FixtureSend,lastError?:{message:string}|undefined,onMessage:FixtureEvent<[unknown,unknown,(reply:unknown)=>void]>,onInstalled:FixtureEvent<[chrome.runtime.InstalledDetails]>,onStartup:FixtureEvent<[]>},
  * i18n:{getMessage:(key:string)=>string},
  * storage:{onChanged:FixtureEvent<[RawStore,string]>,local:{onChanged:FixtureEvent<[RawStore,string]>,get:(keys?:string[]|RawStore|null)=>Promise<RawStore>,set:FixtureStorageWrite,remove:(key:string|string[])=>Promise<void>}},
  * scripting:{getRegisteredContentScripts:(options?:{ids?:string[]|undefined})=>Promise<FixtureScript[]>,registerContentScripts:(scripts:FixtureScript[])=>Promise<void>,updateContentScripts:(scripts:FixtureScript[])=>Promise<void>,unregisterContentScripts:(options?:{ids?:string[]|undefined})=>Promise<void>},
@@ -70,8 +70,9 @@ function validatedSources(value) {
 /** @param {import('node:test').TestContext} t @param {object} [stored] @param {WorkerSources} [workerSources] */
 function settingsHarness(t, stored = {}, workerSources) {
   const saved = /** @type {RawStore} */ (structuredClone(stored)), gates = /** @type {Map<string,FixtureGate[]>} */ (new Map()), allGates = /** @type {FixtureGate[]} */ ([]), changes = /** @type {FixtureEvent<[RawStore,string]>} */ (event());
-  const calls = /** @type {FixtureCall[]} */ ([]), registrations = /** @type {Map<string,FixtureScript>} */ (new Map()), tabs = /** @type {Map<number,FixtureTab>} */ (new Map([[7, { id: 7, windowId: 9, url: 'https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }]]));
-  const windows = /** @type {import('jsdom').JSDOM[]} */ ([]), clients = /** @type {FixtureClient[]} */ ([]), messages = /** @type {{api:object,message:KnifeSettingsRequest,subscribers:number}[]} */ ([]), metrics = /** @type {WeakMap<object,FixtureMetric>} */ (new WeakMap());
+  const calls = /** @type {FixtureCall[]} */ ([]), registrations = /** @type {Map<string,FixtureScript>} */ (new Map()), tabs = /** @type {Map<number,FixtureTab>} */ (new Map([[7, { id: 7, windowId: 9, incognito: false, url: 'https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }]]));
+  const contexts = /** @type {Map<string,chrome.runtime.ExtensionContext>} */ (new Map()); let contextSequence = 0;
+  const windows = /** @type {import('jsdom').JSDOM[]} */ ([]), clients = /** @type {FixtureClient[]} */ ([]), messages = /** @type {{api:object,message:KnifeSettingsRequest|KnifeMediaRequest,subscribers:number}[]} */ ([]), metrics = /** @type {WeakMap<object,FixtureMetric>} */ (new WeakMap());
   let counter = 0, activeWrites = 0, maxWrites = 0, activeCss = 0, maxCss = 0, permissionGranted = true, /** @type {import('jsdom').JSDOM|undefined} */ worker, /** @type {FixtureBroker} */ broker, /** @type {(()=>boolean)|undefined} */ stopInvalidation;
   let selectedSources = workerSources === undefined ? undefined : validatedSources(workerSources);
   let versioned = selectedSources !== undefined, activityEpoch = 0, /** @type {number|undefined} */ settledEpoch, activeBoundaries = 0, pendingRequests = 0;
@@ -98,11 +99,21 @@ function settingsHarness(t, stored = {}, workerSources) {
   }
   /** @param {RawStore} delta */
   const announce = delta => { void boundary('event', delta).then(() => changes.emit(delta, 'local')).catch(() => {}); };
+  /** @param {string} name */
+  function senderFor(name) {
+    const documentId = `fixture-document-${++contextSequence}`;
+    if (name === 'popup' || name === 'styles') contexts.set(documentId, { contextId: documentId, contextType: 'TAB',
+      documentId, documentUrl: getURL(`${name}.html`), documentOrigin: getURL('').slice(0, -1), frameId: 0,
+      tabId: 100 + contextSequence, windowId: 9, incognito: false });
+    return { id: extensionId, url: getURL(`${name}.html`), frameId: 0, documentId };
+  }
   /** @param {string} [name] @returns {FixtureChrome} */
   function apiFor(name = 'background') {
     const metric = { current: 0, max: 0 };
+    const senderInfo = senderFor(name);
     /** @type {ConstructingChrome} */ const api = {
-      runtime: { id: extensionId, getURL, onMessage: event(), onInstalled: event(), onStartup: event() },
+      runtime: { id: extensionId, getURL, onMessage: event(), onInstalled: event(), onStartup: event(),
+        getContexts: async filter => { await boundary('context-get', filter); return structuredClone([...contexts.values()].filter(context => !filter.documentIds || filter.documentIds.includes(context.documentId || ''))); } },
       i18n: { getMessage: key => key },
       storage: { onChanged: changes, local: { onChanged: changes,
         get: async keys => {
@@ -144,9 +155,9 @@ function settingsHarness(t, stored = {}, workerSources) {
       let mutation = false;
       try {
         messages.push({ api, message: structuredClone(message), subscribers: changes.listeners.size });
-        mutation = message.action !== 'get-snapshot';
+        mutation = !['get-snapshot', 'get-media-snapshot'].includes(message.action);
         if (mutation) { metric.current++; metric.max = Math.max(metric.max, metric.current); }
-        const sender = { id: extensionId, url: getURL(`${name}.html`), frameId: 0 };
+        const sender = senderInfo;
         const handled = broker.listener(structuredClone(message), sender, reply => {
           void boundary('callback:' + message.action, reply).then(() => {
             if (mutation) metric.current--; callback(structuredClone(reply));
@@ -192,7 +203,7 @@ function settingsHarness(t, stored = {}, workerSources) {
   /** @param {string} name @param {unknown} message @param {unknown} [override] @returns {Promise<unknown>} */
   function send(name, message, override) {
     noteActivity(); pendingRequests++;
-    const sender = override || { id: extensionId, url: getURL(`${name}.html`), frameId: 0 };
+    const sender = override || senderFor(name);
     return new Promise(resolve => {
       const handled = broker.listener(message, sender, reply => { void boundary('response', reply).then(() => resolve(reply)).catch(() => resolve(undefined)); });
       if (!handled) resolve(undefined);
@@ -226,7 +237,7 @@ function settingsHarness(t, stored = {}, workerSources) {
     t.after(() => dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')));
     await flush(); return { dom, api, time };
   }
-  return { saved, calls, messages, client, openUi, registrations, tabs, changes, holdNext, apiFor, send, request,
+  return { saved, calls, messages, client, openUi, registrations, tabs, contexts, changes, holdNext, apiFor, send, request,
     get worker() { return worker; }, get broker() { return broker; },
     get maxConcurrentWrites() { return maxWrites; }, get maxConcurrentCss() { return maxCss; },
     initialize: () => { noteActivity(); return broker.initialize(); }, snapshot: (name = 'popup') => request(name, 'get-snapshot'),

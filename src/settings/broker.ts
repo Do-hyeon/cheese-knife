@@ -124,18 +124,99 @@ var createSettingsBroker = (chromeApi: typeof chrome) => {
       appliedStyles: contract.makeSnapshot(raw, css).styles, css: { ...css }, stage: null, code: null };
   }
 
+  async function mediaContext(sender: chrome.runtime.MessageSender): Promise<boolean> {
+    if (!sender.documentId || typeof chromeApi.runtime.getContexts !== 'function') throw fault('sender', 'sender-context-unavailable');
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const contexts = await Promise.race([
+        chromeApi.runtime.getContexts({ documentIds: [sender.documentId] }),
+        new Promise<never>((_, reject) => { timer = setTimeout(() => reject(fault('sender', 'sender-context-unavailable')), 2000); }),
+      ]);
+      const context = contexts.length === 1 ? contexts[0] : undefined;
+      if (!context || context.documentId !== sender.documentId || context.documentUrl !== sender.url ||
+        context.documentOrigin !== chromeApi.runtime.getURL('').replace(/\/$/, '') ||
+        typeof context.incognito !== 'boolean' ||
+        !(context.contextType === 'TAB' && context.frameId === 0 || context.contextType === 'POPUP' && [0, -1].includes(context.frameId))) {
+        throw fault('sender', 'sender-context-unavailable');
+      }
+      return context.incognito;
+    } catch { throw fault('sender', 'sender-context-unavailable'); }
+    finally { if (timer !== undefined) clearTimeout(timer); }
+  }
+  async function mediaTarget(selection: KnifeMediaSelection): Promise<boolean> {
+    if (selection.kind !== 'current') return false;
+    let tab: chrome.tabs.Tab;
+    try { tab = await chromeApi.tabs.get(selection.tabId); }
+    catch { throw fault('target', 'target-missing'); }
+    if (tab.id !== selection.tabId || tab.windowId !== selection.windowId) throw fault('target', 'target-window-changed');
+    let url: URL;
+    try { url = new URL(tab.url as string); }
+    catch { throw fault('target', 'target-origin-changed'); }
+    if (url.origin !== 'https://chzzk.naver.com') throw fault('target', 'target-origin-changed');
+    const channel = /^\/(?:live\/)?([a-f0-9]{32})\/?$/i.exec(url.pathname)?.[1]?.toLowerCase();
+    if (channel !== selection.channelId) throw fault('target', 'target-channel-changed');
+    if (typeof tab.incognito !== 'boolean') throw fault('target', 'target-context-unavailable');
+    return tab.incognito;
+  }
+  function mediaSnapshot(raw: KnifeUnknownRecord, selection: KnifeMediaSelection, incognito: boolean): KnifeMediaSnapshot {
+    const global = contract.makeSnapshot(raw, css), read = KnifeMediaProfiles.readStore(raw.mediaProfiles);
+    const channelId = selection.kind === 'global' ? null : selection.channelId;
+    const resolved = KnifeMediaProfiles.resolveMediaSettings(global.config, read, { channelId, topFrame: true, incognito });
+    const domainValues = (domain: KnifeMediaDomain) => KnifeMediaProfiles.validateValues(domain, Object.fromEntries(
+      (domain === 'audio' ? KnifeMediaProfiles.audioFields : KnifeMediaProfiles.videoFields).map(field => [field.id, resolved.effectiveConfig[field.id]])));
+    const audio = domainValues('audio'), video = domainValues('video');
+    if (!audio.ok || audio.domain !== 'audio' || !video.ok || video.domain !== 'video') throw fault('read', 'invalid-media-values');
+    const store = read.state === 'valid' || read.state === 'absent' ? read.store : null;
+    return { selection, version: { globalRevision: global.revision, mediaRevision: store?.revision ?? null },
+      profileState: resolved.profileState, code: store ? null : read.state === 'invalid' || read.state === 'unsupported' ? read.code : null,
+      canWrite: !!store && !incognito, values: { audio: audio.values, video: video.values }, store,
+      channel: incognito ? null : store?.channels.find(item => item.channelId === channelId) ?? null };
+  }
+  async function executeMedia(request: KnifeMediaRequest, sender: chrome.runtime.MessageSender): Promise<KnifeMediaReply> {
+    const selection: KnifeMediaSelection = 'selection' in request ? request.selection : { kind: 'global' };
+    const checkContext = async () => (await mediaContext(sender)) || (await mediaTarget(selection));
+    const incognito = await checkContext();
+    let raw: KnifeUnknownRecord;
+    try { raw = await chromeApi.storage.local.get([...keys, 'mediaProfiles']) as KnifeUnknownRecord; }
+    catch { throw fault('read', 'storage-read-failed'); }
+    let snapshot = mediaSnapshot(raw, selection, incognito);
+    if (request.action !== 'get-media-snapshot') {
+      if (incognito) throw fault('sender', 'incognito-media-disabled');
+      const read = KnifeMediaProfiles.readStore(raw.mediaProfiles);
+      if (read.state !== 'valid' && read.state !== 'absent') throw fault('media', read.code);
+      const global = contract.makeSnapshot(raw, css);
+      const merged = KnifeMediaProfiles.mergeMediaOperation(read.store, request, { config: global.config, revision: global.revision });
+      if (!merged.ok) throw fault('media', merged.code);
+      if (await checkContext()) throw fault('sender', 'incognito-media-disabled');
+      if (merged.globalOperations) {
+        const result = contract.mergeOperations(raw, merged.globalOperations);
+        if (Object.keys(result.changes).length) await write(result.changes);
+        if (result.stylesTouched) await applyStyles({ ...raw, ...result.changes }, true);
+        raw = { ...raw, ...result.changes };
+      } else if (merged.changed) {
+        await write({ mediaProfiles: merged.nextStore }); raw = { ...raw, mediaProfiles: merged.nextStore };
+      }
+      snapshot = mediaSnapshot(raw, selection, false);
+    }
+    return { protocol: 2, ok: true, requestId: request.requestId, stored: request.action !== 'get-media-snapshot',
+      snapshot, version: snapshot.version, profileState: snapshot.profileState, stage: null, code: null };
+  }
+
   function listener(message: unknown, sender: chrome.runtime.MessageSender, respond: (response: unknown) => void) {
     if ((message as KnifeUnknownRecord | null | undefined)?.namespace !== 'cheese-knife-settings') return false;
-    const validated = contract.validateRequest(message, sender, chromeApi.runtime.id, path => chromeApi.runtime.getURL(path));
+    const media = (message as KnifeUnknownRecord).protocol === 2;
+    const validated = media ? contract.validateMediaRequest(message, sender, chromeApi.runtime.id, path => chromeApi.runtime.getURL(path))
+      : contract.validateRequest(message, sender, chromeApi.runtime.id, path => chromeApi.runtime.getURL(path));
     const requestId = typeof (message as KnifeUnknownRecord).requestId === 'string' && ((message as KnifeUnknownRecord).requestId as string).length <= 128 ? (message as KnifeUnknownRecord).requestId : undefined;
     // A closed response channel after a durable commit must not roll it back or fail the worker.
     const deliver = (result: unknown) => { try { respond(result); } catch {} };
-    const replyError = (stage: string, code: string) => ({ ok: false, requestId, stored: false, reloaded: false, css: { ...css }, stage, code });
+    const replyError = (stage: string, code: string) => media ? { protocol: 2, ok: false, requestId, stored: false, stage, code }
+      : { ok: false, requestId, stored: false, reloaded: false, css: { ...css }, stage, code };
     if (!validated.ok) { deliver(replyError('validation', validated.code)); return true; }
     const ready = initialize();
     void enqueue(async () => {
       try { await ready; } catch (error) { throw fault('initialization', (error as KnifeCodedError).code || 'initialization-failed'); }
-      return execute(validated.request);
+      return validated.request.protocol === 2 ? executeMedia(validated.request, sender) : execute(validated.request);
     }).then(deliver, error => deliver(replyError((error as KnifeCodedError).stage || 'read', (error as KnifeCodedError).code || 'settings-operation-failed')));
     return true;
   }
