@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F00 전체 한글 PR·공개 CI·병합·해당 브랜치 정리 승인**. 로컬 완료 이력은 [아카이브](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 검증과 제한은 [최종 독립 검토](docs/superpowers/validation/2026-10-14-f00-final-review.md)에 유지한다. F01 최신 목업은 사용자 승인됐지만 문서·목업은 로컬에 보존하여 이번 PR에서 제외한다. 릴리즈는 F00·F01·F02 및 통합 게이트 완료 후로 변경한다. 현재 제품 버전·스토어·실제 시청 Chrome/P09는 변경하지 않는다.
+최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F01 상세 구현 계획·Astra max 검토**. 최신 목업은 사용자 승인됐으며 [승인 목업](docs/superpowers/mockups/2026-10-14-f01-audio-settings.html)과 [구성 점검](docs/superpowers/validation/2026-10-14-f01-mockup-layout-review.md)을 기준으로 계획을 마감한다. F00은 [PR #44](https://github.com/Do-hyeon/cheese-knife/pull/44)의 공개 CI 통과·병합·해당 로컬/원격 브랜치 정리를 완료했다. F01 자료는 별도 로컬 브랜치에 복원했고 공개하지 않았다. 릴리즈는 F00·F01·F02 및 최종 통합 게이트 완료 후이며 제품2.13.3·스토어·시청용 Chrome/P09·root dist는 유지한다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -20,7 +20,7 @@
 
 ## 2. 현재 기준과 보존할 제한
 
-제품/스토어 기준2.13.3은 [P09 게시·설치 확인 기록](docs/superpowers/validation/2026-10-12-p09-store-publication.md)에 고정한다. 코드 기준 main4510096(PR #43 통합); [AF05-B 종합 마감](docs/superpowers/validation/2026-10-14-af05b-prepublication-closure.md)과 아카이브가 과거 CI·검증 수치를 소유한다. 이 문서 갱신을 새로운 게시/설치 확인으로 세지 않는다.
+제품/스토어 기준2.13.3은 [P09 게시·설치 확인 기록](docs/superpowers/validation/2026-10-12-p09-store-publication.md)에 고정한다. 코드 기준 main ae9f8e5(PR #44 F00 통합); [AF05-B 종합 마감](docs/superpowers/validation/2026-10-14-af05b-prepublication-closure.md)과 아카이브가 과거 CI·검증 수치를 소유한다. 이 문서 갱신을 새로운 게시/설치 확인으로 세지 않는다.
 
 - 기존 시청 Chrome은 root dist의 로컬 시험판, P09는 격리 스토어2.13.3 baseline. 기존 설정·dist58파일·원본 ZIP/CRX·private 감사 원장·보호 브랜치를 보존한다.
 - 구 스토어2.13.2→2.13.3 업데이트/설정 보존은 **미검증 이력 수용**이지 PASS가 아니다. 실제 플랫폼 롤백도 미실행이며 격리 old→new→old와 구분한다.
@@ -44,22 +44,22 @@
 
 | ID | 작업 묶음 | 상태 | 다음 게이트 |
 | --- | --- | --- | --- |
-| F00 | 채널별 미디어 저장·프리셋 | DOING (통합) | 승인된 전체 PR·공개 CI·병합·해당 브랜치 정리; 릴리즈 없음 |
-| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | PLAN-REVIEW | 최신 목업 승인 완료; 로컬 상세 구현 계획/Astra max 검토, 이후 계획/실행 승인 |
+| F00 | 채널별 미디어 저장·프리셋 | DONE (통합) | PR #44 공개 CI 통과·병합·해당 브랜치 정리 완료; 릴리즈 없음 |
+| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | PLAN-REVIEW | 최신 목업 승인 완료; 상세 구현 계획/Astra max 검토 후 계획/실행 승인 |
 | AF05-B 실제 수용 / AF05 종료 | 차기 게시본 설치·업데이트 | WAITING-DEPENDENCY | 차기 게시와 실제 검사 별도 승인 후 수행; F00/F01과 독립 |
 | DT02 | 선택 파일의 native TS 실행 | DEFERRED | 실제 유지보수 이득과 검사/실행 경계 보존이 증명되면 재설계 |
 | F02–F05 | 후속 기능 | BACKLOG-BLOCKED | F00/F01 검증과 각 범위 승인 |
 
 완료된 P/INC/AF 준비/DT 유지보수는 [완료 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md)로 이동했다. PR #42/#43 통합·해당 브랜치 정리는 완료됐지만 AF05 게시 후 실제 수용은 완료가 아니다.
 
-## 5. F00 — 로컬 완료 및 공개 대기
+## 5. F00 — 통합 완료
 
 문서: [승인 상세 설계](docs/superpowers/specs/2026-10-14-f00-channel-media-settings-design.md) · [설계 검토/보완](docs/superpowers/validation/2026-10-14-f00-design-review.md) · [구현 계획](docs/superpowers/plans/2026-10-14-f00-channel-media-settings.md) · [계획 검토/7항목 closure](docs/superpowers/validation/2026-10-14-f00-plan-review.md).
 
 완료된 설계·계획 승인·Tasks1–6/TAB5A–C·전체 검토/보완 및 로컬 마감은 [F00 완료 단계 아카이브](docs/superpowers/archive/2026-10-14-f00-completed-stages.md)와 [최종 검토 기록](docs/superpowers/validation/2026-10-14-f00-final-review.md)으로 이동했다. 2026-10-14 사용자 지시로 F00 전체 PR·병합·해당 브랜치 정리만 추가 승인됐다. F01 공개·버전·릴리즈·스토어·실제 시청 Chrome/P09 변경은 포함하지 않는다.
 
 - [x] F00 전체 범위 push·한글 PR·공개 CI 확인·병합·해당 브랜치 정리 승인.
-- [ ] F00만 포함한 PR 생성·공개 CI 통과 후 병합과 브랜치 정리. F01 로컬 작업 보존 및 포함 제외를 확인한다.
+- [x] [F00 전체 PR #44](https://github.com/Do-hyeon/cheese-knife/pull/44) 공개 CI3작업 통과·main ae9f8e5 병합·해당 로컬/원격 브랜치 정리. F01 7개 파일은 보존본과 Git blob 일치 확인 후 별도 로컬 브랜치에 복원했고 PR에서 제외했다.
 - [x] 현재 F00 입력의 격리 전체검사·9기반·빌드/패키지·실제 도구 감사 재실행. [PR 사전검증](docs/superpowers/validation/2026-10-14-f00-pr-preflight.md)에 결과·기존8경고와 root private 원장 불일치 제한을 기록했다.
 
 실제 popup의 Playwright Page capture는 실패했고, 승인된 [격리 CDP 대안](docs/superpowers/plans/2026-10-14-f00-popup-cdp-qualification.md)의 attachment는 성공했다. production client sender의 documentId/frameId 부재 실패는 [관측 기록](docs/superpowers/validation/2026-10-14-f00-popup-cdp-qualification.md)에 유지한다. [별도 TAB 설계](docs/superpowers/specs/2026-10-14-f00-media-settings-tab-design.md)·목업/UI·수용기준·상세 계획과 기존 Native 실행은 승인됐다. 문서 식별자를 위조하거나 직접 storage 저장으로 성공을 대체하지 않는다.
@@ -90,12 +90,15 @@
 | F04 | 2–4채널 멀티뷰 | 독립 재생·음량·화질·채팅·부분 교체 |
 | F05 | 통나무파워 조회 | 데이터 최소화·계정 분리·새 권한 별도 승인 |
 
-- [x] F01 최신 목업 사용자 승인. 상세 설계·목업 파일은 이번 F00 PR에서 제외하고 로컬 보존한다.
-- [ ] F01 상세 구현 계획·Astra max 검토·계획/실행 승인.
+설계·검토·UI 반복 보완 완료 이력은 [F01 설계·목업 아카이브](docs/superpowers/archive/2026-10-14-f01-design-and-mockup-history.md)에 보존한다.
+
+- [x] 2026-10-14 최신 F01 목업 사용자 승인. 기능/저장 계약 승인은 유지하며 제품 구현·실제 렌더링/음성 출력 인증으로 전용하지 않는다.
+- [ ] 최신 UI의 preset 생성/적용 확정 snapshot·scope 변경 처리 및 Gain trusted 더블클릭 의도를 상세 계획/Astra max 검토에 포함. 과거 검토/목업 성공으로 native 권한 검증을 대체하지 않는다.
+- [ ] F01 상세 구현 계획·검토·실행 방식 승인. F00과 별도 PR 범위를 유지하며 현재 push/PR은 하지 않는다.
 - [ ] F01 구현·객관 출력 상한/전환/수명주기/저장·F00 통합 검증. 주관적 청취만으로 완료하지 않는다.
-- [ ] 각 F00/F01 기능 전체의 별도 공개 지시·한글 PR·공개 CI·병합 확인. Task/문서 PR로 더 쪼개지 않는다.
+- [ ] F01/F02 기능 전체의 별도 공개 지시·한글 PR·공개 CI·병합 확인. F00 PR #44 통합은 완료했고 Task/문서 PR로 더 쪼개지 않는다.
 - [ ] 최종 통합 commit의 전체 회귀·점검도구·패키지·설치/저장 전환·native baseline/제한 대조.
-- [ ] 최신 후보의 private P02 감사 보고서/원장 소스 해시 재대조. 과거 root 원장은 F00 이전 입력이며 해당 해시 불일치를 해결됐다고 간주하지 않는다. [현재 후보의 실제 감사와 구분](docs/superpowers/validation/2026-10-14-f00-pr-preflight.md)하고 이력 원장을 덮어 PASS를 만들지 않는다.
+- [ ] 최신 후보의 private P02 감사 보고서/원장 소스 해시 재대조. 이번 목업 보완 중 기존 단위 테스트는1402/1403 PASS이며background.js의HEAD와 같은 현재 해시가 과거 감사 보고서와 달라1건 FAIL이다. 실제 감사 재실행 없이 기록 해시만 수정하지 않는다. 세부 원인/환경 제한은 [목업 구성 점검](docs/superpowers/validation/2026-10-14-f01-mockup-layout-review.md)에 유지한다.
 - [ ] F02 상세 설계·검토·계획/실행 승인 및 구현·객관 검증.
 - [ ] 최소 F00/F01/F02 및 통합 게이트 후 세 자리 형식의 공개 번호·릴리즈·제출/게시 각각 별도 승인.
 - [ ] 게시 후 실제 수용은6절에서 관리. 이 후행 게이트를 준비 PR의 선행 조건으로 바꾸지 않는다.
@@ -108,6 +111,6 @@
 
 ## 10. 현재 사용자 개입 지점
 
-현재는 승인된 F00 전체 PR·공개 CI·병합·해당 브랜치 정리를 사용자 개입 없이 진행한다. F01 문서·목업은 별도 로컬 브랜치에 보존하고 승인된 상세 계획/Astra max 검토로 이어간다. F01 구현·공개, 실제 사용자 Chrome/P09·설치/교체·권한/외부 전송 범위·버전·릴리즈·스토어 변경은 별도 승인 전 중지한다. 이후 승인 요청 문서는 한글로 작성한다.
+최신 목업 사용자 승인을 기록했다. 현재는 한글 F01 상세 구현 계획·Astra max 공격적 검토·필수 보완을 마감하고 계획/Native 등 실행 방식의 묶음 승인을 받는다. 목업의 local 입력/탭/상태 예시는 실제 오디오·저장·Chrome API에 연결되지 않으며 실제 렌더링/접근성·native 음성 출력은 미검증이다. 기존 file URL 브라우저 보안 차단을 우회하지 않는다. F01 제품 구현·push/PR/병합·버전·릴리즈·스토어 작업은 별도 승인 전 금지다. F00 PR/병합 승인과 F01 실행 승인을 혼동하지 않는다.
 
 실제 설치/새로고침·P09 변경·새 의존성/권한/외부 전송·버전·공개는 별도 STOP 게이트다. 이전 MCP 연결/종료 승인이나 다른 작업의 공개 승인을 재사용하지 않는다.
