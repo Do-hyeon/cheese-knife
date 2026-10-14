@@ -19,7 +19,9 @@ function moduleUnderTest() {
   const realm = vm.createContext({ TextEncoder });
   vm.runInContext(fs.readFileSync('media-profiles.js', 'utf8'), realm);
   assert.equal(typeof realm.KnifeMediaProfiles?.readStore, 'function');
-  return realm.KnifeMediaProfiles;
+  // Pin the F00 protocol2 contract separately from the new schema2 reader.
+  return { ...realm.KnifeMediaProfiles, readStore: realm.KnifeMediaProfiles.readLegacyStore,
+    resolveMediaSettings: realm.KnifeMediaProfiles.resolveLegacyMediaSettings };
 }
 function committed(mod, store, request) {
   const result = mod.mergeMediaOperation(store, request, globals);

@@ -231,9 +231,9 @@ var createSettingsBroker = (chromeApi) => {
     return tab.incognito;
   }
   function mediaSnapshot(raw, selection, incognito) {
-    const global = contract.makeSnapshot(raw, css), read2 = KnifeMediaProfiles.readStore(raw.mediaProfiles);
+    const global = contract.makeSnapshot(raw, css), read2 = KnifeMediaProfiles.readLegacyStore(raw.mediaProfiles);
     const channelId = selection.kind === "global" ? null : selection.channelId;
-    const resolved = KnifeMediaProfiles.resolveMediaSettings(global.config, read2, { channelId, topFrame: true, incognito });
+    const resolved = KnifeMediaProfiles.resolveLegacyMediaSettings(global.config, read2, { channelId, topFrame: true, incognito });
     const domainValues = (domain) => KnifeMediaProfiles.validateValues(domain, Object.fromEntries(
       (domain === "audio" ? KnifeMediaProfiles.audioFields : KnifeMediaProfiles.videoFields).map((field) => [field.id, resolved.effectiveConfig[field.id]])
     ));
@@ -264,7 +264,7 @@ var createSettingsBroker = (chromeApi) => {
     let snapshot = mediaSnapshot(raw, selection, incognito);
     if (request.action !== "get-media-snapshot") {
       if (incognito) throw fault("sender", "incognito-media-disabled");
-      const read2 = KnifeMediaProfiles.readStore(raw.mediaProfiles);
+      const read2 = KnifeMediaProfiles.readLegacyStore(raw.mediaProfiles);
       if (read2.state !== "valid" && read2.state !== "absent") throw fault("media", read2.code);
       const global = contract.makeSnapshot(raw, css);
       const merged = KnifeMediaProfiles.mergeMediaOperation(read2.store, request, { config: global.config, revision: global.revision });

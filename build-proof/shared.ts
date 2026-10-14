@@ -1,8 +1,10 @@
 type RequireMediaAbi<T extends true> = T;
 type MediaAbiProof = RequireMediaAbi<typeof KnifeMediaProfiles extends {
-  readStore(raw: unknown): KnifeMediaRead;
+  readLegacyStore(raw: unknown): KnifeMediaRead;
+  readStore(raw: unknown): KnifeMediaReadV2;
+  validateAudioV2(raw: unknown): KnifeAudioResultV2;
   validateValues(domain: KnifeMediaDomain, raw: unknown): KnifeValuesResult;
-  resolveMediaSettings(base: Record<string, KnifeScalar>, read: KnifeMediaRead,
+  resolveLegacyMediaSettings(base: Record<string, KnifeScalar>, read: KnifeMediaRead,
     context: {channelId: string | null; topFrame: boolean; incognito: boolean}): KnifeMediaResolution;
   mergeMediaOperation(store: KnifeMediaStore, request: KnifeMediaMutation,
     global: {config: Record<string, KnifeScalar>; revision: number}): KnifeMediaMergeResult;

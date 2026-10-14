@@ -242,7 +242,7 @@ function validateMediaReply(request: KnifeMediaCall, value: unknown, requestId: 
   if (snapshot.store === null) {
     if (snapshot.profileState !== 'repair-required' || snapshot.version.mediaRevision !== null || snapshot.canWrite) return null;
   } else {
-    const read = KnifeMediaProfiles.readStore(snapshot.store);
+    const read = KnifeMediaProfiles.readLegacyStore(snapshot.store);
     if (read.state !== 'valid' || read.store.revision !== snapshot.version.mediaRevision) return null;
     if (snapshot.channel !== null && !read.store.channels.some(channel => JSON.stringify(channel) === JSON.stringify(snapshot.channel))) return null;
   }

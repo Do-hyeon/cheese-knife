@@ -152,8 +152,8 @@ async function getConfig(includeStyleParameters) {
 }
 async function readScopedConfig(context) {
   const stored = await chrome.storage.local.get(["config", "styles", "styleParameters", "settingsRevision", "mediaProfiles"]);
-  const baseConfig = normalizeConfig(stored.config), read = KnifeMediaProfiles.readStore(stored.mediaProfiles);
-  const resolved = KnifeMediaProfiles.resolveMediaSettings(baseConfig, read, {
+  const baseConfig = normalizeConfig(stored.config), read = KnifeMediaProfiles.readLegacyStore(stored.mediaProfiles);
+  const resolved = KnifeMediaProfiles.resolveLegacyMediaSettings(baseConfig, read, {
     channelId: context.channelId,
     topFrame: window.top === window,
     incognito: chrome.extension?.inIncognitoContext !== false

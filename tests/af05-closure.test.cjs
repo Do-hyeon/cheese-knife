@@ -8,7 +8,7 @@ test('every first-party runtime file has a checked TypeScript generation entry',
   const settings = await import(pathToFileURL(path.resolve('scripts/settings-runtime.mjs')));
   const main = await import(pathToFileURL(path.resolve('scripts/main-runtime.mjs')));
   const entries = [...settings.SETTINGS_RUNTIME_ENTRIES, ...main.MAIN_RUNTIME_ENTRIES];
-  const inventory = JSON.parse(await fs.readFile('tests/fixtures/f00-runtime-js.json', 'utf8'));
+  const inventory = JSON.parse(await fs.readFile('tests/fixtures/f01-runtime-js.json', 'utf8'));
   assert.deepEqual(entries.map(entry => entry.output).sort(), inventory);
   for (const entry of entries) {
     assert.ok(entry.source.endsWith('.ts'));

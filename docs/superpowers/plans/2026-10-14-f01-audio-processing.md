@@ -1,6 +1,6 @@
 # F01 오디오 보정·Gain 저장·EQ·노멀라이저 상세 구현 계획
 
-> **For agentic workers:** 승인 후 Native 실행에는 superpowers:executing-plans를 사용해 아래 체크리스트를 순서대로 수행한다. 지금은 계획·독립 검토만 승인됐으며 제품 구현은 시작하지 않는다. Task별 PR을 만들지 않는다.
+> **For agentic workers:** 2026-10-15 사용자가 계획·Native 격리 실행 묶음을 승인했다. superpowers:executing-plans로 아래 체크리스트를 순서대로 수행한다. Task별 PR을 만들지 않으며 push/PR은 별도 승인 전 금지다.
 
 **목표:** F00 저장 기반에 기존 Gain의 영구 저장, 전체 오디오 스위치, 고정8대역 EQ, 선택형 느린 RMS 노멀라이저와 승인된 조작 UI를 연결한다.
 
@@ -61,10 +61,10 @@ runtime은 기존 settings transform(런타임 import/export 금지)와 MAIN bun
 
 **입출력:** v1 raw/기존 전역 config → 검증된 ephemeral v2 snapshot 또는 repair. T2/T4/T6은 위 AudioValues·GainOrigin·read/upgrade ABI만 사용한다.
 
-- [ ] RED: `v1 projection has inherited Gain and disabled new effects`에서 compressorDefault→audioDefault·enabled true·Gain 상속·EQ0/OFF·normalizer−20/OFF와 raw byte 보존을 assert한다. absent/read 반복 set0, 미래/손상/getter/extra key/NaN/Infinity/범위 밖 거부, 0/비정수 원값 유지를 고정한다.
-- [ ] RED 실행: `node --test tests/f01-media-schema.test.cjs tests/media-profiles.test.cjs tests/settings-compatibility.test.cjs`. 실패가 새 계약 부재인지 확인한다.
-- [ ] 구현: schema1 reader/형태를 그대로 보존하고 schema2 reader/projection/upgrade를 추가한다. upgrade는 IDs/이름/createdRevision/video 유지, record/preset/store revision 각각+1·MAX_SAFE/256KiB/정수 overflow 사전 실패. 새 global audioDefault는 기존 compressorDefault로만 정규화; raw unknown audioDefault 보존/우선0·두 요청 명칭 충돌 거부.
-- [ ] GREEN: 같은 명령 및 strict 타입/ABI. gainInherited=true preset은 적용 대상 Gain 쌍 보존, 새 owned preset은 확정 유효값/false를 복사한다. boot/read는 migration을 쓰지 않는다.
+- [x] RED: `v1 projection has inherited Gain and disabled new effects`에서 compressorDefault→audioDefault·enabled true·Gain 상속·EQ0/OFF·normalizer−20/OFF와 raw byte 보존을 assert한다. absent/read 반복 set0, 미래/손상/getter/extra key/NaN/Infinity/범위 밖 거부, 0/비정수 원값 유지를 고정한다.
+- [x] RED 실행: `node --test tests/f01-media-schema.test.cjs tests/media-profiles.test.cjs tests/settings-compatibility.test.cjs`. 격리 후보에서 새 계약 부재 실패와 별칭/기존 순차 patch 회귀 실패를 확인했다.
+- [x] 구현: schema1 reader/형태를 그대로 보존하고 schema2 reader/projection/upgrade를 추가한다. upgrade는 IDs/이름/createdRevision/video 유지, record/preset/store revision 각각+1·MAX_SAFE/256KiB/정수 overflow 사전 실패. 새 global audioDefault는 기존 compressorDefault로만 정규화; raw unknown audioDefault 보존/우선0·두 요청 명칭 충돌 거부.
+- [x] GREEN: 집중99/99·전체1411통과/실패0/기존private증거1skip·9개 기반/build/package 통과. gainInherited=true preset은 적용 대상 Gain 쌍 보존, 새 owned preset은 확정 유효값/false를 복사한다. boot/read는 migration을 쓰지 않는다.
 - [ ] 로컬 커밋: 해당 원본·테스트·필요 생성 출력만 명시 staging. push/PR 없음.
 
 ## Task 2 — protocol3·명시 upgrade/import·한 queue의 Gain epoch
@@ -182,6 +182,6 @@ runtime은 기존 settings transform(런타임 import/export 금지)와 MAIN bun
 - [x] 저장·스키마/전역alias·DSP/상태·actor/epoch·timer/meter·생성/strict/devtool·실제설치/손실·고지/보호파일의 소비자를 포함했다.
 - [x] 5개 공격적 입력군을 소유 Task의 RED/native 대조로 연결하고 과거검토/목업/합성검사와 실제 native 성공을 구분했다.
 - [x] Astra max 독립 상세 계획 검토·Important3 보완·같은 reviewer 재확인 완료. 잔여0/0/0, [검토 기록](../validation/2026-10-14-f01-plan-review.md). 실제 구현/Native 성공이 아닌 계획 결함 닫힘이다.
-- [ ] 사용자 계획·실행 방식 승인. 지금 제품 구현/실험/native Chrome·push/PR은 금지.
+- [x] 2026-10-15 사용자 계획·Native 격리 실행 방식 승인. 제품 구현/자기 후보 검증은 순차 진행하며 push/PR·사용자 Chrome/P09 변경은 금지.
 
 기술 근거: [Chrome InjectionResult·ISOLATED execution](https://developer.chrome.com/docs/extensions/reference/api/scripting#type-InjectionResult), [MessageSender](https://developer.chrome.com/docs/extensions/reference/api/runtime#type-MessageSender), [Web Audio native node/AudioParam](https://www.w3.org/TR/webaudio/). API 계약의 존재는 이 계획의 실제 sender/gesture·응답/출력 성공 증거가 아니며 qualification/객관 검사로 별도 확인한다.

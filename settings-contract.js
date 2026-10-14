@@ -9,7 +9,11 @@ var KnifeSettingsContract = (() => {
   const numeric = (value, field) => typeof value === "number" && Number.isFinite(value) && value >= field.min && value <= field.max;
   function validateOperations(operations) {
     if (!Array.isArray(operations) || operations.length > 64) return fail("invalid-operations");
-    for (const op of operations) {
+    const aliases = operations.filter((op) => op?.type === "config" && ["audioDefault", "compressorDefault"].includes(op?.id));
+    const mixedNames = aliases.some((op) => op.id === "audioDefault") && aliases.some((op) => op.id === "compressorDefault");
+    if (aliases.some((op) => typeof op.value !== "boolean") || mixedNames && aliases.some((op) => op.value !== aliases[0]?.value)) return fail("invalid-operations");
+    const normalized = operations.map((op) => op?.type === "config" && op.id === "audioDefault" ? { ...op, id: "compressorDefault" } : op);
+    for (const op of normalized) {
       if (!op || typeof op.id !== "string") return fail("invalid-operation");
       if (op.type === "config") {
         const field = configFields.get(op.id);
@@ -22,7 +26,7 @@ var KnifeSettingsContract = (() => {
         if (!shape(op, ["type", "id", "value"]) || field?.type !== "range" || !numeric(op.value, field)) return fail("invalid-operation");
       } else return fail("invalid-operation");
     }
-    return { ok: true, operations: operations.map((op) => ({ ...op })) };
+    return { ok: true, operations: normalized.map((op) => ({ ...op })) };
   }
   function validateRequest(message, sender, extensionId, getURL) {
     if (!sender || typeof extensionId !== "string" || !extensionId || sender.id !== extensionId || typeof sender.url !== "string" || sender.frameId !== void 0 && sender.frameId !== 0) return fail("invalid-sender");
