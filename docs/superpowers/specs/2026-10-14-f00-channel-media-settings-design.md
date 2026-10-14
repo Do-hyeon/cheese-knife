@@ -1,6 +1,6 @@
 # F00 — 채널별 오디오·영상 설정 저장 상세 설계
 
-2026-10-14 / Asia-Seoul. 상태: **Astra max 최초 검토·5항목 보완/targeted 확인 완료·사용자 written-spec 승인 완료**. 기준 소스 `45100969200dfb5e33737db60c9a3fa7450f4450`(PR #43 병합/main CI 통과), 게시 기준2.13.3. Task5 실행은 중지 상태이며 [별도 TAB 보완 설계](2026-10-14-f00-media-settings-tab-design.md)의 목업/UI·written-spec·수용기준은 승인됐다. [TAB 상세 계획](../plans/2026-10-14-f00-media-settings-tab.md)의 검토/실행 승인 전이다. 이 문서의 과거 승인은 실제 프로필 변경·버전·push/PR·배포 권한이 아니다. MAIN 보완은 후속 기록으로 분리하며 reviewed normative body는 그대로 두고 UI 변경은 승인된 보완 설계가 소유한다. [검토 기록](../validation/2026-10-14-f00-design-review.md)의 최초0/3/2와5항목 closure를 구분한다.
+2026-10-14 / Asia-Seoul. 상태: **원래 설계·계획/Native 및 TAB 보완 상세 계획/Native 승인, Task5A 구현 중**. 기준 소스 `45100969200dfb5e33737db60c9a3fa7450f4450`(PR #43 병합/main CI 통과), 게시 기준2.13.3. [별도 TAB 보완 설계](2026-10-14-f00-media-settings-tab-design.md)와 [승인된 한글 상세 계획](../plans/2026-10-14-f00-media-settings-tab.md)이 UI 변경/실제 수용 경로를 소유하며 원래 reviewed normative body는 그대로 유지한다. 사용자 승인 문서는 이후 한글로 작성한다. 원래 설계 검토 최초0/3/2·5항목 closure는 구현/실제 수용 완료가 아니며 사용자 Chrome/P09·버전·push/PR·배포 권한도 아니다. MAIN 보완과 실제 POPUP 인증 실패는 후속 기록으로 분리한다.
 
 ## 1. 확정 목적과 범위
 

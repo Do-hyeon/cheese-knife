@@ -60,4 +60,10 @@ Tasks1–4의 당시 입력에 대한 로컬 구현/개별 회귀를 확인했�
 
 실제 설치형 진입에서 MAIN의 동일 standalone 파일 중복 주입 의존성을 발견했다. 기존 순수 원본을 runtime에 포함하고 다른 MAIN feature용 namespace를 공개하는 방식으로 보완했으며 권한·자산 수·버전은 그대로다. 실제 현재 I 실행에서 MAIN ready/파서 통과를 확인했다. 기존 Task4의 로컬 수치를 실제 설치형 성공으로 승격하지 않는다.
 
-CDP attachment는 성공하지만 실제 toolbar popup의 production 요청에 sender.documentId/frameId가 없어 현행 v2 인증이 거부한다. 입력/저장 이전 STOP이며 인증 조건은 낮추지 않았다. 별도 own 설정 TAB 등의 UX/인증 경로 상세 설계와 독립 검토 승인이 필요하다. Task5 완료 원장을 기록하지 않으며 저장4관측·Task6은 아직 미실행이다.
+CDP attachment는 성공하지만 실제 toolbar popup의 production 요청에 sender.documentId/frameId가 없어 현행 v2 인증이 거부했다. 당시 입력/저장 이전 STOP이며 인증 조건은 낮추지 않았다. 후속 별도 TAB 명세/목업/계획/Astra max 검토 및 Native 실행 승인을 받아 보완 중이다. 당시 qualification을 성공으로 바꾸지 않으며 저장4관측·Task6은 아직 미실행이다.
+
+## Task5A TAB 진입 보완 — 로컬 검증
+
+사용자 상세 계획/Native 실행 승인 뒤 toolbar v1/명시 TAB 열기와 media TAB v2를 분리했다. 실제 sender 인증은 기존 broker가 그대로 소유한다. top-frame/정확한 mode·query·원래 id/window/origin/channel/incognito 검사, VOD styles pair, 중복 클릭 및 targetless 관리와 기존 입력 재사용 배치를 RED/GREEN으로 검증했다.
+
+집중51/51, 전체1304/1303pass/0fail/0cancelled/기존skip1,54.08초,9foundation 통과. sandbox 첫 전체 실패(realpath/자식 프로세스 접근)는 성공으로 세지 않고 같은 source의 격리 후보 재실행을 채택했다. generated popup와 active normalized pin만 갱신했다. 실제 Chrome/TAB writer·저장4관측·BFCache 성공으로 세지 않는다. Task5B/C와 원래 Tasks5/6은 남아 있다.

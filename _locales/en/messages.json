@@ -1,4 +1,10 @@
 {
+  "media_open": { "message": "Open channel settings and presets ↗" },
+  "media_entry_guide": { "message": "Edit channel-specific audio and video in a separate tab. Other settings remain global." },
+  "media_global_guide": { "message": "Only the audio compressor and video filters are channel-specific. Other controls are global." },
+  "media_target_invalid": { "message": "Invalid target. Only global and saved-channel management is available." },
+  "media_target_changed": { "message": "The original tab, window or channel changed. Reopen from that broadcast." },
+  "media_open_failed": { "message": "Could not open settings in the original window. Incognito and closed windows are unsupported." },
   "ext_name": {
     "message": "Cheese Knife — Community Recovery"
   },

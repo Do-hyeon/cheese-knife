@@ -94,6 +94,13 @@ summary {
 #media-controls { font-size: 13px; line-height: 1.5; }
 #media-controls select, #media-preset-name { max-width: 100%; box-sizing: border-box; }
 #media-draft { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; }
-#media-controls > label { display: block; margin-top: 6px; }
+#media-controls > label, #media-presets > label { display: block; margin-top: 6px; }
 .media-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 #media-status[data-phase="failed"], #media-status[data-phase="unknown"], #media-status[data-phase="conflict"], #media-status[data-phase="repair-required"] { color: #9a3412; }
+body.media-settings-tab { width: min(100%, 960px); margin: 20px auto; }
+body.media-settings-tab #list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+body.media-settings-tab #media-controls { font-size: 15px; }
+#media-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 12px -12px; }
+#media-fields .box { margin: 4px; }
+#media-fields input[type="range"] { min-width: 0; }
+@media (max-width: 640px) { body.media-settings-tab #list, #media-fields { grid-template-columns: 1fr; } }

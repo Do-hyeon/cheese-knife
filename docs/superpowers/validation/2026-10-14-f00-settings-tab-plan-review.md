@@ -1,6 +1,6 @@
 # F00 설정 TAB 상세 구현 계획 — Astra max 검토
 
-2026-10-14 / Asia-Seoul. 입력 소스caa202403286a86e689f34dda94e11dde0f23c14. 사용자 목업/UI·written-spec 및 toolbar→TAB 수용기준 승인을 받아 상세 계획 작성/검토를 진행했다. 제품 구현·Native 실행 승인 전이다.
+2026-10-14 / Asia-Seoul. 검토 당시 입력 소스caa202403286a86e689f34dda94e11dde0f23c14. 사용자 목업/UI·written-spec 및 toolbar→TAB 수용기준 승인을 받아 상세 계획 작성/검토를 진행했다. 당시 제품 구현·Native 실행 승인 전의 검토 기록이다. 후속 상세 계획/기존 Native 실행 승인과 한글 승인 문서 지시는 PLANS.md/아카이브가 소유하며 아래 영문 검토 입력 hash를 현재 번역본 hash로 바꾸지 않는다.
 
 ## 입력과 현재 판정
 

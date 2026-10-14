@@ -23,13 +23,15 @@ const { page, load, flush, clock } = require('./helpers.cjs');
 /** @typedef {(value:FixtureChrome)=>FixtureClient} FixtureClientFactory */
 /** @typedef {(value:unknown)=>FixtureBroker} FixtureBrokerFactory */
 /** @typedef {{fakeTime?:boolean|undefined}} FixtureClientOptions */
-/** @typedef {{locale?:string|undefined,query?:string|undefined,target?:{tabId:number,windowId:number}|undefined,fakeTime?:boolean|undefined,setup?:((api:FixtureChrome,dom:import('jsdom').JSDOM)=>void)|undefined}} FixtureUiOptions */
+/** @typedef {{surface:'toolbar'|'tab',documentUrl:string}} FixtureSurface */
+/** @typedef {{surface?:'toolbar'|'tab'|undefined,locale?:string|undefined,query?:string|undefined,target?:{tabId:number,windowId:number}|undefined,fakeTime?:boolean|undefined,setup?:((api:FixtureChrome,dom:import('jsdom').JSDOM)=>void)|undefined}} FixtureUiOptions */
 /** @typedef {{
  * runtime:{id:string,getURL:(path:string)=>string,getContexts:(filter:chrome.runtime.ContextFilter)=>Promise<chrome.runtime.ExtensionContext[]>,sendMessage:FixtureSend,lastError?:{message:string}|undefined,onMessage:FixtureEvent<[unknown,unknown,(reply:unknown)=>void]>,onInstalled:FixtureEvent<[chrome.runtime.InstalledDetails]>,onStartup:FixtureEvent<[]>},
  * i18n:{getMessage:(key:string)=>string},
  * storage:{onChanged:FixtureEvent<[RawStore,string]>,local:{onChanged:FixtureEvent<[RawStore,string]>,get:(keys?:string[]|RawStore|null)=>Promise<RawStore>,set:FixtureStorageWrite,remove:(key:string|string[])=>Promise<void>}},
  * scripting:{getRegisteredContentScripts:(options?:{ids?:string[]|undefined})=>Promise<FixtureScript[]>,registerContentScripts:(scripts:FixtureScript[])=>Promise<void>,updateContentScripts:(scripts:FixtureScript[])=>Promise<void>,unregisterContentScripts:(options?:{ids?:string[]|undefined})=>Promise<void>},
- * tabs:{get:(id:number)=>Promise<FixtureTab>,reload:(id:number)=>Promise<void>,query:(options:chrome.tabs.QueryInfo)=>Promise<(FixtureTab|undefined)[]>,sendMessage:(id:number,message:unknown)=>Promise<unknown>,create:(options:chrome.tabs.CreateProperties)=>Promise<void>},
+ * tabs:{getCurrent:()=>Promise<FixtureTab|undefined>,get:(id:number)=>Promise<FixtureTab>,reload:(id:number)=>Promise<void>,query:(options:chrome.tabs.QueryInfo)=>Promise<(FixtureTab|undefined)[]>,sendMessage:(id:number,message:unknown)=>Promise<unknown>,create:(options:chrome.tabs.CreateProperties)=>Promise<void>},
+ * windows:{get:(id:number)=>Promise<{id:number,incognito:boolean}>},
  * permissions:{contains:(options:chrome.permissions.Permissions)=>Promise<boolean>,onRemoved:FixtureEvent<[chrome.permissions.Permissions]>,onAdded:FixtureEvent<[chrome.permissions.Permissions]>}
  * }} FixtureChrome */
 /** @typedef {Omit<FixtureChrome,'runtime'>&{runtime:Omit<FixtureChrome['runtime'],'sendMessage'>&Partial<Pick<FixtureChrome['runtime'],'sendMessage'>>}} ConstructingChrome */
@@ -99,18 +101,21 @@ function settingsHarness(t, stored = {}, workerSources) {
   }
   /** @param {RawStore} delta */
   const announce = delta => { void boundary('event', delta).then(() => changes.emit(delta, 'local')).catch(() => {}); };
-  /** @param {string} name */
-  function senderFor(name) {
+  /** @param {string} name @param {FixtureSurface} [options] */
+  function senderFor(name, options) {
     const documentId = `fixture-document-${++contextSequence}`;
+    const documentUrl = options?.documentUrl ?? getURL(`${name}.html`);
+    if (options?.surface === 'toolbar') return { id: extensionId, url: documentUrl };
     if (name === 'popup' || name === 'styles') contexts.set(documentId, { contextId: documentId, contextType: 'TAB',
-      documentId, documentUrl: getURL(`${name}.html`), documentOrigin: getURL('').slice(0, -1), frameId: 0,
+      documentId, documentUrl, documentOrigin: getURL('').slice(0, -1), frameId: 0,
       tabId: 100 + contextSequence, windowId: 9, incognito: false });
-    return { id: extensionId, url: getURL(`${name}.html`), frameId: 0, documentId };
+    return { id: extensionId, url: documentUrl, frameId: 0, documentId };
   }
-  /** @param {string} [name] @returns {FixtureChrome} */
-  function apiFor(name = 'background') {
+  /** @param {string} [name] @param {FixtureSurface} [options] @returns {FixtureChrome} */
+  function apiFor(name = 'background', options) {
     const metric = { current: 0, max: 0 };
-    const senderInfo = senderFor(name);
+    const senderInfo = senderFor(name, options);
+    const ownTabId = 100 + contextSequence;
     /** @type {ConstructingChrome} */ const api = {
       runtime: { id: extensionId, getURL, onMessage: event(), onInstalled: event(), onStartup: event(),
         getContexts: async filter => { await boundary('context-get', filter); return structuredClone([...contexts.values()].filter(context => !filter.documentIds || filter.documentIds.includes(context.documentId || ''))); } },
@@ -140,11 +145,14 @@ function settingsHarness(t, stored = {}, workerSources) {
         unregisterContentScripts: async options => { await cssBoundary('css-unregister', options); for (const id of options?.ids || [...registrations.keys()]) registrations.delete(id); },
       },
       tabs: {
+        getCurrent: async () => { await boundary('tab-current', {}); return options?.surface === 'toolbar' ? undefined :
+          { id: ownTabId, windowId: 9, incognito: false, url: options?.documentUrl ?? getURL(`${name}.html`) }; },
         get: async id => { await boundary('tab-get', { id }); if (!tabs.has(id)) throw new Error('missing-tab'); return structuredClone(/** @type {FixtureTab} */ (tabs.get(id))); },
         reload: async id => { await boundary('tab-reload', { id }); },
         query: async options => { await boundary('tab-query', options); return [structuredClone(tabs.get(7))]; },
         sendMessage: async () => ({ statuses: { player: { state: 'ready' }, deletedChat: { state: 'limited', reason: 'jsx-adapter-unavailable' } } }), create: async options => { await boundary('tab-create', options); },
       },
+      windows: { get: async id => { await boundary('window-get', { id }); if (id !== 9) throw new Error('missing-window'); return { id, incognito: false }; } },
       permissions: {
         contains: async options => { await boundary('permission-contains', options); return permissionGranted; },
         onRemoved: event(), onAdded: event(),
@@ -224,10 +232,10 @@ function settingsHarness(t, stored = {}, workerSources) {
     return { ...instance, dom, api, time, view: () => view, maxInflight: () => /** @type {FixtureMetric} */ (metrics.get(api)).max };
   }
   /** @param {string} name @param {FixtureUiOptions} [options] */
-  async function openUi(name, { locale = 'ko', target, query, fakeTime = false, setup } = {}) {
+  async function openUi(name, { surface = name === 'popup' ? 'toolbar' : 'tab', locale = 'ko', target, query, fakeTime = false, setup } = {}) {
     const search = query ?? (target ? `?targetTabId=${target.tabId}&targetWindowId=${target.windowId}` : '');
     const dom = page(fs.readFileSync(`${name}.html`, 'utf8'), getURL(`${name}.html`) + search); windows.push(dom);
-    const time = fakeTime ? clock(dom) : undefined, api = apiFor(name);
+    const time = fakeTime ? clock(dom) : undefined, api = apiFor(name, { surface, documentUrl: dom.window.location.href });
     const translated = /** @type {Record<string,{message?:string}>} */ (JSON.parse(fs.readFileSync(`_locales/${locale}/messages.json`, 'utf8')));
     api.i18n.getMessage = key => translated[key]?.message || '';
     /** @type {{chrome:unknown}} */ (dom.window).chrome = api; dom.window.HTMLCanvasElement.prototype.getContext = () => null;

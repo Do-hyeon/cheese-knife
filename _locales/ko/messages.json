@@ -1,4 +1,10 @@
 {
+  "media_open": { "message": "채널 설정·프리셋 열기 ↗" },
+  "media_entry_guide": { "message": "별도 설정 탭에서 오디오·영상만 채널별로 편집합니다. 나머지는 전역 설정입니다." },
+  "media_global_guide": { "message": "채널별 범위는 오디오 컴프레서·영상 필터뿐입니다. 다른 항목은 전역으로 적용됩니다." },
+  "media_target_invalid": { "message": "대상 정보가 잘못됐습니다. 전역·저장된 채널만 관리할 수 있습니다." },
+  "media_target_changed": { "message": "원래 방송의 탭·창·채널이 변경됐습니다. 해당 방송에서 다시 열어 주세요." },
+  "media_open_failed": { "message": "원래 창에서 설정 탭을 열 수 없습니다. 시크릿 창과 닫힌 창은 지원하지 않습니다." },
   "ext_name": {
     "message": "치즈 나이프 — 커뮤니티 복구판"
   },

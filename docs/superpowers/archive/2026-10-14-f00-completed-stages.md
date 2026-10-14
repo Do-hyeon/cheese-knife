@@ -41,4 +41,17 @@
 - [x] 승인된 목업/UI·명세를 상세 구현 계획5A(진입/대상)/5B(복구/확인)/5C(수명주기/actual qualification)로 작성하고 원래 Task5/6 잔여 게이트를 유지했다.
 - [x] fresh Astra max 최초 Critical0/Important3/Minor1, 표시값/ACK 경합·observer 등록 순서·실제 native caller/session/종료 소유자·timeout 차이를 보완하고4항목 targeted closure 확인. 이전 설계0/5/1과 별개의 검토다.
 
-근거: [상세 계획](../plans/2026-10-14-f00-media-settings-tab.md), [계획 검토](../validation/2026-10-14-f00-settings-tab-plan-review.md). written-plan/Native 실행 승인은 아직이며 실제 제품/Chrome/저장/정상 종료 검증은 이 기록에 없다.
+근거: [상세 계획](../plans/2026-10-14-f00-media-settings-tab.md), [계획 검토](../validation/2026-10-14-f00-settings-tab-plan-review.md). 당시 상세 계획 검토는 구현/실제 검증이 아니며 실제 제품/Chrome/저장/정상 종료 검증은 이 기록에 없다.
+
+## Task5 TAB 상세 계획·Native 실행 승인
+
+- [x] 사용자2026-10-14 상세 계획과 기존 Native 실행 승인. Task5A–C 보완 후 원래 Task5/6 및 whole-F00 최종 Astra max까지 순차 수행한다. 사용자 개입/추가 권한이 필요한 단계에서만 중지하며 공개 승인은 포함하지 않는다.
+- [x] 이후 사용자 승인 문서는 한글로 작성하라는 지시를 반영하고 승인 계획의 기술 수치·인터페이스·검증 범위는 유지한 채 한글로 옮겼다. 과거 영문 검토 입력 hash는 이력으로 보존한다.
+
+## Task5A 설정 탭 진입·대상 고정 로컬 검증
+
+- [x] 기존 popup을 재사용하여 툴바 v1/명시 열기와 TAB v2를 분리했다. top-frame·모드/query·정확한 대상 ID/window/origin/channel/incognito 검사를 유지하고 정상 nonCHZZK에서는 targetless 관리만 연다. 중복 클릭/다른 창 fallback/자동 열기 없음.
+- [x] 기존 descriptor/입력을 한 번만 만들어 TAB의 scope→두 미디어 카드→preset 배치로 이동했다. 전역 항목은 제거하지 않는다. VOD pair의 styles 링크와 원래 VOD 단일 새로고침을 fixture에서 확인했다.
+- [x] 집중51/51, 전체1304건/1303pass/0fail/0cancelled/기존skip1,54.08초;9foundation 통과. 첫 sandbox 전체 실패는 별도 보존하고 동일 후보 제한 없는 로컬 재실행만 결과로 채택했다. 생성 popup/current pin만 갱신, 역사 기준/제품2.13.3/root dist58/보호 자료 불변.
+
+이는 JSDOM/Chrome 경계 fixture·생성/타입/전체 회귀다. 실제 TAB writer·Chrome/BFCache·저장4관측·F00 완료는 아직이며 후행 Task5B/C/원래 Task5/6을 계속한다.
