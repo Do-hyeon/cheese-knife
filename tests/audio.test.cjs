@@ -136,6 +136,45 @@ for(const wanted of [true,false])test('same-video PZP rewrap preserves manual '+
   assert.ok(api.media.context.playerGeneration>before);assert.equal(api.media.phase,'pending');
   deliver(dom,{compressorDefault:!wanted});await flush();assert.equal(audio.getState(video),wanted?'on':'off');assert.equal(sources(),1);
 });
+for(const manual of ['none','on','off'])test('genuine video A-B-A replacement retires previous '+manual+' intent',async t=>{
+  const {dom,audio,video,sources,nodes}=setup(t,false,false,{compressorDefault:true}),api=runtime(dom);load(dom,'web/player.js');await flush();
+  if(manual!=='none'){dom.window.document.querySelector('.knife-comp button').click();await flush();
+    if(manual==='on'){dom.window.document.querySelector('.knife-comp button').click();await flush();}}
+  const other=video.cloneNode();Object.defineProperty(other,'currentSrc',{value:'',configurable:true});
+  video.replaceWith(other);api.reconcile();deliver(dom,{compressorDefault:true});await flush();
+  assert.equal(audio.getState(video),'off');other.replaceWith(video);api.reconcile();
+  assert.equal(api.media.phase,'pending');assert.equal(nodes.filter(node=>node.type==='gain')[1].gain.value,0);
+  deliver(dom,{compressorDefault:true});await flush();assert.equal(api.mediaCurrent(),true);
+  assert.equal(audio.getState(video),'on');assert.equal(dom.window.document.querySelector('.knife-comp button').getAttribute('aria-pressed'),'true');
+  assert.equal(nodes.filter(node=>node.type==='gain')[1].gain.value,1);assert.equal(sources(),1);
+});
+for(const manual of ['none','on','off'])test('same-video source loss and recovery preserves '+manual+' intent and truthful wet state',async t=>{
+  const {dom,audio,video,sources,nodes}=setup(t,false,false,{compressorDefault:manual!=='on'}),api=runtime(dom);load(dom,'web/player.js');await flush();
+  if(manual!=='none'){dom.window.document.querySelector('.knife-comp button').click();await flush();}
+  const wanted=manual!=='off',gains=nodes.filter(node=>node.type==='gain');assert.equal(audio.getState(video),wanted?'on':'off');
+  Object.defineProperty(video,'currentSrc',{value:'',configurable:true});video.dispatchEvent(new dom.window.Event('emptied'));api.reconcile();await flush();
+  assert.notEqual(audio.getState(video),'on');assert.equal(dom.window.document.querySelector('.knife-comp button').getAttribute('aria-pressed'),'false');
+  assert.equal(gains[0].gain.value,1);assert.equal(gains[1].gain.value,0);
+  Object.defineProperty(video,'currentSrc',{value:'blob:https://chzzk.naver.com/reloaded',configurable:true});
+  video.dispatchEvent(new dom.window.Event('loadedmetadata'));api.reconcile();await flush();
+  assert.equal(api.mediaCurrent(),true);assert.equal(audio.getState(video),wanted?'on':'off');
+  assert.equal(gains[1].gain.value,wanted?1:0);assert.equal(sources(),1);
+});
+for(const wanted of [false,true])test('manual '+wanted+' while source is empty controls recovery without a second source',async t=>{
+  const {dom,audio,video,sources,nodes}=setup(t,false,false,{compressorDefault:true}),api=runtime(dom);load(dom,'web/player.js');await flush();
+  Object.defineProperty(video,'currentSrc',{value:'',configurable:true});api.reconcile();await flush();
+  const button=dom.window.document.querySelector('.knife-comp button');button.click();if(wanted)button.click();
+  Object.defineProperty(video,'currentSrc',{value:'blob:https://chzzk.naver.com/reloaded',configurable:true});api.reconcile();await flush();
+  assert.equal(audio.getState(video),wanted?'on':'off');assert.equal(nodes.filter(node=>node.type==='gain')[1].gain.value,wanted?1:0);
+  assert.equal(sources(),1);
+});
+test('removing and reinserting a video retires its old manual OFF entry',async t=>{
+  const {dom,audio,video,sources}=setup(t,false,false,{compressorDefault:true}),api=runtime(dom);load(dom,'web/player.js');await flush();
+  dom.window.document.querySelector('.knife-comp button').click();assert.equal(audio.getState(video),'off');
+  const parent=video.parentElement;video.remove();api.reconcile();deliver(dom,{compressorDefault:true});await flush();
+  parent.append(video);api.reconcile();deliver(dom,{compressorDefault:true});await flush();
+  assert.equal(audio.getState(video),'on');assert.equal(sources(),1);
+});
 test('fallback without any new bridge frame uses unconfirmed authority rather than the previous channel binding',async t=>{
   const {dom,audio,video,time}=setup(t,false,false,{}, {clock:true}),api=runtime(dom);
   const base={...api.baseConfig,compressorDefault:true};scopedAudioFrame(dom,base,{...base,compressorDefault:false},{channel:true});

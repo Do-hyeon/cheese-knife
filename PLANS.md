@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F00 Task6 DOING — 종합 격리 검증 통과 후 whole-F00 Astra max 최종 검토**. Tasks1–5/TAB5A–C의 완료 범위는 아카이브로 이동했다. clean189db36의9foundation·전체1387/1386pass/0fail/기존skip1·패키지/오디오/픽셀/설치 positive·negative·config15/media4관측 및 각각 손실 대조를 확인했다. 실제 TAB 세 번의 독립 검사/매 종료3증명도 통과했다. audit는 npm0/Gitleaks0/0·동일 기존 경고8이며 raw exit1을 유지한다. 실제 BFCache·자연 worker 중단·실제 스토어 업데이트/rollback은 미검증이며 whole-F00 최종 검토/보완·로컬 마감은 아직이다.
+최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F00 Task6 DOING — 전체 Astra max의 Important 3건 보완·새 입력 재검증**. Tasks1–5/TAB5A–C의 완료 범위는 아카이브로 이동했다. clean189db36의9foundation·전체1387/1386pass/0fail/기존skip1·패키지/오디오/픽셀/설치 positive·negative·config15/media4관측 및 각각 손실 대조, 실제 TAB 세 번/매 종료3증명은 보완 전 증거다. [최종 독립 검토](docs/superpowers/validation/2026-10-14-f00-final-review.md)는 최초 Critical0/Important3/Minor0이며 영상 재진입 intent·읽기 실패 복구·같은 video 소스 복귀의 누락을 재현했다. 국소 보완과 집중 RED/GREEN 뒤 새 코드의 전체 게이트/targeted 확인을 진행한다. audit의 동일 기존 경고8/raw exit1, 실제 BFCache·자연 worker 중단·스토어 업데이트/rollback 미검증은 유지한다. 아직 F00 전체 DONE이 아니다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -58,7 +58,7 @@
 
 완료된 설계·계획 승인 및 Tasks1–4은 [F00 완료 단계 아카이브](docs/superpowers/archive/2026-10-14-f00-completed-stages.md)로 이동했다. 현재 실행 승인은 Tasks1–6 로컬 구현·격리 검증·최종 Astra max에 한정되며 공개와 실제 시청 Chrome/P09는 제외한다.
 
-- [ ] Task6 whole-F00 Astra max 최종 독립 검토. Critical/Important 보완·집중/전체 검증 및 원래 판단 제외/초기 발견 수를 기록한다.
+- [ ] Task6 whole-F00 Astra max 최초0/3/0의 Important 3건 보완·새 입력의 집중/전체·실제 격리 재검증·동일 검토자 targeted 확인. 최초 발견 수와 판단 제외는 유지한다.
 - [ ] 로컬 마감. 현재 완료된 [Task5/TAB5C·종합 실행 검증](docs/superpowers/archive/2026-10-14-f00-completed-stages.md)과 실제 미검증 제한을 구분하며 검토 전 F00 전체 DONE 처리하지 않는다.
 - [ ] F00 전체 범위 공개 지시를 받은 뒤 한글 PR/CI 확인. 현재 push/PR 금지; 자동 병합/배포 없음.
 

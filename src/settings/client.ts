@@ -293,6 +293,7 @@ var createMediaSettingsClient = (chromeApi: typeof chrome) => {
           if (started !== epoch) { wanted = true; continue; }
           if (!result.reply.ok || !result.reply.snapshot) throw fault(result.reply.code || 'media-read-failed');
           accept(result.reply.snapshot, result.requestSequence);
+          if (!pendingRequest && !dirty.size && ['unknown','unavailable'].includes(phase)) { phase = 'loading';code = null; }
           if (!busy && phase === 'unknown' && pendingRequest && pendingRequest === confirming && snapshot?.store &&
             ['create-preset','enable-channel-domain'].includes(pendingRequest.action)) {
             const merged = KnifeMediaProfiles.mergeMediaOperation(snapshot.store, pendingRequest,
@@ -308,7 +309,9 @@ var createMediaSettingsClient = (chromeApi: typeof chrome) => {
         } catch (error) {
           if (disposed || scope !== scopeEpoch) continue;
           code = (error as KnifeCodedError).code || 'media-read-failed';
-          phase = code === 'response-unknown' ? 'unknown' : 'unavailable'; emit();
+          if (!(pendingRequest || dirty.size) || !['unknown','conflict','failed'].includes(phase))
+            phase = code === 'response-unknown' ? 'unknown' : 'unavailable';
+          emit();
         }
       }
     })().finally(() => { reading = null; });

@@ -172,6 +172,21 @@ test('UI read-back keeps unknown patch and newer draft without writes',async t=>
   button.click();await h.settle();assert.equal(mutations(h).length,before);assert.equal(doc.getElementById('media-status').dataset.phase,'unknown');
   assert.equal(doc.getElementById('compressorRatio').value,'5');assert.equal(doc.getElementById('media-draft').hidden,false);
 });
+test('transient read failure keeps unknown patch recovery UI and never sends the newer draft',async t=>{
+  const {h,dom,doc}=await channel(t),gate=h.holdNext('callback:patch-channel-fields');edit(dom,'compressorRatio',7);await gate.reached;
+  edit(dom,'compressorRatio',5);gate.fail();await h.settle();const read=h.holdNext('callback:get-media-snapshot');
+  doc.getElementById('media-refresh').click();const reply=await read.reached;Object.assign(reply,{ok:false,stored:false,code:'storage-read-failed'});
+  read.release();await h.settle();
+  for(const id of ['media-draft','media-discard'])assert.equal(doc.getElementById(id).hidden,false,id);
+  assert.equal(doc.getElementById('media-status').dataset.phase,'unknown');
+  doc.getElementById('media-refresh').click();await h.settle();
+  assert.equal(doc.getElementById('media-status').dataset.phase,'unknown');assert.equal(doc.getElementById('compressorRatio').value,'5');
+  assert.equal(h.saved.mediaProfiles.channels[0].audio.values.compressorRatio,7);
+  assert.deepEqual(mutations(h).filter(x=>x.message.action==='patch-channel-fields').map(x=>x.message.patch.compressorRatio),[7]);
+  doc.getElementById('media-discard').click();await h.settle();assert.equal(doc.getElementById('media-status').dataset.phase,'ready');
+  assert.equal(doc.getElementById('compressorRatio').disabled,false);assert.equal(doc.getElementById('compressorRatio').value,'7');
+  edit(dom,'compressorRatio',5);await h.settle();assert.equal(h.saved.mediaProfiles.channels[0].audio.values.compressorRatio,5);
+});
 test('UI retains held fields after original preset creation is confirmed without flushing',async t=>{
   const {h,dom,doc}=await channel(t),gate=h.holdNext('callback:create-preset');doc.getElementById('media-preset-name').value='Quiet';
   doc.getElementById('media-preset-create').click();await gate.reached;edit(dom,'compressorRatio',5);gate.fail();await h.settle();

@@ -79,6 +79,23 @@ test('same saved field value does not authenticate an unknown patch commit',asyn
   await c.refresh();await h.settle();assert.equal(c.view().phase,'unknown');assert.equal(c.view().pendingRequest.action,'patch-channel-fields');
   assert.equal(h.calls.filter(x=>x.kind==='commit').length,before);
 });
+for(const failure of ['storage-read-failed','response-unknown'])for(const repaired of [false,true])test('initial '+failure+' recovers to '+(repaired?'repair-required':'ready')+' after a successful read without writing',async t=>{
+  const h=settingsHarness(t,repaired?{mediaProfiles:{schema:99,revision:0,channels:[],presets:[]}}:{}),gate=h.holdNext('callback:get-media-snapshot'),c=client(t,h),reply=await gate.reached;
+  if(failure==='response-unknown')gate.fail();else{Object.assign(reply,{ok:false,stored:false,code:failure});gate.release();}await h.settle();
+  assert.equal(c.view().phase,failure==='response-unknown'?'unknown':'unavailable');await c.refresh();await h.settle();
+  assert.equal(c.view().phase,repaired?'repair-required':'ready');assert.equal(c.view().code,null);assert.equal(h.calls.filter(x=>x.kind==='commit').length,0);
+});
+test('unknown original preset creation remains confirmable after a transient read failure',async t=>{
+  const {h,c}=await enabled(t),gate=h.holdNext('callback:create-preset'),request={action:'create-preset',id:P,
+    expectedMediaRevision:1,domain:'audio',name:'Quiet',values:structuredClone(c.view().values.audio)};
+  const pending=c.perform(request);await gate.reached;gate.fail();await assert.rejects(pending);await h.settle();
+  const read=h.holdNext('callback:get-media-snapshot'),reading=c.refresh(),reply=await read.reached;
+  Object.assign(reply,{ok:false,stored:false,code:'storage-read-failed'});read.release();await reading;await h.settle();
+  assert.equal(c.view().phase,'unknown');assert.equal(c.view().pendingRequest.id,P);
+  const before=h.calls.filter(x=>x.kind==='commit').length;await c.refresh();await h.settle();
+  assert.equal(c.view().phase,'ready');assert.equal(c.view().pendingRequest,null);assert.equal(c.view().code,null);
+  assert.equal(h.calls.filter(x=>x.kind==='commit').length,before);assert.equal(h.messages.filter(x=>x.message.action==='create-preset').length,1);
+});
 test('unknown preset confirmation holds newer unsent fields until explicit discard and re-edit',async t=>{
   const {h,c}=await enabled(t),gate=h.holdNext('callback:create-preset');const request={action:'create-preset',id:P,
     expectedMediaRevision:1,domain:'audio',name:'Quiet',values:structuredClone(c.view().values.audio)};

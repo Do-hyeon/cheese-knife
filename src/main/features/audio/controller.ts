@@ -93,7 +93,7 @@ export function installAudio(target: Window): AudioController | null {
   };
   const apply = (entry: AudioEntry): void => {
     if (!entry.compressor) return;
-    if (!runtime.mediaCurrent() || runtime.selectPlayer()?.video !== entry.video || !eligible(entry.video)) { bypassEntry(entry);return; }
+    if (!runtime.mediaCurrent() || runtime.selectPlayer()?.video !== entry.video || !eligible(entry.video)) { controller.suspend(entry.video);return; }
     const parameters = [
       { parameter: entry.compressor.threshold, configured: runtime.config.compressorThreshold, min: -100, max: 0, fallback: -50 },
       { parameter: entry.compressor.knee, configured: runtime.config.compressorKnee, min: 0, max: 40, fallback: 40 },

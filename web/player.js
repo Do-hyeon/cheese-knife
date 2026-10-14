@@ -273,7 +273,7 @@
           const intent2 = audioIntent(runtime, video);
           intent2.manual = true;
           intent2.automatic = false;
-          intent2.needsResume = !runtime.mediaCurrent();
+          intent2.needsResume = !runtime.mediaCurrent() || !audio.eligible(video);
           void audio.setEnabled(video, !["on", "pending"].includes(audio.getState(video)));
         });
         scope.on(slider, "input", () => audio.setGain(video, Number(slider.value)));
@@ -290,7 +290,7 @@
         }));
       }
       const intent = audioIntent(runtime, video);
-      if (!runtime.mediaCurrent()) {
+      if (!runtime.mediaCurrent() || !audio.eligible(video)) {
         audio.suspend(video);
         intent.needsResume = true;
       } else {
@@ -404,6 +404,7 @@
         );
       }
       if (current && (!runtime.configReady || !player || current.pzp !== player.pzp || current.video !== player.video || current.layout !== player.layout || current.path !== state.route?.path)) {
+        if (current.video !== player?.video || current.path !== state.route?.path) audioIntents.delete(current.video);
         current.scope.dispose();
         current = null;
       }

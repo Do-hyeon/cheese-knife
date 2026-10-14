@@ -230,7 +230,7 @@ export function syncControls(mount: PlayerMount): void {
       slider.className = 'knife-gain-slider'; slider.setAttribute('aria-label', 'Gain');
       box.append(button, slider); volume.after(box);
       scope.on(button, 'click', event => {
-        event.stopPropagation();const intent = audioIntent(runtime,video);intent.manual = true;intent.automatic = false;intent.needsResume = !runtime.mediaCurrent();
+        event.stopPropagation();const intent = audioIntent(runtime,video);intent.manual = true;intent.automatic = false;intent.needsResume = !runtime.mediaCurrent() || !audio.eligible(video);
         void audio.setEnabled(video, !['on', 'pending'].includes(audio.getState(video)));
       });
       scope.on(slider, 'input', () => audio.setGain(video, Number(slider.value)));
@@ -244,7 +244,7 @@ export function syncControls(mount: PlayerMount): void {
       }));
     }
     const intent = audioIntent(runtime,video);
-    if (!runtime.mediaCurrent()) {
+    if (!runtime.mediaCurrent() || !audio.eligible(video)) {
       audio.suspend(video);intent.needsResume = true;
     } else {
       if (intent.binding !== runtime.media.audioBindingGeneration) {
@@ -328,6 +328,7 @@ export function installPlayer(target: Window): PlayerController | null {
     }
     if (current && (!runtime.configReady || !player || current.pzp !== player.pzp || current.video !== player.video ||
         current.layout !== player.layout || current.path !== state.route?.path)) {
+      if (current.video !== player?.video || current.path !== state.route?.path) audioIntents.delete(current.video);
       current.scope.dispose(); current = null;
     }
     if (!runtime.configReady || !player?.video || !player.layout) return;
