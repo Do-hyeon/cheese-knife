@@ -1,6 +1,6 @@
 # F00 보완 설계 — 문서 인증을 유지하는 별도 미디어 설정 탭
 
-2026-10-14 / Asia-Seoul. 상태: **Astra max 최초 Critical0/Important5/Minor1·6항목 targeted closure 완료, 목업/UI·written-spec 승인 대기**. 입력 코드448772a. 제품2.13.3·Chrome121 최소·기존 권한은 유지한다. 구현·push·PR·병합·배포 승인이 아니다. [검토 기록](../validation/2026-10-14-f00-settings-tab-design-review.md)은 최초 finding·두 보완 입력·targeted 판정·미검증을 구분한다.
+2026-10-14 / Asia-Seoul. 상태: **Astra max 최초 Critical0/Important5/Minor1·6항목 targeted closure 완료, 사용자 목업/UI·written-spec 승인 완료**. 입력 코드448772a. 제품2.13.3·Chrome121 최소·기존 권한은 유지한다. 별도 [상세 구현 계획](../plans/2026-10-14-f00-media-settings-tab.md)의 승인 전이며 구현·push·PR·병합·배포 승인이 아니다. [검토 기록](../validation/2026-10-14-f00-settings-tab-design-review.md)은 최초 finding·두 보완 입력·targeted 판정·미검증을 구분한다.
 
 이 문서는 [승인된 F00 설계](2026-10-14-f00-channel-media-settings-design.md)의 UI 진입 경로와 [Task5](../plans/2026-10-14-f00-channel-media-settings.md)의 실제 UI 수용 경로만 보완한다. 원래 normative body/이전 검토 이력을 다시 쓰지 않는다. 저장 도메인·schema·broker 권한·한도·revision/생성 토큰·전역/채널 적용 계약은 그대로다.
 
@@ -107,7 +107,7 @@ ID는 최대16자리 canonical 10진수(0 또는 첫 자리1–9), nonnegative s
 - [x] 사용자: 인증을 완화하지 않는 별도 TAB 상세 설계/Astra max 검토 승인, 보안 보존 명시.
 - [x] root: source/연결 호출자·기존 계약·대안·개인정보/권한·자가 모순 검토.
 - [x] Astra max 최초 Critical0/Important5/Minor1·6항목 보완·targeted closure 기록. 제품 구현/전체 검증 결과 아님.
-- [ ] 사용자 시각 목업/UI·written-spec 및 toolbar→TAB 수용기준 변경 승인.
+- [x] 사용자 시각 목업/UI·written-spec 및 toolbar→TAB 수용기준 변경 승인2026-10-14. 상세 계획 작성/검토로 진행하되 실행/공개 승인 아님.
 - [ ] 승인 뒤 상세 구현 계획/검토·Native 실행 승인. 현재 product code 수정 없음.
 
 현재 F00 Task5/6은 미완료다. 루트 dist·시청 Chrome·P09·원본 파일/보호 브랜치는 변경하지 않으며 push/PR·버전·공개는 하지 않는다.

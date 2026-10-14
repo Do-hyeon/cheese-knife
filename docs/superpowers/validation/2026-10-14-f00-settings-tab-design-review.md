@@ -8,7 +8,7 @@
 - 최초 문서 SHA256 `A2FA9637473A3298D498390B0E2713BE835D293362CC8EB45774236B19CEA3FF`, **Critical0/Important5/Minor1**.
 - 1차 보완 입력 `6288CAACCECC5BCDC7C4BA15FF212FA6DF46710D1B9DA8D8CB23487E9E8FB863`: targeted 1/2/3/6 닫힘, 4/5 잔여 모순 있음.
 - 2차 보완 입력 `D30CBCD718DD91D3E1B49E840BF2381BDEBB014B39A7F69DC0EEEB9124AC8F84`: **남은4/5도 닫힘, 최초6항목 전체 targeted closure**. 이후 승인 상태/목업 게이트 메타데이터는 이 hash의 입력과 구분한다.
-- 판정: **written-spec 승인 검토 준비 완료**. 목업/UI·명세 승인, 상세 구현 계획/검토·실행 승인 대기. fresh whole0/0/0 또는 전체 F00/제품 수정 PASS가 아니다.
+- 판정: **written-spec 승인 검토 준비 완료**. 이후 사용자 목업/UI·명세와 toolbar→TAB 수용기준 승인을 받았다2026-10-14. 별도 상세 구현 계획/검토·실행 승인은 대기다. fresh whole0/0/0 또는 전체 F00/제품 수정 PASS가 아니다.
 
 ## 최초 finding과 확인된 보완
 

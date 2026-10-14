@@ -27,3 +27,18 @@
 - [x] 현재 전체1280/1279pass/0fail/0cancelled/기존 자료 부재 skip1, 9foundation gate 통과. 실제 게시본 코드의 혼재 부정 대조도 픽셀 검사에 포함한다.
 
 세부 RED/GREEN·실패·한계는 [구현/검증 기록](../validation/2026-10-14-f00-channel-media-settings.md)에 유지한다. Task5–6과 fresh 전체 최종 Astra max는 아직 완료되지 않았다. 실제 설치형 UI·저장 전환·사용자 Chrome·스토어 수용의 PASS가 아니며 push/PR/병합/릴리즈/스토어 배포는 이 이력에 포함하지 않는다.
+
+## Task5 설정 TAB 보완 설계·목업 승인
+
+- [x] 실제 POPUP sender 문서 식별 부재에서 인증을 완화하지 않는 별도 own TAB 설계 작성. caa2024는 설계/기록 로컬 checkpoint이며 제품 보완 완료 아님.
+- [x] Astra max 최초 Critical0/Important5/Minor1·6항목 보완·같은 검토자 targeted closure. 프리셋 값 일치·파괴적 확인·복원 제한·VOD pair·read-back/dirty 전송 분리·legacy 무쓰기 범위 보완 포함.
+- [x] 사용자가 요청한 시각 목업 제공 및 목업/UI·written-spec·toolbar→TAB 수용기준 변경 승인2026-10-14. 상세 계획 작성/검토로 진행한다. 별도 구현/실행 승인과 actual TAB qualification은 아직이다.
+
+근거: [보완 설계](../specs/2026-10-14-f00-media-settings-tab-design.md), [검토/미검증 기록](../validation/2026-10-14-f00-settings-tab-design-review.md). 현황과 새 실행 승인은 PLANS.md가 소유한다.
+
+## Task5 TAB 상세 계획 검토 완료
+
+- [x] 승인된 목업/UI·명세를 상세 구현 계획5A(진입/대상)/5B(복구/확인)/5C(수명주기/actual qualification)로 작성하고 원래 Task5/6 잔여 게이트를 유지했다.
+- [x] fresh Astra max 최초 Critical0/Important3/Minor1, 표시값/ACK 경합·observer 등록 순서·실제 native caller/session/종료 소유자·timeout 차이를 보완하고4항목 targeted closure 확인. 이전 설계0/5/1과 별개의 검토다.
+
+근거: [상세 계획](../plans/2026-10-14-f00-media-settings-tab.md), [계획 검토](../validation/2026-10-14-f00-settings-tab-plan-review.md). written-plan/Native 실행 승인은 아직이며 실제 제품/Chrome/저장/정상 종료 검증은 이 기록에 없다.

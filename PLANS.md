@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F00 Task5 보완 설계 WAITING-USER — 별도 설정 TAB의 목업/UI·written-spec 승인**. Astra max 최초 Critical0/Important5/Minor1·6항목 보완/targeted closure를 완료했다. 실제 POPUP의 production sender에 documentId/frameId가 없는 실패는 유지하며 인증을 완화하지 않는다. MAIN 보완의 이전 회귀 수치는 검증 기록의 해당 입력 증거다. TAB 보완의 상세 계획·실행 승인은 아직 없으며 Tasks5–6·저장4관측·whole-F00 Astra max는 미완료다.
+최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F00 Task5 TAB 보완 상세 계획 WAITING-USER — written-plan/기존 Native 실행 확인**. 목업/UI·written-spec·toolbar→TAB 수용기준 승인과 fresh Astra max 계획 최초0/3/1·4항목 보완/targeted closure가 완료됐다. 설계의0/5/1·6항목 closure와 구분해 이력으로 보존한다. 실제 POPUP의 문서 식별 부재를 완화하지 않는다. 새 계획/실행 승인·제품 보완·Tasks5–6·저장4관측·whole-F00 최종 검토는 아직이다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -44,7 +44,7 @@
 
 | ID | 작업 묶음 | 상태 | 다음 게이트 |
 | --- | --- | --- | --- |
-| F00 | 채널별 미디어 저장·프리셋 | WAITING-USER | 별도 own 설정 TAB 목업/UI·written-spec·수용기준 변경 승인, 뒤 상세 계획/실행 승인; 기존 sender 조건 완화 금지 |
+| F00 | 채널별 미디어 저장·프리셋 | WAITING-USER | 검토/보완된 TAB 상세 계획의 written-plan/기존 Native 실행 확인; 기존 sender 조건 완화 금지 |
 | F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | WAITING-DEPENDENCY | F00 저장 계약/구현 검증 뒤 별도 상세 설계·계획·승인 |
 | AF05-B 실제 수용 / AF05 종료 | 차기 게시본 설치·업데이트 | WAITING-DEPENDENCY | 차기 게시와 실제 검사 별도 승인 후 수행; F00/F01과 독립 |
 | DT02 | 선택 파일의 native TS 실행 | DEFERRED | 실제 유지보수 이득과 검사/실행 경계 보존이 증명되면 재설계 |
@@ -58,12 +58,12 @@
 
 완료된 설계·계획 승인 및 Tasks1–4은 [F00 완료 단계 아카이브](docs/superpowers/archive/2026-10-14-f00-completed-stages.md)로 이동했다. 현재 실행 승인은 Tasks1–6 로컬 구현·격리 검증·최종 Astra max에 한정되며 공개와 실제 시청 Chrome/P09는 제외한다.
 
-- [ ] Task5 [별도 TAB 보완 설계](docs/superpowers/specs/2026-10-14-f00-media-settings-tab-design.md)의 목업/UI·written-spec/수용기준 변경·상세 계획/실행 승인. [검토/6항목 closure](docs/superpowers/validation/2026-10-14-f00-settings-tab-design-review.md)는 완료됐지만 제품 수정은 아직이다.
+- [ ] Task5 [검토 완료 TAB 상세 계획](docs/superpowers/plans/2026-10-14-f00-media-settings-tab.md)의 written-plan/기존 Native 실행 승인. 완료된 계획 검토 이력도 아카이브로 이동했다.
 - [ ] Task5 승인된 실제 UI qualification·격리 old→new→old→new 저장 보존·config/media 손실 negative·개인정보/사용 안내. 이전 POPUP attachment 성공을 저장 인증 성공으로 세지 않는다.
 - [ ] Task6 fresh 전체 회귀/9foundation·점검도구·패키지/설치·보호 대조·whole-F00 Astra max·로컬 마감. 실제 미실행 경로는 별도 기록.
 - [ ] F00 전체 범위 공개 지시를 받은 뒤 한글 PR/CI 확인. 현재 push/PR 금지; 자동 병합/배포 없음.
 
-실제 popup의 Playwright Page capture는 실패했고, 승인된 [격리 CDP 대안](docs/superpowers/plans/2026-10-14-f00-popup-cdp-qualification.md)의 실제 attachment는 성공했다. 다만 production client에도 sender.documentId/frameId가 없어 현재 인증을 통과하지 못한다. [실제 관측과 중지 기록](docs/superpowers/validation/2026-10-14-f00-popup-cdp-qualification.md)을 유지한다. 별도 설정 TAB 설계의 최초6항목 검토/보완·targeted closure는 완료됐지만, 사용자가 요청한 시각 목업 확인과 written-spec 승인·구현은 아직이다. 문서 식별자를 위조하거나 직접 storage 저장으로 성공을 대체하지 않는다.
+실제 popup의 Playwright Page capture는 실패했고, 승인된 [격리 CDP 대안](docs/superpowers/plans/2026-10-14-f00-popup-cdp-qualification.md)의 attachment는 성공했다. production client sender의 documentId/frameId 부재 실패는 [관측 기록](docs/superpowers/validation/2026-10-14-f00-popup-cdp-qualification.md)에 유지한다. [별도 TAB 설계](docs/superpowers/specs/2026-10-14-f00-media-settings-tab-design.md)·목업/UI·수용기준은 승인됐지만 상세 계획/실행은 아직이다. 문서 식별자를 위조하거나 직접 storage 저장으로 성공을 대체하지 않는다.
 
 ## 6. AF05-B — 게시 후 남은 실제 수용
 
@@ -107,6 +107,6 @@
 
 ## 10. 현재 사용자 개입 지점
 
-Tasks1–6 로컬 구현·격리 검증·최종 Astra max의 기존 승인은 유지한다. 별도 TAB **설계·검토/6항목 targeted closure**가 완료됐으며, 현재는 사용자 요청의 **목업/UI·written-spec/toolbar→TAB 수용기준 승인**이 필요하다. 뒤이어 상세 계획/실행 승인을 받는다. 승인 전 실제 UI 저장/4관측과 전체 마감을 진행하지 않는다. 문서 인증·시크릿 제한·대상 재검증을 유지하며 구현 승인 없이 저장 경계를 완화하지 않는다.
+Tasks1–6의 기존 로컬 실행 승인은 유지하되, 별도 TAB의 목업/UI·written-spec 승인만으로 새 보완 구현을 시작하지 않는다. 현재는 **4항목 보완/targeted 확인이 끝난 TAB 계획의 written-plan/기존 Native 실행 확인**이 필요하다. 승인 전 실제 UI 저장/4관측과 전체 마감을 진행하지 않는다. 문서 인증·시크릿 제한·대상 재검증을 유지한다.
 
 실제 설치/새로고침·P09 변경·새 의존성/권한/외부 전송·버전·공개는 별도 STOP 게이트다. 이전 MCP 연결/종료 승인이나 다른 작업의 공개 승인을 재사용하지 않는다.
