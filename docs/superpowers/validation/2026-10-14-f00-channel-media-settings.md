@@ -116,3 +116,18 @@ media 전용 selector/seed+4관측·occurrence0..4·종료3증명의 parent/chil
 README 두 언어와 개인정보처리방침에 미공개 F00의 로컬 채널 설정·preset 이름/수동 삭제/제거 시 소멸/비전송과 Gain·VOD·iframe·시크릿·혼재 세대 제한을 추가했다. 현재 스토어2.13.3 기능으로 오인하지 않도록 개발 중 범위를 표시하며 공개 URL/dashboard는 변경하지 않았다.
 
 의존성 보완 후 전체 재실행1377/1376pass/0fail/0cancelled/기존skip1,55.716초. 루트 보호 대조는 manifest 허용 차이/보호 ZIP·CRX/버전2.13.3/dist58 모두 통과했다. 실제 전환용 clean 로컬 checkpoint를 만들며 원래 Task5/6 전체 완료는 선언하지 않는다.
+
+## Task5 실제 저장 전환 A
+
+clean 물리 후보 source `ba286ec871308da7a025029a297632e461f734ce`, sourceSha256 `3d879d6facbac7b314c6017952e68df0862de9eb5b197ab3d16d3bf8fe5823da`에서 기존 runner를 실행했다. 모든 source/after가 동일하며 종료·후속 오류는0이다.
+
+| 검사 | 실제 결과 |
+| --- | --- |
+| media-preservation | old/new/rollback/new4관측 PASS. 생성은 first-new1회, rollback/final-new는 기존 raw/직렬화와 UI/MAIN 관측만 수행 |
+| media-profile-loss | final-new occurrence4/startup/candidate-init의 정확한 A audio 손실을 media-preservation 오류로 감지. 선행3관측 보존 |
+| 기본 config | 기존5사례·old/new/rollback15관측 PASS. 신규 selector 없음의 기존 의미 유지 |
+| storage-loss | 기존 config 삭제를 transition-storage-preservation/startup/candidate-init으로 감지. media control로 대체하지 않음 |
+
+각 실행은 private summary에 보존했다. media의5회 종료3증명은 실행한 parent admission에서 필수 검사했으며, 다음 소스에서는 보고서에도 boolean만 명시해 보존한다. 실제 플랫폼 업데이트/rollback은 아니고 같은 소유 경로의 코드 재실행이다. T2.13.4/R2.13.5는 기존 TEST ONLY 파생본이며 공개 번호 선정이 아니다.
+
+남은 실제 창·top-frame/iframe·설정 닫기/재열기 관측을 기존 qualification에 추가했다. 연결59/59 및 최신 전체1377/1376pass/0fail/기존skip1,56.206초. 새 actual C 실행 전 준비 결과이며 C 성공으로 세지 않는다. 실제 저장 commit과 창 닫기의 정확한 상대 시간은 강제로 만들지 않고, durable queued late commit의 결정적 순서는 별도 client 시험으로 유지한다.

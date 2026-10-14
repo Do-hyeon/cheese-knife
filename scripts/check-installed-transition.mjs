@@ -483,7 +483,10 @@ export async function runInstalledTransition({ runId, headed = false, scenario, 
   report = { ...(report || {}), ...(supervision?.result ? { result: supervision.result } : {}), ok: !primary && cleanupErrors.length === 0 && secondaryErrors.length === 0, runId, ...(control ? { control } : {}),
     ...(primary ? { failure: primary } : {}), cleanupErrors: cleanupErrors.slice(0, 32), secondaryErrors: secondaryErrors.slice(0, 32),
     retainedRoots: roots.filter(value => media || supervision?.unconfirmedRoots.includes(value.root) || (child && !supervision?.normalExit)),
-    ...(media?{scenario,candidatesRetained:true}:{}),
+    ...(media?{scenario,candidatesRetained:true,shutdown:{normalExit:supervision?.normalExit===true,
+      closes:(supervision?.launches||[]).map(value=>({phase:value.phase,launchOccurrence:value.launchOccurrence,closed:value.closed===true,
+        browserCloseAcknowledged:value.shutdown?.browserCloseAcknowledged===true,browserDisconnected:value.shutdown?.browserDisconnected===true,
+        ownedRootClosed:value.shutdown?.ownedRootClosed===true}))}}:{}),
     limits: ['bundled-code-relaunch-not-native-update', 'no-platform-rollback', 'detached-browser-needs-close-ack'] };
   if (artifactCreated) {
     const text = `${JSON.stringify(report, null, 2)}\n`;

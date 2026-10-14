@@ -346,7 +346,11 @@ test('media parent admits four observations and exact loss only, with later fail
     };
     const options = { runId: 'Media1', scenario: 'media-preservation', dependencies: fixture.dependencies,
       ...(mode === 'positive' ? {} : { control: 'media-profile-loss' }) };
-    if (['positive', 'loss'].includes(mode)) assert.equal((await runInstalledTransition(options)).ok, true);
+    if (['positive', 'loss'].includes(mode)) {
+      const report=await runInstalledTransition(options);assert.equal(report.ok,true);
+      assert.equal(report.shutdown.normalExit,true);assert.equal(report.shutdown.closes.length,5);
+      assert.ok(report.shutdown.closes.every(value=>value.closed&&value.browserCloseAcknowledged&&value.browserDisconnected&&value.ownedRootClosed));
+    }
     else await assert.rejects(runInstalledTransition(options), error => error.report?.ok === false);
     assert.equal(fixture.events.some(value => value.startsWith('candidate-remove:')), false);
     assert.equal(fixture.events.some(value => value.startsWith('remove:output/playwright/installed-transition-work-')), false);

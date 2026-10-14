@@ -444,10 +444,29 @@ export async function runInstalledMediaTabScenario({ context, worker, extensionI
     await settingsPage.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
     const {settingsPage:second}=await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession});
     await second.locator('#media-scope').selectOption('current');await second.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+    const firstWindow=await settingsPage.evaluate(async()=>{const tab=await chrome.tabs.getCurrent();return tab?.windowId;});
+    const secondTab=await second.evaluate(async()=>{const tab=await chrome.tabs.getCurrent();return {id:tab?.id,windowId:tab?.windowId};});
+    assertCondition(Number.isSafeInteger(firstWindow)&&Number.isSafeInteger(secondTab.id)&&secondTab.windowId===firstWindow,'media-tab-window-facts');
+    const moved=await worker.evaluate(async tabId=>{const window=await chrome.windows.create({tabId});return {id:window.id,incognito:window.incognito};},secondTab.id);
+    assertCondition(Number.isSafeInteger(moved.id)&&moved.id!==firstWindow&&moved.incognito===false&&
+      await second.evaluate(async()=>{const tab=await chrome.tabs.getCurrent();return tab?.windowId;})===moved.id,'media-tab-window-separation');
     await Promise.all([settingsPage.locator('#compressorThreshold').fill('-30'),second.locator('#compressorRatio').fill('8')]);
     await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.channels[0]?.audio?.values.compressorThreshold===-30&&
       value?.mediaProfiles?.channels[0]?.audio?.values.compressorRatio===8,'media-tab-merge-failed');
     await waitUntil(()=>Promise.all([settingsPage,second].map(tab=>tab.locator('#compressorThreshold').inputValue())),values=>values.every(value=>value==='-30'),'media-tab-sync-failed');
+    await second.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+    await second.locator('#media-video-enable').click();
+    await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.channels[0]?.video,'media-tab-video-enable');
+    await second.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+    await second.locator('#brightness').fill('1.5');
+    await page.waitForFunction(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];return runtime?.config.brightness===1.5&&
+      document.querySelector('video')?.hasAttribute('data-knife-channel-filter');},null,{timeout:15000});
+    await page.evaluate(url=>{const frame=document.createElement('iframe');frame.id='native-global-frame';frame.src=url;document.body.append(frame);},FIXTURE_LIVE_URL);
+    const frame=await waitUntil(()=>Promise.resolve(page.frames().find(value=>value.parentFrame()&&value.url()===FIXTURE_LIVE_URL)),Boolean,'media-tab-frame-missing');
+    await frame.waitForFunction(()=>window[Symbol.for('cheese-knife.runtime.v1')]?.configReady,null,{timeout:15000});
+    assertCondition(await frame.evaluate(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];return runtime.config.brightness===1&&
+      !document.querySelector('video')?.hasAttribute('data-knife-channel-filter');}),'media-tab-frame-overlay');
+    await page.locator('#native-global-frame').evaluate(element=>element.remove());
     await settingsPage.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
     await second.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
     await second.setViewportSize({width:480,height:900});
@@ -477,6 +496,16 @@ export async function runInstalledMediaTabScenario({ context, worker, extensionI
     await second.locator('#compressorThreshold').fill(original);
     await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.channels[0]?.audio?.values.compressorThreshold===Number(original),'media-tab-restore-failed');
     await second.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+    const {settingsPage:closing}=await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession});
+    await closing.locator('#media-scope').selectOption('current');await closing.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+    await closing.locator('#compressorThreshold').fill('-32');await closing.close();
+    await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.channels[0]?.audio?.values.compressorThreshold===-32,'media-tab-closed-save');
+    const {settingsPage:reopened}=await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession});
+    await reopened.locator('#media-scope').selectOption('current');await reopened.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+    assertCondition(await reopened.locator('#compressorThreshold').inputValue()==='-32','media-tab-reopened-save');
+    await reopened.locator('#compressorThreshold').fill(original);
+    await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.channels[0]?.audio?.values.compressorThreshold===Number(original),'media-tab-closed-restore');
+    await reopened.close();await second.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
     const beforeCancel=await storageSnapshot(worker);second.once('dialog',dialog=>{void dialog.dismiss();});
     await second.locator('#media-channel-delete').click();assertCondition(isDeepStrictEqual(await storageSnapshot(worker),beforeCancel),'media-tab-confirm-cancel-write');
     second.once('dialog',dialog=>{void dialog.accept();});await second.locator('#media-channel-delete').click();
@@ -511,6 +540,7 @@ export async function runInstalledMediaTabScenario({ context, worker, extensionI
     else await management.locator('#settings-status[data-phase="ready"]').waitFor({timeout:15000});
     assertCondition(pageErrors.length===0&&routeErrors.length===0,'media-tab-page-error');
     return {mediaTab:passed({popupAttached:true,tabWriterQualified:true,currentSaved:true,mainApplied:true,twoTabMerge:true,restored:true,
+      twoWindowMerge:true,topFrameOnlyOverlay:true,closedUiReopen:true,
       targetless:true,savedScope:true,presetSaved:true,confirmCancelPreserved:true,keyboard:true,narrowLayout:true,vodStylePair:true,
       syntheticPersistedLocked:true,ownReconnect:true,actualBackForwardSmoke:true,bfcacheObserved:actualRestore.persisted}),
       network:passed({fixtureRoutes:true,initialPopupNavigationCovered:false})};
