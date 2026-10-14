@@ -3,7 +3,7 @@ const E='abcdefghijklmnopabcdefghijklmnop',A='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
 function fixture(mode='ok'){
   const fixtureURL=mode==='vod'?'https://chzzk.naver.com/video/12345':`https://chzzk.naver.com/live/${A}`;
   const mediaURL=popupURL+`?mediaSettings=1&targetTabId=7&targetWindowId=9${mode==='vod'?'':`&targetChannelId=${A}`}`;
-  const events=[],listeners=new Set(),bus=new EventEmitter(),pages=[];
+  const events=[],listeners=new Set(),bus=new EventEmitter(),pages=[];let popupPresent=true,detached=false;
   const actualContexts=[{contextType:'POPUP',documentId:'popup-doc',documentUrl:popupURL,documentOrigin:`chrome-extension://${E}`,frameId:0,incognito:false},
     {contextType:'TAB',documentId:'tab-doc',documentUrl:mediaURL,documentOrigin:`chrome-extension://${E}`,frameId:0,tabId:8,windowId:9,incognito:false}];
   if(mode==='wrong-tab')actualContexts[1].tabId=99;
@@ -26,9 +26,11 @@ function fixture(mode='ok'){
   pages.push(fixturePage);
   const context=new EventEmitter();context.pages=()=>pages;context.newCDPSession=async()=>({send:async()=>({targetInfo:{browserContextId:'owned'}}),detach:async()=>{events.push('page-detach');}});
   bus.send=async(method,params)=>{
-    if(method==='Target.getTargets')return {targetInfos:[{targetId:'popup',type:'other',url:popupURL,browserContextId:'owned'}]};
+    if(method==='Target.getTargets')return {targetInfos:popupPresent?[{targetId:'popup',type:'other',url:mode==='foreign-popup'&&detached?'https://example.invalid/':popupURL,browserContextId:'owned'}]:[]};
     if(method==='Target.attachToTarget')return {sessionId:'popup-session'};
-    if(method==='Target.detachFromTarget'){events.push('detach');if(mode==='cleanup-error')throw Error('detach-failed');return {};}
+    if(method==='Target.detachFromTarget'){events.push('detach');detached=true;if(mode==='already-closed')popupPresent=false;if(mode==='cleanup-error')throw Error('detach-failed');return {};}
+    if(method==='Target.closeTarget'){assert.equal(params.targetId,'popup');events.push('popup-close');if(mode==='popup-close-error')throw Error('close-failed');
+      if(mode!=='popup-close-stuck')popupPresent=false;return {success:mode!=='popup-close-stuck'};}
     assert.equal(method,'Target.sendMessageToTarget');const input=JSON.parse(params.message);let value={};
     if(input.method==='Runtime.evaluate')value={result:{value:{ready:true,visible:mode!=='hidden',focused:mode!=='unfocused',enabled:mode!=='disabled',label:mode==='unlabelled'?'':'설정 열기',x:10,y:10}}};
     if(input.method==='Input.dispatchMouseEvent'&&input.params.type==='mouseReleased'){
@@ -46,11 +48,18 @@ test('media settings helper binds early production sender to the new actual TAB 
   assert.equal(result.popupAttached,true);assert.equal(result.tabWriterQualified,true);assert.ok(f.events.indexOf('observer')<f.events.indexOf('popup'));
   assert.equal(f.listeners.size,0);assert.equal(f.context.listenerCount('page'),0);assert.equal(f.bus.listenerCount('Target.receivedMessageFromTarget'),0);
   assert.equal(f.events.includes('browser-close'),false);
+  assert.equal(f.events.includes('popup-close'),true);
 });
-for(const mode of ['missing-document','hidden','disabled','unlabelled','unfocused','duplicate','wrong-tab','wrong-context-url','incognito','frame','overflow','cleanup-error','no-page'])test('media helper refuses '+mode+' and clears only owned listeners',async()=>{
+for(const mode of ['missing-document','hidden','disabled','unlabelled','unfocused','duplicate','wrong-tab','wrong-context-url','incognito','frame','overflow','cleanup-error','no-page','foreign-popup','popup-close-error','popup-close-stuck'])test('media helper refuses '+mode+' and clears only owned listeners',async()=>{
   const {openInstalledMediaSettings}=await import('../scripts/extension-e2e/popup-cdp.mjs');assert.equal(typeof openInstalledMediaSettings,'function');
   const f=fixture(mode);await assert.rejects(openInstalledMediaSettings(f.args));assert.equal(f.listeners.size,0);
   assert.equal(f.context.listenerCount('page'),0);assert.equal(f.bus.listenerCount('Target.receivedMessageFromTarget'),0);
+  if(mode==='foreign-popup')assert.equal(f.events.includes('popup-close'),false);
+});
+
+test('media helper accepts witnessed natural popup closure without closing another target',async()=>{
+  const {openInstalledMediaSettings}=await import('../scripts/extension-e2e/popup-cdp.mjs'),f=fixture('already-closed');
+  assert.equal((await openInstalledMediaSettings(f.args)).tabWriterQualified,true);assert.equal(f.events.includes('popup-close'),false);
 });
 test('media helper rejects invalid total deadlines before touching Chrome',async()=>{
   const {openInstalledMediaSettings}=await import('../scripts/extension-e2e/popup-cdp.mjs');assert.equal(typeof openInstalledMediaSettings,'function');

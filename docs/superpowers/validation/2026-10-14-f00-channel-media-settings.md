@@ -143,3 +143,11 @@ D(source038eff2)에서는 이동한 설정 Page의 다음 클릭 actionability�
 두 신규 RED 시험으로5개 경고를 재현했다. client는 audio/video 고정 속성 접근, pixel 도구의 선택 파일 읽기는 기존 owned 경로 capability로 보완했다. 규칙·억제·역사 경고를 변경하지 않았다. 생성 client의 raw SHA7b15b31e9d1b9ba10e87abdf0ada397d8e04bcbcbfd8fbe04ad050cf731e68e8과 current 실행 pin f11c373e438244f94ddd92d37d8eee46d55ecbcd26cdb47ced930812fbc916e9를 구분한다. raw SHA를 pin에 넣었던 중간 실패도 원장에 유지한다.
 
 보완 연결60/60·9foundation·전체1379/1378pass/0fail/기존skip1,56.058초. 새 clean 후보의 actual/도구 결과와 whole-F00 최종 Astra max가 남아 있다. 과거 C/D 실패와 중간 품질 결과를 최신 입력의 성공으로 대체하지 않는다.
+
+## 실제 팝업 재열기 이력과 자원 정리 보완
+
+E/F의 재열기 실패를 기록하며 검증한 실제 windowId를 공식 openPopup 옵션에 연결했다. 독립 G(eb9a508)는 전체 actual10.472초·두 창/iframe/닫기 후 저장/재열기·VOD/키보드/480px/confirm/복원 및 close3증명 PASS였다. 그러나 미리 정한 추가 H/I 중 H가 실패해 I는 실행하지 않았다. G 성공만으로 안정성 문제 해소를 선언하지 않는다. F는 absolute candidate script/root cwd 실행이어서 final acceptance 명령으로 쓰지 않으며, 쓰기·source attestation은 candidate에 한정됐고 root 보호는 불변이다.
+
+H의 boolean/count 진단은 own 팝업1개·normal 창·focused·activeLive 모두 true였다. 기존 helper는 자기 CDP attachment만 detach하고 팝업 소멸은 확인하지 않았다. 실제 남은 helper 팝업은 다음 API 호출의 경합 원인이 될 수 있으므로, 새 helper는 성공한 openPopup 뒤 선택한 정확한 targetId/own URL/browserContextId의 자기 팝업만 정리하고 소멸을 확인한다. 새 설정 TAB·다른 대상·빌린 session/browser는 닫지 않는다. 이미 자연 종료됐으면 다른 대상을 닫지 않으며, 소유권 변경·close 오류·stuck은 실패한다. 전체15초 예산/자동 retry0 유지.
+
+자원 정리 RED20개 중4fail→helper/strict/기존 CDP39/39 GREEN, 전체1383/1382pass/0fail/기존skip1,56.155초. 이 새 입력의 actual 재검증과 최신 전체 종합·Astra max가 아직 남아 있다. 원래 Task5의 bounded popup close와 TAB 계획의 attachment-only 문구 충돌은 자기 생성 팝업만 정리하는 범위로 원장에 판단을 남겼다.

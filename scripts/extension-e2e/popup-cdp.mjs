@@ -86,6 +86,7 @@ export async function openInstalledMediaSettings({context,worker,fixturePage,ext
   /** @param {import('playwright').Page} page */const onPage=page=>{if(discovered.length>=16)pageOverflow=true;else discovered.push(page);};
   /** @type {import('playwright').CDPSession|undefined} */let pageSession;
   /** @type {Awaited<ReturnType<typeof attachPopupCDP>>|undefined} */let popup;
+  /** @type {PopupTarget|undefined} */let openedPopup;
   try{
     await run(()=>worker.evaluate(()=>{
       const state=/** @type {typeof globalThis & {__knifeMediaTabObserver?:MediaObserver}} */(globalThis);
@@ -121,6 +122,7 @@ export async function openInstalledMediaSettings({context,worker,fixturePage,ext
       const targets=record(await run(()=>browserSession.send('Target.getTargets')));
       try{return selectPopupTarget(targets?.targetInfos,popupURL,browserContextId);}catch(error){if(record(error)?.code==='popup-target-unavailable')return null;throw error;}
     });
+    openedPopup=target;
     const ownPopup=await run(()=>attachPopupCDP(browserSession,target,remaining(),(method,params)=>{
       if(method!=='Fetch.requestPaused')return;
       const requestId=record(params)?.requestId;
@@ -199,6 +201,21 @@ export async function openInstalledMediaSettings({context,worker,fixturePage,ext
       try{await bounded(work,Math.max(1,Math.min(8000,deadline-Date.now())),'media-tab-cleanup-failed');}catch(error){cleanupError??=error;}
     }
     if(popup){const attached=popup;await cleanup(()=>attached.detach());}
+    if(openedPopup){const owned=openedPopup;await cleanup(async()=>{
+      async function readOwnedPopup(){
+        const targets=record(await run(()=>browserSession.send('Target.getTargets')))?.targetInfos;
+        if(!Array.isArray(targets)||targets.length>128)throw fail('media-tab-popup-cleanup-invalid');
+        const rows=targets.map(record);
+        if(rows.some(row=>!row||typeof row.targetId!=='string'))throw fail('media-tab-popup-cleanup-invalid');
+        const matches=rows.filter(row=>row?.targetId===owned.targetId);
+        if(matches.length>1)throw fail('media-tab-popup-cleanup-invalid');
+        const current=matches.at(0);
+        if(current&&(current.url!==owned.url||current.browserContextId!==owned.browserContextId))throw fail('media-tab-popup-cleanup-invalid');
+        return current??null;
+      }
+      if(await readOwnedPopup())await run(()=>browserSession.send('Target.closeTarget',{targetId:owned.targetId}));
+      await wait(async()=>await readOwnedPopup()===null?true:null);
+    });}
     if(pageSession){const attached=pageSession;await cleanup(()=>attached.detach());}
     if(observerInstalled)await cleanup(()=>worker.evaluate(()=>{
       const state=/** @type {typeof globalThis & {__knifeMediaTabObserver?:MediaObserver}} */(globalThis);
