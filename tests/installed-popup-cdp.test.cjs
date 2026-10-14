@@ -14,7 +14,11 @@ test('popup selection refuses another context URL duplicates and absent identity
 function wire(mode='ok'){
   const bus=new EventEmitter();bus.send=async(method,params)=>{
     if(method==='Target.attachToTarget')return {sessionId:'owned'};
-    if(method==='Target.detachFromTarget')return {};
+    if(method==='Target.detachFromTarget'){
+      if(mode.startsWith('detach-'))throw Error(mode==='detach-unknown-gone'?'other detach error':'Protocol error (Target.detachFromTarget): No session with given id');
+      return {};
+    }
+    if(method==='Target.getTargets')return {targetInfos:mode==='detach-missing-live'?[target]:mode==='detach-missing-malformed'?[{}]:[]};
     assert.equal(method,'Target.sendMessageToTarget');assert.equal(params.sessionId,'owned');
     const input=JSON.parse(params.message);
     queueMicrotask(()=>{
@@ -38,3 +42,14 @@ for(const [mode,code]of [['close','popup-target-closed'],['timeout','popup-comma
     const popup=await attachPopupCDP(bus,target,15);await assert.rejects(popup.command('Runtime.evaluate',{}),{code});
     await popup.detach();assert.equal(bus.listenerCount('Target.receivedMessageFromTarget'),0);
   });
+
+test('missing CDP session is accepted only with independently witnessed own target absence',async()=>{
+  const {attachPopupCDP}=await load(),bus=wire('detach-missing-gone'),popup=await attachPopupCDP(bus,target,50);
+  await popup.command('Runtime.evaluate',{});await assert.doesNotReject(popup.detach());
+  assert.equal(bus.listenerCount('Target.receivedMessageFromTarget'),0);
+});
+for(const mode of ['detach-missing-live','detach-missing-malformed','detach-unknown-gone'])test(mode+' cannot certify cleanup',async()=>{
+  const {attachPopupCDP}=await load(),bus=wire(mode),popup=await attachPopupCDP(bus,target,50);
+  await popup.command('Runtime.evaluate',{});await assert.rejects(popup.detach());
+  assert.equal(bus.listenerCount('Target.receivedMessageFromTarget'),0);
+});

@@ -151,3 +151,7 @@ E/F의 재열기 실패를 기록하며 검증한 실제 windowId를 공식 open
 H의 boolean/count 진단은 own 팝업1개·normal 창·focused·activeLive 모두 true였다. 기존 helper는 자기 CDP attachment만 detach하고 팝업 소멸은 확인하지 않았다. 실제 남은 helper 팝업은 다음 API 호출의 경합 원인이 될 수 있으므로, 새 helper는 성공한 openPopup 뒤 선택한 정확한 targetId/own URL/browserContextId의 자기 팝업만 정리하고 소멸을 확인한다. 새 설정 TAB·다른 대상·빌린 session/browser는 닫지 않는다. 이미 자연 종료됐으면 다른 대상을 닫지 않으며, 소유권 변경·close 오류·stuck은 실패한다. 전체15초 예산/자동 retry0 유지.
 
 자원 정리 RED20개 중4fail→helper/strict/기존 CDP39/39 GREEN, 전체1383/1382pass/0fail/기존skip1,56.155초. 이 새 입력의 actual 재검증과 최신 전체 종합·Astra max가 아직 남아 있다. 원래 Task5의 bounded popup close와 TAB 계획의 attachment-only 문구 충돌은 자기 생성 팝업만 정리하는 범위로 원장에 판단을 남겼다.
+
+poll50524b8의 독립 actual M/N은 전체11.321초/19.373초 PASS, O는 자연 popup 종료와 detach 요청의 경합으로 실패했다. 새 보완은 정확한 No-session 오류에만 독립 getTargets에서 자기 target 부재를 증명한 경우 정상 정리로 처리한다. 대상 생존·불명 shape·다른 오류는 실패를 유지하며, detach 전체8초·helper 전체15초 예산도 유지한다. RED9건 중1fail→helper/strict43/43 GREEN.
+
+동시 browser/오디오/감사 실행과 겹친 전체1383/1381pass/1fail/skip1(기존 HLS verifier incomplete)을 기록했다. 정확 원인은 확정하지 않으며 다른 작업 없는 동일 입력 HLS verifier12/12와 보완 후 전체1387/1386pass/0fail/기존skip1,55.954초를 확인했다. timeout·기대 hash·오차·skip·역사 원장은 바꾸지 않았다. 최신 실제 연속3회와 남은 패키지/전환/도구/최종 검토로 이어간다.

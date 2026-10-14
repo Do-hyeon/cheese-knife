@@ -60,7 +60,17 @@ export async function attachPopupCDP(browser,target,timeoutMs=8000,onEvent=()=>{
         });
       });
     },
-    async detach(){if(closed)return;retire();await bounded(()=>browser.send('Target.detachFromTarget',{sessionId}),timeoutMs,'popup-detach-timeout');},
+    async detach(){if(closed)return;retire();await bounded(async()=>{
+      try{await browser.send('Target.detachFromTarget',{sessionId});}
+      catch(error){
+        const message=record(error)?.message;
+        if(typeof message!=='string'||!message.includes('No session with given id'))throw error;
+        const targets=record(await browser.send('Target.getTargets'))?.targetInfos;
+        if(!Array.isArray(targets)||targets.length>128)throw error;
+        const rows=targets.map(record);
+        if(rows.some(row=>!row||typeof row.targetId!=='string'||row.targetId===target.targetId))throw error;
+      }
+    },timeoutMs,'popup-detach-timeout');},
   };
 }
 
