@@ -58,7 +58,8 @@ async function observeRange(cdp, nodeId) {
       globalThis.__f01GainObservations=events;
       const record=event=>{if(events.length<128)events.push({time:performance.now(),type:event.type,key:event.key??null,
         trusted:event.isTrusted??null,value:Number(range.value),disabled:range.disabled,
-        focused:range.getRootNode().activeElement===range,phase:host.dataset.phase});};
+        focused:range.getRootNode().activeElement===range,phase:host.dataset.phase,hidden:host.hidden,display:host.style.display,
+        master:host.closest('.pzp-pc')?.querySelector('.knife-comp')?.getAttribute('data-state')??null});};
       for(const type of ['pointerdown','focus','blur','keydown','keyup','input','change'])range.addEventListener(type,record,{capture:true});
       new MutationObserver(()=>record({type:'state'})).observe(host,{attributes:true,attributeFilter:['data-phase'],subtree:true});
       record({type:'initial'});
