@@ -25,6 +25,9 @@ export function discoverSite(document: Document, route: Route, reader: ReactRead
   const pzp = candidates[0];
   const video = pzp.querySelector<HTMLVideoElement>('.pzp-pc__video video') || pzp.querySelector<HTMLVideoElement>('video');
   const playerLayout = layout || pzp.parentElement;
+  const parent = video?.parentElement;
+  const filterTarget = parent?.matches('.webplayer-internal-source-wrapper') && parent.closest('.pzp-pc__video') ? parent : video;
   return { root, body, sidebar, player: { layout: playerLayout, pzp, video,
+    filterTarget,
     vue: !!ownData(pzp, '__vue__')?.value, reactOnLayout: !!reader.fiberOf(playerLayout) } };
 }

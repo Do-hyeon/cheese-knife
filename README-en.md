@@ -19,6 +19,14 @@ This is an unofficial community recovery of [Cheese Knife](https://github.com/je
 
 Use the extension toolbar icon to enable or disable features. Open Style Settings from the CHZZK tab where the styles should be applied.
 
+### In development: channel media settings (F00)
+
+This unpublished local build opens a separate settings tab from the toolbar popup. It starts in global scope; users may explicitly enable and edit the current or a saved channel's six compressor fields and five video-filter fields. Other settings and styles remain global. Preset application copies values; later preset edits/deletion do not change applied copies.
+
+Channel preferences and preset names stay in extension-local storage, with manual channel/domain/preset deletion in the settings tab. Uninstalling removes them; migration between extension IDs is not automatic and the maintainer does not receive them. Open a fresh settings tab after changing the broadcast target. Read back an uncertain save result and review unsent input before discarding it.
+
+Gain remains outside channel storage until F01. Unverified VOD ownership limits current-channel saving and uses global values. Popup-player iframes and previews stay global. Incognito blocks new channel/preset writes; pages with mixed old/new extension code require a reload.
+
 ## Installation
 
 Most users should install the extension from the [Chrome Web Store](https://chromewebstore.google.com/detail/cgfddiiffponlciljlfbiecmlagflbpe). The latest GitHub release and the reviewed store version may differ while a store review is in progress.

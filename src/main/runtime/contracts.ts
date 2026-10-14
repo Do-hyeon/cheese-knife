@@ -1,7 +1,8 @@
 import type { SiteAdapter } from '../site-adapter/contracts';
 import type { AudioController } from '../features/audio/contracts';
-import type { PlayerController } from '../features/player/contracts';
+import type { PlayerController, VideoFilterController } from '../features/player/contracts';
 import type { PreviewController } from '../features/preview/contracts';
+import type { ScopedContext as KnifeScopedContext, MediaVersion as KnifeMediaVersion } from '../../shared/media-contracts';
 
 export type RouteKind = 'excluded' | 'live' | 'vod' | 'channel' | 'explore';
 
@@ -17,6 +18,7 @@ export interface PlayerSnapshot {
   video: HTMLVideoElement | null;
   vue: boolean;
   reactOnLayout: boolean;
+  filterTarget: Element | null;
 }
 
 export interface RuntimeState {
@@ -82,8 +84,14 @@ export interface ResourceScope {
 }
 
 export interface KnifeRuntime {
+  readonly ownerProtocol: 2;
   readonly requestId: string;
   config: Record<string, unknown>;
+  baseConfig: Record<string, unknown>;
+  mediaRequestId: string;
+  media: { context: KnifeScopedContext; phase: 'pending' | 'ready' | 'limited'; version: KnifeMediaVersion;
+    profileState: 'global' | 'scoped' | 'repair-required'; revisionStatus: 'ready' | 'repair-required';
+    audioBindingGeneration: number; audioKind: 'global' | 'channel'; videoKind: 'global' | 'channel' };
   i18n: Record<string, string>;
   configReady: boolean;
   state: RuntimeState;
@@ -94,6 +102,7 @@ export interface KnifeRuntime {
   audio?: AudioController;
   player?: PlayerController;
   preview?: PreviewController;
+  filters?: VideoFilterController;
   coordinatorStarted?: boolean;
   route(): Route;
   selectPlayer(): PlayerSnapshot | null;
@@ -102,6 +111,8 @@ export interface KnifeRuntime {
   subscribe(callback: (state: RuntimeState) => void): () => boolean;
   notify(): void;
   reconcile(): void;
+  revalidateMedia(): void;
+  mediaCurrent(): boolean;
   schedule(): void;
   createScope(): ResourceScope;
 }
@@ -124,12 +135,29 @@ export interface RuntimeLifecycle {
   start(): void;
   schedule(): void;
   dispose(): void;
+  requestMedia(): void;
 }
 
 export interface ConfigEnvelope {
   revision: number;
   config: Record<string, unknown>;
   i18n: Record<string, string>;
+}
+
+export interface ScopedEnvelope {
+  requestId: string;
+  context: KnifeScopedContext;
+  deliverySequence: number;
+  baseConfig: Record<string, unknown>;
+  effectiveConfig: Record<string, unknown>;
+  i18n: Record<string, string>;
+  version: KnifeMediaVersion;
+  profileState: 'global' | 'scoped' | 'repair-required';
+  revisionStatus: 'ready' | 'repair-required';
+  mediaPhase: 'pending' | 'ready' | 'limited';
+  audioBindingGeneration: number;
+  audioKind: 'global' | 'channel';
+  videoKind: 'global' | 'channel';
 }
 
 export interface BridgeExpectation {

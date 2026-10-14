@@ -188,9 +188,115 @@ var createSettingsBroker = (chromeApi) => {
       code: null
     };
   }
+  async function mediaContext(sender) {
+    if (!sender.documentId || typeof chromeApi.runtime.getContexts !== "function") throw fault("sender", "sender-context-unavailable");
+    let timer;
+    try {
+      const contexts = await Promise.race([
+        chromeApi.runtime.getContexts({ documentIds: [sender.documentId] }),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(fault("sender", "sender-context-unavailable")), 2e3);
+        })
+      ]);
+      const context = contexts.length === 1 ? contexts[0] : void 0;
+      if (!context || context.documentId !== sender.documentId || context.documentUrl !== sender.url || context.documentOrigin !== chromeApi.runtime.getURL("").replace(/\/$/, "") || typeof context.incognito !== "boolean" || !(context.contextType === "TAB" && context.frameId === 0 || context.contextType === "POPUP" && [0, -1].includes(context.frameId))) {
+        throw fault("sender", "sender-context-unavailable");
+      }
+      return context.incognito;
+    } catch {
+      throw fault("sender", "sender-context-unavailable");
+    } finally {
+      if (timer !== void 0) clearTimeout(timer);
+    }
+  }
+  async function mediaTarget(selection) {
+    if (selection.kind !== "current") return false;
+    let tab;
+    try {
+      tab = await chromeApi.tabs.get(selection.tabId);
+    } catch {
+      throw fault("target", "target-missing");
+    }
+    if (tab.id !== selection.tabId || tab.windowId !== selection.windowId) throw fault("target", "target-window-changed");
+    let url;
+    try {
+      url = new URL(tab.url);
+    } catch {
+      throw fault("target", "target-origin-changed");
+    }
+    if (url.origin !== "https://chzzk.naver.com") throw fault("target", "target-origin-changed");
+    const channel = /^\/(?:live\/)?([a-f0-9]{32})\/?$/i.exec(url.pathname)?.[1]?.toLowerCase();
+    if (channel !== selection.channelId) throw fault("target", "target-channel-changed");
+    if (typeof tab.incognito !== "boolean") throw fault("target", "target-context-unavailable");
+    return tab.incognito;
+  }
+  function mediaSnapshot(raw, selection, incognito) {
+    const global = contract.makeSnapshot(raw, css), read2 = KnifeMediaProfiles.readStore(raw.mediaProfiles);
+    const channelId = selection.kind === "global" ? null : selection.channelId;
+    const resolved = KnifeMediaProfiles.resolveMediaSettings(global.config, read2, { channelId, topFrame: true, incognito });
+    const domainValues = (domain) => KnifeMediaProfiles.validateValues(domain, Object.fromEntries(
+      (domain === "audio" ? KnifeMediaProfiles.audioFields : KnifeMediaProfiles.videoFields).map((field) => [field.id, resolved.effectiveConfig[field.id]])
+    ));
+    const audio = domainValues("audio"), video = domainValues("video");
+    if (!audio.ok || audio.domain !== "audio" || !video.ok || video.domain !== "video") throw fault("read", "invalid-media-values");
+    const store = read2.state === "valid" || read2.state === "absent" ? read2.store : null;
+    return {
+      selection,
+      version: { globalRevision: global.revision, mediaRevision: store?.revision ?? null },
+      profileState: resolved.profileState,
+      code: store ? null : read2.state === "invalid" || read2.state === "unsupported" ? read2.code : null,
+      canWrite: !!store && !incognito,
+      values: { audio: audio.values, video: video.values },
+      store,
+      channel: incognito ? null : store?.channels.find((item) => item.channelId === channelId) ?? null
+    };
+  }
+  async function executeMedia(request, sender) {
+    const selection = "selection" in request ? request.selection : { kind: "global" };
+    const checkContext = async () => await mediaContext(sender) || await mediaTarget(selection);
+    const incognito = await checkContext();
+    let raw;
+    try {
+      raw = await chromeApi.storage.local.get([...keys, "mediaProfiles"]);
+    } catch {
+      throw fault("read", "storage-read-failed");
+    }
+    let snapshot = mediaSnapshot(raw, selection, incognito);
+    if (request.action !== "get-media-snapshot") {
+      if (incognito) throw fault("sender", "incognito-media-disabled");
+      const read2 = KnifeMediaProfiles.readStore(raw.mediaProfiles);
+      if (read2.state !== "valid" && read2.state !== "absent") throw fault("media", read2.code);
+      const global = contract.makeSnapshot(raw, css);
+      const merged = KnifeMediaProfiles.mergeMediaOperation(read2.store, request, { config: global.config, revision: global.revision });
+      if (!merged.ok) throw fault("media", merged.code);
+      if (await checkContext()) throw fault("sender", "incognito-media-disabled");
+      if (merged.globalOperations) {
+        const result = contract.mergeOperations(raw, merged.globalOperations);
+        if (Object.keys(result.changes).length) await write(result.changes);
+        if (result.stylesTouched) await applyStyles({ ...raw, ...result.changes }, true);
+        raw = { ...raw, ...result.changes };
+      } else if (merged.changed) {
+        await write({ mediaProfiles: merged.nextStore });
+        raw = { ...raw, mediaProfiles: merged.nextStore };
+      }
+      snapshot = mediaSnapshot(raw, selection, false);
+    }
+    return {
+      protocol: 2,
+      ok: true,
+      requestId: request.requestId,
+      stored: request.action !== "get-media-snapshot",
+      snapshot,
+      version: snapshot.version,
+      profileState: snapshot.profileState,
+      stage: null,
+      code: null
+    };
+  }
   function listener(message, sender, respond) {
     if (message?.namespace !== "cheese-knife-settings") return false;
-    const validated = contract.validateRequest(message, sender, chromeApi.runtime.id, (path) => chromeApi.runtime.getURL(path));
+    const media = message.protocol === 2;
+    const validated = media ? contract.validateMediaRequest(message, sender, chromeApi.runtime.id, (path) => chromeApi.runtime.getURL(path)) : contract.validateRequest(message, sender, chromeApi.runtime.id, (path) => chromeApi.runtime.getURL(path));
     const requestId = typeof message.requestId === "string" && message.requestId.length <= 128 ? message.requestId : void 0;
     const deliver = (result) => {
       try {
@@ -198,7 +304,7 @@ var createSettingsBroker = (chromeApi) => {
       } catch {
       }
     };
-    const replyError = (stage, code) => ({ ok: false, requestId, stored: false, reloaded: false, css: { ...css }, stage, code });
+    const replyError = (stage, code) => media ? { protocol: 2, ok: false, requestId, stored: false, stage, code } : { ok: false, requestId, stored: false, reloaded: false, css: { ...css }, stage, code };
     if (!validated.ok) {
       deliver(replyError("validation", validated.code));
       return true;
@@ -210,7 +316,7 @@ var createSettingsBroker = (chromeApi) => {
       } catch (error) {
         throw fault("initialization", error.code || "initialization-failed");
       }
-      return execute(validated.request);
+      return validated.request.protocol === 2 ? executeMedia(validated.request, sender) : execute(validated.request);
     }).then(deliver, (error) => deliver(replyError(error.stage || "read", error.code || "settings-operation-failed")));
     return true;
   }

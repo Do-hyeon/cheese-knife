@@ -44,8 +44,9 @@ test('player runtime contract is explicit and typechecked', async () => {
   ]) assert.ok(player.includes(signature), signature);
 
   const runtime = await fs.readFile('src/main/runtime/contracts.ts', 'utf8');
-  assert.match(runtime, /import type \{ PlayerController \} from '\.\.\/features\/player\/contracts';/);
+  assert.match(runtime, /import type \{ PlayerController, VideoFilterController \} from '\.\.\/features\/player\/contracts';/);
   assert.match(runtime, /player\?: PlayerController;/);
+  assert.match(runtime, /filters\?: VideoFilterController;/);
 
   const result = spawnSync(process.execPath, [path.resolve('node_modules/typescript/bin/tsc'), '-p', 'tsconfig.json'], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stdout + result.stderr);

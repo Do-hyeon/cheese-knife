@@ -18,7 +18,7 @@ test('development typecheck covers the helper and consumers without weakening pr
   }
   assert.equal(Object.hasOwn(config.compilerOptions, 'skipLibCheck'), false);
   assert.deepEqual(config.compilerOptions.types, ['node']);
-  assert.deepEqual(config.files, ['tests/helpers.cjs', 'tests/bridge.test.cjs', 'tests/helper-contracts.test.cjs', 'tests/development-types.test.cjs']);
+  assert.deepEqual(config.files, ['scripts/extension-e2e/popup-cdp.mjs','tests/helpers.cjs', 'tests/bridge.test.cjs', 'tests/helper-contracts.test.cjs', 'tests/development-types.test.cjs']);
   const product = JSON.parse(await fs.readFile('tsconfig.json', 'utf8'));
   assert.equal(product.compilerOptions.allowJs, false);
   assert.deepEqual(product.compilerOptions.types, ['chrome']);
@@ -66,4 +66,22 @@ for (const proof of [
       assert.match(line, new RegExp(proof.diagnostic), diagnostics);
     }
   }
+});
+
+for (const proof of [
+  {name:'media context',code:'openInstalledMediaSettings({...valid,context:{}});',diagnostic:'TS2740|TS2322'},
+  {name:'media session',code:'openInstalledMediaSettings({...valid,browserSession:{send:valid.browserSession.send}});',diagnostic:'TS2739|TS2322'},
+  {name:'media timeout',code:"openInstalledMediaSettings({...valid,timeoutMs:'1000'});",diagnostic:'TS2322'},
+  {name:'media result',code:'const result=await openInstalledMediaSettings(valid);result.settingsPage.nonexistentField;',diagnostic:'TS2339'},
+  {name:'media valid consumer',code:'const result=await openInstalledMediaSettings(valid);const qualified:true=result.tabWriterQualified;result.settingsPage.locator("#brightness");',diagnostic:''},
+]) test('installed media helper compiler proof: '+proof.name,async t=>{
+  await fs.mkdir('output',{recursive:true});const root=await fs.mkdtemp(path.resolve('output/development-media-types-'));
+  t.after(()=>fs.rm(root,{recursive:true,force:true}));const file=path.join(root,'proof.mts');
+  const entry=path.relative(root,path.resolve('scripts/extension-e2e/popup-cdp.mjs')).split(path.sep).join('/');
+  await fs.writeFile(file,`import {openInstalledMediaSettings} from ${JSON.stringify(entry)};\ndeclare const valid:Parameters<typeof openInstalledMediaSettings>[0];\n${proof.code}\n`);
+  const config=path.join(root,'tsconfig.json');await fs.writeFile(config,JSON.stringify({extends:path.resolve('tsconfig.development.json'),files:[file],include:[]}));
+  const result=compile(config);assert.ifError(result.error);const diagnostics=result.stdout+result.stderr;
+  if(!proof.diagnostic)assert.equal(result.status,0,diagnostics);
+  else{assert.ok(result.status!==null&&result.status>0,diagnostics);for(const line of diagnostics.trim().split(/\r?\n/)){
+    assert.match(line,/proof\.mts\(3,\d+\): error /,diagnostics);assert.match(line,new RegExp(proof.diagnostic),diagnostics);}}
 });

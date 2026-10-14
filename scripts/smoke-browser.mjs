@@ -57,6 +57,7 @@ try {
     };
   });
   for (const file of scripts) await page.evaluate(await fs.readFile(file, 'utf8'));
+  await page.evaluate(await fs.readFile('media-profiles.js', 'utf8'));
   await page.evaluate(await fs.readFile('config.js', 'utf8'));
   await page.addStyleTag({ content: await fs.readFile('web/main.css', 'utf8') });
   await page.evaluate(() => {

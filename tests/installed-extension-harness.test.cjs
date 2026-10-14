@@ -39,6 +39,25 @@ test('extension launch options pin bundled Chromium and the isolated candidate',
   assert.equal(extensionLaunchOptions(extensionPath, true).headless, false);
   assert.throws(() => extensionLaunchOptions('relative/dist', false), { code: 'extension-path-invalid' });
 });
+test('media qualification is exact optional and never changes default argument shape',async()=>{
+  const {parseInstalledE2EArgs}=await harnessModule();assert.deepEqual(parseInstalledE2EArgs(['--run-id=Run42','--qualification=media-tab']),
+    {headed:false,runId:'Run42',qualification:'media-tab'});
+  for(const args of [['--qualification=other'],['--qualification=media-tab','--qualification=media-tab'],['--qualification=']])
+    assert.throws(()=>parseInstalledE2EArgs(args),{code:'installed-e2e-args-invalid'});
+});
+test('media owner requires public close ACK disconnection and exact owned roots empty',async()=>{
+  const {closeInstalledMediaBrowser}=await harnessModule();assert.equal(typeof closeInstalledMediaBrowser,'function');
+  for(const mode of ['ok','ack','connected','root','missing-browser']){
+    const {EventEmitter}=require('node:events'),browser=new EventEmitter();let connected=true,queries=0;
+    browser.isConnected=()=>connected;const context={browser:()=>mode==='missing-browser'?null:browser};
+    const session={send:async()=>{if(mode==='ack')throw Error('no-ack');if(mode!=='connected'){connected=false;browser.emit('disconnected');}return {};}};
+    const queryProcesses=async profile=>{assert.equal(profile,path.resolve('output/owned-media-profile'));queries++;return mode==='root'?[{ProcessId:123}]:[];};
+    const pending=closeInstalledMediaBrowser({context,browserSession:session,profilePath:path.resolve('output/owned-media-profile'),queryProcesses,timeoutMs:25});
+    if(mode==='ok')assert.deepEqual(await pending,{browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:true});
+    else await assert.rejects(pending);
+    assert.equal(browser.listenerCount('disconnected'),0);if(mode==='ok')assert.equal(queries,1);
+  }
+});
 
 test('extension worker URL accepts only the exact MV3 background worker form', async () => {
   const { extensionIdFromWorkerURL } = await harnessModule();

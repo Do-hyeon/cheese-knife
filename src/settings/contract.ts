@@ -61,6 +61,14 @@ type KnifePhase = KnifeSettingsView['phase'];
 type KnifeCodedError = Error & { code: string; stage?: string };
 type KnifeJob = { work: () => Promise<unknown>; resolve: (value: unknown) => void; reject: (reason?: unknown) => void };
 type KnifeMergeResult = { changes: KnifeUnknownRecord; revision: number; stylesTouched: boolean };
+type KnifeMediaRequest = { namespace: 'cheese-knife-settings'; protocol: 2; requestId: string }
+  & (KnifeMediaMutation | { action: 'get-media-snapshot'; selection: KnifeMediaSelection });
+type KnifeMediaSnapshot = { selection: KnifeMediaSelection; version: KnifeMediaVersion; profileState: KnifeMediaResolution['profileState'];
+  code: string | null; canWrite: boolean; values: { audio: KnifeAudioValues; video: KnifeVideoValues };
+  store: KnifeMediaStore | null; channel: KnifeChannelRecord | null };
+type KnifeMediaReply = { protocol: 2; ok: boolean; requestId: string; stored: boolean; snapshot?: KnifeMediaSnapshot;
+  version?: KnifeMediaVersion; profileState?: KnifeMediaResolution['profileState']; stage?: string | null; code?: string | null };
+type KnifeMediaRequestResult = KnifeFailure | { ok: true; request: KnifeMediaRequest };
 
 var KnifeSettingsContract = (() => {
   const configFields = new Map<string, KnifeConfigLeaf>(CONFIGS.flatMap(c => c.configs.flatMap(f => f.configs || [f])).map(f => [f.id, f]));
@@ -126,6 +134,71 @@ var KnifeSettingsContract = (() => {
     if (value === Number.MAX_SAFE_INTEGER) throw error('revision-exhausted');
     return value as number;
   }
+  function mediaRecord(value: unknown, required: string[], optional: string[] = []): KnifeUnknownRecord | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const allowed = [...required, ...optional], keys = Reflect.ownKeys(value);
+    if (keys.length > allowed.length || keys.some(key => typeof key !== 'string' || !allowed.includes(key))) return null;
+    const entries: Array<[string, unknown]> = [];
+    for (const key of keys) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (typeof key !== 'string' || !descriptor || !('value' in descriptor) || !descriptor.enumerable) return null;
+      entries.push([key, descriptor.value]);
+    }
+    const record = Object.fromEntries(entries);
+    return required.every(key => Object.hasOwn(record, key)) ? record : null;
+  }
+  function validateMediaRequest(message: unknown, sender: chrome.runtime.MessageSender | null | undefined,
+      extensionId: string, getURL: (path: string) => string): KnifeMediaRequestResult {
+    const own = validateRequest({ namespace: 'cheese-knife-settings', protocol: 1, action: 'get-snapshot', requestId: 'sender-check' }, sender, extensionId, getURL);
+    if (!own.ok) return fail('invalid-sender');
+    if (typeof sender?.documentId !== 'string' || !sender.documentId.length || sender.documentId.length > 128) return fail('sender-context-unavailable');
+    const header = ['namespace', 'protocol', 'action', 'requestId'];
+    const value = mediaRecord(message, header, ['selection', 'domain', 'expectedGlobalRevision', 'expectedMediaRevision', 'expectedRecord',
+      'channelToken', 'patch', 'expectedRecordRevision', 'values', 'presetToken', 'recordCreatedRevision', 'domainCreatedRevision', 'id', 'name', 'createdRevision', 'expectedPresetRevision']);
+    if (!value || value.namespace !== 'cheese-knife-settings' || value.protocol !== 2 || typeof value.requestId !== 'string' || !value.requestId.length || value.requestId.length > 128) return fail('invalid-request');
+    const media = KnifeMediaProfiles;
+    const domain = (entry: unknown): entry is KnifeMediaDomain => entry === 'audio' || entry === 'video';
+    const positive = (entry: unknown) => media.isCounter(entry) && entry > 0;
+    const recordToken = (entry: unknown) => { const token = mediaRecord(entry, ['createdRevision', 'revision']); return !!token && positive(token.createdRevision) && positive(token.revision); };
+    const presetToken = (entry: unknown) => { const token = mediaRecord(entry, ['id', 'createdRevision', 'revision']); return !!token && media.isPresetId(token.id) && positive(token.createdRevision) && positive(token.revision); };
+    const channelToken = (entry: unknown) => { const token = mediaRecord(entry, ['channelId', 'recordCreatedRevision', 'domainCreatedRevision']); return !!token && media.isChannelId(token.channelId) && positive(token.recordCreatedRevision) && positive(token.domainCreatedRevision); };
+    const selected = (entry: unknown, allowGlobal: boolean) => {
+      const kind = Object.getOwnPropertyDescriptor(entry || {}, 'kind')?.value;
+      const fields = kind === 'global' ? ['kind'] : kind === 'saved' ? ['kind', 'channelId'] : kind === 'current' ? ['kind', 'channelId', 'tabId', 'windowId'] : null;
+      const selection = fields ? mediaRecord(entry, fields) : null;
+      return !!selection && (kind === 'global' ? allowGlobal : media.isChannelId(selection.channelId) &&
+        (kind !== 'current' || media.isCounter(selection.tabId) && media.isCounter(selection.windowId)));
+    };
+    const patch = (selectedDomain: unknown, entry: unknown) => {
+      if (!domain(selectedDomain)) return false;
+      const fields = selectedDomain === 'audio' ? media.audioFields : media.videoFields;
+      const partial = mediaRecord(entry, [], fields.map(field => field.id));
+      return !!partial && Object.entries(partial).every(([id, current]) => {
+        const field = fields.find(item => item.id === id);
+        return !!field && (field.type === 'range' ? numeric(current, field) : typeof current === 'boolean');
+      });
+    };
+    const exact = (required: string[], optional: string[] = []) => !!mediaRecord(value, [...header, ...required], optional);
+    const full = () => domain(value.domain) && media.validateValues(value.domain, value.values).ok;
+    let valid = false;
+    switch (value.action) {
+      case 'get-media-snapshot': valid = exact(['selection']) && selected(value.selection, true); break;
+      case 'enable-channel-domain': valid = exact(['selection', 'domain', 'expectedGlobalRevision', 'expectedMediaRevision', 'expectedRecord']) && selected(value.selection, false) && domain(value.domain) && media.isCounter(value.expectedGlobalRevision) && media.isCounter(value.expectedMediaRevision) && (value.expectedRecord === null || recordToken(value.expectedRecord)); break;
+      case 'patch-channel-fields': valid = exact(['selection', 'domain', 'channelToken', 'patch']) && selected(value.selection, false) && channelToken(value.channelToken) && patch(value.domain, value.patch); break;
+      case 'replace-channel-domain': valid = selected(value.selection, false) && channelToken(value.channelToken) && positive(value.expectedRecordRevision) && domain(value.domain) &&
+        (exact(['selection', 'domain', 'channelToken', 'expectedRecordRevision', 'values']) && full() || exact(['selection', 'domain', 'channelToken', 'expectedRecordRevision', 'presetToken']) && presetToken(value.presetToken)); break;
+      case 'reset-channel-domain': valid = exact(['selection', 'domain', 'recordCreatedRevision', 'domainCreatedRevision', 'expectedRecordRevision']) && selected(value.selection, false) && domain(value.domain) && positive(value.recordCreatedRevision) && positive(value.domainCreatedRevision) && positive(value.expectedRecordRevision); break;
+      case 'delete-channel': valid = exact(['selection', 'recordCreatedRevision', 'expectedRecordRevision']) && selected(value.selection, false) && positive(value.recordCreatedRevision) && positive(value.expectedRecordRevision); break;
+      case 'create-preset': valid = exact(['id', 'expectedMediaRevision', 'domain', 'name', 'values']) && media.isPresetId(value.id) && media.isCounter(value.expectedMediaRevision) && media.isPresetName(value.name) && full(); break;
+      case 'edit-preset': valid = media.isPresetId(value.id) && positive(value.createdRevision) && (value.name === undefined || media.isPresetName(value.name)) &&
+        (exact(['id', 'createdRevision', 'name']) && media.isPresetName(value.name) || exact(['id', 'createdRevision', 'domain', 'patch'], ['name']) && patch(value.domain, value.patch) || exact(['id', 'createdRevision', 'domain', 'values', 'expectedPresetRevision'], ['name']) && full() && positive(value.expectedPresetRevision)); break;
+      case 'delete-preset': valid = exact(['presetToken']) && presetToken(value.presetToken); break;
+      case 'apply-preset-global': valid = exact(['presetToken', 'expectedGlobalRevision']) && presetToken(value.presetToken) && media.isCounter(value.expectedGlobalRevision); break;
+    }
+    if (!valid) return fail('invalid-request');
+    // Exact own fields, tokens and complete/partial domain values establish this union.
+    return { ok: true, request: value as KnifeMediaRequest };
+  }
   const sameRecord = (a: KnifeUnknownRecord, b: KnifeUnknownRecord) => Object.keys(a).length === Object.keys(b).length &&
     Object.entries(a).every(([key, value]) => Object.hasOwn(b, key) && Object.is(value, Object.getOwnPropertyDescriptor(b, key)?.value));
   const sameArray = (a: unknown[], b: unknown[]) => a.length === b.length && a.every((value, index) => Object.is(value, b.at(index)));
@@ -172,5 +245,5 @@ var KnifeSettingsContract = (() => {
     return { revision: readRevision(raw.settingsRevision), config: normalizeConfig(raw.config),
       styles: cssFiles(raw.styles).map(file => file.slice(7, -4)), styleParameters, css: { ...css } };
   }
-  return { validateOperations, validateRequest, readRevision, mergeOperations, makeSnapshot, cssFiles };
+  return { validateOperations, validateRequest, validateMediaRequest, readRevision, mergeOperations, makeSnapshot, cssFiles };
 })();

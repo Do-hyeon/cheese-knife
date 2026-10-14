@@ -19,6 +19,9 @@ async function fixture(t) {
   const root = await fs.mkdtemp(path.resolve('output/af03-main-'));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   await fs.cp('src/main', path.join(root, 'src/main'), { recursive: true });
+  for(const file of ['src/settings/media-profiles.ts','src/shared/media-contracts.ts']){
+    await fs.mkdir(path.dirname(path.join(root,file)),{recursive:true});await fs.copyFile(file,path.join(root,file));
+  }
   await fs.mkdir(path.join(root, 'web'));
   return root;
 }
@@ -71,6 +74,7 @@ test('MAIN runtime render is deterministic classic JavaScript with separate grap
   const graphs = await mod.inspectMainRuntimeGraphs(path.resolve('.'));
   assert.equal(graphs.adapter.some(file => /src\/main\/runtime\/(?:entry|lifecycle)\.ts$/.test(file)), false);
   assert.equal(graphs.runtime.some(file => /src\/main\/runtime\/entry\.ts$/.test(file)), true);
+  assert.equal(graphs.runtime.includes('src/settings/media-profiles.ts'),true);
   assert.equal(graphs['feature-audio'].every(file => file.startsWith('src/main/features/audio/')), true);
   assert.equal(graphs['feature-audio'].some(file => /src\/main\/features\/audio\/entry\.ts$/.test(file)), true);
   assert.equal(graphs['feature-player'].every(file => file.startsWith('src/main/features/player/')), true);

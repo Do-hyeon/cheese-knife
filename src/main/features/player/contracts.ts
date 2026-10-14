@@ -1,4 +1,10 @@
 import type { SitePlayerMetrics } from '../../site-adapter/contracts';
+import type { VideoValues } from '../../../shared/media-contracts';
+
+export interface VideoFilterController {
+  reconcile(base: VideoValues, channel: VideoValues | null, filterTarget: Element | null): void;
+  dispose(): void;
+}
 
 export interface PlayerStats {
   resolution: string | null;

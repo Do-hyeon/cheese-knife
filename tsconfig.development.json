@@ -15,6 +15,7 @@
     "typeRoots": ["./node_modules/@types"]
   },
   "files": [
+    "scripts/extension-e2e/popup-cdp.mjs",
     "tests/helpers.cjs",
     "tests/bridge.test.cjs",
     "tests/helper-contracts.test.cjs",

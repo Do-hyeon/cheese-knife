@@ -3,18 +3,54 @@ import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { openOwnedRoot } from '../owned-files.mjs';
+export {selectPopupTarget,attachPopupCDP,openInstalledMediaSettings} from './popup-cdp.mjs';
 
 const harnessError = (code, cause) => Object.assign(new Error(code, cause ? { cause } : undefined), { code });
 const runIdPattern = /^[A-Za-z0-9]{1,64}$/;
 const workerURLPattern = /^chrome-extension:\/\/([a-p]{32})\/background\.js$/;
 const execFileAsync = promisify(execFile);
 
+export async function openMediaBrowserSession(context) {
+  const browser = context.browser();
+  if (!browser || !browser.isConnected()) throw harnessError('media-browser-unavailable');
+  let timer;
+  try { return await Promise.race([browser.newBrowserCDPSession(),new Promise((_,reject)=>{
+    timer=setTimeout(()=>reject(harnessError('media-browser-session-timeout')),8000);
+  })]); } finally { clearTimeout(timer); }
+}
+
+/** The caller owns this session and its exact disposable profile, not another Chrome window. */
+export async function closeInstalledMediaBrowser({context,browserSession,profilePath,
+  queryProcesses=async profile=>(await import('./native-profile.mjs')).queryWindowsProcesses(profile),timeoutMs=15000}) {
+  if(!path.isAbsolute(profilePath)||!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>15000)throw harnessError('media-close-invalid');
+  const browser=context.browser();if(!browser)throw harnessError('media-browser-unavailable');
+  let disconnected=false,retired=false,timer;
+  const onDisconnected=()=>{disconnected=true;};browser.on('disconnected',onDisconnected);
+  try{
+    await Promise.race([(async()=>{
+      await browserSession.send('Browser.close');
+      while(!disconnected||browser.isConnected()){
+        if(retired)throw harnessError('media-close-unconfirmed');await new Promise(resolve=>setTimeout(resolve,10));
+      }
+      for(;;){if(retired)throw harnessError('media-close-unconfirmed');const roots=await queryProcesses(profilePath);
+        if(!Array.isArray(roots)||roots.length>64)throw harnessError('media-close-roots-invalid');
+        if(roots.length===0)return;await new Promise(resolve=>setTimeout(resolve,25));}
+    })(),new Promise((_,reject)=>{timer=setTimeout(()=>reject(harnessError('media-close-unconfirmed')),timeoutMs);})]);
+    return {browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:true};
+  }finally{retired=true;clearTimeout(timer);browser.off('disconnected',onDisconnected);}
+}
+
 export function parseInstalledE2EArgs(argv) {
   if (!Array.isArray(argv)) throw harnessError('installed-e2e-args-invalid');
   let headed = false;
   let sawHeaded = false;
   let runId = null;
+  let qualification;
   for (const argument of argv) {
+    if (typeof argument === 'string' && argument.startsWith('--qualification=')) {
+      if (qualification !== undefined || argument !== '--qualification=media-tab') throw harnessError('installed-e2e-args-invalid');
+      qualification = 'media-tab';continue;
+    }
     if (argument === '--headed') {
       if (sawHeaded) throw harnessError('installed-e2e-args-invalid');
       sawHeaded = true;
@@ -31,7 +67,7 @@ export function parseInstalledE2EArgs(argv) {
   }
   if (runId === null) runId = `installed${Date.now().toString(36)}${randomBytes(4).toString('hex')}`;
   if (!runIdPattern.test(runId)) throw harnessError('installed-e2e-args-invalid');
-  return { headed, runId };
+  return { headed, runId, ...(qualification === undefined ? {} : { qualification }) };
 }
 
 export function extensionLaunchOptions(extensionPath, headed) {

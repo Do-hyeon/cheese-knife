@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
-import { FIXTURE_LIVE_URL, fixtureDecision } from './fixture-router.mjs';
+import { FIXTURE_LIVE_URL, FIXTURE_CHANNEL_URL, fixtureDecision } from './fixture-router.mjs';
 
 export const TRANSITION_CASES = Object.freeze(['valid-ui', 'legacy-valid', 'legacy-null', 'legacy-invalid', 'damaged-revision']);
 const defaults = Object.freeze({ preview: true, livePreview: true, previewStartUnmuted: false, previewWidth: 400, previewDelay: 1,
@@ -9,6 +9,86 @@ const defaults = Object.freeze({ preview: true, livePreview: true, previewStartU
   compressorAttack: 0, compressorRelease: 0.25, hideDonation: false, showDeleted: false });
 const fail = code => Object.assign(new Error(code), { code });
 const stageFor = phase => phase === 'new' ? 'candidate-init' : phase === 'old' ? 'old-init' : 'rollback-init';
+
+export const MEDIA_TRANSITION_PHASES = Object.freeze(['old','new','rollback','new']);
+export function expectedInstalledMediaStore(runNonce,presetId) {
+  transitionSeed('valid-ui',runNonce);
+  if(!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(presetId))throw fail('media-preset-identity');
+  const audio={compressorDefault:false,compressorThreshold:-35,compressorKnee:40,compressorRatio:12,compressorAttack:0,compressorRelease:0.25};
+  return {schema:1,revision:5,channels:[{channelId:'a'.repeat(32),createdRevision:1,revision:2,audio:{createdRevision:1,values:audio}},
+    {channelId:'b'.repeat(32),createdRevision:3,revision:2,video:{createdRevision:3,values:{brightness:1.75,contrast:1,saturation:1,gamma:1,sharpness:0}}}],
+    presets:[{id:presetId,createdRevision:5,revision:1,name:'F00 '+runNonce,domain:'audio',values:{...audio}}]};
+}
+export function expectedInstalledMediaLoss(store) {
+  const lost=structuredClone(store),channel=lost.channels.find(value=>value.channelId==='a'.repeat(32));
+  if(!channel?.audio)throw fail('media-loss-control-invalid');delete channel.audio;
+  if(!channel.video)lost.channels=lost.channels.filter(value=>value!==channel);return lost;
+}
+export function matchesInstalledMediaLoss(failure,runNonce,extensionId,presetId) {
+  if(!/^[a-p]{32}$/.test(extensionId||'')||failure?.code!=='media-preservation'||failure.caseId!=='valid-ui'||
+    failure.phase!=='new'||failure.launchOccurrence!==4||failure.step!=='startup'||failure.stage!=='candidate-init'||
+    !Array.isArray(failure.cleanupErrors)||failure.cleanupErrors.length)return false;
+  const raw={...transitionSeed('valid-ui',runNonce),mediaProfiles:expectedInstalledMediaLoss(expectedInstalledMediaStore(runNonce,presetId))};
+  return isDeepStrictEqual(failure.observation?.raw,raw)&&isDeepStrictEqual(failure.observation?.execution,{extensionId,version:'2.13.4',brokerMatches:true});
+}
+
+/** Four cold observations; only first-new explicitly creates media data through the actual TAB. */
+export async function runInstalledMediaPreservationScenario({context,worker,extensionId,responses,phase,launchOccurrence,runNonce,expectedBrokerSource,browserSession,presetId}) {
+  if(!Number.isInteger(launchOccurrence)||MEDIA_TRANSITION_PHASES[launchOccurrence-1]!==phase)throw fail('media-occurrence-invalid');
+  const {openInstalledMediaSettings}=await import('./popup-cdp.mjs');
+  let step='startup',observation;
+  const snapshot=()=>worker.evaluate(()=>chrome.storage.local.get(null));
+  try{
+    const execution=await worker.evaluate(()=>({extensionId:chrome.runtime.id,version:chrome.runtime.getManifest().version,brokerSource:createSettingsBroker.toString()}));
+    execution.brokerMatches=execution.brokerSource===brokerFunctionSource(expectedBrokerSource);delete execution.brokerSource;
+    if(!isDeepStrictEqual(execution,{extensionId,version:phase==='old'?'2.13.3':phase==='rollback'?'2.13.5':'2.13.4',brokerMatches:true}))throw fail('media-execution');
+    observation={raw:await snapshot(),execution};
+    const expectedRaw={...transitionSeed('valid-ui',runNonce),...(launchOccurrence>=3?{mediaProfiles:expectedInstalledMediaStore(runNonce,presetId)}:{})};
+    if(!isDeepStrictEqual(observation.raw,expectedRaw))throw fail('media-preservation');
+    const records=[{step,observation}];
+    await context.route(/^https?:\/\//,async route=>{const decision=fixtureDecision(route.request().url(),responses);
+      if(decision.action==='fulfill')await route.fulfill({status:decision.status,contentType:decision.contentType,body:decision.body});else await route.abort('blockedbyclient');});
+    await context.routeWebSocket(/.*/,socket=>socket.close());
+    const page=await context.newPage();await page.goto(FIXTURE_LIVE_URL,{waitUntil:'domcontentloaded'});
+    const expectedProtocol=phase==='new'?2:1;
+    await page.waitForFunction(protocol=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];return runtime?.configReady&&
+      (protocol===1||runtime.ownerProtocol===2&&runtime.media.phase!=='pending');},expectedProtocol,{timeout:15000});
+    let popup;
+    if(phase==='new')popup=(await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession})).settingsPage;
+    else{popup=await context.newPage();await popup.goto(`chrome-extension://${extensionId}/popup.html`,{waitUntil:'domcontentloaded'});
+      await popup.locator('#settings-status[data-phase="ready"]').waitFor({timeout:15000});}
+    if(launchOccurrence===2){
+      step='create-media';await popup.locator('#media-scope').selectOption('current');await popup.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+      await popup.locator('#media-audio-enable').click();await waitTransition(snapshot,raw=>raw?.mediaProfiles?.channels[0]?.audio,'media-enable-timeout');
+      await popup.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});await popup.locator('#compressorThreshold').fill('-35');
+      await waitTransition(snapshot,raw=>raw?.mediaProfiles?.channels[0]?.audio?.values.compressorThreshold===-35,'media-audio-timeout');
+      await page.goto(FIXTURE_CHANNEL_URL,{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window[Symbol.for('cheese-knife.runtime.v1')]?.configReady,null,{timeout:15000});
+      const video=(await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession})).settingsPage;
+      await video.locator('#media-scope').selectOption('current');await video.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+      await video.locator('#media-video-enable').click();await waitTransition(snapshot,raw=>raw?.mediaProfiles?.channels.some(value=>value.video),'media-video-enable-timeout');
+      await video.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});await video.locator('#brightness').fill('1.75');
+      await waitTransition(snapshot,raw=>raw?.mediaProfiles?.channels.find(value=>value.channelId==='b'.repeat(32))?.video?.values.brightness===1.75,'media-video-timeout');
+      await page.goto(FIXTURE_LIVE_URL,{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window[Symbol.for('cheese-knife.runtime.v1')]?.media.phase==='ready',null,{timeout:15000});
+      popup=(await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession})).settingsPage;
+      await popup.locator('#media-scope').selectOption('current');await popup.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+      await popup.locator('#media-preset-name').fill('F00 '+runNonce);await popup.locator('#media-preset-create').click();
+      const created=await waitTransition(snapshot,raw=>raw?.mediaProfiles?.presets.length===1,'media-preset-timeout');presetId=created.mediaProfiles.presets[0].id;
+      observation={raw:await snapshot(),execution};
+      if(!isDeepStrictEqual(observation.raw,{...transitionSeed('valid-ui',runNonce),mediaProfiles:expectedInstalledMediaStore(runNonce,presetId)}))throw fail('media-preservation');
+      records.push({step,observation});
+    }
+    step='observe-ui';
+    if(phase==='new'&&launchOccurrence===4){await popup.locator('#media-scope').selectOption('current');await popup.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});}
+    const brightness=await popup.locator('#brightness').inputValue(),threshold=await popup.locator('#compressorThreshold').inputValue();
+    if(Number(brightness)!==1.25||Number(threshold)!==(phase==='new'?-35:-50))throw fail('media-ui-values');
+    const main=await page.evaluate(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];return {brightness:runtime.config.brightness,threshold:runtime.config.compressorThreshold};});
+    if(main.brightness!==1.25||main.threshold!==(phase==='new'?-35:-50))throw fail('media-main-values');
+    observation={raw:await snapshot(),execution};
+    if(!isDeepStrictEqual(observation.raw,{...transitionSeed('valid-ui',runNonce),...(presetId?{mediaProfiles:expectedInstalledMediaStore(runNonce,presetId)}:{})}))throw fail('media-preservation');
+    records.push({step,observation});return {caseId:'valid-ui',phase,launchOccurrence,records,final:observation,presetId};
+  }catch(error){error.failure={code:error.code||'media-phase-failed',caseId:'valid-ui',phase,launchOccurrence,step,stage:step==='startup'?stageFor(phase):'phase-action',
+    ...(observation?{observation}:{}),cleanupErrors:[]};throw error;}
+}
 
 export function transitionSeed(caseId, runNonce) {
   if (!TRANSITION_CASES.includes(caseId)) throw fail('transition-case-invalid');
@@ -139,8 +219,12 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
     const repair = caseId === 'damaged-revision';
     await Promise.all([popupA, popupB, styles].map(ui => ui.locator(`#settings-status[data-phase="${repair ? 'repair-required' : 'ready'}"]`).waitFor({ timeout: 15000 })));
     // Ready waits are value-independent: lost raw config must reach the oracle, not a timeout.
-    await Promise.all([page, second].map(current => current.waitForFunction(() => !!window[Symbol.for('cheese-knife.runtime.v1')]?.configReady &&
-      !!window.__knifeFixture?.lastConfigEnvelope, null, { timeout: 15000 })));
+    const expectedProtocol = phase === 'new' ? 2 : 1;
+    await Promise.all([page, second].map(current => current.waitForFunction(protocol => {
+      const runtime = window[Symbol.for('cheese-knife.runtime.v1')],fixture = window.__knifeFixture;
+      return !!runtime?.configReady && (protocol === 1 ? !!fixture?.lastConfigEnvelopeV1 :
+        runtime.ownerProtocol === 2 && runtime.media.phase !== 'pending' && !!fixture?.lastConfigEnvelopeV2);
+    },expectedProtocol,{timeout:15000})));
     const initialLoads = await Promise.all([page, second].map(current => current.evaluate(() => window.__knifeFixture.loads)));
     let reloaded = false, reloads = [0, 0];
     const capture = async () => {
@@ -159,10 +243,10 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
           stylesRankingDisabled: document.querySelector('#hide-ranking').disabled, stylesFontDisabled: document.querySelector('#chat-font-size').disabled })),
         page.evaluate(() => ({ font: [1, 2, 10, 20].map(divisor => getComputedStyle(document.documentElement).getPropertyValue(`--knife-chat-size-${divisor}`).trim()),
           ranking: getComputedStyle(document.querySelector('[class^="live_chatting_ranking_container__"]')).display })),
-        page.evaluate(() => { const runtime = window[Symbol.for('cheese-knife.runtime.v1')], envelope = window.__knifeFixture.lastConfigEnvelope;
+        page.evaluate(protocol => { const runtime = window[Symbol.for('cheese-knife.runtime.v1')], envelope = protocol === 1 ? window.__knifeFixture.lastConfigEnvelopeV1 : window.__knifeFixture.lastConfigEnvelopeV2;
           const ids = [...document.querySelectorAll('.knife-owned[id]')].map(item => item.id);
           return { ready: runtime.configReady, config: { ...runtime.config }, requestIdObserved: typeof envelope?.requestId === 'string',
-            revisionObserved: Number.isSafeInteger(envelope?.revision), duplicatedControls: new Set(ids).size !== ids.length }; }),
+            revisionObserved: Number.isSafeInteger(protocol === 1 ? envelope?.revision : envelope?.deliverySequence), duplicatedControls: new Set(ids).size !== ids.length }; },expectedProtocol),
       ]);
       reloads = await Promise.all([page, second].map(async (current, i) => await current.evaluate(() => window.__knifeFixture.loads) - initialLoads.at(i)));
       return { raw, execution, ui: { ...uiA, ...uiB, ...styleUI }, css: { registrations, ...styleView, reloads }, runtime: main };
@@ -193,8 +277,10 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
         await check(); records.push({ step, observation });
         if (step === 'font8' || step === 'font0' || step === 'rollback-font8') {
           await styles.locator('#reload').click({ timeout: 15000 });
-          await page.waitForFunction(before => window.__knifeFixture.loads === before + 1 && !!window[Symbol.for('cheese-knife.runtime.v1')]?.configReady && !!window.__knifeFixture.lastConfigEnvelope,
-            initialLoads[0], { timeout: 15000 });
+          await page.waitForFunction(({before,protocol}) => window.__knifeFixture?.loads === before+1 &&
+            !!window[Symbol.for('cheese-knife.runtime.v1')]?.configReady &&
+            (protocol === 1 ? !!window.__knifeFixture.lastConfigEnvelopeV1 : !!window.__knifeFixture.lastConfigEnvelopeV2),
+            {before:initialLoads[0],protocol:expectedProtocol},{timeout:15000});
           reloaded = true; await check(); records.push({ step, reloaded: true, observation });
         }
       }

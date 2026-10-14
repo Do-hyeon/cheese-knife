@@ -1,12 +1,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { page, load, runtime, deliver, playerHTML, flush } = require('./helpers.cjs');
+const { page, load, runtime, deliverScoped: deliver, playerHTML, flush } = require('./helpers.cjs');
 
 function setup(t, vod = false, beforePlayer = () => {}) {
   const dom = page(vod ? playerHTML.replace('live_player_layout', 'player_layout') : playerHTML,
     vod ? 'https://chzzk.naver.com/video/123456' : undefined);
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
-  load(dom, 'web/runtime.js');
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js');
   load(dom, 'web/site-adapter.js');
   deliver(dom, { arrowSeek: true, pressToFastForward: true });
   beforePlayer(dom);
@@ -74,7 +74,7 @@ test('player installation is single-owner and preserves a foreign controller', a
 
   const foreign = page(playerHTML);
   t.after(async () => { foreign.window.dispatchEvent(new foreign.window.PageTransitionEvent('pagehide')); await flush(); foreign.window.close(); });
-  load(foreign, 'web/runtime.js'); load(foreign, 'web/site-adapter.js'); deliver(foreign);
+  load(foreign, 'media-profiles.js'); load(foreign, 'web/runtime.js'); load(foreign, 'web/site-adapter.js'); deliver(foreign);
   const owner = { foreign: true };
   runtime(foreign).player = owner;
   load(foreign, 'web/player.js');
@@ -85,7 +85,7 @@ test('player installation is single-owner and preserves a foreign controller', a
 test('player startup failure does not publish a partial controller', async t => {
   const dom = page(playerHTML);
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
-  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom);
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom);
   runtime(dom).subscribe = () => { throw new Error('subscribe unavailable'); };
   assert.doesNotThrow(() => load(dom, 'web/player.js'));
   assert.equal(runtime(dom).player, undefined);
@@ -197,7 +197,7 @@ test('player identity changes bypass only a replaced video', async t => {
   const rt = runtime(dom);
   const bypassed = [];
   rt.audio = { bypass: video => bypassed.push(video), configure() {}, eligible: () => false,
-    getState: () => 'off', setEnabled: async () => false, setGain() {}, subscribe: () => () => {} };
+    suspend() {},resumeWanted:async()=> 'off',getState: () => 'off', setEnabled: async () => 'off', setGain() {}, subscribe: () => () => {} };
   const layout = dom.window.document.getElementById('live_player_layout');
   const original = layout.querySelector('video');
   const replacement = dom.window.document.createElement('div');

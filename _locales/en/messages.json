@@ -1,4 +1,10 @@
 {
+  "media_open": { "message": "Open channel settings and presets ↗" },
+  "media_entry_guide": { "message": "Edit channel-specific audio and video in a separate tab. Other settings remain global." },
+  "media_global_guide": { "message": "Only the audio compressor and video filters are channel-specific. Other controls are global." },
+  "media_target_invalid": { "message": "Invalid target. Only global and saved-channel management is available." },
+  "media_target_changed": { "message": "The original tab, window or channel changed. Reopen from that broadcast." },
+  "media_open_failed": { "message": "Could not open settings in the original window. Incognito and closed windows are unsupported." },
   "ext_name": {
     "message": "Cheese Knife — Community Recovery"
   },
@@ -344,6 +350,11 @@
   "capability_title": {
     "message": "Feature readiness on this tab"
   },
+  "capability_mediaSettings": { "message": "Channel media settings" },
+  "capability_reason_scoped_config_pending": { "message": "Waiting for the current channel's media settings." },
+  "capability_reason_scoped_config_unavailable": { "message": "Channel settings could not be confirmed; global settings are used. Reload the broadcast tab after an extension update." },
+  "capability_reason_profile_limited": { "message": "Settings metadata could not be confirmed. Only valid media values are applied; damaged source data is not overwritten." },
+  "capability_reason_reload_required": { "message": "The current tab's execution code is incompatible with this extension. Reload the broadcast tab." },
   "capability_player": {
     "message": "Player controls"
   },
@@ -417,6 +428,39 @@
   "settings_target": { "message": "Apply reloads only the original CHZZK tab captured when these settings were opened." },
   "settings_no_target": { "message": "No target tab. Global settings can still be saved; reload the CHZZK page manually." },
   "settings_target_changed": { "message": "The target tab is missing or its site/window has changed. Reopen settings from the CHZZK tab." },
+  "media_scope": { "message": "Audio / video setting scope" },
+  "media_draft": { "message": "Held intent and latest saved values · read-back never saves automatically. Discard displayed intent and check current values before re-editing." },
+  "media_refresh": { "message": "Check current saved values · read only" },
+  "settings_reconnect": { "message": "Reload settings tab" },
+  "settings_reconnect_required": { "message": "This settings document is disconnected and cannot edit. A save already sent may have completed. Review the retained intent before reloading this settings tab." },
+  "settings_reconnect_confirm": { "message": "Reload only this settings tab? Remaining input may be lost and a save already sent may have completed. The new document will read the actual saved values." },
+  "media_confirm_reset": { "message": "Delete this channel's saved domain and use global values? Other domains and global values stay unchanged." },
+  "media_confirm_channel": { "message": "Delete this channel's audio and video settings? Other channels and global values stay unchanged." },
+  "media_confirm_preset": { "message": "Delete the selected preset? Values already copied to channels or global settings stay unchanged." },
+  "media_global": { "message": "Global" },
+  "media_current": { "message": "Original current channel" },
+  "media_audio": { "message": "Audio" },
+  "media_video": { "message": "Video" },
+  "media_enable_audio": { "message": "Use channel audio · Copy global" },
+  "media_enable_video": { "message": "Use channel video · Copy global" },
+  "media_global_audio": { "message": "Use global audio" },
+  "media_global_video": { "message": "Use global video" },
+  "media_preset_name": { "message": "Local preset name · up to 48 characters" },
+  "media_preset_domain": { "message": "Preset domain" },
+  "media_presets": { "message": "Saved presets" },
+  "media_create": { "message": "Save displayed domain as preset" },
+  "media_apply": { "message": "Apply preset to selected scope" },
+  "media_rename": { "message": "Rename preset" },
+  "media_delete_preset": { "message": "Delete selected preset" },
+  "media_delete_channel": { "message": "Delete selected channel settings" },
+  "media_loading": { "message": "Reading media settings." },
+  "media_ready": { "message": "Saved media values confirmed. Channel settings affect audio/video only." },
+  "media_saving": { "message": "Saving. Scope changes are blocked until confirmed." },
+  "media_unknown": { "message": "Save outcome unknown. Read back or discard displayed intent; neither resends nor rolls back the save. Equal saved values alone do not confirm the original commit." },
+  "media_failed": { "message": "Operation failed. Held input is preserved and not resent." },
+  "media_conflict": { "message": "Stored settings changed. Review saved values before trying again." },
+  "media_repair_required": { "message": "Channel/preset data needs repair. Global settings remain available." },
+  "media_unavailable": { "message": "Channel context unavailable. Reopen from the intended broadcast; global settings remain available." },
   "content_measured": {
     "message": "measured"
   }

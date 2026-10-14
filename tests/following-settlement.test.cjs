@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { page, load, runtime, deliver, playerHTML, clock } = require('./helpers.cjs');
+const { page, load, runtime, deliverScoped: deliver, playerHTML, clock } = require('./helpers.cjs');
 
 function fixture(t, { modeKnown = true, noEffect = false } = {}) {
   const dom = page(playerHTML.replace('<div class="pzp-pc__volume-control"></div>',
@@ -19,7 +19,7 @@ function fixture(t, { modeKnown = true, noEffect = false } = {}) {
     fold.setAttribute('aria-expanded', 'false'); fold.setAttribute('aria-label', '접힘, 펼치기');
     more.setAttribute('aria-expanded', 'false');
   });
-  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
   deliver(dom, { expandFollowings: true }); load(dom, 'web/inject.js');
   t.after(() => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); dom.window.close(); });
   return { dom, document, more, fold, hook, clicks: () => clicks, advance: ms => time.advance(ms),

@@ -5,8 +5,10 @@ const vm = require('node:vm');
 
 function settings(stored) {
   const context = vm.createContext({
+    TextEncoder,
     chrome: { storage: { local: { get: async () => stored } } },
   });
+  vm.runInContext(fs.readFileSync('media-profiles.js', 'utf8'), context);
   vm.runInContext(fs.readFileSync('config.js', 'utf8'), context);
   return vm.runInContext('getConfig(true)', context);
 }

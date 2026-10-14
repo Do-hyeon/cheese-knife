@@ -10,7 +10,33 @@
     <div class="box settings-state">
       <div id="settings-status" role="status" aria-live="polite"></div>
       <button id="settings-discard" type="button" hidden></button>
+      <pre id="settings-retired-draft" hidden></pre>
+      <button id="settings-reconnect" type="button" hidden></button>
     </div>
+    <section id="media-entry" class="box" hidden>
+      <button id="media-open" type="button" disabled></button>
+      <p id="media-entry-guide" class="desc"></p>
+    </section>
+    <div id="media-target-status" class="box desc" role="status" aria-live="polite"></div>
+    <section id="media-controls" class="box" aria-label="Media settings" hidden>
+      <label for="media-scope" id="media-scope-label"></label>
+      <select id="media-scope"><option value="global">Global</option><option value="current" disabled>Current channel</option></select>
+      <div id="media-status" role="status" aria-live="polite"></div>
+      <pre id="media-draft" hidden></pre>
+      <button id="media-refresh" type="button"></button>
+      <button id="media-discard" type="button" hidden></button>
+      <div class="media-actions"><button id="media-audio-enable" type="button"></button><button id="media-audio-global" type="button"></button></div>
+      <div class="media-actions"><button id="media-video-enable" type="button"></button><button id="media-video-global" type="button"></button></div>
+      <div id="media-fields"></div>
+      <div id="media-presets">
+      <label for="media-preset-name" id="media-preset-name-label"></label><input id="media-preset-name" type="text" maxlength="96" />
+      <label for="media-preset-domain" id="media-preset-domain-label"></label><select id="media-preset-domain"><option value="audio">Audio</option><option value="video">Video</option></select>
+      <button id="media-preset-create" type="button"></button>
+      <label for="media-preset" id="media-preset-label"></label><select id="media-preset"></select>
+      <div class="media-actions"><button id="media-preset-apply" type="button"></button><button id="media-preset-rename" type="button"></button><button id="media-preset-delete" type="button"></button></div>
+      <button id="media-channel-delete" type="button"></button>
+      </div>
+    </section>
     <div id="list"></div>
     <div class="box">
       <a href="/styles.html" aria-disabled="true">
@@ -28,6 +54,7 @@
       · <a id="footer-source" href="https://github.com/Do-hyeon/cheese-knife/tree/main" target="_blank" rel="noopener noreferrer">Source</a>
       · <a id="footer-original" href="https://github.com/jebibot/cheese-knife" target="_blank" rel="noopener noreferrer">Original project</a>
     </footer>
+    <script src="media-profiles.js"></script>
     <script src="config.js"></script>
     <script src="style-schema.js"></script>
     <script src="settings-contract.js"></script>
