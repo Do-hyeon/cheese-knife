@@ -504,7 +504,17 @@ export async function runInstalledMediaTabScenario({ context, worker, extensionI
     await closing.locator('#media-scope').selectOption('current');await closing.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
     await closing.locator('#compressorThreshold').fill('-32');await closing.close();
     await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.channels[0]?.audio?.values.compressorThreshold===-32,'media-tab-closed-save');
-    const {settingsPage:reopened}=await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession});
+    let reopened;
+    try{({settingsPage:reopened}=await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession}));}
+    catch(error){
+      try{
+        const targets=await browserSession.send('Target.getTargets');
+        error.nativePopupDiagnostics={ownPopupTargets:targets.targetInfos.filter(target=>target.url===`chrome-extension://${extensionId}/popup.html`).length,
+          windows:await worker.evaluate(async url=>(await chrome.windows.getAll({populate:true})).map(window=>({normal:window.type==='normal',focused:window.focused,
+            liveTabs:window.tabs?.filter(tab=>tab.url===url).length??0,activeLive:window.tabs?.some(tab=>tab.active&&tab.url===url)===true})),FIXTURE_LIVE_URL)};
+      }catch{error.nativePopupDiagnostics={unavailable:true};}
+      throw error;
+    }
     await reopened.locator('#media-scope').selectOption('current');await reopened.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
     assertCondition(await reopened.locator('#compressorThreshold').inputValue()==='-32','media-tab-reopened-save');
     await reopened.locator('#compressorThreshold').fill(original);
