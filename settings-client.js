@@ -1,8 +1,9 @@
 // Generated from src/settings/client.ts by scripts/settings-runtime.mjs. Do not edit.
 var createSettingsClient = (chromeApi) => {
-  const dirty = /* @__PURE__ */ new Map(), confirmed = /* @__PURE__ */ new Map(), subscribers = /* @__PURE__ */ new Set(), transports = /* @__PURE__ */ new Set();
+  const dirty = /* @__PURE__ */ new Map(), confirmed = /* @__PURE__ */ new Map(), subscribers = /* @__PURE__ */ new Set();
   let snapshot = null, css = { state: "pending", code: null }, phase = "loading", code = null;
-  let disposed = false, sequence = 0, generation = 0, epoch = 0, snapshotSequence = 0;
+  let disposed = false, generation = 0, epoch = 0, snapshotSequence = 0;
+  const transport = createSettingsRequestTransport(chromeApi);
   let mutation = null, reading = null, readWanted = false, failurePhase = null, acceptedReads = 0;
   const key = (op) => `${op.type}:${op.id}`;
   const fault = (value) => Object.assign(new Error(value), { code: value });
@@ -53,36 +54,7 @@ var createSettingsClient = (chromeApi) => {
     else phase = failurePhase || (snapshot ? "ready" : "loading");
   }
   function send(action, payload = {}) {
-    const requestId = `settings-${++sequence}`;
-    const requestSequence = sequence;
-    const promise = new Promise((resolve, reject) => {
-      let ended = false;
-      const finish = (error, result) => {
-        if (ended) return;
-        ended = true;
-        clearTimeout(timer);
-        transports.delete(cancel);
-        if (error) reject(error);
-        else resolve({ reply: result, requestSequence });
-      };
-      const cancel = () => finish(fault("disposed"));
-      const timer = setTimeout(() => finish(fault("response-unknown")), 1e4);
-      transports.add(cancel);
-      try {
-        chromeApi.runtime.sendMessage({ namespace: "cheese-knife-settings", protocol: 1, action, requestId, ...payload }, (reply) => {
-          const transportError = chromeApi.runtime.lastError;
-          if (transportError) finish(fault("response-unknown"));
-          else {
-            const validated = validateReply(action, reply, requestId);
-            if (!validated) finish(fault("response-unknown"));
-            else finish(null, validated);
-          }
-        });
-      } catch {
-        finish(fault("response-unknown"));
-      }
-    });
-    return { promise, requestSequence };
+    return transport.send(1, action, payload, validateReply);
   }
   function refresh() {
     if (disposed) return Promise.resolve();
@@ -137,12 +109,12 @@ var createSettingsClient = (chromeApi) => {
     return true;
   }
   async function mutate(action, payload, entries = []) {
-    const transport = send(action, payload);
-    mutation = transport;
+    const transport2 = send(action, payload);
+    mutation = transport2;
     updatePhase();
     emit();
     try {
-      const { reply, requestSequence } = await transport.promise;
+      const { reply, requestSequence } = await transport2.promise;
       if (disposed) throw fault("disposed");
       const stored = action === "patch" && acceptAck(reply, entries, requestSequence);
       if (!reply.ok && !stored) {
@@ -253,7 +225,302 @@ var createSettingsClient = (chromeApi) => {
       disposed = true;
       chromeApi.storage.onChanged.removeListener(onChanged);
       subscribers.clear();
-      for (const cancel of [...transports]) cancel();
+      transport.dispose();
+    }
+  };
+};
+var createSettingsRequestTransport = (chromeApi) => {
+  const pending = /* @__PURE__ */ new Set();
+  let sequence = 0, disposed = false;
+  function send(protocol, action, payload = {}, validate) {
+    const requestId = `settings-${++sequence}`, requestSequence = sequence;
+    const request = protocol === 1 ? { namespace: "cheese-knife-settings", protocol, action, requestId, ...payload } : { namespace: "cheese-knife-settings", protocol, requestId, ...action };
+    let cancel = () => {
+    };
+    const promise = new Promise((resolve, reject) => {
+      let ended = false;
+      const finish = (code, reply) => {
+        if (ended) return;
+        ended = true;
+        clearTimeout(timer);
+        pending.delete(cancel);
+        if (code) reject(Object.assign(new Error(code), { code }));
+        else if (reply) resolve({ reply, requestSequence });
+      };
+      cancel = () => finish("disposed");
+      const timer = setTimeout(() => finish("response-unknown"), 1e4);
+      pending.add(cancel);
+      if (disposed) {
+        cancel();
+        return;
+      }
+      try {
+        chromeApi.runtime.sendMessage(request, (value) => {
+          if (chromeApi.runtime.lastError) {
+            finish("response-unknown");
+            return;
+          }
+          const reply = protocol === 1 ? validate?.(action, value, requestId) : validateMediaReply(action, value, requestId);
+          if (!reply) finish("response-unknown");
+          else finish(null, reply);
+        });
+      } catch {
+        finish("response-unknown");
+      }
+    });
+    return { promise, requestSequence, cancel };
+  }
+  return { send, dispose() {
+    disposed = true;
+    for (const cancel of [...pending]) cancel();
+  } };
+};
+function validateMediaReply(request, value, requestId) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const reply = value;
+  if (reply.protocol !== 2 || reply.requestId !== requestId || typeof reply.ok !== "boolean" || typeof reply.stored !== "boolean" || reply.code !== void 0 && reply.code !== null && typeof reply.code !== "string" || reply.stage !== void 0 && reply.stage !== null && typeof reply.stage !== "string") return null;
+  if (!reply.ok) return typeof reply.code === "string" && reply.stored === false ? reply : null;
+  if (reply.stored !== (request.action !== "get-media-snapshot")) return null;
+  const snapshot = reply.snapshot;
+  if (!snapshot || typeof snapshot !== "object" || !snapshot.version || !snapshot.values || !snapshot.selection || typeof snapshot.canWrite !== "boolean" || !(snapshot.code === null || typeof snapshot.code === "string") || !["global", "scoped", "repair-required"].includes(snapshot.profileState)) return null;
+  const selection = "selection" in request ? request.selection : { kind: "global" };
+  if (JSON.stringify(snapshot.selection) !== JSON.stringify(selection)) return null;
+  if (!KnifeMediaProfiles.isCounter(snapshot.version.globalRevision) || snapshot.version.mediaRevision !== null && !KnifeMediaProfiles.isCounter(snapshot.version.mediaRevision) || !KnifeMediaProfiles.validateValues("audio", snapshot.values.audio).ok || !KnifeMediaProfiles.validateValues("video", snapshot.values.video).ok) return null;
+  if (snapshot.store === null) {
+    if (snapshot.profileState !== "repair-required" || snapshot.version.mediaRevision !== null || snapshot.canWrite) return null;
+  } else {
+    const read = KnifeMediaProfiles.readStore(snapshot.store);
+    if (read.state !== "valid" || read.store.revision !== snapshot.version.mediaRevision) return null;
+    if (snapshot.channel !== null && !read.store.channels.some((channel) => JSON.stringify(channel) === JSON.stringify(snapshot.channel))) return null;
+  }
+  if (JSON.stringify(reply.version) !== JSON.stringify(snapshot.version) || reply.profileState !== snapshot.profileState) return null;
+  return reply;
+}
+var createMediaSettingsClient = (chromeApi) => {
+  const transport = createSettingsRequestTransport(chromeApi), subscribers = /* @__PURE__ */ new Set();
+  const dirty = /* @__PURE__ */ new Map();
+  let selection = { kind: "global" }, snapshot = null;
+  let phase = "loading", code = null, disposed = false, busy = false;
+  let generation = 0, scopeEpoch = 0, epoch = 0, acceptedSequence = 0, reading = null, wanted = false;
+  let pendingRequest = null;
+  let pendingValues = null;
+  const pendingGenerations = /* @__PURE__ */ new Map();
+  const fault = (code2) => Object.assign(new Error(code2), { code: code2 });
+  const defaults = (domain) => Object.fromEntries((domain === "audio" ? KnifeMediaProfiles.audioFields : KnifeMediaProfiles.videoFields).map((field) => [field.id, field.defaultValue]));
+  function view() {
+    const values = {
+      audio: { ...snapshot?.values.audio ?? defaults("audio") },
+      video: { ...snapshot?.values.video ?? defaults("video") }
+    };
+    for (const entry of dirty.values()) Object.assign(values[entry.domain], { [entry.id]: entry.value });
+    return { selection, snapshot, values, phase, pendingKeys: [...dirty.keys()], pendingRequest, pendingValues, code };
+  }
+  function emit() {
+    if (!disposed) for (const fn of subscribers) fn(view());
+  }
+  function accept(next, requestSequence) {
+    if (requestSequence < acceptedSequence) return;
+    if (snapshot && (next.version.globalRevision < snapshot.version.globalRevision || next.version.mediaRevision !== null && snapshot.version.mediaRevision !== null && next.version.mediaRevision < snapshot.version.mediaRevision)) return;
+    snapshot = next;
+    acceptedSequence = requestSequence;
+  }
+  function settledPhase() {
+    if (busy) phase = "saving";
+    else if (!["unknown", "conflict", "failed", "unavailable"].includes(phase)) phase = [...dirty.values()].some((entry) => entry.status === "pending" || entry.status === "sent") ? "saving" : snapshot?.profileState === "repair-required" ? "repair-required" : snapshot ? "ready" : "loading";
+  }
+  function refresh() {
+    if (disposed) return Promise.resolve();
+    wanted = true;
+    if (reading) return reading;
+    reading = (async () => {
+      while (wanted && !disposed) {
+        wanted = false;
+        const started = epoch, scope = scopeEpoch, confirming = phase === "unknown" ? pendingRequest : null;
+        try {
+          const result = await transport.send(2, { action: "get-media-snapshot", selection }).promise;
+          if (disposed || scope !== scopeEpoch) continue;
+          if (started !== epoch) {
+            wanted = true;
+            continue;
+          }
+          if (!result.reply.ok || !result.reply.snapshot) throw fault(result.reply.code || "media-read-failed");
+          accept(result.reply.snapshot, result.requestSequence);
+          if (!busy && phase === "unknown" && pendingRequest && pendingRequest === confirming && snapshot?.store && ["create-preset", "enable-channel-domain", "patch-channel-fields"].includes(pendingRequest.action)) {
+            const merged = KnifeMediaProfiles.mergeMediaOperation(
+              snapshot.store,
+              pendingRequest,
+              { config: { ...snapshot.values.audio, ...snapshot.values.video }, revision: snapshot.version.globalRevision }
+            );
+            if (merged.ok && !merged.changed) {
+              for (const [key, expected] of pendingGenerations) if (dirty.get(key)?.generation === expected) dirty.delete(key);
+              pendingGenerations.clear();
+              pendingRequest = null;
+              pendingValues = null;
+              phase = "ready";
+              code = null;
+            }
+          }
+          settledPhase();
+          emit();
+          flush();
+        } catch (error) {
+          if (disposed || scope !== scopeEpoch) continue;
+          code = error.code || "media-read-failed";
+          phase = code === "response-unknown" ? "unknown" : "unavailable";
+          emit();
+        }
+      }
+    })().finally(() => {
+      reading = null;
+    });
+    return reading;
+  }
+  async function mutateMedia(request, entries = []) {
+    if (disposed || busy || !snapshot || !snapshot.canWrite || ["unknown", "conflict", "failed", "repair-required", "unavailable"].includes(phase)) throw fault("media-not-ready");
+    if ("selection" in request && JSON.stringify(request.selection) !== JSON.stringify(selection)) throw fault("scope-changed");
+    const scope = scopeEpoch;
+    pendingRequest = JSON.parse(JSON.stringify(request));
+    const sourceToken = "presetToken" in pendingRequest ? pendingRequest.presetToken : null;
+    pendingValues = "values" in pendingRequest && pendingRequest.values ? { ...pendingRequest.values } : sourceToken ? snapshot.store?.presets.find((preset) => preset.id === sourceToken.id && preset.createdRevision === sourceToken.createdRevision && preset.revision === sourceToken.revision)?.values ?? null : null;
+    pendingGenerations.clear();
+    for (const [key, entry] of entries) pendingGenerations.set(key, entry.generation);
+    busy = true;
+    phase = "saving";
+    code = null;
+    emit();
+    try {
+      const result = await transport.send(2, request).promise;
+      if (disposed) throw fault("disposed");
+      if (scope !== scopeEpoch) throw fault("scope-changed");
+      if (!result.reply.ok) {
+        phase = result.reply.code === "conflict" ? "conflict" : "failed";
+        code = result.reply.code || "media-write-failed";
+        for (const [, entry] of entries) entry.status = "held";
+      } else {
+        for (const [key, entry] of entries) if (dirty.get(key)?.generation === entry.generation) dirty.delete(key);
+        if (result.reply.snapshot && JSON.stringify(result.reply.snapshot.selection) === JSON.stringify(selection)) accept(result.reply.snapshot, result.requestSequence);
+        pendingGenerations.clear();
+        pendingRequest = null;
+        pendingValues = null;
+        phase = "ready";
+        code = null;
+      }
+      epoch++;
+      void refresh();
+      return result.reply;
+    } catch (error) {
+      if (!disposed) {
+        code = error.code || "response-unknown";
+        phase = "unknown";
+        for (const [, entry] of entries) entry.status = "unknown";
+      }
+      throw error;
+    } finally {
+      if (!disposed) {
+        busy = false;
+        settledPhase();
+        emit();
+        flush();
+      }
+    }
+  }
+  function flush() {
+    if (disposed || busy || !snapshot || !snapshot.canWrite || selection.kind === "global" || ["unknown", "conflict", "failed", "repair-required", "unavailable"].includes(phase)) return;
+    const pending = [...dirty].filter(([, entry]) => entry.status === "pending"), domain = pending[0]?.[1].domain;
+    if (!domain) return;
+    const channel = snapshot.channel, binding = channel?.[domain];
+    if (!channel || !binding) {
+      code = "domain-not-enabled";
+      phase = "failed";
+      emit();
+      return;
+    }
+    const entries = pending.filter(([, entry]) => entry.domain === domain);
+    for (const [, entry] of entries) entry.status = "sent";
+    const patch = Object.fromEntries(entries.map(([, entry]) => [entry.id, entry.value]));
+    const request = {
+      action: "patch-channel-fields",
+      selection,
+      domain,
+      channelToken: { channelId: channel.channelId, recordCreatedRevision: channel.createdRevision, domainCreatedRevision: binding.createdRevision },
+      patch
+    };
+    void mutateMedia(request, entries).catch(() => {
+    });
+  }
+  function editFields(domain, patch) {
+    if (disposed || !snapshot?.canWrite || selection.kind === "global" || !snapshot.channel?.[domain] || ["unknown", "conflict", "failed"].includes(phase)) return;
+    if (!Object.keys(patch).length) return;
+    const check = KnifeMediaProfiles.validateValues(domain, { ...view().values[domain], ...patch });
+    if (!check.ok) {
+      code = check.code;
+      phase = "failed";
+      emit();
+      return;
+    }
+    for (const [id, value] of Object.entries(patch)) dirty.set(`${domain}:${id}`, { domain, id, value, generation: ++generation, status: "pending" });
+    epoch++;
+    code = null;
+    phase = "saving";
+    emit();
+    flush();
+  }
+  async function selectScope(next) {
+    if (disposed || busy || dirty.size || phase === "unknown") return { ok: false, code: "media-not-ready" };
+    if (pendingRequest) return { ok: false, code: "media-not-ready" };
+    selection = { ...next };
+    snapshot = null;
+    scopeEpoch++;
+    epoch++;
+    acceptedSequence = 0;
+    phase = "loading";
+    code = null;
+    emit();
+    await refresh();
+    return { ok: true };
+  }
+  function discardPending() {
+    if (disposed) return;
+    dirty.clear();
+    if (!busy) {
+      pendingGenerations.clear();
+      pendingRequest = null;
+      pendingValues = null;
+    }
+    epoch++;
+    phase = busy ? "saving" : "loading";
+    code = null;
+    emit();
+    void refresh();
+  }
+  const onChanged = (changes, area) => {
+    if (area !== "local" || !["mediaProfiles", "config", "settingsRevision"].some((key) => Object.hasOwn(changes, key))) return;
+    epoch++;
+    void refresh();
+  };
+  chromeApi.storage.onChanged.addListener(onChanged);
+  void refresh();
+  return {
+    subscribe(fn) {
+      if (disposed) return () => {
+      };
+      subscribers.add(fn);
+      fn(view());
+      return () => {
+        subscribers.delete(fn);
+      };
+    },
+    selectScope,
+    editFields,
+    perform: (request) => mutateMedia(request),
+    refresh,
+    discardPending,
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      chromeApi.storage.onChanged.removeListener(onChanged);
+      transport.dispose();
+      subscribers.clear();
     }
   };
 };

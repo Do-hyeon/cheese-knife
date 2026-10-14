@@ -12,6 +12,21 @@
       <button id="settings-discard" type="button" hidden></button>
     </div>
     <div id="list"></div>
+    <section id="media-controls" class="box" aria-label="Media settings">
+      <label for="media-scope" id="media-scope-label"></label>
+      <select id="media-scope"><option value="global">Global</option><option value="current" disabled>Current channel</option></select>
+      <div id="media-status" role="status" aria-live="polite"></div>
+      <pre id="media-draft" hidden></pre>
+      <button id="media-discard" type="button" hidden></button>
+      <div class="media-actions"><button id="media-audio-enable" type="button"></button><button id="media-audio-global" type="button"></button></div>
+      <div class="media-actions"><button id="media-video-enable" type="button"></button><button id="media-video-global" type="button"></button></div>
+      <label for="media-preset-name" id="media-preset-name-label"></label><input id="media-preset-name" type="text" maxlength="96" />
+      <label for="media-preset-domain" id="media-preset-domain-label"></label><select id="media-preset-domain"><option value="audio">Audio</option><option value="video">Video</option></select>
+      <button id="media-preset-create" type="button"></button>
+      <label for="media-preset" id="media-preset-label"></label><select id="media-preset"></select>
+      <div class="media-actions"><button id="media-preset-apply" type="button"></button><button id="media-preset-rename" type="button"></button><button id="media-preset-delete" type="button"></button></div>
+      <button id="media-channel-delete" type="button"></button>
+    </section>
     <div class="box">
       <a href="/styles.html" aria-disabled="true">
         <span id="stylesConfig"></span>
