@@ -7,7 +7,7 @@
 | 준비 | 물리 후보 `output/f01-execution-20261015/source`, 기존 pinned ZIP 해시 확인 후 복사 | root dist58·제품2.13.3·Chrome/P09 보존 |
 | T1 | schema2/전환/alias RED→GREEN, 집중99개, 전체1412개, 9개 기반/build/package | 99통과·전체1411통과/실패0/기존private증거1skip. 후보59/17, 로컬79bf6e2 |
 | T2 | protocol3·Gain 역할/epoch/receipt·legacy 읽기·시간 제한·늦은 raw 경쟁·프리셋 조건 RED→GREEN, 집중61개, 전체1434개 | 61통과·전체1433통과/실패0/기존private증거1skip. 9개 기반/build/package 통과, 후보60/18 |
-| T3 | 실제 소유 조작부·최소 protocol3/공통 master·Blob fixture·Native qualification | 원본/단위·기반 검사 통과. checkpoint09f0cdf의 실제 qualification 실패. 승인된 STOP 적용, 미완료 |
+| T3 | 실제 소유 조작부·최소 protocol3/공통 master·Blob fixture·Native qualification | 09f0cdf 실패 후 추가 승인·보완. 새6d5b39b 실제 qualification/별도 negative PASS. 과거 실패는 보존 |
 | T4–T9 | EQ/노멀라이저·TAB UI·실제 다중 창/저장 손실·객관 출력·종합/Astra max 최종 검토 | 미착수 |
 
 T2 첫 전체 검사에서 worker/생성 테스트의 새 자산 누락5건을 발견해 원본 source와 소비자를 함께 보완했다. Windows의 임시 테스트 디렉터리 rename EPERM1건은 별도 경계67개와 새 전체 실행에서 재발하지 않았다. 기존 F00 pin·published/f00 fixture·private 감사 원장을 새 성공으로 덮지 않았다.
@@ -45,3 +45,12 @@ manifest의 Gain 자산은 승인된 별도 top-frame ISOLATED 항목으로 이�
 - 설계/수정: render의 표시 조건만 on 또는 pending으로 바꾼다. off/unavailable/master 없음은 숨김을 유지한다. focus() 강제 복원·임시 저장·새 writer·probe 생략·알림 무시·권한/자산 증가는 없다. 다른 조작부 focus를 빼앗지 않는다.
 - 회귀 `wanted master pending keeps the owned Gain visible without refocusing another control`에서 기존 구현은 hidden=true로 RED, 최소 한 줄 수정 뒤 집중27개 GREEN. 생산 authority·MAIN setGain 쓰기0·closed-root·재배치·무효화 테스트도 포함한다. Native runner는 Home 저장 후 포커스, 재클릭 없는 ArrowRight 저장 후 포커스를 각각 읽어서 확인하도록 강화했다.
 - 보완 source 전체1459개 중1458통과/실패0/기존private증거1skip·9개 기반/build/package 통과(63.633초). dist61/runtime19 유지. 새 checkpoint Native 재검증을 진행하며, 현재 이 보완의 실제 성공은 아직 미확정이다.
+
+### 새 checkpoint Native 재검증 결과
+
+`6d5b39be799259a7e52bc68952d140f0da3443af`의 새 자기 프로필에서 `F01FocusFixed --mode=qualification` 68.761초/exit0, 별도 새 프로필의 `F01FocusFixedNegative --mode=negative` 6.635초/exit0. 두 summary 모두 ok=true/pageErrors=[]/종료 증명3개true/전후 입력 일치다. sourceSha256=`e61ee8fa732b6c38c40939bc677a77d63f23ed82d72d12b4a9b75ed6dd333da9`.
+
+- qualification: 실제 Blob/source1·trusted pointer/keyboard/native sender frame0/document·Gain0 저장/AudioParam0·포커스 유지/재클릭 없는 ArrowRight 저장·dblclick1/owned·재진입·61초 만료 뒤 첫 실제 조작 저장 PASS.
+- qualification과 별도 negative: MAIN/합성 입력·실제 iframe sender·옛 document 실행·소유 조작부 제거 뒤 probe의 정확한 거부/저장 변경0 PASS. negative 모드는 실제 저장 성공을 시험하지 않으므로 보고서의 관련 false 플래그는 정상적인 범위 표시다.
+- 자연 worker 교체는 false(미관측)이며 디버거가 붙은 worker의 자연 suspension 증명이 아니다. TTL 만료 첫 조작은 검증했다. 물리 청감/객관 전체 오디오 출력·EQ/normalizer는 T8과 별도다.
+- private 증거는 `output/f01-native-20261015/source/output/playwright/installed-extension-F01FocusFixed/summary.json` 및 `installed-extension-F01FocusFixedNegative/summary.json`. 기존 실패·진단 후보/프로필/trace도 보존한다. 원본 dist58/version2.13.3·사용자 Chrome/P09·권한·WAR·외부 전송·push/PR/배포 변경 없음.
