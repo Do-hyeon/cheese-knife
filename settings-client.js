@@ -345,7 +345,7 @@ var createMediaSettingsClient = (chromeApi) => {
           }
           if (!result.reply.ok || !result.reply.snapshot) throw fault(result.reply.code || "media-read-failed");
           accept(result.reply.snapshot, result.requestSequence);
-          if (!busy && phase === "unknown" && pendingRequest && pendingRequest === confirming && snapshot?.store && ["create-preset", "enable-channel-domain", "patch-channel-fields"].includes(pendingRequest.action)) {
+          if (!busy && phase === "unknown" && pendingRequest && pendingRequest === confirming && snapshot?.store && ["create-preset", "enable-channel-domain"].includes(pendingRequest.action)) {
             const merged = KnifeMediaProfiles.mergeMediaOperation(
               snapshot.store,
               pendingRequest,
@@ -356,13 +356,13 @@ var createMediaSettingsClient = (chromeApi) => {
               pendingGenerations.clear();
               pendingRequest = null;
               pendingValues = null;
-              phase = "ready";
-              code = null;
+              for (const entry of dirty.values()) entry.status = "held";
+              phase = dirty.size ? "failed" : "ready";
+              code = dirty.size ? "draft-held" : null;
             }
           }
           settledPhase();
           emit();
-          flush();
         } catch (error) {
           if (disposed || scope !== scopeEpoch) continue;
           code = error.code || "media-read-failed";

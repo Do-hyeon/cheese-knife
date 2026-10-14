@@ -59,14 +59,52 @@ test('stale read and acknowledgement cannot replace newer saved fields',async t=
   assert.equal(c.view().values.audio.compressorRatio,7);read.release();await reading;await h.settle();
   assert.equal(c.view().values.audio.compressorRatio,7);assert.equal(c.view().phase,'ready');
 });
-test('rapid input during a lost ACK keeps the newer unsent draft during original-commit read-back',async t=>{
+test('lost patch ACK read-back holds newer draft without dispatch',async t=>{
   const {h,c}=await enabled(t),observed=[];c.subscribe(view=>observed.push({phase:view.phase,ratio:view.values.audio.compressorRatio}));
   const gate=h.holdNext('callback:patch-channel-fields');c.editFields('audio',{compressorRatio:7});await gate.reached;
   c.editFields('audio',{compressorRatio:5});gate.fail();await h.settle();
   assert.ok(observed.some(view=>view.phase==='unknown'&&view.ratio===5));
+  await c.refresh();h.changes.emit({config:{newValue:{previewVolume:25}}},'local');await h.settle();
   const writes=h.messages.filter(entry=>entry.message.action==='patch-channel-fields').map(entry=>entry.message.patch.compressorRatio);
-  assert.deepEqual(writes,[7,5]);assert.equal(h.saved.mediaProfiles.channels[0].audio.values.compressorRatio,5);
-  assert.equal(c.view().phase,'ready');assert.equal(c.view().values.audio.compressorRatio,5);
+  assert.deepEqual(writes,[7]);assert.equal(h.saved.mediaProfiles.channels[0].audio.values.compressorRatio,7);
+  assert.equal(c.view().phase,'unknown');assert.equal(c.view().values.audio.compressorRatio,5);
+  assert.equal(c.view().pendingRequest.patch.compressorRatio,7);assert.equal((await c.selectScope({kind:'global'})).ok,false);
+  c.discardPending();await h.settle();assert.equal(c.view().values.audio.compressorRatio,7);
+  c.editFields('audio',{compressorRatio:5});await h.settle();assert.equal(h.saved.mediaProfiles.channels[0].audio.values.compressorRatio,5);
+});
+
+test('same saved field value does not authenticate an unknown patch commit',async t=>{
+  const {h,c}=await enabled(t),gate=h.holdNext('callback:patch-channel-fields');
+  c.editFields('audio',{compressorRatio:7});await gate.reached;gate.fail();await h.settle();const before=h.calls.filter(x=>x.kind==='commit').length;
+  await c.refresh();await h.settle();assert.equal(c.view().phase,'unknown');assert.equal(c.view().pendingRequest.action,'patch-channel-fields');
+  assert.equal(h.calls.filter(x=>x.kind==='commit').length,before);
+});
+test('unknown preset confirmation holds newer unsent fields until explicit discard and re-edit',async t=>{
+  const {h,c}=await enabled(t),gate=h.holdNext('callback:create-preset');const request={action:'create-preset',id:P,
+    expectedMediaRevision:1,domain:'audio',name:'Quiet',values:structuredClone(c.view().values.audio)};
+  const pending=c.perform(request);await gate.reached;c.editFields('audio',{compressorRatio:5});gate.fail();await assert.rejects(pending);await h.settle();
+  const before=h.calls.filter(x=>x.kind==='commit').length;await c.refresh();await h.settle();
+  assert.equal(h.calls.filter(x=>x.kind==='commit').length,before);assert.equal(c.view().phase,'failed');assert.equal(c.view().code,'draft-held');
+  assert.equal(c.view().pendingRequest,null);assert.deepEqual(Array.from(c.view().pendingKeys),['audio:compressorRatio']);assert.equal(c.view().values.audio.compressorRatio,5);
+  assert.equal(h.saved.mediaProfiles.channels[0].audio.values.compressorRatio,12);
+  c.discardPending();await h.settle();assert.equal(c.view().phase,'ready');assert.equal(h.calls.filter(x=>x.kind==='commit').length,before);
+});
+test('unknown preset cannot confirm a modified or recreated record',async t=>{
+  for(const change of [preset=>{preset.revision++;},preset=>{preset.createdRevision+=2;},preset=>{preset.values.compressorRatio=5;}]){
+    const {h,c}=await enabled(t),gate=h.holdNext('callback:create-preset');const request={action:'create-preset',id:P,
+      expectedMediaRevision:1,domain:'audio',name:'Quiet',values:structuredClone(c.view().values.audio)};
+    const pending=c.perform(request);await gate.reached;gate.fail();await assert.rejects(pending);await h.settle();
+    change(h.saved.mediaProfiles.presets[0]);h.saved.mediaProfiles.revision+=2;const before=h.messages.length;
+    await c.refresh();await h.settle();assert.equal(c.view().phase,'unknown');assert.equal(c.view().pendingRequest.id,P);
+    assert.ok(h.messages.slice(before).every(x=>x.message.action==='get-media-snapshot'));
+  }
+});
+test('unknown channel enable confirms only its original creation without another write',async t=>{
+  const h=settingsHarness(t),c=client(t,h);await h.settle();await c.selectScope(saved);const gate=h.holdNext('callback:enable-channel-domain');
+  const pending=c.perform({action:'enable-channel-domain',selection:saved,domain:'audio',expectedMediaRevision:0,expectedGlobalRevision:0,expectedRecord:null});
+  await gate.reached;gate.fail();await assert.rejects(pending);await h.settle();const before=h.calls.filter(x=>x.kind==='commit').length;
+  await c.refresh();await h.settle();assert.equal(c.view().phase,'ready');assert.equal(c.view().pendingRequest,null);
+  assert.equal(h.calls.filter(x=>x.kind==='commit').length,before);assert.equal(h.messages.filter(x=>x.message.action==='enable-channel-domain').length,1);
 });
 test('media read codec rejects malformed protocol identity versions values and catalogue',async t=>{
   for(const corrupt of [reply=>{reply.protocol=1;},reply=>{reply.requestId='other';},reply=>{reply.stored=true;},

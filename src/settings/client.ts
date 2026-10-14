@@ -293,15 +293,17 @@ var createMediaSettingsClient = (chromeApi: typeof chrome) => {
           if (!result.reply.ok || !result.reply.snapshot) throw fault(result.reply.code || 'media-read-failed');
           accept(result.reply.snapshot, result.requestSequence);
           if (!busy && phase === 'unknown' && pendingRequest && pendingRequest === confirming && snapshot?.store &&
-            ['create-preset','enable-channel-domain','patch-channel-fields'].includes(pendingRequest.action)) {
+            ['create-preset','enable-channel-domain'].includes(pendingRequest.action)) {
             const merged = KnifeMediaProfiles.mergeMediaOperation(snapshot.store, pendingRequest,
               { config: { ...snapshot.values.audio, ...snapshot.values.video }, revision: snapshot.version.globalRevision! });
             if (merged.ok && !merged.changed) {
               for (const [key, expected] of pendingGenerations) if (dirty.get(key)?.generation === expected) dirty.delete(key);
-              pendingGenerations.clear();pendingRequest = null;pendingValues = null;phase = 'ready';code = null;
+              pendingGenerations.clear();pendingRequest = null;pendingValues = null;
+              for (const entry of dirty.values()) entry.status = 'held';
+              phase = dirty.size ? 'failed' : 'ready';code = dirty.size ? 'draft-held' : null;
             }
           }
-          settledPhase(); emit(); flush();
+          settledPhase(); emit();
         } catch (error) {
           if (disposed || scope !== scopeEpoch) continue;
           code = (error as KnifeCodedError).code || 'media-read-failed';

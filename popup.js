@@ -305,6 +305,7 @@
     ["media-preset-rename", "media_rename"],
     ["media-preset-delete", "media_delete_preset"],
     ["media-channel-delete", "media_delete_channel"],
+    ["media-refresh", "media_refresh"],
     ["media-audio-enable", "media_enable_audio"],
     ["media-video-enable", "media_enable_video"],
     ["media-audio-global", "media_global_audio"],
@@ -318,6 +319,18 @@
   presetDomain.options[1].textContent = text("media_video");
   const scopeKey = (selection) => selection.kind === "saved" ? `saved:${selection.channelId}` : selection.kind;
   let catalogueKey = "";
+  function confirmedPresetValues(domain) {
+    const global = globalView, media = mediaView;
+    if (!global?.snapshot || !media?.snapshot || global.phase !== "ready" || media.phase !== "ready" || !media.snapshot.canWrite || global.pendingKeys.length || media.pendingKeys.length || media.pendingRequest) return null;
+    const fields = domain === "audio" ? KnifeMediaProfiles.audioFields : KnifeMediaProfiles.videoFields;
+    const inherited = media.selection.kind === "global" || !channelBinding(media.snapshot.channel, domain);
+    if (inherited && (global.snapshot.revision !== media.snapshot.version.globalRevision || fields.some((field) => global.values.config[field.id] !== global.snapshot.config[field.id]))) return null;
+    const values = media.selection.kind === "global" ? Object.fromEntries(fields.map((field) => [field.id, global.snapshot.config[field.id]])) : domain === "audio" ? media.snapshot.values.audio : media.snapshot.values.video;
+    const displayed = media.selection.kind === "global" ? global.values.config : domain === "audio" ? media.values.audio : media.values.video;
+    if (fields.some((field) => Reflect.get(displayed, field.id) !== Reflect.get(values, field.id))) return null;
+    const validated = KnifeMediaProfiles.validateValues(domain, values);
+    return validated.ok ? validated : null;
+  }
   function renderMedia() {
     if (!globalView) return;
     const selected = mediaView?.selection.kind !== "global" && mediaView?.selection !== void 0;
@@ -369,13 +382,13 @@
       document.getElementById(`media-${domain}-global`).disabled = blocked || !selected || !channelBinding(channel, domain);
     }
     for (const id of ["media-preset-create", "media-preset-apply", "media-preset-rename", "media-preset-delete", "media-channel-delete"]) {
-      document.getElementById(id).disabled = blocked || (id === "media-channel-delete" ? !selected || !channel : id !== "media-preset-create" && !presetSelect.value) || id === "media-preset-apply" && selected && !channelBinding(channel, selectedPreset()?.domain ?? "audio");
+      document.getElementById(id).disabled = blocked || (id === "media-channel-delete" ? !selected || !channel : id !== "media-preset-create" && !presetSelect.value) || id === "media-preset-create" && !confirmedPresetValues(presetDomain.value === "audio" ? "audio" : "video") || id === "media-preset-apply" && selected && !channelBinding(channel, selectedPreset()?.domain ?? "audio");
     }
     mediaStatus.dataset.phase = mediaView.phase;
     mediaStatus.textContent = `${text(`media_${mediaView.phase.replace("-", "_")}`)}${mediaView.code ? ` (${mediaView.code})` : ""}`;
     mediaDiscard.hidden = !["failed", "unknown", "conflict"].includes(mediaView.phase);
     const draft = document.getElementById("media-draft"), request = mediaView.pendingRequest;
-    draft.hidden = !request || !["failed", "unknown", "conflict"].includes(mediaView.phase);
+    draft.hidden = !(request || mediaView.pendingKeys.length) || !["failed", "unknown", "conflict"].includes(mediaView.phase);
     draft.textContent = draft.hidden ? "" : `${text("media_draft")}
 ${JSON.stringify({
       action: request?.action,
@@ -403,6 +416,14 @@ ${JSON.stringify({
   const perform = (request) => {
     void mediaClient?.perform(request).catch(() => renderMedia());
   };
+  function confirmPerform(request, key, target) {
+    const view = mediaView;
+    if (!view || view.phase !== "ready" || !view.snapshot?.canWrite || view.pendingKeys.length || view.pendingRequest) return;
+    if (!window.confirm(`${text(key)}
+${target}`)) return;
+    if (mediaView?.phase !== "ready" || !mediaView.snapshot?.canWrite || globalView?.phase !== "ready" || mediaView.pendingKeys.length || mediaView.pendingRequest || JSON.stringify(mediaView.selection) !== JSON.stringify(view.selection)) return;
+    perform(request);
+  }
   for (const domain of ["audio", "video"]) {
     document.getElementById(`media-${domain}-enable`).addEventListener("click", () => {
       const view = mediaView, channel = view?.snapshot?.channel;
@@ -419,30 +440,34 @@ ${JSON.stringify({
     document.getElementById(`media-${domain}-global`).addEventListener("click", () => {
       const view = mediaView, channel = view?.snapshot?.channel, binding = channelBinding(channel, domain);
       if (!view || view.selection.kind === "global" || !channel || !binding) return;
-      perform({
+      confirmPerform({
         action: "reset-channel-domain",
         selection: view.selection,
         domain,
         recordCreatedRevision: channel.createdRevision,
         domainCreatedRevision: binding.createdRevision,
         expectedRecordRevision: channel.revision
-      });
+      }, "media_confirm_reset", `${channel.channelId} \xB7 ${text(`media_${domain}`)}`);
     });
   }
   mediaDiscard.addEventListener("click", () => mediaClient?.discardPending());
+  document.getElementById("media-refresh").addEventListener("click", () => {
+    void mediaClient?.refresh();
+  });
   document.getElementById("media-channel-delete").addEventListener("click", () => {
     const view = mediaView, channel = view?.snapshot?.channel;
-    if (view && view.selection.kind !== "global" && channel) perform({
+    if (view && view.selection.kind !== "global" && channel) confirmPerform({
       action: "delete-channel",
       selection: view.selection,
       recordCreatedRevision: channel.createdRevision,
       expectedRecordRevision: channel.revision
-    });
+    }, "media_confirm_channel", channel.channelId);
   });
   document.getElementById("media-preset-create").addEventListener("click", () => {
-    if (!mediaView?.snapshot) return;
+    const domain = presetDomain.value === "audio" ? "audio" : "video", values = confirmedPresetValues(domain);
+    if (!mediaView?.snapshot || !values) return;
     const common = { action: "create-preset", id: crypto.randomUUID(), expectedMediaRevision: mediaView.snapshot.version.mediaRevision, name: presetName.value };
-    perform(presetDomain.value === "audio" ? { ...common, domain: "audio", values: mediaView.values.audio } : { ...common, domain: "video", values: mediaView.values.video });
+    perform(values.domain === "audio" ? { ...common, domain: "audio", values: values.values } : { ...common, domain: "video", values: values.values });
   });
   function selectedPreset() {
     return mediaView?.snapshot?.store?.presets.find((preset) => preset.id === presetSelect.value);
@@ -471,9 +496,10 @@ ${JSON.stringify({
   });
   document.getElementById("media-preset-delete").addEventListener("click", () => {
     const preset = selectedPreset();
-    if (preset) perform({ action: "delete-preset", presetToken: { id: preset.id, createdRevision: preset.createdRevision, revision: preset.revision } });
+    if (preset) confirmPerform({ action: "delete-preset", presetToken: { id: preset.id, createdRevision: preset.createdRevision, revision: preset.revision } }, "media_confirm_preset", preset.name);
   });
   presetSelect.addEventListener("change", renderMedia);
+  presetDomain.addEventListener("change", renderMedia);
   window.addEventListener("pagehide", () => {
     settingsClient.dispose();
     mediaClient?.dispose();

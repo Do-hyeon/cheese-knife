@@ -55,3 +55,12 @@
 - [x] 집중51/51, 전체1304건/1303pass/0fail/0cancelled/기존skip1,54.08초;9foundation 통과. 첫 sandbox 전체 실패는 별도 보존하고 동일 후보 제한 없는 로컬 재실행만 결과로 채택했다. 생성 popup/current pin만 갱신, 역사 기준/제품2.13.3/root dist58/보호 자료 불변.
 
 이는 JSDOM/Chrome 경계 fixture·생성/타입/전체 회귀다. 실제 TAB writer·Chrome/BFCache·저장4관측·F00 완료는 아직이며 후행 Task5B/C/원래 Task5/6을 계속한다.
+
+## Task5B 조회 전용 복구·확정값·파괴적 확인 로컬 검증
+
+- [x] media 조회의 dirty flush 및 값만 같은 patch 성공 확정을 제거했다. 독립 생성 토큰/완전한 의도가 일치하는 preset/enable만 무쓰기 확정하고 최신 unsent 입력은 held로 남긴다. 조회·폐기 버튼은 독립이며 폐기는 이미 보낸 저장의 rollback이 아니다.
+- [x] 전역/채널의 프리셋 생성은 표시값·확정 snapshot·도메인·상속 revision 일치 후에만 허용한다. v1 ACK overlay/지연 v2/상속 경합에서 이전 값의 프리셋 생성은0이다. 일반 v1 편집은 독립 유지한다.
+- [x] reset-domain/delete-channel/delete-preset의 native 확인 취소는 요청0, 확인은 pre-dialog 토큰1회다. concurrent revision/UUID 재생성/current 방송 이동·scope 변경을 대조하며 새 토큰 자동 채택은 없다.
+- [x] 집중76/76, dictionary 보완 연결56/56, 최종 전체1320/1319pass/0fail/0cancelled/기존skip1,54.30초;9foundation 통과. 최초 전체 dictionary 경고와 뒤의 Windows symlink EBUSY 실패는 별도 남겼다. 규칙/억제/역사 oracle 변경 없이 보완·같은 입력 재실행했다.
+
+generated client/popup와 active pin만 갱신했다. 실제 Chrome/TAB 저장·BFCache·보존4관측은 이 단위 결과로 완료하지 않으며 Task5C 및 원래 Tasks5–6을 계속한다. 제품2.13.3/시청 Chrome/P09/root dist/공개는 변경하지 않는다.

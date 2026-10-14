@@ -123,3 +123,83 @@ test('VOD styles application reloads only captured VOD tab',async t=>{
   await h.settle();styles.dom.window.document.getElementById('reload').click();await h.settle();
   assert.deepEqual(h.calls.filter(c=>c.kind==='tab-reload').map(c=>c.args.id),[7]);
 });
+function edit(dom,id,value){const input=dom.window.document.getElementById(id);input.value=String(value);input.dispatchEvent(new dom.window.Event('input'));}
+function mutations(h){return h.messages.filter(x=>x.message.protocol===2&&x.message.action!=='get-media-snapshot');}
+async function channel(t){const result=await ui(t,triple);result.doc.getElementById('media-scope').value='current';
+  result.doc.getElementById('media-scope').dispatchEvent(new result.dom.window.Event('change'));await result.h.settle();
+  result.doc.getElementById('media-audio-enable').click();await result.h.settle();return result;}
+test('preset creation waits while displayed global value differs from delayed media snapshot',async t=>{
+  const {h,dom,doc}=await ui(t,'?mediaSettings=1');const gate=h.holdNext('callback:get-media-snapshot');
+  h.changes.emit({config:{newValue:{}}},'local');await gate.reached;edit(dom,'brightness',2);await new Promise(r=>setTimeout(r,60));
+  doc.getElementById('media-preset-domain').value='video';doc.getElementById('media-preset-name').value='Bright';
+  doc.getElementById('media-preset-domain').dispatchEvent(new dom.window.Event('change'));
+  assert.equal(doc.getElementById('brightness').value,'2');assert.equal(doc.getElementById('media-preset-create').disabled,true);
+  doc.getElementById('media-preset-create').click();assert.equal(mutations(h).length,0);gate.release();await h.settle();
+  assert.equal(doc.getElementById('media-preset-create').disabled,false);doc.getElementById('media-preset-create').click();await h.settle();
+  assert.equal(h.saved.mediaProfiles.presets[0].values.brightness,2);
+});
+test('ACK overlay cannot create a preset from equally stale v1 and v2 snapshots',async t=>{
+  const {h,dom,doc}=await ui(t,'?mediaSettings=1');const readGlobal=h.holdNext('callback:get-snapshot'),readMedia=h.holdNext('callback:get-media-snapshot');
+  h.changes.emit({config:{newValue:{}}},'local');await Promise.all([readGlobal.reached,readMedia.reached]);
+  edit(dom,'brightness',2);await new Promise(r=>setTimeout(r,60));
+  assert.equal(doc.getElementById('settings-status').dataset.phase,'ready');assert.equal(doc.getElementById('media-status').dataset.phase,'ready');
+  doc.getElementById('media-preset-domain').value='video';doc.getElementById('media-preset-domain').dispatchEvent(new dom.window.Event('change'));
+  doc.getElementById('media-preset-name').value='Bright';assert.equal(doc.getElementById('brightness').value,'2');
+  assert.equal(doc.getElementById('media-preset-create').disabled,true);doc.getElementById('media-preset-create').click();assert.equal(mutations(h).length,0);
+  readGlobal.release();readMedia.release();await h.settle();doc.getElementById('media-preset-create').click();await h.settle();
+  assert.equal(h.saved.mediaProfiles.presets[0].values.brightness,2);
+});
+for(const action of ['reset','channel-delete','preset-delete'])test('destructive '+action+' cancel dispatches nothing; confirm dispatches once',async t=>{
+  const {h,dom,doc}=await channel(t);doc.getElementById('media-preset-name').value='Quiet';doc.getElementById('media-preset-create').click();await h.settle();
+  const id=action==='reset'?'media-audio-global':action==='channel-delete'?'media-channel-delete':'media-preset-delete';
+  const before=mutations(h).length;let prompts=0;dom.window.confirm=message=>{assert.ok(message.length>10);prompts++;return false;};
+  doc.getElementById(id).click();await h.settle();assert.equal(mutations(h).length,before);assert.equal(prompts,1);
+  dom.window.confirm=()=>{prompts++;return true;};doc.getElementById(id).click();await h.settle();assert.equal(mutations(h).length,before+1);assert.equal(prompts,2);
+});
+test('confirmation captures old record token rather than adopting a concurrent change',async t=>{
+  const {h,dom,doc}=await channel(t);dom.window.confirm=()=>{h.saved.mediaProfiles.channels[0].revision++;h.saved.mediaProfiles.revision++;return true;};
+  doc.getElementById('media-audio-global').click();await h.settle();assert.equal(doc.getElementById('media-status').dataset.phase,'conflict');
+  assert.ok(h.saved.mediaProfiles.channels[0].audio);assert.equal(mutations(h).at(-1).message.expectedRecordRevision,1);
+});
+test('confirmation cannot apply a captured destructive intent after scope changes',async t=>{
+  const {h,dom,doc}=await channel(t),before=mutations(h).length;dom.window.confirm=()=>{const scope=doc.getElementById('media-scope');
+    scope.value='global';scope.dispatchEvent(new dom.window.Event('change'));return true;};doc.getElementById('media-audio-global').click();await h.settle();
+  assert.equal(mutations(h).length,before);assert.ok(h.saved.mediaProfiles.channels[0].audio);
+});
+test('UI read-back keeps unknown patch and newer draft without writes',async t=>{
+  const {h,dom,doc}=await channel(t),gate=h.holdNext('callback:patch-channel-fields');edit(dom,'compressorRatio',7);await gate.reached;
+  edit(dom,'compressorRatio',5);gate.fail();await h.settle();const before=mutations(h).length,button=doc.getElementById('media-refresh');assert.ok(button);
+  button.click();await h.settle();assert.equal(mutations(h).length,before);assert.equal(doc.getElementById('media-status').dataset.phase,'unknown');
+  assert.equal(doc.getElementById('compressorRatio').value,'5');assert.equal(doc.getElementById('media-draft').hidden,false);
+});
+test('UI retains held fields after original preset creation is confirmed without flushing',async t=>{
+  const {h,dom,doc}=await channel(t),gate=h.holdNext('callback:create-preset');doc.getElementById('media-preset-name').value='Quiet';
+  doc.getElementById('media-preset-create').click();await gate.reached;edit(dom,'compressorRatio',5);gate.fail();await h.settle();
+  const before=mutations(h).length;doc.getElementById('media-refresh').click();await h.settle();
+  assert.equal(mutations(h).length,before);assert.equal(doc.getElementById('media-status').dataset.phase,'failed');
+  assert.equal(doc.getElementById('media-draft').hidden,false);assert.match(doc.getElementById('media-draft').textContent,/compressorRatio.*5/);
+  assert.equal(h.saved.mediaProfiles.channels[0].audio.values.compressorRatio,12);
+  assert.equal(h.saved.mediaProfiles.presets[0].values.compressorRatio,12);assert.equal(h.saved.mediaProfiles.presets[0].name,'Quiet');
+});
+test('preset deletion cannot adopt a same UUID recreated during confirmation',async t=>{
+  const {h,dom,doc}=await channel(t);doc.getElementById('media-preset-name').value='Quiet';doc.getElementById('media-preset-create').click();await h.settle();
+  const original=h.saved.mediaProfiles.presets[0].createdRevision;dom.window.confirm=()=>{h.saved.mediaProfiles.revision+=2;
+    h.saved.mediaProfiles.presets[0].createdRevision=h.saved.mediaProfiles.revision;return true;};doc.getElementById('media-preset-delete').click();await h.settle();
+  assert.equal(doc.getElementById('media-status').dataset.phase,'conflict');assert.equal(h.saved.mediaProfiles.presets.length,1);
+  assert.equal(mutations(h).at(-1).message.presetToken.createdRevision,original);
+});
+test('channel confirmation cannot delete settings after original broadcast navigates',async t=>{
+  const {h,dom,doc}=await channel(t);dom.window.confirm=()=>{h.tabs.get(7).url='https://chzzk.naver.com/live/'+B;return true;};
+  doc.getElementById('media-channel-delete').click();await h.settle();assert.equal(h.saved.mediaProfiles.channels.length,1);
+  assert.notEqual(doc.getElementById('media-status').dataset.phase,'ready');assert.equal(h.saved.mediaProfiles.channels[0].channelId,A);
+});
+test('channel preset copies confirmed scoped values but inherited domain waits for global read',async t=>{
+  const {h,dom,doc}=await channel(t);edit(dom,'compressorRatio',5);await h.settle();doc.getElementById('media-preset-name').value='Channel';
+  doc.getElementById('media-preset-create').click();await h.settle();assert.equal(h.saved.mediaProfiles.presets[0].values.compressorRatio,5);
+  const gate=h.holdNext('callback:get-media-snapshot');h.changes.emit({config:{newValue:{}}},'local');await gate.reached;
+  const other=h.client();await new Promise(r=>setTimeout(r,60));other.edit({type:'config',id:'brightness',value:2});await new Promise(r=>setTimeout(r,60));
+  doc.getElementById('media-preset-domain').value='video';doc.getElementById('media-preset-domain').dispatchEvent(new dom.window.Event('change'));
+  assert.equal(doc.getElementById('media-preset-create').disabled,true);const before=mutations(h).length;doc.getElementById('media-preset-create').click();
+  assert.equal(mutations(h).length,before);gate.release();await h.settle();doc.getElementById('media-preset-create').click();await h.settle();
+  assert.equal(h.saved.mediaProfiles.presets.length,2);assert.equal(h.saved.mediaProfiles.presets.find(preset=>preset.domain==='video').values.brightness,2);
+});

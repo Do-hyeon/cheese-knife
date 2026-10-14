@@ -67,3 +67,13 @@ CDP attachment는 성공하지만 실제 toolbar popup의 production 요청에 s
 사용자 상세 계획/Native 실행 승인 뒤 toolbar v1/명시 TAB 열기와 media TAB v2를 분리했다. 실제 sender 인증은 기존 broker가 그대로 소유한다. top-frame/정확한 mode·query·원래 id/window/origin/channel/incognito 검사, VOD styles pair, 중복 클릭 및 targetless 관리와 기존 입력 재사용 배치를 RED/GREEN으로 검증했다.
 
 집중51/51, 전체1304/1303pass/0fail/0cancelled/기존skip1,54.08초,9foundation 통과. sandbox 첫 전체 실패(realpath/자식 프로세스 접근)는 성공으로 세지 않고 같은 source의 격리 후보 재실행을 채택했다. generated popup와 active normalized pin만 갱신했다. 실제 Chrome/TAB writer·저장4관측·BFCache 성공으로 세지 않는다. Task5B/C와 원래 Tasks5/6은 남아 있다.
+
+## Task5B 조회 전용 복구·확정값·확인 경합 — 로컬 검증
+
+ACK 유실 patch7+새 입력5의 조회/event는 요청[7]/저장7/표시draft5/unknown을 유지한다. 같은 값으로 과거 patch 성공을 인증하지 않는다. 원래 UUID/name/values/생성 revision이 일치하는 생성 확인만 남기며, 그 뒤 최신 입력은 draft-held/failed로 보존하고 자동 flush하지 않는다. UI 조회와 폐기는 별개다.
+
+프리셋 생성은 표시 도메인 값과 confirmed snapshot·전역/상속 revision을 함께 검사한다. 양쪽 snapshot이 이전 값이어도 v1 ACK overlay2를 화면에 표시하는 동안 이전 preset1 생성은0이다. channel confirmed 값/미설정 domain 상속도 검사했다. 파괴적 세 동작은 native confirm 이전에 대상/token을 캡처하며 취소0·확인1회·도중 scope/record/UUID/current 방송 변경 거부를 대조했다. broker/schema 인증 계약은 바꾸지 않았다.
+
+최초 RED71건 중11expected fail. 중간 jsdom realm 배열/UUID 정렬 가정은 시험 경계만 수정했다. 집중76/76·dictionary 연결56/56, 최종 전체1320/1319pass/0fail/0cancelled/기존skip1,54.30초,9foundation 통과. 첫 전체 dictionary 경고는 고정 audio/video 분기로 보완했고 후속 MAIN symlink EBUSY는 동일 입력 재실행으로 통과했다. 모든 실패 로그는 Native private 원장에 유지하며 규칙/역사 기준/오디오 수치 기대값은 바꾸지 않았다.
+
+실제 TAB writer/BFCache/보존·F00 전체 최종 검토는 아직이다. Task5C와 원래 Tasks5/6을 이어간다.

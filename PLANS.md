@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F00 Task5 TAB 보완 DOING — Task5A 로컬 검증 완료, Task5B 조회 전용 복구로 진행**. 사용자 상세 계획/기존 Native 실행 승인으로 Task5A–C를 순차 수행한 뒤 원래 Tasks5–6·저장4관측·whole-F00 최종 Astra max 검토로 이어간다. 실제 POPUP의 문서 식별 부재를 완화하지 않으며 실제 수용 완료는 아직 아니다. 완료 단계와 최초 finding/targeted closure는 아카이브에 구분해 보존한다.
+최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F00 Task5 TAB 보완 DOING — Task5A/B 로컬 검증 완료, Task5C 수명주기·실제 TAB 검증으로 진행**. 사용자 상세 계획/기존 Native 실행 승인으로 Task5A–C를 순차 수행한 뒤 원래 Tasks5–6·저장4관측·whole-F00 최종 Astra max 검토로 이어간다. 실제 POPUP의 문서 식별 부재를 완화하지 않으며 실제 수용 완료는 아직 아니다. 완료 단계와 최초 finding/targeted closure는 아카이브에 구분해 보존한다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -58,7 +58,6 @@
 
 완료된 설계·계획 승인 및 Tasks1–4은 [F00 완료 단계 아카이브](docs/superpowers/archive/2026-10-14-f00-completed-stages.md)로 이동했다. 현재 실행 승인은 Tasks1–6 로컬 구현·격리 검증·최종 Astra max에 한정되며 공개와 실제 시청 Chrome/P09는 제외한다.
 
-- [ ] Task5B 조회 전용 복구·확정값 프리셋·파괴적 확인 및 경합 검증.
 - [ ] Task5C 폐기 문서 복원 제한·실제 TAB writer qualification·명시 종료 증명. [승인된 한글 상세 계획](docs/superpowers/plans/2026-10-14-f00-media-settings-tab.md)으로 수행하며 승인 이력은 아카이브로 이동했다.
 - [ ] Task5 승인된 실제 UI qualification·격리 old→new→old→new 저장 보존·config/media 손실 negative·개인정보/사용 안내. 이전 POPUP attachment 성공을 저장 인증 성공으로 세지 않는다.
 - [ ] Task6 fresh 전체 회귀/9foundation·점검도구·패키지/설치·보호 대조·whole-F00 Astra max·로컬 마감. 실제 미실행 경로는 별도 기록.

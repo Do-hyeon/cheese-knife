@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const {settingsHarness}=require('./settings-fixture.cjs');
 const A='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 async function popup(t,raw={}){const h=settingsHarness(t,raw),ui=await h.openUi('popup',{surface:'tab',
-  query:`?mediaSettings=1&targetTabId=7&targetWindowId=9&targetChannelId=${A}`});await h.settle();return {h,...ui,doc:ui.dom.window.document};}
+  query:`?mediaSettings=1&targetTabId=7&targetWindowId=9&targetChannelId=${A}`,setup:(_,dom)=>{dom.window.confirm=()=>true;}});await h.settle();return {h,...ui,doc:ui.dom.window.document};}
 test('popup defaults to global and explicit channel enable saves only one selected domain',async t=>{
   const {h,dom,doc}=await popup(t),scope=doc.getElementById('media-scope');assert.ok(scope,'scope selector must exist');
   assert.equal(scope.value,'global');assert.equal(h.calls.filter(call=>call.kind==='commit').length,0);
