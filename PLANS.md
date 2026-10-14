@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F00 로컬 구현 완료 / F01 상세 설계 착수 승인 대기**. Tasks1–6/TAB5A–C의 완료 이력은 아카이브로 이동했다. 최종 코드08bd528의9기반·전체1403/1402pass/0fail/기존skip1·패키지/오디오/픽셀/설치 positive·negative·config15/media4관측 및 각각 손실 대조·실제 TAB 세 번/매 종료3증명을 확인했다. [최종 독립 검토](docs/superpowers/validation/2026-10-14-f00-final-review.md)의 최초0/3/0 및 수정 유발 Minor1은 동일 검토자가 모두 닫힘을 확인했다. audit의 동일 기존 경고8/raw exit1과 실제 BFCache·자연 worker 중단·스토어 업데이트/rollback 미검증은 유지한다. **로컬 완료는 공개 준비 완료나 공개 승인과 다르다.**
+최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F00 전체 한글 PR·공개 CI·병합·해당 브랜치 정리 승인**. 로컬 완료 이력은 [아카이브](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 검증과 제한은 [최종 독립 검토](docs/superpowers/validation/2026-10-14-f00-final-review.md)에 유지한다. F01 최신 목업은 사용자 승인됐지만 문서·목업은 로컬에 보존하여 이번 PR에서 제외한다. 릴리즈는 F00·F01·F02 및 통합 게이트 완료 후로 변경한다. 현재 제품 버전·스토어·실제 시청 Chrome/P09는 변경하지 않는다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -10,7 +10,7 @@
 - F00은 기존 compressor6필드·video5필드와 저장/프리셋 기반, Gain/EQ/노멀라이저는 F01. F00만으로 전체 오디오 채널 저장 완료를 주장하지 않는다.
 - 현재 제품2.13.3, 세 자리 major.minor.patch 유지. 격리 시험 T=2.13.4/R=2.13.5는 공개 번호가 아니다. 차기 공개 번호는 배포 준비에서 별도 승인한다.
 - 복구판은 Chrome만 지원. Firefox 복구·빌드·배포 없음.
-- **차기 공개 최소 조건은 F00·F01 구현/객관 검증과 최종 통합 게이트**다. AF05-B 준비 완료만으로 새 버전을 공개하지 않는다.
+- **차기 릴리즈 최소 조건은 F00·F01·F02 구현/객관 검증과 최종 통합 게이트**다. AF05-B나 F00 병합만으로 새 버전을 공개하지 않는다.
 - AF05-B 게시 후 실제 수용은 후행 게이트로 유지하되 F00/F01 설계·구현·PR을 동결하지 않는다. AF05-B에 F00/F01 의존성을 추가하지 않는다.
 - 각 F00/F01 전체 기능을 별도 한글 PR로 묶는다. Task별·문서 전용 PR은 만들지 않는다. **명시 지시 전 push/PR 금지**, 병합·버전·릴리즈·스토어 제출/게시도 별도 승인.
 - 기존 strict TypeScript 원본과 생성 JavaScript 계약 유지. React/Vue·새 프레임워크·전체 도구 TS 변환을 목표로 추가하지 않는다.
@@ -44,8 +44,8 @@
 
 | ID | 작업 묶음 | 상태 | 다음 게이트 |
 | --- | --- | --- | --- |
-| F00 | 채널별 미디어 저장·프리셋 | DONE (로컬) | 전체 범위 push/한글 PR은 명시 지시 후; 병합·배포는 별도 승인 |
-| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | WAITING-USER | 별도 상세 설계·목업·Astra max 검토 착수 승인, 이후 계획/실행 승인 |
+| F00 | 채널별 미디어 저장·프리셋 | DOING (통합) | 승인된 전체 PR·공개 CI·병합·해당 브랜치 정리; 릴리즈 없음 |
+| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | PLAN-REVIEW | 최신 목업 승인 완료; 로컬 상세 구현 계획/Astra max 검토, 이후 계획/실행 승인 |
 | AF05-B 실제 수용 / AF05 종료 | 차기 게시본 설치·업데이트 | WAITING-DEPENDENCY | 차기 게시와 실제 검사 별도 승인 후 수행; F00/F01과 독립 |
 | DT02 | 선택 파일의 native TS 실행 | DEFERRED | 실제 유지보수 이득과 검사/실행 경계 보존이 증명되면 재설계 |
 | F02–F05 | 후속 기능 | BACKLOG-BLOCKED | F00/F01 검증과 각 범위 승인 |
@@ -56,9 +56,11 @@
 
 문서: [승인 상세 설계](docs/superpowers/specs/2026-10-14-f00-channel-media-settings-design.md) · [설계 검토/보완](docs/superpowers/validation/2026-10-14-f00-design-review.md) · [구현 계획](docs/superpowers/plans/2026-10-14-f00-channel-media-settings.md) · [계획 검토/7항목 closure](docs/superpowers/validation/2026-10-14-f00-plan-review.md).
 
-완료된 설계·계획 승인·Tasks1–6/TAB5A–C·전체 검토/보완 및 로컬 마감은 [F00 완료 단계 아카이브](docs/superpowers/archive/2026-10-14-f00-completed-stages.md)와 [최종 검토 기록](docs/superpowers/validation/2026-10-14-f00-final-review.md)으로 이동했다. F00의 현재 승인 범위는 끝났으며 F01·공개·실제 시청 Chrome/P09 변경으로 자동 이어가지 않는다.
+완료된 설계·계획 승인·Tasks1–6/TAB5A–C·전체 검토/보완 및 로컬 마감은 [F00 완료 단계 아카이브](docs/superpowers/archive/2026-10-14-f00-completed-stages.md)와 [최종 검토 기록](docs/superpowers/validation/2026-10-14-f00-final-review.md)으로 이동했다. 2026-10-14 사용자 지시로 F00 전체 PR·병합·해당 브랜치 정리만 추가 승인됐다. F01 공개·버전·릴리즈·스토어·실제 시청 Chrome/P09 변경은 포함하지 않는다.
 
-- [ ] F00 전체 범위 공개 지시를 받은 뒤 한글 PR/CI 확인. 현재 push/PR 금지; 자동 병합/배포 없음.
+- [x] F00 전체 범위 push·한글 PR·공개 CI 확인·병합·해당 브랜치 정리 승인.
+- [ ] F00만 포함한 PR 생성·공개 CI 통과 후 병합과 브랜치 정리. F01 로컬 작업 보존 및 포함 제외를 확인한다.
+- [x] 현재 F00 입력의 격리 전체검사·9기반·빌드/패키지·실제 도구 감사 재실행. [PR 사전검증](docs/superpowers/validation/2026-10-14-f00-pr-preflight.md)에 결과·기존8경고와 root private 원장 불일치 제한을 기록했다.
 
 실제 popup의 Playwright Page capture는 실패했고, 승인된 [격리 CDP 대안](docs/superpowers/plans/2026-10-14-f00-popup-cdp-qualification.md)의 attachment는 성공했다. production client sender의 documentId/frameId 부재 실패는 [관측 기록](docs/superpowers/validation/2026-10-14-f00-popup-cdp-qualification.md)에 유지한다. [별도 TAB 설계](docs/superpowers/specs/2026-10-14-f00-media-settings-tab-design.md)·목업/UI·수용기준·상세 계획과 기존 Native 실행은 승인됐다. 문서 식별자를 위조하거나 직접 storage 저장으로 성공을 대체하지 않는다.
 
@@ -77,7 +79,7 @@
 - [ ] 실제 주석 중복/가독성 문제와 선택 파일 이전의 이득 확인.
 - [ ] import 실제 검사·test discovery·lint/parser·snapshot/provenance·strict/runtime 보존을 함께 설계/검토하고 별도 승인. 재개 조건 전에는 작업하지 않는다.
 
-## 8. 기능 로드맵 — 차기 공개는 최소 F00·F01까지
+## 8. 기능 로드맵 — 차기 릴리즈는 최소 F00·F01·F02까지
 
 | ID | 기능 단위 | 재개 조건 |
 | --- | --- | --- |
@@ -88,11 +90,14 @@
 | F04 | 2–4채널 멀티뷰 | 독립 재생·음량·화질·채팅·부분 교체 |
 | F05 | 통나무파워 조회 | 데이터 최소화·계정 분리·새 권한 별도 승인 |
 
-- [ ] F01 상세 설계·Astra max 검토·계획/실행 승인.
+- [x] F01 최신 목업 사용자 승인. 상세 설계·목업 파일은 이번 F00 PR에서 제외하고 로컬 보존한다.
+- [ ] F01 상세 구현 계획·Astra max 검토·계획/실행 승인.
 - [ ] F01 구현·객관 출력 상한/전환/수명주기/저장·F00 통합 검증. 주관적 청취만으로 완료하지 않는다.
 - [ ] 각 F00/F01 기능 전체의 별도 공개 지시·한글 PR·공개 CI·병합 확인. Task/문서 PR로 더 쪼개지 않는다.
 - [ ] 최종 통합 commit의 전체 회귀·점검도구·패키지·설치/저장 전환·native baseline/제한 대조.
-- [ ] 최소 F00/F01 및 통합 게이트 후 세 자리 형식의 공개 번호·제출/게시 각각 별도 승인.
+- [ ] 최신 후보의 private P02 감사 보고서/원장 소스 해시 재대조. 과거 root 원장은 F00 이전 입력이며 해당 해시 불일치를 해결됐다고 간주하지 않는다. [현재 후보의 실제 감사와 구분](docs/superpowers/validation/2026-10-14-f00-pr-preflight.md)하고 이력 원장을 덮어 PASS를 만들지 않는다.
+- [ ] F02 상세 설계·검토·계획/실행 승인 및 구현·객관 검증.
+- [ ] 최소 F00/F01/F02 및 통합 게이트 후 세 자리 형식의 공개 번호·릴리즈·제출/게시 각각 별도 승인.
 - [ ] 게시 후 실제 수용은6절에서 관리. 이 후행 게이트를 준비 PR의 선행 조건으로 바꾸지 않는다.
 
 ## 9. 검증 진입점
@@ -103,6 +108,6 @@
 
 ## 10. 현재 사용자 개입 지점
 
-현재는 승인된 whole-F00 최종 Astra max·필요 보완/재검증·로컬 마감을 사용자 개입 없이 진행한다. 새로운 실제 사용자 Chrome/P09·설치/교체·권한/외부 전송 범위·push/PR/병합/릴리즈/스토어 변경이 필요하면 중지한다. 이후 승인 요청 문서는 한글로 작성한다.
+현재는 승인된 F00 전체 PR·공개 CI·병합·해당 브랜치 정리를 사용자 개입 없이 진행한다. F01 문서·목업은 별도 로컬 브랜치에 보존하고 승인된 상세 계획/Astra max 검토로 이어간다. F01 구현·공개, 실제 사용자 Chrome/P09·설치/교체·권한/외부 전송 범위·버전·릴리즈·스토어 변경은 별도 승인 전 중지한다. 이후 승인 요청 문서는 한글로 작성한다.
 
 실제 설치/새로고침·P09 변경·새 의존성/권한/외부 전송·버전·공개는 별도 STOP 게이트다. 이전 MCP 연결/종료 승인이나 다른 작업의 공개 승인을 재사용하지 않는다.
