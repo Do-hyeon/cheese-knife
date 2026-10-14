@@ -1,7 +1,7 @@
 {
   "background.js": "dd7955b5950378f7c1b2963297fafec71c11737047736ac2b76448cf2b09a7d2",
-  "config.js": "d6e57e0bb5f9ad29cf2b432a2978f03850234b6e49de673282bfa89827a8b63d",
-  "gain-authority.js": "f14c66517c496cfd033f68c6b28c1db409e9898433508306ddd1227a31d02340",
+  "config.js": "2b80e0d0dfd2a157513b6be521969922c1dcf18f8d5328bb40253801b0e5ae6f",
+  "gain-authority.js": "6c17a29125382cf3b73398f2f8d19e9433cf2a684273e00bff686e786fc6f45d",
   "media-profiles.js": "8d5bd780be8b699adf817ad8a205c791ca6c1b2ef20de3c987c1cc1652f71fc5",
   "permission.js": "fb2ad721eefb5d30c4a3803a957b7f8681bba6614efaabd23094f31c49924cc5",
   "popup.js": "8bcb562efb2f390c6b03478c5f6e865db99a5fdebb8981ddebd8f7c69853c5eb",
@@ -10,11 +10,12 @@
   "settings-contract.js": "827173da2c2f36c042d55441fd0ba4bcff0e40121c328f811a215629b7bef5ec",
   "style-schema.js": "2eca52b03d282f97d21f143f267f86af86fcbb3ddb2c452edd7d2149df010ccc",
   "styles.js": "206efcc1a5e15db9574e290b70a7f022f081906c23e96362dd19332ce1e0c33d",
-  "web/audio.js": "8ed0c7984b852317e6158c8e36b63f2dd078a86903d5633b57c3e206b170e728",
-  "web/inject.js": "a764e89c3851cd8cbe3fc001b37bcae4235962614d1e8f75ab6a04e91a11049a",
-  "web/main.js": "f3c05da7c76f01fcc9bdb06b9ccc65272dc5124b8589ee5f9ab197cd7a006924",
-  "web/player.js": "d8a05815668324827f9b61ca440cf47a693c84165d0345c130c207984dee0a3e",
-  "web/preview.js": "7334249e6f6462fd1ccab1fedc3308b934551550cd912278b0b7afbbd286901d",
-  "web/runtime.js": "f60d17fc1859cc1188d2afe97760dd816d6b97f386ded26378f086e2fe4eb811",
-  "web/site-adapter.js": "fab739263e06dcbd970988dd5db57a7836587234b7e824fa1b62877e01b1601a"
+  "web/audio.js": "cea826f47834515023a364c2bd58b0e1f0a25b8edb0524c7ab1bb8a76d757c0d",
+  "web/inject.js": "06391885a4e39e0b2c39b2f7b8ceb8bea3fa2468df60871b4d262e10cc211767",
+  "web/main.js": "f3bb30433b7ba6caefae274718b2a0ca7e88761d46c3ac1a8e4cc2308c4c496e",
+  "web/player-gain.js": "14ee78cdc4ad10e465556471e130cb49378dabd5039d16ccdca331c58005d535",
+  "web/player.js": "9f577209996220759d0af40b4cca3c0aacddfed8fdcb6d3ee23f1c5ecf41feb4",
+  "web/preview.js": "e4a03ce36e1d755beccb1bf488e53456d77c35620ec2eb7a31597bc4b66cabf8",
+  "web/runtime.js": "cc3ac44a4188c8458f3086102c2950c74077921c61a51773663d99344a7a66f0",
+  "web/site-adapter.js": "324c22c8c26eace6ff5d7defdd0663516d6c273d2b93bf757f9665c63e0e9c80"
 }

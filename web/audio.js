@@ -33,7 +33,7 @@
     const browser = target;
     const key = browser.Symbol.for(registryName);
     const runtime = Object.getOwnPropertyDescriptor(target, key)?.value;
-    if (runtime?.ownerProtocol !== 2 || runtime.audio) return null;
+    if (runtime?.ownerProtocol !== 3 || runtime.audio) return null;
     const entries = /* @__PURE__ */ new WeakMap();
     const connected = /* @__PURE__ */ new Set();
     const scope = runtime.createScope();
@@ -41,7 +41,7 @@
     const storedGain = () => {
       try {
         const value = target.localStorage.getItem("knifeGain");
-        return value == null || !value.trim() ? 1 : number(Number(value), 0, 2, 1);
+        return value == null || !value.trim() || value.length > 64 ? 1 : number(Number(value), 0, 2, 1);
       } catch {
         return 1;
       }
@@ -49,7 +49,7 @@
     const entryFor = (video) => {
       let entry = entries.get(video);
       if (!entry) {
-        entry = { video, state: "off", wanted: false, generation: 0, gain: storedGain(), listeners: /* @__PURE__ */ new Set() };
+        entry = { video, state: "off", wanted: false, generation: 0, sources: 0, gain: storedGain(), listeners: /* @__PURE__ */ new Set() };
         entries.set(video, entry);
       }
       return entry;
@@ -98,6 +98,9 @@
         controller.suspend(entry.video);
         return;
       }
+      const preview = entry.preview;
+      if (preview && (preview.source !== entry.video.currentSrc || preview.document !== runtime.media.context.documentGeneration || preview.path !== runtime.media.context.routePath || preview.binding !== runtime.media.audioBindingGeneration)) entry.preview = null;
+      entry.gain = entry.preview?.value ?? (runtime.media.gainOrigin === "site-legacy" ? storedGain() : number(runtime.config.audioGain, 0, 2, 1));
       const parameters = [
         { parameter: entry.compressor.threshold, configured: runtime.config.compressorThreshold, min: -100, max: 0, fallback: -50 },
         { parameter: entry.compressor.knee, configured: runtime.config.compressorKnee, min: 0, max: 40, fallback: 40 },
@@ -204,6 +207,7 @@
             entry.limiter.oversample = "none";
             if (!current() || generation !== entry.generation || !entry.wanted) return entry.state;
             entry.source = context.createMediaElementSource(video);
+            entry.sources++;
           }
           if (scope.disposed || !current() || generation !== entry.generation || !entry.wanted) {
             connect(entry);
@@ -245,13 +249,32 @@
       setGain(video, value) {
         const entry = entryFor(video);
         entry.gain = number(value, 0, 2, 1);
-        try {
-          target.localStorage.setItem("knifeGain", String(entry.gain));
-        } catch {
-        }
+        entry.preview = {
+          value: entry.gain,
+          source: video.currentSrc,
+          document: runtime.media.context.documentGeneration,
+          path: runtime.media.context.routePath,
+          binding: runtime.media.audioBindingGeneration
+        };
         apply(entry);
         announce(entry, entry.state);
         return entry.gain;
+      },
+      applyPreviewGain(video, value, current) {
+        const expected = runtime.media.context;
+        if (!Number.isFinite(value) || value < 0 || value > 2 || !runtime.mediaCurrent() || runtime.state.player?.video !== video || !current || !["documentGeneration", "routePath", "channelId", "playerGeneration"].every((key2) => Object.getOwnPropertyDescriptor(current, key2)?.value === Object.getOwnPropertyDescriptor(expected, key2)?.value)) return false;
+        controller.setGain(video, value);
+        return true;
+      },
+      getReadback(video) {
+        const entry = entries.get(video);
+        return {
+          state: entry?.state ?? "off",
+          wanted: entry?.wanted ?? false,
+          gain: entry?.gain ?? storedGain(),
+          appliedGain: entry?.gainNode?.gain.value ?? null,
+          sources: entry?.sources ?? 0
+        };
       },
       configure() {
         for (const entry of connected) apply(entry);
@@ -302,6 +325,7 @@
         }
       }, 1e3);
       scope.on(target, "pagehide", (event) => {
+        for (const entry of connected) entry.preview = null;
         if (!event.persisted) {
           for (const entry of connected) controller.bypass(entry.video);
           scope.dispose();

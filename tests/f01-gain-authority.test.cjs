@@ -78,6 +78,15 @@ test('unknown external or nonmonotonic events invalidate all old authority', () 
   a.observe({ settingsRevision: { oldValue: 0, newValue: 0 } });
   assert.equal(a.check(view.ticket, native(1), raw).ok, false);
 });
+
+test('channel-home player Gain stays global like the F00 MAIN context; only confirmed live route owns a channel', () => {
+  const { authority: a, raw, native } = fixture();
+  raw.mediaProfiles = { schema: 2, revision: 1, channels: [{ channelId: A, createdRevision: 1, revision: 1,
+    audio: { createdRevision: 1, values: { ...audio, audioGain: 0.75, gainInherited: false } } }], presets: [] };
+  const home = a.view({ ...native(1), route: `https://chzzk.naver.com/${A}` }, raw);
+  assert.equal(home.scope, 'global'); assert.equal(home.value, 1);
+  assert.equal(a.view(native(2), raw).scope, 'channel');
+});
 test('begin intent is immutable single-flight rate limited and never replayed', () => {
   const { authority: a, raw, native, advance } = fixture(), view = a.view(native(1), raw);
   assert.equal(a.begin(view.ticket, native(1), raw, 'intent-one', 0).ok, true);

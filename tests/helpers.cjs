@@ -33,22 +33,24 @@ function deliver(dom, config = {}, revision = 1) {
 const playerHTML = '<div id="root"><div id="layout-body"><section><main><div id="live_player_layout"><div class="pzp-pc"><div class="pzp-pc__video"><video></video></div><div class="pzp-pc__bottom-buttons-left"><button class="pzp-pc__playback-switch"></button><div class="pzp-pc__volume-control"></div></div></div></div></main></section></div></div>';
 /** @param {JSDOM} dom @param {unknown} [config] @param {unknown} [sequence] */
 function deliverScoped(dom,config={},sequence=1) {
-  const api=runtime(dom);assert.ok(api,'Load the runtime before delivering settings');assert.equal(api.ownerProtocol,2);
+  const api=runtime(dom);assert.ok(api,'Load the runtime before delivering settings');assert.equal(api.ownerProtocol,3);
   /** @type {unknown} */ let base=config;
   if(config && typeof config==='object' && !Array.isArray(config)) {
     const descriptors=Object.getOwnPropertyDescriptors(config),prototype=Object.getPrototypeOf(config);
     if((prototype===null || Object.getPrototypeOf(prototype)===null && Object.getOwnPropertyDescriptor(prototype,'constructor')?.value?.name==='Object') &&
       Object.values(descriptors).every(descriptor=>'value' in descriptor)) {
-      const media=/** @type {{audioFields:readonly {id:string,defaultValue:boolean|number}[],videoFields:readonly {id:string,defaultValue:boolean|number}[]}|undefined} */ (Reflect.get(dom.window,'KnifeMediaProfiles'));
+      const media=/** @type {{audioFields:readonly {id:string,defaultValue:boolean|number}[],audioFieldsV2:readonly {id:string,defaultValue:boolean|number}[],videoFields:readonly {id:string,defaultValue:boolean|number}[]}|undefined} */ (Reflect.get(dom.window,'KnifeMediaProfiles'));
       assert.ok(media,'Load the media descriptor module before the runtime');
-      base={...Object.fromEntries([...media.audioFields,...media.videoFields].map(field=>[field.id,field.defaultValue])),...config};
+      base={...Object.fromEntries([...media.audioFields,...media.audioFieldsV2,...media.videoFields].map(field=>[field.id,field.defaultValue])),...config,
+        audioDefault:Object.getOwnPropertyDescriptor(config,'audioDefault')?.value ?? Object.getOwnPropertyDescriptor(config,'compressorDefault')?.value ?? false};
     }
   }
   const Message=/** @type {FixtureMessageEventConstructor} */ (dom.window.MessageEvent);
   dom.window.dispatchEvent(new Message('message',{source:dom.window,origin:dom.window.location.origin,
-    data:{namespace:'cheese-knife',protocol:2,type:'config',requestId:api.mediaRequestId,context:{...api.media.context},deliverySequence:sequence,
+    data:{namespace:'cheese-knife',protocol:3,type:'config',requestId:api.mediaRequestId,context:{...api.media.context},deliverySequence:sequence,
       baseConfig:base,effectiveConfig:base,i18n:{fastForward:'Live edge',enableCompressor:'Enable compressor',disableCompressor:'Disable compressor',speed2x:'2x'},
-      version:{globalRevision:0,mediaRevision:0},profileState:'global',revisionStatus:'ready',mediaPhase:'ready',audioBindingGeneration:1,audioKind:'global',videoKind:'global'}}));
+      version:{globalRevision:0,mediaRevision:0},profileState:'global',revisionStatus:'ready',mediaPhase:'ready',audioBindingGeneration:1,audioKind:'global',videoKind:'global',
+      gainOrigin:Object.getOwnPropertyDescriptor(base || {},'gainInherited')?.value === false ? 'global-owned' : 'site-legacy'}}));
 }
 /** @type {() => Promise<void>} */
 const flush = () => new Promise(resolve => setTimeout(resolve, 30));

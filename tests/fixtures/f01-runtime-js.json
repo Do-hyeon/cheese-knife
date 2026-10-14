@@ -13,6 +13,7 @@
   "web/audio.js",
   "web/inject.js",
   "web/main.js",
+  "web/player-gain.js",
   "web/player.js",
   "web/preview.js",
   "web/runtime.js",

@@ -159,8 +159,10 @@ async function getConfig(includeStyleParameters: boolean) {
 
 async function readScopedConfig(context: KnifeScopedContext): Promise<KnifeScopedSnapshot> {
   const stored = await chrome.storage.local.get(['config', 'styles', 'styleParameters', 'settingsRevision', 'mediaProfiles']);
-  const baseConfig = normalizeConfig(stored.config), read = KnifeMediaProfiles.readLegacyStore(stored.mediaProfiles);
-  const resolved = KnifeMediaProfiles.resolveLegacyMediaSettings(baseConfig, read, {
+  const normalized = normalizeConfig(stored.config);
+  const baseConfig = { ...normalized, ...KnifeMediaProfiles.projectGlobalAudio(stored.config as Record<string, KnifeScalar> ?? {}) };
+  const read = KnifeMediaProfiles.readStore(stored.mediaProfiles);
+  const resolved = KnifeMediaProfiles.resolveMediaSettings(baseConfig, read, {
     channelId: context.channelId, topFrame: window.top === window,
     incognito: chrome.extension?.inIncognitoContext !== false,
   });
@@ -171,5 +173,5 @@ async function readScopedConfig(context: KnifeScopedContext): Promise<KnifeScope
       ? stored.styleParameters as KnifeUnknownRecord : {},
     version: { globalRevision, mediaRevision: read.state === 'valid' || read.state === 'absent' ? read.store.revision : null },
     revisionStatus: globalRevision === null ? 'repair-required' : 'ready', profileState: resolved.profileState,
-    audioBindingKey: resolved.audioBindingKey, audioKind: resolved.audioKind, videoKind: resolved.videoKind };
+    audioBindingKey: resolved.audioBindingKey, audioKind: resolved.audioKind, videoKind: resolved.videoKind, gainOrigin: resolved.gainOrigin };
 }

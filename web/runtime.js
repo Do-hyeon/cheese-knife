@@ -500,6 +500,14 @@
     }
     return output;
   }
+  function readGainPreviewEnvelope(event, expected) {
+    const keys = ["namespace", "protocol", "type", "requestId", "context", "audioBindingGeneration", "value"];
+    const raw = event.data;
+    if (!ordinaryRecord(raw) || Reflect.ownKeys(raw).length !== keys.length || !keys.every((key) => Object.hasOwn(raw, key))) return null;
+    const data = copyRecord(raw, false), context = data && copyRecord(data.context, false);
+    if (!data || !context || Reflect.ownKeys(context).length !== 4 || !["documentGeneration", "routePath", "channelId", "playerGeneration"].every((key) => Object.hasOwn(context, key) && ownValue(context, key) === Object.getOwnPropertyDescriptor(expected, key)?.value) || data.namespace !== "cheese-knife" || data.protocol !== 3 || data.type !== "gain-preview" || typeof data.requestId !== "string" || !data.requestId.length || data.requestId.length > 128 || !KnifeMediaProfiles.isCounter(data.audioBindingGeneration) || typeof data.value !== "number" || !Number.isFinite(data.value) || data.value < 0 || data.value > 2) return null;
+    return { requestId: data.requestId, context, audioBindingGeneration: data.audioBindingGeneration, value: data.value };
+  }
   function readScopedConfigEnvelope(event, expected) {
     const exact = (value, keys) => {
       if (!ordinaryRecord(value) || Reflect.ownKeys(value).length !== keys.length || !keys.every((key) => Object.hasOwn(value, key))) return null;
@@ -522,22 +530,24 @@
         "mediaPhase",
         "audioBindingGeneration",
         "audioKind",
-        "videoKind"
+        "videoKind",
+        "gainOrigin"
       ]);
-      if (!data || data.namespace !== "cheese-knife" || data.protocol !== 2 || data.type !== "config" || typeof data.requestId !== "string" || !data.requestId.length || data.requestId.length > 128 || !KnifeMediaProfiles.isCounter(data.deliverySequence) || !KnifeMediaProfiles.isCounter(data.audioBindingGeneration)) return null;
+      if (!data || data.namespace !== "cheese-knife" || data.protocol !== 3 || data.type !== "config" || typeof data.requestId !== "string" || !data.requestId.length || data.requestId.length > 128 || !KnifeMediaProfiles.isCounter(data.deliverySequence) || !KnifeMediaProfiles.isCounter(data.audioBindingGeneration)) return null;
       const context = exact(data.context, ["documentGeneration", "routePath", "channelId", "playerGeneration"]);
       if (!context || !KnifeMediaProfiles.isCounter(context.documentGeneration) || context.documentGeneration < 1 || !KnifeMediaProfiles.isCounter(context.playerGeneration) || typeof context.routePath !== "string" || context.routePath.charCodeAt(0) !== 47 || context.routePath.length > 2048 || context.channelId !== null && !KnifeMediaProfiles.isChannelId(context.channelId) || context.documentGeneration !== expected.documentGeneration || context.routePath !== expected.routePath || context.channelId !== expected.channelId || context.playerGeneration !== expected.playerGeneration) return null;
       const baseConfig = copyRecord(data.baseConfig, false), effectiveConfig = copyRecord(data.effectiveConfig, false);
       const scalars = (record) => !!record && Reflect.ownKeys(record).length <= 128 && Object.values(record).every((value) => typeof value === "boolean" || typeof value === "number" && Number.isFinite(value));
       if (!scalars(baseConfig) || !scalars(effectiveConfig)) return null;
-      const mediaFields = new Set([...KnifeMediaProfiles.audioFields, ...KnifeMediaProfiles.videoFields].map((field) => field.id));
+      const mediaFields = new Set([...KnifeMediaProfiles.audioFieldsV2, ...KnifeMediaProfiles.videoFields].map((field) => field.id));
       for (const config of [baseConfig, effectiveConfig]) for (const domain of ["audio", "video"]) {
-        const fields = domain === "audio" ? KnifeMediaProfiles.audioFields : KnifeMediaProfiles.videoFields;
-        if (!KnifeMediaProfiles.validateValues(domain, Object.fromEntries(fields.map((field) => [field.id, ownValue(config, field.id)]))).ok) return null;
+        const fields = domain === "audio" ? KnifeMediaProfiles.audioFieldsV2 : KnifeMediaProfiles.videoFields;
+        const values = Object.fromEntries(fields.map((field) => [field.id, ownValue(config, field.id)]));
+        if (!(domain === "audio" ? KnifeMediaProfiles.validateAudioV2(values) : KnifeMediaProfiles.validateValues("video", values)).ok) return null;
       }
       if (Object.keys(baseConfig).length !== Object.keys(effectiveConfig).length || !Object.entries(baseConfig).every(([key, value]) => Object.hasOwn(effectiveConfig, key) && (mediaFields.has(key) || Object.is(value, ownValue(effectiveConfig, key))))) return null;
       const version = exact(data.version, ["globalRevision", "mediaRevision"]);
-      if (!version || version.globalRevision !== null && !(KnifeMediaProfiles.isCounter(version.globalRevision) && version.globalRevision < Number.MAX_SAFE_INTEGER) || version.mediaRevision !== null && !KnifeMediaProfiles.isCounter(version.mediaRevision) || !["ready", "repair-required"].includes(data.revisionStatus) || version.globalRevision === null !== (data.revisionStatus === "repair-required") || !["global", "scoped", "repair-required"].includes(data.profileState) || !["pending", "ready", "limited"].includes(data.mediaPhase) || !["global", "channel"].includes(data.audioKind) || !["global", "channel"].includes(data.videoKind)) return null;
+      if (!version || version.globalRevision !== null && !(KnifeMediaProfiles.isCounter(version.globalRevision) && version.globalRevision < Number.MAX_SAFE_INTEGER) || version.mediaRevision !== null && !KnifeMediaProfiles.isCounter(version.mediaRevision) || !["ready", "repair-required"].includes(data.revisionStatus) || version.globalRevision === null !== (data.revisionStatus === "repair-required") || !["global", "scoped", "repair-required"].includes(data.profileState) || !["pending", "ready", "limited"].includes(data.mediaPhase) || !["global", "channel"].includes(data.audioKind) || !["global", "channel"].includes(data.videoKind) || !["site-legacy", "global-owned", "channel-owned"].includes(data.gainOrigin) || data.gainOrigin === "channel-owned" && data.audioKind !== "channel" || data.gainOrigin === "site-legacy" !== (effectiveConfig.gainInherited === true)) return null;
       const scoped = data.audioKind === "channel" || data.videoKind === "channel";
       if (scoped && !context.channelId || data.profileState === "scoped" !== scoped || data.profileState === "repair-required" && data.mediaPhase !== "limited" || data.mediaPhase === "ready" && version.mediaRevision === null || data.mediaPhase === "pending" && (scoped || !Object.entries(baseConfig).every(([key, value]) => Object.is(value, ownValue(effectiveConfig, key))))) return null;
       const i18n = copyRecord(data.i18n, true);
@@ -555,7 +565,8 @@
         mediaPhase: data.mediaPhase,
         audioBindingGeneration: data.audioBindingGeneration,
         audioKind: data.audioKind,
-        videoKind: data.videoKind
+        videoKind: data.videoKind,
+        gainOrigin: data.gainOrigin
       };
     } catch {
       return null;
@@ -603,7 +614,8 @@
             revisionStatus: "repair-required",
             audioBindingGeneration: 0,
             audioKind: "global",
-            videoKind: "global"
+            videoKind: "global",
+            gainOrigin: "site-legacy"
           };
           runtime.config = { ...runtime.baseConfig };
           runtime.notify();
@@ -612,7 +624,7 @@
       }
       environment.window.postMessage({
         namespace: "cheese-knife",
-        protocol: 2,
+        protocol: 3,
         type: "config-request",
         requestId: runtime.mediaRequestId,
         context: { ...runtime.media.context }
@@ -657,8 +669,15 @@
     const onMessage = (event) => {
       const message = event;
       if (disposed || suspended || message.source !== environment.window || message.origin !== environment.location.origin) return;
+      const preview = readGainPreviewEnvelope(message, runtime.media.context);
+      if (preview) {
+        const video = runtime.state.player?.video;
+        if (video && preview.requestId === runtime.mediaRequestId && preview.audioBindingGeneration === runtime.media.audioBindingGeneration)
+          runtime.audio?.applyPreviewGain(video, preview.value, preview.context);
+        return;
+      }
       try {
-        if (!message.data || typeof message.data !== "object" || Object.getOwnPropertyDescriptor(message.data, "protocol")?.value !== 2 || Object.getOwnPropertyDescriptor(message.data, "type")?.value !== "config") return;
+        if (!message.data || typeof message.data !== "object" || Object.getOwnPropertyDescriptor(message.data, "protocol")?.value !== 3 || Object.getOwnPropertyDescriptor(message.data, "type")?.value !== "config") return;
       } catch {
         return;
       }
@@ -676,7 +695,8 @@
         revisionStatus: envelope.revisionStatus,
         audioBindingGeneration: envelope.audioBindingGeneration,
         audioKind: envelope.audioKind,
-        videoKind: envelope.videoKind
+        videoKind: envelope.videoKind,
+        gainOrigin: envelope.gainOrigin
       };
       runtime.i18n = envelope.i18n;
       runtime.configReady = true;
@@ -882,7 +902,7 @@
       () => runtime.diagnostics()
     );
     runtime = {
-      ownerProtocol: 2,
+      ownerProtocol: 3,
       requestId: `knife-${Date.now().toString(36)}`,
       config: {},
       baseConfig: {},
@@ -895,7 +915,8 @@
         revisionStatus: "repair-required",
         audioBindingGeneration: 0,
         audioKind: "global",
-        videoKind: "global"
+        videoKind: "global",
+        gainOrigin: "site-legacy"
       },
       i18n: {},
       configReady: false,

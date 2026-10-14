@@ -1,4 +1,4 @@
-import { readScopedConfigEnvelope } from './bridge';
+import { readScopedConfigEnvelope, readGainPreviewEnvelope } from './bridge';
 import type { KnifeRuntime, RuntimeEnvironment, RuntimeLifecycle } from './contracts';
 
 const interesting = 'video, button, section, aside, [role="tablist"]';
@@ -33,12 +33,12 @@ export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvir
       runtime.setStatus('mediaSettings','limited',runtime.configReady ? 'scoped-config-unavailable' : 'reload-required');
       if (runtime.configReady) {
         runtime.media = {...runtime.media,phase:'limited',version:{globalRevision:null,mediaRevision:null},profileState:'global',
-          revisionStatus:'repair-required',audioBindingGeneration:0,audioKind:'global',videoKind:'global'};
+          revisionStatus:'repair-required',audioBindingGeneration:0,audioKind:'global',videoKind:'global',gainOrigin:'site-legacy'};
         runtime.config = {...runtime.baseConfig};runtime.notify();
       }
       return;
     }
-    environment.window.postMessage({ namespace:'cheese-knife',protocol:2,type:'config-request',requestId:runtime.mediaRequestId,
+    environment.window.postMessage({ namespace:'cheese-knife',protocol:3,type:'config-request',requestId:runtime.mediaRequestId,
       context:{...runtime.media.context} },environment.location.origin);
     requestTimer = environment.setTimeout(() => { requestTimer = null; requestConfig(); }, 100);
   };
@@ -67,9 +67,16 @@ export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvir
   const onMessage = (event: Event) => {
     const message = event as MessageEvent<unknown>;
     if (disposed || suspended || message.source !== environment.window || message.origin !== environment.location.origin) return;
+    const preview = readGainPreviewEnvelope(message, runtime.media.context);
+    if (preview) {
+      const video = runtime.state.player?.video;
+      if (video && preview.requestId === runtime.mediaRequestId && preview.audioBindingGeneration === runtime.media.audioBindingGeneration)
+        runtime.audio?.applyPreviewGain(video, preview.value, preview.context);
+      return;
+    }
     try {
       if (!message.data || typeof message.data !== 'object' ||
-        Object.getOwnPropertyDescriptor(message.data,'protocol')?.value !== 2 ||
+        Object.getOwnPropertyDescriptor(message.data,'protocol')?.value !== 3 ||
         Object.getOwnPropertyDescriptor(message.data,'type')?.value !== 'config') return;
     } catch { return; }
     runtime.reconcile();
@@ -78,7 +85,7 @@ export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvir
     revision = envelope.deliverySequence;
     runtime.baseConfig = envelope.baseConfig;runtime.config = envelope.effectiveConfig;
     runtime.media = { context:envelope.context,phase:envelope.mediaPhase,version:envelope.version,profileState:envelope.profileState,
-      revisionStatus:envelope.revisionStatus,audioBindingGeneration:envelope.audioBindingGeneration,audioKind:envelope.audioKind,videoKind:envelope.videoKind };
+      revisionStatus:envelope.revisionStatus,audioBindingGeneration:envelope.audioBindingGeneration,audioKind:envelope.audioKind,videoKind:envelope.videoKind,gainOrigin:envelope.gainOrigin };
     runtime.i18n = envelope.i18n;
     runtime.configReady = true;
     if (runtime.media.phase !== 'pending') clearRequest();

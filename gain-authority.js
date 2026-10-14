@@ -15,7 +15,7 @@ var createPlayerGainAuthority = (now = Date.now) => {
     let channelId = null;
     try {
       const url = new URL(native.route);
-      channelId = /^\/(?:live\/)?([a-f0-9]{32})\/?$/i.exec(url.pathname)?.[1]?.toLowerCase() ?? null;
+      channelId = /^\/live\/([a-f0-9]{32})\/?$/i.exec(url.pathname)?.[1]?.toLowerCase() ?? null;
     } catch {
       return failure("gain-context-changed");
     }

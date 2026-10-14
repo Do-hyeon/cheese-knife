@@ -49,7 +49,7 @@ type KnifeMediaResolution = { effectiveConfig: Record<string, KnifeScalar>;
 type KnifeScopedContext = import('../shared/media-contracts').ScopedContext;
 type KnifeScopedSnapshot = { baseConfig: Record<string, KnifeScalar>; effectiveConfig: Record<string, KnifeScalar>;
   styleParameters: KnifeUnknownRecord; version: KnifeMediaVersion; profileState: KnifeMediaResolution['profileState'];
-  revisionStatus: 'ready' | 'repair-required'; audioBindingKey: string; audioKind: 'global' | 'channel'; videoKind: 'global' | 'channel' };
+  revisionStatus: 'ready' | 'repair-required'; audioBindingKey: string; audioKind: 'global' | 'channel'; videoKind: 'global' | 'channel'; gainOrigin: KnifeGainOrigin };
 type KnifeMediaMergeResult = { ok: false; code: string } | { ok: true; changed: boolean; nextStore: KnifeMediaStore;
   globalOperations?: KnifeSettingsOperation[]; channelToken?: KnifeChannelToken; recordRevision?: number; presetToken?: KnifePresetToken };
 type KnifeNewAudioMutation<T> = T extends { domain: 'audio'; values: KnifeAudioValues }

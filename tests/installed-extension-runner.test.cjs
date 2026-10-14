@@ -84,7 +84,7 @@ test('installed E2E runner never overwrites an existing artifact directory', asy
   assert.equal(fixture.events.includes('candidate-remove'), true);
   assert.equal(fixture.events.includes('profile-create'), false);
 });
-for(const mode of ['ok','scenario','close-proof','missing-proof','missing-session','unsupported','dirty-source','changed-source','extra-asset','missing-asset'])test('media runner owns shutdown and preserves failed candidates: '+mode,async()=>{
+for(const qualification of ['media-tab','player-gain']) for(const mode of ['ok','scenario','close-proof','missing-proof','missing-session','unsupported','dirty-source','changed-source','extra-asset','missing-asset'])test(qualification+' runner owns shutdown and preserves failed candidates: '+mode,async()=>{
   const {runInstalledExtensionE2E}=await runnerModule(),f=runnerFixture();
   f.dependencies.platform=mode==='unsupported'?'linux':'win32';
   const buildCandidate=f.dependencies.verifyCandidate;f.dependencies.verifyCandidate=async id=>({...await buildCandidate(id),
@@ -98,7 +98,7 @@ for(const mode of ['ok','scenario','close-proof','missing-proof','missing-sessio
   f.dependencies.mediaScenario=async()=>{f.events.push('media-scenario');if(mode==='scenario')throw Object.assign(Error('scenario'),{code:'media-scenario-failed'});return {mediaTab:{passed:true}};};
   f.dependencies.closeInstalledMediaBrowser=async()=>{f.events.push('close-proof');if(mode==='close-proof')throw Object.assign(Error('close'),{code:'media-close-failed'});
     return {browserCloseAcknowledged:true,browserDisconnected:mode!=='missing-proof',ownedRootClosed:true};};
-  const pending=runInstalledExtensionE2E({runId:'Run1',qualification:'media-tab',dependencies:f.dependencies});
+  const pending=runInstalledExtensionE2E({runId:'Run1',qualification,dependencies:f.dependencies});
   if(mode==='ok'){
     const report=await pending;assert.equal(report.ok,true);assert.equal(report.mediaTab.passed,true);
     assert.ok(f.events.indexOf('close-proof')<f.events.indexOf('context-close'));assert.equal(report.profileRetained,true);assert.equal(f.events.includes('profile-remove'),false);

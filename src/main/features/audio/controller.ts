@@ -17,6 +17,8 @@ interface AudioEntry {
   wanted: boolean;
   generation: number;
   gain: number;
+  sources: number;
+  preview?: { value: number; source: string; document: number; path: string; binding: number } | null;
   listeners: Set<(state: AudioState, gain: number) => void>;
   source?: MediaElementAudioSourceNode;
   dry?: GainNode;
@@ -38,7 +40,7 @@ export function installAudio(target: Window): AudioController | null {
   const browser = target as AudioWindow;
   const key = browser.Symbol.for(registryName);
   const runtime = Object.getOwnPropertyDescriptor(target, key)?.value as KnifeRuntime | undefined;
-  if (runtime?.ownerProtocol !== 2 || runtime.audio) return null;
+  if (runtime?.ownerProtocol !== 3 || runtime.audio) return null;
 
   const entries = new WeakMap<HTMLVideoElement, AudioEntry>();
   const connected = new Set<AudioEntry>();
@@ -48,13 +50,13 @@ export function installAudio(target: Window): AudioController | null {
   const storedGain = (): number => {
     try {
       const value = target.localStorage.getItem('knifeGain');
-      return value == null || !value.trim() ? 1 : number(Number(value), 0, 2, 1);
+      return value == null || !value.trim() || value.length > 64 ? 1 : number(Number(value), 0, 2, 1);
     } catch { return 1; }
   };
   const entryFor = (video: HTMLVideoElement): AudioEntry => {
     let entry = entries.get(video);
     if (!entry) {
-      entry = { video, state: 'off', wanted: false, generation: 0, gain: storedGain(), listeners: new Set() };
+      entry = { video, state: 'off', wanted: false, generation: 0, sources: 0, gain: storedGain(), listeners: new Set() };
       entries.set(video, entry);
     }
     return entry;
@@ -95,6 +97,10 @@ export function installAudio(target: Window): AudioController | null {
     if (!entry.compressor) return;
     if (runtime.selectPlayer()?.video !== entry.video) { bypassEntry(entry);return; }
     if (!runtime.mediaCurrent() || !eligible(entry.video)) { controller.suspend(entry.video);return; }
+    const preview = entry.preview;
+    if (preview && (preview.source !== entry.video.currentSrc || preview.document !== runtime.media.context.documentGeneration ||
+        preview.path !== runtime.media.context.routePath || preview.binding !== runtime.media.audioBindingGeneration)) entry.preview = null;
+    entry.gain = entry.preview?.value ?? (runtime.media.gainOrigin === 'site-legacy' ? storedGain() : number(runtime.config.audioGain, 0, 2, 1));
     const parameters = [
       { parameter: entry.compressor.threshold, configured: runtime.config.compressorThreshold, min: -100, max: 0, fallback: -50 },
       { parameter: entry.compressor.knee, configured: runtime.config.compressorKnee, min: 0, max: 40, fallback: 40 },
@@ -172,6 +178,7 @@ export function installAudio(target: Window): AudioController | null {
           entry.limiter.curve = limiterCurve(); entry.limiter.oversample = 'none';
           if (!current() || generation !== entry.generation || !entry.wanted) return entry.state;
           entry.source = context.createMediaElementSource(video);
+          entry.sources++;
         }
         if (scope.disposed || !current() || generation !== entry.generation || !entry.wanted) {
           connect(entry);bypassEntry(entry);return entry.state;
@@ -198,8 +205,21 @@ export function installAudio(target: Window): AudioController | null {
     setGain(video, value) {
       const entry = entryFor(video);
       entry.gain = number(value, 0, 2, 1);
-      try { target.localStorage.setItem('knifeGain', String(entry.gain)); } catch {}
+      entry.preview = { value: entry.gain, source: video.currentSrc, document: runtime.media.context.documentGeneration,
+        path: runtime.media.context.routePath, binding: runtime.media.audioBindingGeneration };
       apply(entry); announce(entry, entry.state); return entry.gain;
+    },
+    applyPreviewGain(video, value, current) {
+      const expected = runtime.media.context;
+      if (!Number.isFinite(value) || value < 0 || value > 2 || !runtime.mediaCurrent() || runtime.state.player?.video !== video ||
+          !current || !['documentGeneration', 'routePath', 'channelId', 'playerGeneration'].every(key =>
+            Object.getOwnPropertyDescriptor(current, key)?.value === Object.getOwnPropertyDescriptor(expected, key)?.value)) return false;
+      controller.setGain(video, value); return true;
+    },
+    getReadback(video) {
+      const entry = entries.get(video);
+      return { state: entry?.state ?? 'off', wanted: entry?.wanted ?? false, gain: entry?.gain ?? storedGain(),
+        appliedGain: entry?.gainNode?.gain.value ?? null, sources: entry?.sources ?? 0 };
     },
     configure() { for (const entry of connected) apply(entry); },
     bypass(video) {
@@ -236,6 +256,7 @@ export function installAudio(target: Window): AudioController | null {
       }
     }, 1000);
     scope.on(target, 'pagehide', event => {
+      for (const entry of connected) entry.preview = null;
       if (!(event as PageTransitionEvent).persisted) {
         for (const entry of connected) controller.bypass(entry.video);
         scope.dispose();

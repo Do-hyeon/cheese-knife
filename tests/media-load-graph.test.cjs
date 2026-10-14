@@ -38,11 +38,13 @@ test('missing dependency and incorrect generation cannot retire a healthy worker
 test('MAIN runtime owns its shared dependency when a repeated standalone filename is not injected again',t=>{
   const dom=page(playerHTML);t.after(()=>{dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));dom.window.close();});
   load(dom,'web/runtime.js');load(dom,'web/site-adapter.js');const api=runtime(dom);
-  const values={compressorDefault:false,compressorThreshold:-50,compressorKnee:40,compressorRatio:12,compressorAttack:0,compressorRelease:0.25,
+  const values={compressorDefault:false,audioDefault:false,compressorEnabled:true,audioGain:1,gainInherited:true,eqEnabled:false,
+    eq63:0,eq125:0,eq250:0,eq500:0,eq1000:0,eq2000:0,eq4000:0,eq8000:0,normalizerEnabled:false,normalizerTargetDbfs:-20,
+    compressorThreshold:-50,compressorKnee:40,compressorRatio:12,compressorAttack:0,compressorRelease:0.25,
     brightness:1,contrast:1,saturation:1,gamma:1,sharpness:0,arrowSeek:false};
   dom.window.dispatchEvent(new dom.window.MessageEvent('message',{source:dom.window,origin:dom.window.location.origin,
-    data:{namespace:'cheese-knife',protocol:2,type:'config',requestId:api.mediaRequestId,context:{...api.media.context},deliverySequence:1,
+    data:{namespace:'cheese-knife',protocol:3,type:'config',requestId:api.mediaRequestId,context:{...api.media.context},deliverySequence:1,
       baseConfig:values,effectiveConfig:values,i18n:{},version:{globalRevision:0,mediaRevision:0},profileState:'global',revisionStatus:'ready',
-      mediaPhase:'ready',audioBindingGeneration:1,audioKind:'global',videoKind:'global'}}));
+      mediaPhase:'ready',audioBindingGeneration:1,audioKind:'global',videoKind:'global',gainOrigin:'site-legacy'}}));
   assert.equal(api.configReady,true);assert.equal(api.config.arrowSeek,false);assert.equal(api.media.phase,'ready');
 });

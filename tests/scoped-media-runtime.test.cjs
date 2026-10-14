@@ -45,7 +45,7 @@ test('new MAIN modules do not attach controllers to the actual published runtime
   const published=await readPublishedPayload(),source=published.entries.find(entry=>entry.name==='web/runtime.js');assert.ok(source);
   const dom=page();t.after(()=>{dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));dom.window.close();});
   dom.window.eval(source.bytes.toString('utf8'));const key=dom.window.Symbol.for('cheese-knife.runtime.v1'),original=dom.window[key];
-  assert.ok(original);assert.notEqual(original.ownerProtocol,2);load(dom,'media-profiles.js');
+  assert.ok(original);assert.notEqual(original.ownerProtocol,3);load(dom,'media-profiles.js');
   for(const file of ['web/site-adapter.js','web/audio.js','web/player.js','web/preview.js','web/inject.js'])load(dom,file);
   assert.equal(dom.window[key],original);assert.equal(original.adapter,undefined);assert.equal(original.audio,undefined);
   assert.equal(original.player,undefined);assert.equal(original.preview,undefined);assert.equal(original.coordinatorStarted,undefined);
@@ -55,15 +55,16 @@ function parser(t){const dom=page();t.after(()=>dom.window.close());load(dom,'me
     {module,exports:module.exports,KnifeMediaProfiles:dom.window.KnifeMediaProfiles});
   assert.equal(typeof module.exports.readScopedConfigEnvelope,'function','scoped envelope decoder must exist');return module.exports.readScopedConfigEnvelope;}
 function envelope(overrides={}){const audio={compressorDefault:false,compressorThreshold:-50,compressorKnee:40,compressorRatio:12,compressorAttack:0,compressorRelease:0.25};
-  const config={...audio,...values,brightness:1,previewVolume:25};return {namespace:'cheese-knife',protocol:2,type:'config',requestId:'fixture-v2',
+  const expanded={audioDefault:false,compressorEnabled:true,audioGain:1,gainInherited:true,eqEnabled:false,eq63:0,eq125:0,eq250:0,eq500:0,eq1000:0,eq2000:0,eq4000:0,eq8000:0,normalizerEnabled:false,normalizerTargetDbfs:-20};
+  const config={...audio,...expanded,...values,brightness:1,previewVolume:25};return {namespace:'cheese-knife',protocol:3,type:'config',requestId:'fixture-v3',
     context,deliverySequence:1,baseConfig:config,effectiveConfig:{...config,brightness:2},i18n:{},version:{globalRevision:0,mediaRevision:1},
-    profileState:'scoped',revisionStatus:'ready',mediaPhase:'ready',audioBindingGeneration:1,audioKind:'global',videoKind:'channel',...overrides};}
-test('v2 decoder accepts complete scoped projection without a catalogue and separates nullable metadata',t=>{
+    profileState:'scoped',revisionStatus:'ready',mediaPhase:'ready',audioBindingGeneration:1,audioKind:'global',videoKind:'channel',gainOrigin:'site-legacy',...overrides};}
+test('v3 decoder accepts complete scoped projection without a catalogue and separates nullable metadata',t=>{
   const read=parser(t),positive=read({data:envelope()},context);assert.ok(positive);assert.equal(positive.effectiveConfig.brightness,2);
   const limited=envelope({version:{globalRevision:null,mediaRevision:null},revisionStatus:'repair-required',profileState:'repair-required',
     mediaPhase:'limited',videoKind:'global',effectiveConfig:envelope().baseConfig});assert.ok(read({data:limited},context));
 });
-test('v2 decoder rejects different context generations and invalid scalar or metadata contracts',t=>{
+test('v3 decoder rejects different context generations and invalid scalar or metadata contracts',t=>{
   const read=parser(t);assert.ok(read({data:envelope()},context),'valid control must pass before negatives');
   for(const update of [{context:{...context,playerGeneration:0}},{context:{...context,routePath:`/live/${B}`,channelId:B}},
     {context:{...context,documentGeneration:2}},{deliverySequence:-1},{audioBindingGeneration:-1},
@@ -127,7 +128,7 @@ test('real ISOLATED and MAIN handshake projects channel values without serializi
   const raw={config:{brightness:1.25,previewVolume:25},mediaProfiles:{...media,presets:[{id:'11111111-1111-4111-8111-111111111111',createdRevision:1,revision:1,
     domain:'video',name:'PRIVATE PRESET LABEL',values}]}};
   const h=connected(t,raw);await flush();assert.equal(h.api.configReady,true);assert.equal(h.api.config.brightness,2);assert.equal(h.api.baseConfig.brightness,1.25);
-  const configs=h.messages.filter(data=>data.type==='config'&&data.protocol===2);assert.ok(configs.length);
+  const configs=h.messages.filter(data=>data.type==='config'&&data.protocol===3);assert.ok(configs.length);
   assert.equal(JSON.stringify(configs).includes('PRIVATE PRESET LABEL'),false);assert.equal(JSON.stringify(configs).includes('presets'),false);
   assert.equal(h.dom.window.document.getElementById('knifeFilter').querySelector('feFuncR').getAttribute('slope'),'1.25');
   assert.equal(h.dom.window.document.getElementById('knifeChannelFilter').querySelector('feFuncR').getAttribute('slope'),'2');
@@ -158,7 +159,7 @@ test('live chat subroute stays base-ready global-only rather than losing the ent
 });
 test('persisted hide retires reads and restored same-context delivery requires a fresh nonce',async t=>{
   const h=connected(t,{config:{brightness:1.25},mediaProfiles:media});await flush();const before=h.api.mediaRequestId;
-  const old=h.messages.filter(data=>data.protocol===2&&data.type==='config').at(-1);assert.ok(old);
+  const old=h.messages.filter(data=>data.protocol===3&&data.type==='config').at(-1);assert.ok(old);
   h.dom.window.dispatchEvent(new h.dom.window.PageTransitionEvent('pagehide',{persisted:true}));
   sendEnvelope(h.dom,{...old,deliverySequence:999});
   h.dom.window.dispatchEvent(new h.dom.window.PageTransitionEvent('pageshow',{persisted:true}));await flush();
@@ -173,5 +174,5 @@ test('global default ON is not requested while scoped data waits or after confir
   load(h.dom,'web/audio.js');let requests=0;const enable=h.api.audio.setEnabled;
   h.api.audio.setEnabled=(element,enabled)=>{if(enabled)requests++;return enable(element,enabled);};
   await flush();assert.equal(h.api.media.phase,'pending');assert.equal(requests,0);
-  h.release();await flush();assert.equal(h.api.media.phase,'ready');assert.equal(h.api.config.compressorDefault,false);assert.equal(requests,0);
+  h.release();await flush();assert.equal(h.api.media.phase,'ready');assert.equal(h.api.config.audioDefault,false);assert.equal(h.api.baseConfig.compressorDefault,true);assert.equal(requests,0);
 });

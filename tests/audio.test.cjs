@@ -45,7 +45,7 @@ function setup(t, suspended = false, manualClock = false, suppliedConfig = { com
   load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom, suppliedConfig);
   // Exercise the controller's own numeric clamps, independently of the v2 projection decoder.
   if (!runtime(dom).configReady) deliver(dom, {});
-  runtime(dom).config = suppliedConfig;
+  runtime(dom).config = { ...suppliedConfig, audioDefault: suppliedConfig.audioDefault ?? suppliedConfig.compressorDefault ?? false };
   const statusChanges = [];
   const setStatus = runtime(dom).setStatus;
   runtime(dom).setStatus = (...args) => { statusChanges.push(args); return setStatus(...args); };
@@ -110,11 +110,13 @@ test('location change during source creation never engages the previous channel 
   const gains=nodes.filter(node=>node.type==='gain');assert.equal(gains[0].gain.value,1);assert.equal(gains[1].gain.value,0);
 });
 function scopedAudioFrame(dom,base,effective,{phase='ready',binding=1,sequence=2,channel=false}={}) {
+  const canonicalBase={...base,audioDefault:base.compressorDefault};
+  const canonicalEffective={...effective,audioDefault:effective.compressorDefault,compressorDefault:base.compressorDefault};
   const api=runtime(dom);dom.window.dispatchEvent(new dom.window.MessageEvent('message',{source:dom.window,origin:dom.window.location.origin,
-    data:{namespace:'cheese-knife',protocol:2,type:'config',requestId:api.mediaRequestId,context:{...api.media.context},deliverySequence:sequence,
-      baseConfig:base,effectiveConfig:effective,i18n:api.i18n,version:phase==='pending'?{globalRevision:null,mediaRevision:null}:{globalRevision:0,mediaRevision:channel?1:0},
+    data:{namespace:'cheese-knife',protocol:3,type:'config',requestId:api.mediaRequestId,context:{...api.media.context},deliverySequence:sequence,
+      baseConfig:canonicalBase,effectiveConfig:canonicalEffective,i18n:api.i18n,version:phase==='pending'?{globalRevision:null,mediaRevision:null}:{globalRevision:0,mediaRevision:channel?1:0},
       profileState:channel?'scoped':'global',revisionStatus:phase==='pending'?'repair-required':'ready',mediaPhase:phase,
-      audioBindingGeneration:binding,audioKind:channel?'channel':'global',videoKind:'global'}}));
+      audioBindingGeneration:binding,audioKind:channel?'channel':'global',videoKind:'global',gainOrigin:canonicalEffective.gainInherited===false?'global-owned':'site-legacy'}}));
 }
 for(const manual of ['none','on','off'])test('limited fallback to confirmed default OFF preserves '+manual+' intent',async t=>{
   const {dom,audio,video,sources,nodes,time}=setup(t,false,false,{}, {clock:true}),api=runtime(dom);
@@ -447,14 +449,14 @@ test('sidebar identity changes and player UI reparenting preserve compression', 
   assert.equal(dom.window.document.querySelectorAll('.knife-comp').length, 1);
 });
 
-test('Gain changes schedule a short transition while UI and stored target update immediately', async t => {
+test('Gain previews schedule a short transition without writing the legacy site target', async t => {
   const { audio, video, nodes, context, dom } = setup(t);
   await audio.setEnabled(video, true);
   const compressor = nodes.find(node => node.type === 'compressor');
   const parameter = [...compressor.outputs][0].gain;
   context().currentTime = 1;
   assert.equal(audio.setGain(video, 1.5), 1.5);
-  assert.equal(dom.window.localStorage.getItem('knifeGain'), '1.5');
+  assert.equal(dom.window.localStorage.getItem('knifeGain'), null);
   assert.deepEqual(parameter.events.slice(-3), [['cancel',1],['set',1,1],['ramp',1.5,1.01]]);
 });
 
@@ -483,8 +485,8 @@ test('unchanged Gain during configuration or repeated enable does not restart it
   assert.deepEqual(parameter.events.slice(-3),[['cancel',3.1],['set',1.5,3.1],['ramp',0,3.11]]);
 });
 
-test('source-creation retry initializes the replacement Gain node at the stored target', async t => {
-  const { dom, audio, video, nodes, context } = setup(t);
+test('source-creation retry initializes the replacement Gain node at the confirmed global target', async t => {
+  const { dom, audio, video, nodes, context } = setup(t, false, false, { audioGain: 1.5, gainInherited: false });
   audio.setGain(video, 1.5);
   // First attempt creates the context but fails before intercepting the video.
   const original = video.currentSrc;
@@ -493,7 +495,7 @@ test('source-creation retry initializes the replacement Gain node at the stored 
   const second = video.cloneNode(); video.replaceWith(second);
   Object.defineProperty(second,'currentSrc',{value:original});
   runtime({window:second.ownerDocument.defaultView}).reconcile();
-  deliver(dom,{});
+  deliver(dom,{audioGain:1.5,gainInherited:false});
   const createSource = context().createMediaElementSource;
   context().createMediaElementSource = () => { throw new Error('temporary source failure'); };
   await audio.setEnabled(second,true);

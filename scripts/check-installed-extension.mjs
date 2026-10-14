@@ -589,7 +589,9 @@ const relativeOwnedPath = (root, absolute) => {
 
 export async function runInstalledExtensionE2E({ headed = false, runId, qualification, dependencies = {} } = {}) {
   if (!/^[A-Za-z0-9]{1,64}$/.test(runId || '')) throw runnerError('installed-e2e-run-id-invalid');
-  if (qualification !== undefined && qualification !== 'media-tab') throw runnerError('installed-e2e-qualification-invalid');
+  if (qualification !== undefined && !['media-tab', 'player-gain'].includes(qualification)) throw runnerError('installed-e2e-qualification-invalid');
+  if (qualification === 'player-gain' && (typeof dependencies.mediaScenario !== 'function' || typeof dependencies.expectedMediaFiles !== 'function')) throw runnerError('player-gain-scenario-required');
+  const nativeQualification = qualification !== undefined;
   const startedAt = Date.now();
   const deps = { ...defaultDependencies, ...dependencies };
   const files = await deps.openRepository();
@@ -606,13 +608,13 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
 
   const remember = error => { if (!primaryError) primaryError = error; };
   try {
-    if (qualification === 'media-tab') {
+    if (nativeQualification) {
       if (deps.platform !== 'win32') throw runnerError('media-qualification-platform-unsupported');
       source = await deps.sourceAttestation(files);
     }
     const candidate = await deps.verifyCandidate(runId);
     candidateBuilt = true;
-    if (qualification === 'media-tab' && !isDeepStrictEqual(candidate.files, await deps.expectedMediaFiles(files))) throw runnerError('media-candidate-assets-invalid');
+    if (nativeQualification && !isDeepStrictEqual(candidate.files, await deps.expectedMediaFiles(files))) throw runnerError('media-candidate-assets-invalid');
     await deps.checkPackage(candidate.dist);
     await files.ensureDirectory('output/playwright');
     if (await files.lstat(artifactRelative, { optional: true })) throw runnerError('installed-artifact-exists');
@@ -630,7 +632,7 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
     };
     let launched = await deps.launchInstalledExtension(launchOptions);
     context = launched.context;
-    if (qualification === 'media-tab') {
+    if (nativeQualification) {
       launched = await deps.refreshTransitionWorker(launched);context = launched.context;
       browserSession = await deps.openMediaBrowserSession(context);
       if (!browserSession || typeof browserSession.send !== 'function' || typeof browserSession.on !== 'function' || typeof browserSession.off !== 'function') throw runnerError('media-browser-session-unavailable');
@@ -650,7 +652,7 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
       traceStopped = false;
       return launched;
     };
-    const sections = qualification === 'media-tab'
+    const sections = nativeQualification
       ? await deps.mediaScenario({ ...launched, responses, artifactPath, browserSession })
       : await deps.scenario({ ...launched, responses, artifactPath, restartSession });
     await context.tracing.stop();
@@ -672,29 +674,29 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
       }
     }
   } finally {
-    if (qualification === 'media-tab' && context) {
+    if (nativeQualification && context) {
       try {
         shutdownProof = await deps.closeInstalledMediaBrowser({ context, browserSession, profilePath });
         if (!shutdownProof || shutdownProof.browserCloseAcknowledged !== true || shutdownProof.browserDisconnected !== true || shutdownProof.ownedRootClosed !== true) throw runnerError('media-close-unconfirmed');
       } catch (error) { remember(error); }
     }
-    if (context && (qualification !== 'media-tab' || shutdownProof?.browserCloseAcknowledged && shutdownProof?.browserDisconnected && shutdownProof?.ownedRootClosed)) {
+    if (context && (!nativeQualification || shutdownProof?.browserCloseAcknowledged && shutdownProof?.browserDisconnected && shutdownProof?.ownedRootClosed)) {
       try { await context.close(); } catch (error) { remember(error); }
     }
-    if (profilePath && qualification !== 'media-tab') {
+    if (profilePath && !nativeQualification) {
       try { await files.removeTree(relativeOwnedPath(files.root, profilePath)); } catch (error) { remember(error); }
     }
-    if (candidateBuilt && qualification !== 'media-tab') {
+    if (candidateBuilt && !nativeQualification) {
       try { await deps.removeCandidate(runId); } catch (error) { remember(error); }
     }
   }
 
-  if (qualification === 'media-tab' && source) {
+  if (nativeQualification && source) {
     try { after = await deps.sourceAttestation(files);if (!isDeepStrictEqual(source, after)) throw runnerError('media-source-changed'); }
     catch (error) { remember(error); }
   }
   if (primaryError && report?.ok) report = { ok: false, runId, error: { code: primaryError?.code || 'installed-e2e-cleanup-failed' } };
-  if (qualification === 'media-tab' && report) report = { ...report, qualification, shutdown: shutdownProof ?? null,
+  if (nativeQualification && report) report = { ...report, qualification, shutdown: shutdownProof ?? null,
     profileRetained: !!profilePath, candidateRetained: candidateBuilt, source, after };
   if (report) report.durationMs = Date.now() - startedAt;
   if (artifactCreated) {

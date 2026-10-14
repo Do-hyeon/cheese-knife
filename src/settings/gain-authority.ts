@@ -26,7 +26,7 @@ var createPlayerGainAuthority = (now: () => number = Date.now) => {
     let channelId: string | null = null;
     try {
       const url = new URL(native.route);
-      channelId = /^\/(?:live\/)?([a-f0-9]{32})\/?$/i.exec(url.pathname)?.[1]?.toLowerCase() ?? null;
+      channelId = /^\/live\/([a-f0-9]{32})\/?$/i.exec(url.pathname)?.[1]?.toLowerCase() ?? null;
     } catch { return failure('gain-context-changed'); }
     const global = KnifeMediaProfiles.projectGlobalAudio((raw.config ?? {}) as Record<string, KnifeScalar>);
     const channel = read.store.channels.find(row => row.channelId === channelId);
