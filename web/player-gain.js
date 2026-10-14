@@ -62,7 +62,7 @@
     const state = owner.phase === "ready" && owner.view?.origin === "site-legacy" ? "\uAE30\uC874 \uAC12" : owner.phase === "ready" && owner.view?.scope === "channel" && owner.view.inherited ? "\uC0C1\uC18D" : Object.getOwnPropertyDescriptor(phases, owner.phase)?.value;
     owner.badge.textContent = `${scope} \xB7 ${state}`;
     owner.range.setAttribute("aria-label", `Gain \xB7 ${scope}`);
-    owner.host.hidden = owner.pzp.querySelector(".knife-comp")?.getAttribute("data-state") !== "on";
+    owner.host.hidden = !["on", "pending"].includes(owner.pzp.querySelector(".knife-comp")?.getAttribute("data-state") ?? "");
     owner.host.style.display = owner.host.hidden ? "none" : "inline-flex";
   }
   function preview(owner, value) {

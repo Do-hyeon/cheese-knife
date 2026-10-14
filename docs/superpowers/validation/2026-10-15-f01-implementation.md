@@ -34,3 +34,14 @@ manifest의 Gain 자산은 승인된 별도 top-frame ISOLATED 항목으로 이�
 - `summary.json`의 browserCloseAcknowledged/browserDisconnected/ownedRootClosed 모두true. 전후 sourceCommit/sourceSha256/lock/manifest/toolchain 일치. sourceSha256=`775a8a5a66a69c3848011a10bf5437739fcde85475f42841847a0bbee0ccfdb3`.
 - private 증거: `output/f01-native-20261015/source/output/playwright/installed-extension-F01qualification/{summary.json,trace.zip,failure.png}`. candidate와 종료된 profile도 보존했다.
 - T3 완료/PASS가 아니므로 T4–T9·Astra max whole-feature 최종 검토는 시작하지 않는다. 후속 방향 승인 전 구현·추가 Native 실행 없음. 권장안은 같은 권한 경계/수치 계약을 유지한 포커스/알림 경쟁 보완 설계와 회귀, 새 checkpoint의 재검증이다. iframe/WAR/추가 권한·임시-only 우회는 제안하지 않는다.
+
+## T3 추가 승인 뒤 원인 조사·보완
+
+사용자가 입력 포커스/저장 알림 경쟁의 조사·같은 권한 경계의 보완 설계/회귀/새 checkpoint 재검증을 승인했다. 이전 STOP은 이 범위에서 해제됐으며 이전 실패/미실행 결과는 그대로 보존한다.
+
+- 읽기 전용 관측만 추가한 c35863c에서 같은 실패를 재현했다. blur는 `phase=saving/disabled=false`였다. 처음의 loading/disabled 가설은 이 재현의 원인이 아니었다.
+- 806e83b의 표시 상태 관측에서 544.6ms blur 시 `hidden=true/master=pending/disabled=false`를 확인했다. 이어 `display=none`, 이후 ON 복귀해도 focus=false였다. 두 진단 모두 새 자기 profile에서 실행했고 종료 증명3개true/전후 source 일치를 확인했다. 진단의 실패를 qualification 성공으로 계산하지 않는다.
+- 연결 흐름: 저장 알림→bridge의 scoped pending 전달→MAIN의 안전한 audio.suspend→master 상태 pending→ISOLATED render가 on 이외를 숨김→포커스 소실→다음 ArrowRight가 Gain에 도착하지 않음. config 재검증이나 DSP bypass 자체는 안전 경계이므로 바꾸지 않는다.
+- 설계/수정: render의 표시 조건만 on 또는 pending으로 바꾼다. off/unavailable/master 없음은 숨김을 유지한다. focus() 강제 복원·임시 저장·새 writer·probe 생략·알림 무시·권한/자산 증가는 없다. 다른 조작부 focus를 빼앗지 않는다.
+- 회귀 `wanted master pending keeps the owned Gain visible without refocusing another control`에서 기존 구현은 hidden=true로 RED, 최소 한 줄 수정 뒤 집중27개 GREEN. 생산 authority·MAIN setGain 쓰기0·closed-root·재배치·무효화 테스트도 포함한다. Native runner는 Home 저장 후 포커스, 재클릭 없는 ArrowRight 저장 후 포커스를 각각 읽어서 확인하도록 강화했다.
+- 보완 source 전체1459개 중1458통과/실패0/기존private증거1skip·9개 기반/build/package 통과(63.633초). dist61/runtime19 유지. 새 checkpoint Native 재검증을 진행하며, 현재 이 보완의 실제 성공은 아직 미확정이다.

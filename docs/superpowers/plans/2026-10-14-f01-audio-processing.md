@@ -101,9 +101,11 @@ runtime은 기존 settings transform(런타임 import/export 금지)와 MAIN bun
 
 기존 실패09f0cdf와 증거는 보존한다. 이번 승인은 입력 포커스/저장 알림 경쟁의 원인 조사·같은 권한 경계의 보완 설계·회귀·새 checkpoint 재검증을 포함한다. Native inline을 유지하며 새 권한/자산/전송/일반 writer·기존 Chrome/P09 변경·push/PR은 없다.
 
-- [ ] 기존 runner의 동일 CDP/자기 closed range에 읽기 전용 focus/blur/key/input/phase 관측(최대128개)을 추가하고 별도 clean 진단 checkpoint로 재현한다. 원인 미확정 상태에서 생산 코드를 수정하지 않는다. 관측은 저장·포커스·입력·권한을 바꾸지 않는다.
+- [x] 기존 runner의 동일 CDP/자기 closed range에 읽기 전용 focus/blur/key/input/phase 관측(최대128개)을 추가했다. 806e83b의 실제 재현에서 `saving/master=pending/hidden=true/disabled=false` 순간 blur를 확인했다. 생산 코드 수정 전 관측이며 저장·포커스·입력·권한을 바꾸지 않았다.
 - [ ] 관측과 일치하는 최소 실패 테스트를 먼저 실행한다. `player-gain.ts`의 준비/저장/알림/표시 경계만 보완하며 trusted intent·fresh native probe·ticket/cold/conflict·명시 폐기·저장 손실 거부는 유지한다. unrelated focus/실제 다른 조작부로 이동한 사용자의 focus를 빼앗지 않는다.
 - [ ] 원인·보완·대조를 아래 검증 기록에 남긴다. 집중·전체·기반/생성/패키지 검사를 통과시킨 뒤 새 clean checkpoint/물리 후보에서 원래 qualification·negative를 실행한다. timeout/대상 없음/새 gate 실패를 PASS로 계산하지 않는다. 계약 확대나 새 원인으로 중지 조건이 생기면 보고한다.
+
+보완 설계: `render(owner)`만 master `on/pending`에서 표시를 유지한다. `pending`은 현재 ON 의도가 있으나 config/DSP 준비를 기다리는 상태이지 OFF가 아니다. `off/unavailable`·master 없음에서는 계속 숨긴다. focus()로 강제 복원하거나 storage 알림/승인·probe를 생략하지 않는다. Gain actor의 loading/failed/conflict·retirement 잠금, trusted intent·native probe·broker 쓰기 경계는 변경0이다. 실제 pending 동안 DSP bypass 안전 동작도 바꾸지 않는다. 회귀는 pending 표시 유지/실제 OFF 숨김/다른 조작부 focus 유지/합성 저장0 및 원래 Home→ArrowRight 연속 실제 입력으로 증명한다.
 
 ## Task 4 — 전체 오디오 상태·고정 EQ·기존 출력 보호
 

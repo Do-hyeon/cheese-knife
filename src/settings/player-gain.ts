@@ -57,7 +57,7 @@
       : Object.getOwnPropertyDescriptor(phases, owner.phase)?.value as string;
     owner.badge.textContent = `${scope} · ${state}`;
     owner.range.setAttribute('aria-label', `Gain · ${scope}`);
-    owner.host.hidden = owner.pzp.querySelector('.knife-comp')?.getAttribute('data-state') !== 'on';
+    owner.host.hidden = !['on', 'pending'].includes(owner.pzp.querySelector('.knife-comp')?.getAttribute('data-state') ?? '');
     owner.host.style.display = owner.host.hidden ? 'none' : 'inline-flex';
   }
   function preview(owner: Owner, value: number) {

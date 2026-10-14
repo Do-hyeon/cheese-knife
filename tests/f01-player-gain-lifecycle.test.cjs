@@ -71,6 +71,21 @@ test('same-video PZP-only owner reparent preserves the actual private host and b
   assert.strictEqual(dom.window.document.querySelector('.knife-gain-owner'), host);
   assert.equal(probe()?.owned, true); assert.equal(probe().bindingId, initial.bindingId);
 });
+test('wanted master pending keeps the owned Gain visible without refocusing another control', async t => {
+  const { dom, roots, messages } = setup(t); await flush();
+  const document = dom.window.document, host = document.querySelector('.knife-gain-owner');
+  const master = document.createElement('div'); master.className = 'knife-comp'; master.dataset.state = 'on';
+  host.parentElement.append(master); await flush();
+  assert.equal(host.hidden, false); assert.equal(host.style.display, 'inline-flex');
+  const other = document.createElement('button'); document.body.append(other); other.focus();
+  master.dataset.state = 'pending'; await flush();
+  assert.equal(host.hidden, false, 'temporary config refresh is not master OFF');
+  assert.equal(host.style.display, 'inline-flex'); assert.strictEqual(document.activeElement, other);
+  assert.equal(roots[0].querySelector('input').disabled, false);
+  assert.equal(messages.filter(item => item.action === 'set-gain').length, 0);
+  master.dataset.state = 'off'; await flush();
+  assert.equal(host.hidden, true); assert.equal(host.style.display, 'none');
+});
 test('reparent while preparation is pending locks input without starting a parallel view request', async t => {
   const { dom, video, messages, replies, roots, probe } = setup(t, false, true); await flush();
   const initial = probe(), host = dom.window.document.querySelector('.knife-gain-owner'), old = dom.window.document.querySelector('.pzp-pc');

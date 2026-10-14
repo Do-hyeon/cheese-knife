@@ -112,9 +112,11 @@ async function scenario({ context, worker, responses, artifactPath }, mode) {
       await wait(readback, value => value.state.gain === 0 && value.state.appliedGain === 0 && value.state.sources === 1, 'player-gain-preview-readback-missing');
       const actual = await readback();
       requireProof(actual.facts.nativePointer > 0 && actual.facts.nativeKey > 0, 'player-gain-native-input-missing');
+      requireProof((await readRange(cdp, point.nodeId)).focused === true, 'player-gain-native-focus-lost');
       await page.keyboard.press('ArrowRight');
       await wait(async () => ({ raw: await stored(), phase: await page.locator('.knife-gain-owner').getAttribute('data-phase') }),
         value => value.raw.config?.audioGain === 0.05 && value.phase === 'ready', 'player-gain-native-keyboard-ack-missing');
+      requireProof((await readRange(cdp, point.nodeId)).focused === true, 'player-gain-native-followup-focus-lost');
       await page.mouse.dblclick(point.x, point.y);
       await wait(async () => ({ raw: await stored(), phase: await page.locator('.knife-gain-owner').getAttribute('data-phase') }),
         value => value.raw.config?.audioGain === 1 && value.raw.config?.gainInherited === false && value.phase === 'ready', 'player-gain-native-reset-ack-missing');
@@ -180,7 +182,7 @@ async function scenario({ context, worker, responses, artifactPath }, mode) {
     requireProof(final.muted === original.muted && final.volume === original.volume && errors.length === 0, 'player-gain-native-original-state-changed');
     await page.screenshot({ path: path.join(artifactPath, 'player-gain.png') });
     return { playerGain: { passed: true, mode, actualNativeSource: true, trustedPointerKeyboard: mode === 'qualification',
-      nativeSenderFrameDocument: mode === 'qualification', ackAndReentry: mode === 'qualification', resetAndZero: mode === 'qualification', syntheticMainRejected: true,
+      nativeSenderFrameDocument: mode === 'qualification', ackAndReentry: mode === 'qualification', resetAndZero: mode === 'qualification', focusAcrossConfigRefresh: mode === 'qualification', syntheticMainRejected: true,
       actualIframeRejected: true, oldDocumentRejected: true, missingOwnerProbeRejected: true, actorIdleOver60: mode === 'qualification', naturalWorkerReplacement,
       originalMuteVolumePreserved: true, physicalAudioNotEvaluated: true }, pageErrors: errors };
   } catch (error) {
