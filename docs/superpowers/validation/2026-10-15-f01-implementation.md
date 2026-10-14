@@ -8,7 +8,8 @@
 | T1 | schema2/전환/alias RED→GREEN, 집중99개, 전체1412개, 9개 기반/build/package | 99통과·전체1411통과/실패0/기존private증거1skip. 후보59/17, 로컬79bf6e2 |
 | T2 | protocol3·Gain 역할/epoch/receipt·legacy 읽기·시간 제한·늦은 raw 경쟁·프리셋 조건 RED→GREEN, 집중61개, 전체1434개 | 61통과·전체1433통과/실패0/기존private증거1skip. 9개 기반/build/package 통과, 후보60/18 |
 | T3 | 실제 소유 조작부·최소 protocol3/공통 master·Blob fixture·Native qualification | 09f0cdf 실패 후 추가 승인·보완. 새6d5b39b 실제 qualification/별도 negative PASS. 과거 실패는 보존 |
-| T4–T9 | EQ/노멀라이저·TAB UI·실제 다중 창/저장 손실·객관 출력·종합/Astra max 최종 검토 | 미착수 |
+| T4 | 고정 EQ/전체 graph·효과 상태·연속 ramp/퇴역·부분 생성 실패 | 신규 RED→GREEN, 집중141개·전체1465통과/실패0/기존private증거1skip·9개 기반/build/package PASS. Native 출력 미검증 |
+| T5–T9 | 노멀라이저·TAB UI·실제 다중 창/저장 손실·객관 출력·종합/Astra max 최종 검토 | 미착수 |
 
 T2 첫 전체 검사에서 worker/생성 테스트의 새 자산 누락5건을 발견해 원본 source와 소비자를 함께 보완했다. Windows의 임시 테스트 디렉터리 rename EPERM1건은 별도 경계67개와 새 전체 실행에서 재발하지 않았다. 기존 F00 pin·published/f00 fixture·private 감사 원장을 새 성공으로 덮지 않았다.
 
@@ -54,3 +55,9 @@ manifest의 Gain 자산은 승인된 별도 top-frame ISOLATED 항목으로 이�
 - qualification과 별도 negative: MAIN/합성 입력·실제 iframe sender·옛 document 실행·소유 조작부 제거 뒤 probe의 정확한 거부/저장 변경0 PASS. negative 모드는 실제 저장 성공을 시험하지 않으므로 보고서의 관련 false 플래그는 정상적인 범위 표시다.
 - 자연 worker 교체는 false(미관측)이며 디버거가 붙은 worker의 자연 suspension 증명이 아니다. TTL 만료 첫 조작은 검증했다. 물리 청감/객관 전체 오디오 출력·EQ/normalizer는 T8과 별도다.
 - private 증거는 `output/f01-native-20261015/source/output/playwright/installed-extension-F01FocusFixed/summary.json` 및 `installed-extension-F01FocusFixedNegative/summary.json`. 기존 실패·진단 후보/프로필/trace도 보존한다. 원본 dist58/version2.13.3·사용자 Chrome/P09·권한·WAR·외부 전송·push/PR/배포 변경 없음.
+
+## T4 전체 graph·고정 EQ
+
+고정8 peaking/Q1·양수 boost 합의 headroom·EQ20ms·compDry/Wet10ms/matched pre-delay·unity normalizer·기존 master/limiter·전체dry/wet를 source1에 연결했다. wet 입력은 명시 stereo speakers downmix이며 native dry 경로는 유지한다. 새 ramp는 현재 진행값에서 이어지고 현재 video만 audioProcessing/효과별 상태를 발표한다. EQ 미지원 rate는 EQ stage identity/limited이며 다른 효과/eligibility를 우회하지 않는다. normalizer는 T5 전까지 unity이고 요청 ON은 limited/not-ready다.
+
+초기 신규6개 RED, 부분 생성 뒤 Gain 예외 RED를 확인했고 보완 후 집중141개/전체1466개 중1465통과·실패0·기존private증거1skip·9개 기반/build/package 통과(66.548초). 기존 unit의 옛 compressor→master 직접 경로 가정은 새 master→limiter 위치로 맞췄다. 기존 frozen native baseline/허용 오차는 변경하지 않았다. 새 source 파일은 bundle 내부 모듈로만 들어가 dist61/runtime19를 유지한다. T4 결과는 native EQ response/전환 출력/전체 음질 성공이 아니며 T8에 남는다.

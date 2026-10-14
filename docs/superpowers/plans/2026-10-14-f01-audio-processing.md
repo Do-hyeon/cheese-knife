@@ -113,11 +113,11 @@ runtime은 기존 settings transform(런타임 import/export 금지)와 MAIN bun
 
 **입출력:** T1 protocol3 유효 AudioValues + T3 preview → source1의 current graph·audioProcessing/효과별 상태. T5은 compMix stereo meter branch만 사용한다.
 
-- [ ] RED: old owner/protocol1/2를 scoped3 성공으로 업캐스트0·registry 덮기0·source 생성0; 현재/퇴역 graph·stale preview/binding 폐기, 수동 master OFF를 저장된 default로 강제 ON0·genuine 새 video/default와 같은 video PZP 보존을 분리한다.
-- [ ] 구현: T3의 owner/config3·모든 guard/현재 scoped Gain·저장 부작용 없는 preview/수동 master action을 재사용하고 EQ/효과별 상태로 확장한다. exact descriptor/bounded scalar·gainOrigin enum·i18n, v1 global/status 제한 및 reload-required를 유지한다. 확정 owned gain은 site 변경으로 덮지 않는다. T3 연결을 재구현하거나 별도 bridge/intent를 만들지 않는다.
-- [ ] 구현: 명세7절 graph를 source1에 연결한다. EQ8개 peaking/Q1·양수 boost 합의 사전 headroom·EQ/headroom20ms, comp의 native pre-delay에 맞춘 compDry·compWet/전체 dryWet10ms, normalizer unity·masterGain10ms·기존 limiter 그대로. 각 진행 중 ramp의 현재 계산값에서 새 ramp를 잇는다. stereo speakers downmix wet2채널/좌우 meter, native/dry 채널 의미 보존. EQ 최소22050Hz 미만은 EQ 제한/dry 사유를 표시하고 source eligibility를 우회하지 않는다.
-- [ ] GREEN: `node --test tests/f01-audio-graph.test.cjs tests/f01-eq.test.cjs tests/audio.test.cjs tests/player.test.cjs tests/scoped-media-runtime.test.cjs`; 기본값·순차/중첩 변경·Gain0·mute/volume0·비유한·resume reject·retired graph status0/late callback0·source1 검증. 수학/가짜 node 검사만으로 native 응답/출력 완료라고 하지 않는다.
-- [ ] 생성 MAIN graph/타입 및 기존 compatibility pin과 새 F01 pin을 함께 확인하고 로컬 커밋한다.
+- [x] RED: old owner/protocol1/2를 scoped3 성공으로 업캐스트0·registry 덮기0·source 생성0; 현재/퇴역 graph·stale preview/binding 폐기, 수동 master OFF를 저장된 default로 강제 ON0·genuine 새 video/default와 같은 video PZP 보존을 분리한다.
+- [x] 구현: T3의 owner/config3·모든 guard/현재 scoped Gain·저장 부작용 없는 preview/수동 master action을 재사용하고 EQ/효과별 상태로 확장한다. exact descriptor/bounded scalar·gainOrigin enum·i18n, v1 global/status 제한 및 reload-required를 유지한다. 확정 owned gain은 site 변경으로 덮지 않는다. T3 연결을 재구현하거나 별도 bridge/intent를 만들지 않는다.
+- [x] 구현: 명세7절 graph를 source1에 연결한다. EQ8개 peaking/Q1·양수 boost 합의 사전 headroom·EQ/headroom20ms, comp의 native pre-delay에 맞춘 compDry·compWet/전체 dryWet10ms, normalizer unity·masterGain10ms·기존 limiter 그대로. 각 진행 중 ramp의 현재 계산값에서 새 ramp를 잇는다. stereo speakers downmix wet2채널/좌우 meter, native/dry 채널 의미 보존. EQ 최소22050Hz 미만은 EQ 제한/dry 사유를 표시하고 source eligibility를 우회하지 않는다.
+- [x] GREEN: `node --test tests/f01-audio-graph.test.cjs tests/f01-eq.test.cjs tests/audio.test.cjs tests/player.test.cjs tests/scoped-media-runtime.test.cjs`; 기본값·순차/중첩 변경·Gain0·mute/volume0·비유한·resume reject·retired graph status0/late callback0·source1 검증. 수학/가짜 node 검사만으로 native 응답/출력 완료라고 하지 않는다.
+- [x] 생성 MAIN graph/타입 및 기존 compatibility pin과 새 F01 pin을 함께 확인하고 로컬 커밋한다.
 
 ## Task 5 — 노멀라이저 순수 제어·실제 automation
 

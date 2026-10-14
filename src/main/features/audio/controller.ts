@@ -1,6 +1,7 @@
 import type { KnifeRuntime } from '../../runtime/contracts';
 import type { AudioController, AudioState } from './contracts';
 import { compressorDelay, limiterCurve } from './curve';
+import { EQ_FREQUENCIES, eqSettings } from './eq';
 
 type AudioWindow = Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
 
@@ -25,6 +26,13 @@ interface AudioEntry {
   wet?: GainNode;
   dryDelay?: DelayNode;
   compressor?: DynamicsCompressorNode;
+  headroom?: GainNode;
+  equalizers?: BiquadFilterNode[];
+  compDelay?: DelayNode;
+  compDry?: GainNode;
+  compWet?: GainNode;
+  compMix?: GainNode;
+  normalizer?: GainNode;
   gainNode?: GainNode;
   limiter?: WaveShaperNode;
   gainTransition?: GainTransition | null;
@@ -46,6 +54,7 @@ export function installAudio(target: Window): AudioController | null {
   const connected = new Set<AudioEntry>();
   const scope = runtime.createScope();
   let context: AudioContext | undefined;
+  const transitions = new WeakMap<AudioParam, GainTransition>();
 
   const storedGain = (): number => {
     try {
@@ -61,19 +70,35 @@ export function installAudio(target: Window): AudioController | null {
     }
     return entry;
   };
+  const publish = (entry: AudioEntry, reason = ''): void => {
+    if (runtime.state.player?.video !== entry.video) return;
+    const status = entry.state === 'on' ? 'ready' : entry.state === 'off' ? 'disabled' : entry.state === 'pending' ? 'pending' : 'limited';
+    runtime.setStatus('audioProcessing', status, reason);
+    runtime.setStatus('compressor', runtime.config.compressorEnabled === false ? 'disabled' : status, reason);
+    const supported = context && eqSettings(runtime.config, context.sampleRate).supported;
+    runtime.setStatus('equalizer', runtime.config.eqEnabled !== true ? 'disabled' : entry.state === 'on' && !supported ? 'limited' : status,
+      runtime.config.eqEnabled === true && entry.state === 'on' && !supported ? 'eq-sample-rate-unsupported' : reason);
+    runtime.setStatus('normalizer', runtime.config.normalizerEnabled !== true ? 'disabled' : entry.state === 'on' ? 'limited' : status,
+      runtime.config.normalizerEnabled === true && entry.state === 'on' ? 'normalizer-not-ready' : reason);
+  };
   const announce = (entry: AudioEntry, state: AudioState, reason = ''): void => {
-    entry.state = state;
-    runtime.setStatus('compressor', state === 'on' ? 'ready' : state === 'off' ? 'disabled' : state === 'pending' ? 'pending' : 'limited', reason);
+    entry.state = state; publish(entry, reason);
     for (const callback of entry.listeners) {
       try { callback(state, entry.gain); }
       catch {}
     }
   };
-  const ramp = (parameter: AudioParam, value: number): void => {
+  const ramp = (parameter: AudioParam, value: number, seconds = 0.01): void => {
     const now = context!.currentTime;
+    const previous = transitions.get(parameter);
+    if (previous?.to === value) return;
+    const progress = previous && previous.end > previous.start ? Math.max(0, Math.min(1, (now - previous.start) / (previous.end - previous.start))) : 1;
+    const from = previous ? previous.from + (previous.to - previous.from) * progress : parameter.value;
+    transitions.set(parameter, { from, to: value, start: now, end: now + seconds });
+    if (!previous && from === value) return;
     parameter.cancelScheduledValues?.(now);
-    parameter.setValueAtTime?.(parameter.value, now);
-    if (parameter.linearRampToValueAtTime) parameter.linearRampToValueAtTime(value, now + 0.01);
+    parameter.setValueAtTime?.(from, now);
+    if (parameter.linearRampToValueAtTime) parameter.linearRampToValueAtTime(value, now + seconds);
     else parameter.value = value;
   };
   const applyGain = (entry: AudioEntry): void => {
@@ -94,7 +119,7 @@ export function installAudio(target: Window): AudioController | null {
     entry.gainTransition = { from, to: entry.gain, start: now, end: now + 0.01 };
   };
   const apply = (entry: AudioEntry): void => {
-    if (!entry.compressor) return;
+    if (!entry.compressor || !entry.headroom || !entry.equalizers || !entry.compWet || !entry.compDry) return;
     if (runtime.selectPlayer()?.video !== entry.video) { bypassEntry(entry);return; }
     if (!runtime.mediaCurrent() || !eligible(entry.video)) { controller.suspend(entry.video);return; }
     const preview = entry.preview;
@@ -109,14 +134,25 @@ export function installAudio(target: Window): AudioController | null {
       { parameter: entry.compressor.release, configured: runtime.config.compressorRelease, min: 0, max: 1, fallback: 0.25 },
     ];
     for (const item of parameters) item.parameter.value = number(item.configured, item.min, item.max, item.fallback);
+    const settings = eqSettings(runtime.config, context!.sampleRate);
+    ramp(entry.headroom!.gain, settings.headroom, 0.02);
+    entry.equalizers.forEach((filter, index) => ramp(filter.gain, settings.levels.at(index)!, 0.02));
+    const compressed = runtime.config.compressorEnabled !== false;
+    ramp(entry.compWet!.gain, compressed ? 1 : 0); ramp(entry.compDry!.gain, compressed ? 0 : 1);
     applyGain(entry);
+    publish(entry);
   };
   const connect = (entry: AudioEntry): void => {
     if (entry.connected) return;
     entry.source!.connect(entry.dryDelay!);
     entry.dryDelay!.connect(entry.dry!);
-    entry.source!.connect(entry.compressor!);
-    entry.compressor!.connect(entry.gainNode!);
+    entry.source!.connect(entry.headroom!);
+    let equalized: AudioNode = entry.headroom!;
+    for (const filter of entry.equalizers!) { equalized.connect(filter); equalized = filter; }
+    equalized.connect(entry.compressor!); equalized.connect(entry.compDelay!);
+    entry.compressor!.connect(entry.compWet!); entry.compDelay!.connect(entry.compDry!);
+    entry.compWet!.connect(entry.compMix!); entry.compDry!.connect(entry.compMix!);
+    entry.compMix!.connect(entry.normalizer!); entry.normalizer!.connect(entry.gainNode!);
     entry.gainNode!.connect(entry.limiter!);
     entry.limiter!.connect(entry.wet!);
     entry.dry!.connect(context!.destination);
@@ -173,7 +209,19 @@ export function installAudio(target: Window): AudioController | null {
           entry.wet = context.createGain(); entry.wet.gain.value = 0;
           entry.dryDelay = context.createDelay(0.02); entry.dryDelay.delayTime.value = compressorDelay(context.sampleRate);
           entry.compressor = context.createDynamicsCompressor();
-          entry.gainNode = context.createGain(); entry.gainTransition = null; apply(entry);
+          entry.gainNode = context.createGain(); entry.gainTransition = null;
+          const settings = eqSettings(runtime.config, context.sampleRate);
+          entry.headroom = context.createGain(); entry.headroom.gain.value = settings.headroom;
+          entry.headroom.channelCount = 2; entry.headroom.channelCountMode = 'explicit'; entry.headroom.channelInterpretation = 'speakers';
+          entry.equalizers = settings.supported ? EQ_FREQUENCIES.map((frequency, index) => {
+            const filter = context!.createBiquadFilter(); filter.type = 'peaking'; filter.frequency.value = frequency; filter.Q.value = 1;
+            filter.gain.value = settings.levels.at(index)!; return filter;
+          }) : [];
+          entry.compDelay = context.createDelay(0.02); entry.compDelay.delayTime.value = compressorDelay(context.sampleRate);
+          entry.compDry = context.createGain(); entry.compDry.gain.value = runtime.config.compressorEnabled === false ? 1 : 0;
+          entry.compWet = context.createGain(); entry.compWet.gain.value = runtime.config.compressorEnabled === false ? 0 : 1;
+          entry.compMix = context.createGain(); entry.normalizer = context.createGain(); entry.normalizer.gain.value = 1;
+          apply(entry);
           entry.limiter = context.createWaveShaper();
           entry.limiter.curve = limiterCurve(); entry.limiter.oversample = 'none';
           if (!current() || generation !== entry.generation || !entry.wanted) return entry.state;
@@ -249,7 +297,7 @@ export function installAudio(target: Window): AudioController | null {
         entry.detachedSince ||= Date.now();
         if (Date.now() - entry.detachedSince >= 5000) {
           controller.bypass(entry.video);
-          for (const node of [entry.source!, entry.compressor!, entry.gainNode!, entry.limiter!, entry.wet!]) node.disconnect();
+          for (const node of [entry.source!, entry.headroom!, ...entry.equalizers!, entry.compressor!, entry.compDelay!, entry.compDry!, entry.compWet!, entry.compMix!, entry.normalizer!, entry.gainNode!, entry.limiter!, entry.wet!]) node.disconnect();
           entry.source!.connect(entry.dryDelay!);
           entry.connected = false; connected.delete(entry);
         }
