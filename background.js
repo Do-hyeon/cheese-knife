@@ -1,7 +1,7 @@
 // Generated from src/settings/background.ts by scripts/settings-runtime.mjs. Do not edit.
 (() => {
   if (typeof importScripts === "function") {
-    importScripts("config.js", "style-schema.js", "settings-contract.js", "settings-broker.js");
+    importScripts("media-profiles.js", "config.js", "style-schema.js", "settings-contract.js", "settings-broker.js");
   }
   const settingsBroker = createSettingsBroker(chrome);
   chrome.runtime.onMessage.addListener(settingsBroker.listener);

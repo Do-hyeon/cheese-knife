@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 
-/** @typedef {'config.js'|'web/runtime.js'|'web/site-adapter.js'|'web/audio.js'|'web/player.js'} AudioArtifactPath */
+/** @typedef {'media-profiles.js'|'config.js'|'web/runtime.js'|'web/site-adapter.js'|'web/audio.js'|'web/player.js'} AudioArtifactPath */
 /** @typedef {{readonly root:string,readonly readFile:(relative:AudioArtifactPath)=>Promise<Uint8Array>}} AudioArtifactReader */
 /** @typedef {{path:AudioArtifactPath,sha256:string}} AudioArtifactFile */
 /** @typedef {{label:string,root:string,files:readonly AudioArtifactFile[]}} AudioArtifactDescription */
@@ -21,6 +21,7 @@ import crypto from 'node:crypto';
 
 /** @type {readonly AudioArtifactPath[]} */
 export const AUDIO_ARTIFACT_FILES = Object.freeze([
+  'media-profiles.js',
   'config.js',
   'web/runtime.js',
   'web/site-adapter.js',

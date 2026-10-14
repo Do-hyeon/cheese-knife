@@ -1,4 +1,5 @@
 /// <reference path="../src/settings/config.ts" />
+/// <reference path="../src/settings/media-profiles.ts" />
 /// <reference path="../src/settings/style-schema.ts" />
 /// <reference path="../src/settings/contract.ts" />
 /// <reference path="../src/settings/client.ts" />
@@ -48,15 +49,23 @@ function event() {
   return { addListener: fn => listeners.add(fn), removeListener: fn => listeners.delete(fn),
     emit: (...args) => { for (const fn of [...listeners]) fn(...args); }, listeners };
 }
-/** @typedef {'config.js'|'style-schema.js'|'settings-contract.js'|'settings-broker.js'} WorkerFile */
-/** @typedef {Readonly<Record<WorkerFile,string>>} WorkerSources */
-/** @type {WorkerFile[]} */ const workerFiles = ['config.js', 'style-schema.js', 'settings-contract.js', 'settings-broker.js'];
+/** @typedef {'config.js'|'style-schema.js'|'settings-contract.js'|'settings-broker.js'} PublishedWorkerFile */
+/** @typedef {PublishedWorkerFile|'media-profiles.js'} F00WorkerFile */
+/** @typedef {{generation:'published',sources:Readonly<Record<PublishedWorkerFile,string>>}|{generation:'f00',sources:Readonly<Record<F00WorkerFile,string>>}} WorkerSources */
+/** @type {PublishedWorkerFile[]} */ const publishedWorkerFiles = ['config.js', 'style-schema.js', 'settings-contract.js', 'settings-broker.js'];
+/** @type {F00WorkerFile[]} */ const workerFiles = ['media-profiles.js', ...publishedWorkerFiles];
 /** @param {unknown} value @returns {WorkerSources} */
 function validatedSources(value) {
-  if (!value || typeof value !== 'object' || Reflect.ownKeys(value).length !== workerFiles.length) throw new Error('fixture-worker-sources');
-  const entries = workerFiles.map(file => [file, Object.getOwnPropertyDescriptor(value, file)?.value]);
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Reflect.ownKeys(value).length !== 2) throw new Error('fixture-worker-sources');
+  const generation = Object.getOwnPropertyDescriptor(value, 'generation')?.value;
+  const sources = Object.getOwnPropertyDescriptor(value, 'sources')?.value;
+  if (!['published', 'f00'].includes(generation) || !sources || typeof sources !== 'object' || Array.isArray(sources)) throw new Error('fixture-worker-sources');
+  const names = generation === 'published' ? publishedWorkerFiles : workerFiles;
+  if (Reflect.ownKeys(sources).length !== names.length) throw new Error('fixture-worker-sources');
+  const entries = names.map(file => [file, Object.getOwnPropertyDescriptor(sources, file)?.value]);
   if (!entries.every(([, source]) => typeof source === 'string' && source.trim())) throw new Error('fixture-worker-sources');
-  return /** @type {WorkerSources} */ (Object.freeze(Object.fromEntries(entries)));
+  // Generation-specific exact own fields and source types were validated above.
+  return /** @type {WorkerSources} */ (Object.freeze({generation,sources:Object.freeze(Object.fromEntries(entries))}));
 }
 /** @param {import('node:test').TestContext} t @param {object} [stored] @param {WorkerSources} [workerSources] */
 function settingsHarness(t, stored = {}, workerSources) {
@@ -166,9 +175,9 @@ function settingsHarness(t, stored = {}, workerSources) {
     selectedSources = sources; versioned = switchingVersion; settledEpoch = undefined;
     worker = page('', getURL('background.html')); windows.push(worker);
     /** @type {{chrome:unknown}} */ (worker.window).chrome = apiFor();
-    if (sources) for (const f of workerFiles) worker.window.eval(sources[f]);
+    if (sources) for (const source of Object.values(sources.sources)) worker.window.eval(source);
     else {
-      for (const f of ['config.js', 'style-schema.js', 'settings-contract.js']) load(worker, f);
+      for (const f of ['media-profiles.js', 'config.js', 'style-schema.js', 'settings-contract.js']) load(worker, f);
       if (fs.existsSync('settings-broker.js')) load(worker, 'settings-broker.js');
     }
     assert.equal(typeof worker.window.createSettingsBroker, 'function', 'settings writer must exist');
@@ -195,7 +204,7 @@ function settingsHarness(t, stored = {}, workerSources) {
   function client(name = 'popup', { fakeTime = false } = {}) {
     const dom = page('', getURL(`${name}.html`)); windows.push(dom); const time = fakeTime ? clock(dom) : undefined;
     const api = apiFor(name); /** @type {{chrome:unknown}} */ (dom.window).chrome = api;
-    for (const f of ['config.js', 'style-schema.js', 'settings-contract.js']) load(dom, f);
+    for (const f of ['media-profiles.js', 'config.js', 'style-schema.js', 'settings-contract.js']) load(dom, f);
     if (fs.existsSync('settings-client.js')) load(dom, 'settings-client.js');
     assert.equal(typeof dom.window.createSettingsClient, 'function', 'settings client must exist');
     const instance = /** @type {FixtureClientFactory} */ (dom.window.createSettingsClient)(api); clients.push(instance);

@@ -20,7 +20,7 @@ function bridge(t, mainFirst, get = async () => ({ config: { arrowSeek: false },
     },
     runtime: { id: 'fixture-extension-id', onMessage: { addListener() {}, removeListener() {} } },
   };
-  load(dom, 'config.js');
+  load(dom, 'media-profiles.js'); load(dom, 'config.js');
   if (mainFirst) { load(dom, 'web/main.js'); load(dom, 'web/runtime.js'); }
   else { load(dom, 'web/runtime.js'); load(dom, 'web/main.js'); }
   t.after(async () => {

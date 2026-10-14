@@ -42,6 +42,7 @@ try {
       i18n: { getMessage: key => key }, runtime: { onMessage: { addListener() {} } },
     };
   });
+  await page.evaluate(await fs.readFile('media-profiles.js', 'utf8'));
   await page.evaluate(await fs.readFile('config.js', 'utf8'));
   await page.evaluate(await fs.readFile('web/main.js', 'utf8'));
   await page.addStyleTag({ content: await fs.readFile('web/main.css', 'utf8') });

@@ -83,110 +83,12 @@ var CONFIGS = [
       {
         id: "videoFilter",
         type: "details",
-        configs: [
-          {
-            id: "brightness",
-            type: "range",
-            min: 0,
-            max: 3,
-            step: 0.05,
-            digits: 2,
-            defaultValue: 1
-          },
-          {
-            id: "contrast",
-            type: "range",
-            min: 0,
-            max: 3,
-            step: 0.05,
-            digits: 2,
-            defaultValue: 1
-          },
-          {
-            id: "saturation",
-            type: "range",
-            min: 0,
-            max: 3,
-            step: 0.05,
-            digits: 2,
-            defaultValue: 1
-          },
-          {
-            id: "gamma",
-            type: "range",
-            min: 0,
-            max: 3,
-            step: 0.05,
-            digits: 2,
-            defaultValue: 1
-          },
-          {
-            id: "sharpness",
-            type: "range",
-            min: 0,
-            max: 10,
-            step: 0.1,
-            digits: 1,
-            defaultValue: 0
-          }
-        ]
+        configs: [...KnifeMediaProfiles.videoFields]
       },
       {
         id: "compressor",
         type: "details",
-        configs: [
-          {
-            id: "compressorDefault",
-            defaultValue: false
-          },
-          {
-            id: "compressorThreshold",
-            type: "range",
-            min: -100,
-            max: 0,
-            step: 1,
-            unit: "dB",
-            defaultValue: -50
-          },
-          {
-            id: "compressorKnee",
-            type: "range",
-            min: 0,
-            max: 40,
-            step: 1,
-            unit: "dB",
-            defaultValue: 40
-          },
-          {
-            id: "compressorRatio",
-            type: "range",
-            min: 1,
-            max: 20,
-            step: 0.5,
-            digits: 1,
-            defaultValue: 12
-          },
-          {
-            id: "compressorAttack",
-            type: "range",
-            min: 0,
-            max: 1,
-            step: 0.01,
-            digits: 2,
-            unit: "s",
-            defaultValue: 0
-          },
-          {
-            id: "compressorRelease",
-            type: "range",
-            min: 0,
-            max: 1,
-            step: 0.01,
-            digits: 2,
-            unit: "s",
-            defaultValue: 0.25
-          }
-        ]
+        configs: [...KnifeMediaProfiles.audioFields]
       }
     ]
   },

@@ -7,7 +7,10 @@ const { JSDOM } = require('jsdom');
 const base = 'https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
 function page(html = '', url = base) {
-  return new JSDOM(`<html><body>${html}</body></html>`, { url, runScripts: 'outside-only', pretendToBeVisual: true });
+  const dom = new JSDOM(`<html><body>${html}</body></html>`, { url, runScripts: 'outside-only', pretendToBeVisual: true });
+  // jsdom omits this native browser encoding API; the real Node implementation is shared.
+  Reflect.set(dom.window, 'TextEncoder', TextEncoder);
+  return dom;
 }
 /** @param {JSDOM} dom @param {string} file */
 function load(dom, file) { dom.window.eval(fs.readFileSync(file, 'utf8')); }

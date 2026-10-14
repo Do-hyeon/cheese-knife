@@ -30,6 +30,7 @@
     {
       "all_frames": true,
       "js": [
+        "media-profiles.js",
         "config.js",
         "web/main.js"
       ],
@@ -65,6 +66,7 @@
     {
       "all_frames": true,
       "js": [
+        "media-profiles.js",
         "web/runtime.js",
         "vendor/hls.light.private.js",
         "web/site-adapter.js",

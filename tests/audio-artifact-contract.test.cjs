@@ -7,7 +7,7 @@ const core=()=>import('../scripts/audio-artifact-core.mjs');
 
 test('artifact hash reader uses exact bytes receiver sequential awaits and late root',async()=>{
   const {describeAudioArtifactFiles}=await core();
-  const paths=['config.js','web/runtime.js','web/site-adapter.js','web/audio.js','web/player.js'];
+  const paths=['media-profiles.js','config.js','web/runtime.js','web/site-adapter.js','web/audio.js','web/player.js'];
   const bytes=Buffer.from([0x99,0x61,0x62,0x63,0x88]),before=Buffer.from(bytes);
   /** @type {string[]} */ const trace=[];
   const reader={get root(){trace.push('root');return 'reader-root';},
@@ -21,14 +21,14 @@ test('artifact hash reader uses exact bytes receiver sequential awaits and late 
   assert.deepEqual(bytes,before);
 });
 
-test('artifact reader stops on second failure and retains rejection identity',async()=>{
+test('artifact reader stops on runtime failure and retains rejection identity',async()=>{
   const {describeAudioArtifactFiles}=await core(),failure=new Error('reader-failure');
   /** @type {string[]} */ const trace=[];
   const reader={get root(){trace.push('root');return 'unused';},
     /** @param {string} relative */
     async readFile(relative){trace.push(relative);if(relative==='web/runtime.js')throw failure;return Buffer.from('abc');}};
   await assert.rejects(describeAudioArtifactFiles(reader,'fixture'),error=>error===failure);
-  assert.deepEqual(trace,['config.js','web/runtime.js']);
+  assert.deepEqual(trace,['media-profiles.js','config.js','web/runtime.js']);
 });
 
 test('actual complete quality measurements metadata and nullable partial comparisons compile and run',async()=>{

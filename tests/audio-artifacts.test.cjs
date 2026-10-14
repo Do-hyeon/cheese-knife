@@ -6,7 +6,7 @@ const { spawnSync } = require('node:child_process');
 
 const load = () => import('../scripts/audio-artifacts.mjs');
 
-const artifactPaths=['config.js','web/runtime.js','web/site-adapter.js','web/audio.js','web/player.js'];
+const artifactPaths=['media-profiles.js','config.js','web/runtime.js','web/site-adapter.js','web/audio.js','web/player.js'];
 const rawReport=()=>({artifact:{label:'source',root:'fixture',files:artifactPaths.map(path=>({path,sha256:'a'.repeat(64)}))},qualityFailures:[]});
 const rawPair=(left,right)=>[{...rawReport(),...left},{...rawReport(),...right}];
 function rawInputs() {
@@ -48,7 +48,7 @@ function rawInputs() {
 
 test('literal raw artifact oracle preserves results exceptions order and plain inputs',async()=>{
   const {compareAudioArtifactReports}=await load();
-  const expected=require('./fixtures/audio-artifact-compatibility.json');
+  const expected=require('./fixtures/f00-audio-artifact-compatibility.json');
   const inputs=rawInputs();
   assert.deepEqual(Object.keys(inputs),Object.keys(expected));
   for(const [name,input] of Object.entries(inputs)) {
@@ -86,7 +86,7 @@ test('legacy artifact exports retain core function frozen list and constant iden
 
 test('independent raw oracle catches tolerance and selected THD mutations in actual core',async()=>{
   const crypto=require('node:crypto'),original=await fs.readFile('scripts/audio-artifact-core.mjs','utf8');
-  const expected=require('./fixtures/audio-artifact-compatibility.json');
+  const expected=require('./fixtures/f00-audio-artifact-compatibility.json');
   const comparator=source=>{
     assert.equal(source.split("import crypto from 'node:crypto';").length,2);
     return Function('crypto',source.replace("import crypto from 'node:crypto';",'').replace(/^export /gm,'')+'\nreturn compareAudioArtifactReports;')(crypto);
@@ -124,6 +124,7 @@ test('public entry hashes actual disk bytes and retains label precedence missing
   // A fresh link destination avoids Windows locks on the just-renamed web directory.
   const linkedRoot=path.join(root,'linked-artifact');
   await fs.mkdir(linkedRoot);
+  await fs.copyFile(path.join(root,'media-profiles.js'),path.join(linkedRoot,'media-profiles.js'));
   await fs.copyFile(path.join(root,'config.js'),path.join(linkedRoot,'config.js'));
   await fs.symlink(path.join(root,'web'),path.join(linkedRoot,'web'),process.platform==='win32'?'junction':'dir');
   await assert.rejects(describeAudioArtifact(linkedRoot,'fixture'),{code:'owned-path-link'});
@@ -134,6 +135,7 @@ async function artifactFixture(t, suffix = '') {
   const root = await fs.mkdtemp(path.join(process.cwd(), 'output', 'test-audio-artifact-'));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   await fs.mkdir(path.join(root, 'web'));
+  await fs.writeFile(path.join(root, 'media-profiles.js'), `media${suffix}`);
   await fs.writeFile(path.join(root, 'config.js'), `config${suffix}`);
   await fs.writeFile(path.join(root, 'web/runtime.js'), `runtime${suffix}`);
   await fs.writeFile(path.join(root, 'web/site-adapter.js'), `adapter${suffix}`);
@@ -172,7 +174,7 @@ test('artifact description hashes every production audio entry file', async t =>
   const root = await artifactFixture(t);
   const description = await describeAudioArtifact(root, 'fixture');
   assert.equal(description.label, 'fixture');
-  assert.equal(description.files.length, 5);
+  assert.equal(description.files.length, 6);
   assert.deepEqual(description.files.map(item => item.path), AUDIO_ARTIFACT_FILES);
   assert.ok(description.files.every(item => /^[a-f0-9]{64}$/.test(item.sha256)));
 });

@@ -1,0 +1,19 @@
+{
+  "background.js": "927f26ce4d86eb5081f0b91a339d8ed3b8996d96b6400a872015b89b5ba318a8",
+  "config.js": "ba3df06cf23bceda9735891d9f9532b5a0909d0f65b65cdb339f1519cf45837c",
+  "media-profiles.js": "b264153b9329b3575bd8c7c6dc1d5cd3eb1c0511b11097f3c07c295aa4976bfc",
+  "permission.js": "fb2ad721eefb5d30c4a3803a957b7f8681bba6614efaabd23094f31c49924cc5",
+  "popup.js": "3433793c200cf0933a6d82a100e4dcd1dfd91692db31ab98464fdc72fef1fe7c",
+  "settings-broker.js": "fc6924fa615ef7c96aadfd1f019320f62d318cc68b9fee78b52e4b81d6dfe27c",
+  "settings-client.js": "25ae1391e38782dcff2c58e75e5910df69591ea91b29a7426c07f0e772c23bc8",
+  "settings-contract.js": "d8e91afdd745967f4a740ebd24789b3f1ce4e1f458df31f9add1bd48b2a2c08c",
+  "style-schema.js": "2eca52b03d282f97d21f143f267f86af86fcbb3ddb2c452edd7d2149df010ccc",
+  "styles.js": "206efcc1a5e15db9574e290b70a7f022f081906c23e96362dd19332ce1e0c33d",
+  "web/audio.js": "fdf323af91303c1635e1eb97681c2a0c17326c20c5f56c840e1c1af99d3fe4eb",
+  "web/inject.js": "99c08685908ea23202eeed03266723184606664e0d5482e375214bf02837505b",
+  "web/main.js": "09a2ceb78799d3fb766823549b64403108c5c9ae63a1c2e6f8682fb8d3aa8307",
+  "web/player.js": "e1c809db8c90368c3199c20a2ace88f95851d013f383c2ca30e59d9e16ff9835",
+  "web/preview.js": "9041cb92052d082a162b6d6d172fa994f1fdedd0d807f34f8d3a0232080aff39",
+  "web/runtime.js": "7d965f3deedf55d9d0b3e7edf6e3922c7774e97402c477499b225bcd5ebd5cd2",
+  "web/site-adapter.js": "ade546c8df9b45239e74365cf7e76117219e4ab4de0299078c8b26ca3117d3d1"
+}

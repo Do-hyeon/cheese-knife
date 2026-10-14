@@ -5,6 +5,7 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 const entries = [
+  { source: 'src/settings/media-profiles.ts', output: 'media-profiles.js', global: 'KnifeMediaProfiles' },
   { source: 'src/settings/config.ts', output: 'config.js', global: 'KnifeHostPolicy' },
   { source: 'src/settings/style-schema.ts', output: 'style-schema.js', global: 'STYLES' },
   { source: 'src/settings/contract.ts', output: 'settings-contract.js', global: 'KnifeSettingsContract' },

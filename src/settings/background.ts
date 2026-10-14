@@ -1,7 +1,7 @@
 declare function importScripts(...urls: string[]): void;
 (() => {
 if (typeof importScripts === 'function') {
-  importScripts('config.js', 'style-schema.js', 'settings-contract.js', 'settings-broker.js');
+  importScripts('media-profiles.js', 'config.js', 'style-schema.js', 'settings-contract.js', 'settings-broker.js');
 }
 const settingsBroker = createSettingsBroker(chrome);
 chrome.runtime.onMessage.addListener(settingsBroker.listener);
