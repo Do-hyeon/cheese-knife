@@ -1,7 +1,8 @@
-import type { KnifeRuntime } from '../../runtime/contracts';
+import type { FeatureStatus, KnifeRuntime, ResourceScope } from '../../runtime/contracts';
 import type { AudioController, AudioState } from './contracts';
 import { compressorDelay, limiterCurve } from './curve';
 import { EQ_FREQUENCIES, eqSettings } from './eq';
+import { createNormalizer, normalizerDbAt, stepNormalizer, type NormalizerControl } from './normalizer';
 
 type AudioWindow = Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext };
 
@@ -33,6 +34,10 @@ interface AudioEntry {
   compWet?: GainNode;
   compMix?: GainNode;
   normalizer?: GainNode;
+  normalizerStatus?: FeatureStatus;
+  meter?: { control: NormalizerControl; splitter: ChannelSplitterNode; left: AnalyserNode; right: AnalyserNode;
+    leftBuffer: Float32Array<ArrayBuffer>; rightBuffer: Float32Array<ArrayBuffer>; scope: ResourceScope;
+    source: string; path: string; document: number } | null;
   gainNode?: GainNode;
   limiter?: WaveShaperNode;
   gainTransition?: GainTransition | null;
@@ -52,6 +57,7 @@ export function installAudio(target: Window): AudioController | null {
 
   const entries = new WeakMap<HTMLVideoElement, AudioEntry>();
   const connected = new Set<AudioEntry>();
+  const meters = new Set<AudioEntry>();
   const scope = runtime.createScope();
   let context: AudioContext | undefined;
   const transitions = new WeakMap<AudioParam, GainTransition>();
@@ -78,11 +84,11 @@ export function installAudio(target: Window): AudioController | null {
     const supported = context && eqSettings(runtime.config, context.sampleRate).supported;
     runtime.setStatus('equalizer', runtime.config.eqEnabled !== true ? 'disabled' : entry.state === 'on' && !supported ? 'limited' : status,
       runtime.config.eqEnabled === true && entry.state === 'on' && !supported ? 'eq-sample-rate-unsupported' : reason);
-    runtime.setStatus('normalizer', runtime.config.normalizerEnabled !== true ? 'disabled' : entry.state === 'on' ? 'limited' : status,
-      runtime.config.normalizerEnabled === true && entry.state === 'on' ? 'normalizer-not-ready' : reason);
+    runtime.setStatus('normalizer', runtime.config.normalizerEnabled !== true ? 'disabled' : entry.state === 'on' ? entry.normalizerStatus?.state ?? 'pending' : status,
+      runtime.config.normalizerEnabled === true && entry.state === 'on' ? entry.normalizerStatus?.reason ?? 'normalizer-warming-up' : reason);
   };
   const announce = (entry: AudioEntry, state: AudioState, reason = ''): void => {
-    entry.state = state; publish(entry, reason);
+    entry.state = state; syncMeter(entry); publish(entry, reason);
     for (const callback of entry.listeners) {
       try { callback(state, entry.gain); }
       catch {}
@@ -140,6 +146,7 @@ export function installAudio(target: Window): AudioController | null {
     const compressed = runtime.config.compressorEnabled !== false;
     ramp(entry.compWet!.gain, compressed ? 1 : 0); ramp(entry.compDry!.gain, compressed ? 0 : 1);
     applyGain(entry);
+    syncMeter(entry);
     publish(entry);
   };
   const connect = (entry: AudioEntry): void => {
@@ -171,6 +178,66 @@ export function installAudio(target: Window): AudioController | null {
     try { return video.currentSrc.startsWith('blob:') && new URL(video.currentSrc).origin === target.location.origin; }
     catch { return false; }
   };
+  const automateNormalizer = (entry: AudioEntry, curve: { fromDb: number; toDb: number; start: number; end: number }) => {
+    const parameter = entry.normalizer!.gain;
+    parameter.cancelScheduledValues(curve.start); parameter.setValueAtTime(10 ** (curve.fromDb / 20), curve.start);
+    if (curve.end > curve.start) parameter.exponentialRampToValueAtTime(10 ** (curve.toDb / 20), curve.end);
+  }
+  const stopMeter = (entry: AudioEntry) => {
+    const data = entry.meter;
+    if (!data) return;
+    entry.meter = null; meters.delete(entry); data.scope.dispose();
+    try { entry.compMix!.disconnect(data.splitter); } catch {}
+    data.splitter.disconnect(); data.left.disconnect(); data.right.disconnect();
+    const time = context!.currentTime;
+    automateNormalizer(entry, { fromDb: normalizerDbAt(data.control, time), toDb: 0, start: time, end: time + 0.01 });
+  }
+  const tickMeter = (entry: AudioEntry) => {
+    const data = entry.meter;
+    if (!data || data.scope.disposed || scope.disposed) return;
+    if (runtime.state.player?.video !== entry.video || !entry.wanted || runtime.config.normalizerEnabled !== true ||
+        data.source !== entry.video.currentSrc || data.path !== target.location.pathname ||
+        data.path !== runtime.media.context.routePath || data.document !== runtime.media.context.documentGeneration) { stopMeter(entry); return; }
+    const active = entry.state === 'on' && runtime.mediaCurrent() && context!.state === 'running' && eligible(entry.video) &&
+      !entry.video.paused && !entry.video.ended && !entry.video.muted && entry.video.volume > 0 && entry.gain > 0 && !target.document.hidden;
+    let leftPower = 0, rightPower = 0;
+    const power = (buffer: Float32Array<ArrayBuffer>) => {
+      let sum = 0;
+      for (const sample of buffer) { if (!Number.isFinite(sample)) throw new Error('normalizer-samples-invalid'); sum += sample * sample; }
+      return sum / buffer.length;
+    };
+    if (active) {
+      try {
+        data.left.getFloatTimeDomainData(data.leftBuffer); data.right.getFloatTimeDomainData(data.rightBuffer);
+        leftPower = power(data.leftBuffer); rightPower = power(data.rightBuffer);
+      } catch { leftPower = NaN; rightPower = NaN; }
+    }
+    const curve = stepNormalizer(data.control, { time: context!.currentTime, leftPower, rightPower, active,
+      targetDbfs: number(runtime.config.normalizerTargetDbfs, -30, -12, -20) });
+    automateNormalizer(entry, curve);
+    entry.normalizerStatus = curve.mode === 'error' ? { state: 'limited', reason: 'normalizer-samples-invalid' }
+      : curve.mode === 'ramp' ? { state: 'ready', reason: '' } : { state: 'pending', reason: curve.mode === 'warmup' ? 'normalizer-warming-up' : 'normalizer-hold' };
+    publish(entry);
+  }
+  const syncMeter = (entry: AudioEntry) => {
+    if (entry.meter && (entry.meter.source !== entry.video.currentSrc || entry.meter.path !== runtime.media.context.routePath ||
+        entry.meter.document !== runtime.media.context.documentGeneration)) stopMeter(entry);
+    if (scope.disposed || !entry.wanted || runtime.config.normalizerEnabled !== true || runtime.state.player?.video !== entry.video) {
+      stopMeter(entry); return;
+    }
+    if (entry.meter) { if (entry.state !== 'on' || !runtime.mediaCurrent()) tickMeter(entry); return; }
+    if (!context || !entry.source || !entry.connected || entry.state !== 'on' || !runtime.mediaCurrent()) return;
+    const control = createNormalizer(context.sampleRate);
+    if (!control) { entry.normalizerStatus = { state: 'limited', reason: 'normalizer-sample-rate-unsupported' }; return; }
+    try {
+      const splitter = context.createChannelSplitter(2), left = context.createAnalyser(), right = context.createAnalyser();
+      left.fftSize = control.fftSize; right.fftSize = control.fftSize;
+      entry.meter = { control, splitter, left, right, leftBuffer: new Float32Array(control.fftSize), rightBuffer: new Float32Array(control.fftSize),
+        scope: runtime.createScope(), source: entry.video.currentSrc, path: runtime.media.context.routePath, document: runtime.media.context.documentGeneration };
+      meters.add(entry); entry.compMix!.connect(splitter); splitter.connect(left, 0); splitter.connect(right, 1);
+      entry.meter.scope.interval(() => tickMeter(entry), 100); tickMeter(entry);
+    } catch { stopMeter(entry); entry.normalizerStatus = { state: 'limited', reason: 'normalizer-unavailable' }; }
+  }
 
   const controller: AudioController = {
     async setEnabled(video, enabled) {
@@ -303,6 +370,7 @@ export function installAudio(target: Window): AudioController | null {
         }
       }
     }, 1000);
+    scope.add(() => { for (const entry of [...meters]) stopMeter(entry); });
     scope.on(target, 'pagehide', event => {
       for (const entry of connected) entry.preview = null;
       if (!(event as PageTransitionEvent).persisted) {

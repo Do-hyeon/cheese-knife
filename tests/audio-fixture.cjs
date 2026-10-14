@@ -7,9 +7,9 @@ function setup(t, suspended = false, manualClock = false, suppliedConfig = { com
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
   const video = dom.window.document.querySelector('video');
   Object.defineProperty(video, 'currentSrc', { value: 'blob:https://chzzk.naver.com/test-media', configurable: true });
-  const parameter = value => ({ value, events: [], setValueAtTime(next, at) { this.events.push(['set', next, at]); this.value = next; }, cancelScheduledValues(at) { this.events.push(['cancel', at]); }, linearRampToValueAtTime(next, at) { this.events.push(['ramp', next, at]); this.value = next; } });
+  const parameter = value => ({ value, events: [], setValueAtTime(next, at) { this.events.push(['set', next, at]); this.value = next; }, cancelScheduledValues(at) { this.events.push(['cancel', at]); }, linearRampToValueAtTime(next, at) { this.events.push(['ramp', next, at]); this.value = next; }, exponentialRampToValueAtTime(next, at) { this.events.push(['exp', next, at]); this.value = next; } });
   const nodes = [];
-  const node = type => { const value = { type, outputs: new Set(), connect(dest) { this.outputs.add(dest); }, disconnect() { this.outputs.clear(); } }; nodes.push(value); return value; };
+  const node = type => { const value = { type, outputs: new Set(), connect(dest) { this.outputs.add(dest); }, disconnect(dest) { if (dest) this.outputs.delete(dest); else this.outputs.clear(); } }; nodes.push(value); return value; };
   let resolveResume;
   let context;
   let sources = 0;
@@ -44,6 +44,8 @@ function setup(t, suspended = false, manualClock = false, suppliedConfig = { com
       const filter = Object.assign(node('biquad'), { frequency: parameter(350), Q: parameter(1), gain: parameter(0) });
       Object.defineProperty(filter, 'type', { get: () => 'biquad', set: value => { filter.filterType = value; } }); return filter;
     }
+    createChannelSplitter() { return node('splitter'); }
+    createAnalyser() { return Object.assign(node('analyser'), { fftSize: 2048, reads: 0, getFloatTimeDomainData(buffer) { this.reads++; buffer.fill(failures.sample ?? 0.0316227766); } }); }
   };
   load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom, suppliedConfig);
   // Exercise the controller's own numeric clamps, independently of the v2 projection decoder.

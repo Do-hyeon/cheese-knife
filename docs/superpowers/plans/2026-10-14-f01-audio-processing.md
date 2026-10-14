@@ -125,11 +125,11 @@ runtime은 기존 settings transform(런타임 import/export 금지)와 MAIN bun
 
 **입출력:** compMix 좌우 pre-normalizer/master power·currentTime·유효성 → bounded dB ramp. helper에서 timer/AudioParam/버퍼·네트워크를 만들지 않는다.
 
-- [ ] RED: `normalizer waits one valid window and ignores gaps`에서 sampleRate22050..96000·fft 최소 power-of-two≥rate×0.25/≤32768·buffer 두 개≤256KiB, 0<dt≤0.2s·새 시작0dB/W초·0/음수/비유한/stall hold/EMA·무음 누적0·추가 gap 없는 warm-up 진행을 assert한다.
-- [ ] RED: `db automation is rate bounded and mute stays mute`는 max(좌power,우power)·EMAτ0.75s·target−30..−12/default−20·보정−12..+6·실제 ramp dB +1/−12dB/s, 입력≤−55 양수boost증가0·무음2초 뒤unity±1dB/s, pause/ended/hidden/context/pending/Gain0 hold를 고정한다. 역상 stereo와 한쪽 신호에서 cancellation/평균희석0.
-- [ ] 구현: 100ms scope-owned timer·고정 두 Float32Array/AnalyserNode, 정상tick에서 현재 진행 ramp dB 계산→향후100ms 제한(+0.1/−1.2)→양수 exponential gain automation. gap 후 warm-up은 시작점 재설정 반복 없이 W초를 채우고 catch-up0. OFF/조회예외/비유한sample/RMS는 limited+10ms unity(속도 예외), 시간 공백은 hold로 구분한다. already scheduled ramp가 stall 중 진행하는 범위는 마지막 tick부터100ms까지뿐이다.
-- [ ] GREEN: `node --test tests/f01-normalizer.test.cjs tests/f01-normalizer-lifecycle.test.cjs tests/f01-audio-graph.test.cjs`; supported 밖은 normalizer unity/limited만, 다른 효과 보존; source/route/retirement별 reset, pause/hidden 재개 새W초·old meter/timer/EMA0·OFF reference 정리. RMS/원음 buffer를 status/postMessage/log/storage로 보내지 않는 assertion도 고정한다.
-- [ ] strict/generated check와 로컬 커밋. 오프라인 sample helper 성공을 실제 연속 출력의 속도 증거로 사용하지 않는다.
+- [x] RED: `normalizer waits one valid window and ignores gaps`에서 sampleRate22050..96000·fft 최소 power-of-two≥rate×0.25/≤32768·buffer 두 개≤256KiB, 0<dt≤0.2s·새 시작0dB/W초·0/음수/비유한/stall hold/EMA·무음 누적0·추가 gap 없는 warm-up 진행을 assert한다.
+- [x] RED: `db automation is rate bounded and mute stays mute`는 max(좌power,우power)·EMAτ0.75s·target−30..−12/default−20·보정−12..+6·실제 ramp dB +1/−12dB/s, 입력≤−55 양수boost증가0·무음2초 뒤unity±1dB/s, pause/ended/hidden/context/pending/Gain0 hold를 고정한다. 역상 stereo와 한쪽 신호에서 cancellation/평균희석0.
+- [x] 구현: 100ms scope-owned timer·고정 두 Float32Array/AnalyserNode, 정상tick에서 현재 진행 ramp dB 계산→향후100ms 제한(+0.1/−1.2)→양수 exponential gain automation. gap 후 warm-up은 시작점 재설정 반복 없이 W초를 채우고 catch-up0. OFF/조회예외/비유한sample/RMS는 limited+10ms unity(속도 예외), 시간 공백은 hold로 구분한다. already scheduled ramp가 stall 중 진행하는 범위는 마지막 tick부터100ms까지뿐이다.
+- [x] GREEN: `node --test tests/f01-normalizer.test.cjs tests/f01-normalizer-lifecycle.test.cjs tests/f01-audio-graph.test.cjs`; supported 밖은 normalizer unity/limited만, 다른 효과 보존; source/route/retirement별 reset, pause/hidden 재개 새W초·old meter/timer/EMA0·OFF reference 정리. RMS/원음 buffer를 status/postMessage/log/storage로 보내지 않는 assertion도 고정한다.
+- [x] strict/generated check와 로컬 커밋. 오프라인 sample helper 성공을 실제 연속 출력의 속도 증거로 사용하지 않는다.
 
 ## Task 6 — 승인 설정 TAB UI·확정 프리셋·현재 master 연결
 

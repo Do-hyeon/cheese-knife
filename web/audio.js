@@ -36,6 +36,77 @@
     return { supported, levels, headroom: 10 ** (-levels.reduce((sum, value) => sum + Math.max(0, value), 0) / 20) };
   }
 
+  // src/main/features/audio/normalizer.ts
+  function normalizerWindow(sampleRate) {
+    if (!Number.isFinite(sampleRate) || sampleRate < 22050 || sampleRate > 96e3) return null;
+    return 2 ** Math.ceil(Math.log2(sampleRate * 0.25));
+  }
+  function createNormalizer(sampleRate) {
+    const fftSize = normalizerWindow(sampleRate);
+    return fftSize === null ? null : {
+      fftSize,
+      windowSeconds: fftSize / sampleRate,
+      lastTime: null,
+      warmSince: null,
+      power: null,
+      silentSeconds: 0,
+      fromDb: 0,
+      toDb: 0,
+      start: 0,
+      end: 0
+    };
+  }
+  function normalizerDbAt(state, time) {
+    const progress = state.end > state.start ? Math.max(0, Math.min(1, (time - state.start) / (state.end - state.start))) : 1;
+    return state.fromDb + (state.toDb - state.fromDb) * progress;
+  }
+  function stepNormalizer(state, input) {
+    const validTime = Number.isFinite(input.time), time = validTime ? input.time : state.lastTime ?? state.end;
+    const current = normalizerDbAt(state, time), dt = state.lastTime === null ? null : time - state.lastTime;
+    const schedule = (mode, toDb = current, seconds = 0) => {
+      state.fromDb = current;
+      state.toDb = toDb;
+      state.start = time;
+      state.end = time + seconds;
+      return { mode, fromDb: current, toDb, start: time, end: time + seconds };
+    };
+    const reset = () => {
+      state.power = null;
+      state.silentSeconds = 0;
+      state.warmSince = null;
+      state.lastTime = null;
+    };
+    if (!validTime || !input.active) {
+      reset();
+      return schedule("hold");
+    }
+    if (![input.leftPower, input.rightPower].every((power2) => Number.isFinite(power2) && power2 >= 0)) {
+      reset();
+      return schedule("error", 0, 0.01);
+    }
+    state.lastTime = time;
+    if (dt !== null && (dt <= 0 || dt > 0.2)) {
+      state.power = null;
+      state.silentSeconds = 0;
+      state.warmSince = time;
+      return schedule("hold");
+    }
+    state.warmSince ??= time;
+    if (time - state.warmSince < state.windowSeconds || dt === null) return schedule("warmup");
+    const power = Math.max(input.leftPower, input.rightPower);
+    state.power = state.power === null ? power : state.power + (power - state.power) * (1 - Math.exp(-dt / 0.75));
+    const silent = power <= 10 ** (-55 / 10);
+    state.silentSeconds = silent ? state.silentSeconds + dt : 0;
+    const target = Number.isFinite(input.targetDbfs) && input.targetDbfs >= -30 && input.targetDbfs <= -12 ? input.targetDbfs : -20;
+    let desired = Math.max(-12, Math.min(6, target - 10 * Math.log10(Math.max(1e-12, state.power))));
+    let down = 1.2;
+    if (silent && state.silentSeconds >= 2) {
+      desired = 0;
+      down = 0.1;
+    } else if (silent) desired = Math.min(desired, current);
+    return schedule("ramp", Math.max(current - down, Math.min(current + 0.1, desired)), 0.1);
+  }
+
   // src/main/features/audio/controller.ts
   var registryName = "cheese-knife.runtime.v1";
   var number = (value, min, max, fallback) => typeof value === "number" && Number.isFinite(value) && value >= min && value <= max ? value : fallback;
@@ -46,6 +117,7 @@
     if (runtime?.ownerProtocol !== 3 || runtime.audio) return null;
     const entries = /* @__PURE__ */ new WeakMap();
     const connected = /* @__PURE__ */ new Set();
+    const meters = /* @__PURE__ */ new Set();
     const scope = runtime.createScope();
     let context;
     const transitions = /* @__PURE__ */ new WeakMap();
@@ -78,12 +150,13 @@
       );
       runtime.setStatus(
         "normalizer",
-        runtime.config.normalizerEnabled !== true ? "disabled" : entry.state === "on" ? "limited" : status,
-        runtime.config.normalizerEnabled === true && entry.state === "on" ? "normalizer-not-ready" : reason
+        runtime.config.normalizerEnabled !== true ? "disabled" : entry.state === "on" ? entry.normalizerStatus?.state ?? "pending" : status,
+        runtime.config.normalizerEnabled === true && entry.state === "on" ? entry.normalizerStatus?.reason ?? "normalizer-warming-up" : reason
       );
     };
     const announce = (entry, state, reason = "") => {
       entry.state = state;
+      syncMeter(entry);
       publish(entry, reason);
       for (const callback of entry.listeners) {
         try {
@@ -150,6 +223,7 @@
       ramp(entry.compWet.gain, compressed ? 1 : 0);
       ramp(entry.compDry.gain, compressed ? 0 : 1);
       applyGain(entry);
+      syncMeter(entry);
       publish(entry);
     };
     const connect = (entry) => {
@@ -189,6 +263,110 @@
         return video.currentSrc.startsWith("blob:") && new URL(video.currentSrc).origin === target.location.origin;
       } catch {
         return false;
+      }
+    };
+    const automateNormalizer = (entry, curve) => {
+      const parameter = entry.normalizer.gain;
+      parameter.cancelScheduledValues(curve.start);
+      parameter.setValueAtTime(10 ** (curve.fromDb / 20), curve.start);
+      if (curve.end > curve.start) parameter.exponentialRampToValueAtTime(10 ** (curve.toDb / 20), curve.end);
+    };
+    const stopMeter = (entry) => {
+      const data = entry.meter;
+      if (!data) return;
+      entry.meter = null;
+      meters.delete(entry);
+      data.scope.dispose();
+      try {
+        entry.compMix.disconnect(data.splitter);
+      } catch {
+      }
+      data.splitter.disconnect();
+      data.left.disconnect();
+      data.right.disconnect();
+      const time = context.currentTime;
+      automateNormalizer(entry, { fromDb: normalizerDbAt(data.control, time), toDb: 0, start: time, end: time + 0.01 });
+    };
+    const tickMeter = (entry) => {
+      const data = entry.meter;
+      if (!data || data.scope.disposed || scope.disposed) return;
+      if (runtime.state.player?.video !== entry.video || !entry.wanted || runtime.config.normalizerEnabled !== true || data.source !== entry.video.currentSrc || data.path !== target.location.pathname || data.path !== runtime.media.context.routePath || data.document !== runtime.media.context.documentGeneration) {
+        stopMeter(entry);
+        return;
+      }
+      const active = entry.state === "on" && runtime.mediaCurrent() && context.state === "running" && eligible(entry.video) && !entry.video.paused && !entry.video.ended && !entry.video.muted && entry.video.volume > 0 && entry.gain > 0 && !target.document.hidden;
+      let leftPower = 0, rightPower = 0;
+      const power = (buffer) => {
+        let sum = 0;
+        for (const sample of buffer) {
+          if (!Number.isFinite(sample)) throw new Error("normalizer-samples-invalid");
+          sum += sample * sample;
+        }
+        return sum / buffer.length;
+      };
+      if (active) {
+        try {
+          data.left.getFloatTimeDomainData(data.leftBuffer);
+          data.right.getFloatTimeDomainData(data.rightBuffer);
+          leftPower = power(data.leftBuffer);
+          rightPower = power(data.rightBuffer);
+        } catch {
+          leftPower = NaN;
+          rightPower = NaN;
+        }
+      }
+      const curve = stepNormalizer(data.control, {
+        time: context.currentTime,
+        leftPower,
+        rightPower,
+        active,
+        targetDbfs: number(runtime.config.normalizerTargetDbfs, -30, -12, -20)
+      });
+      automateNormalizer(entry, curve);
+      entry.normalizerStatus = curve.mode === "error" ? { state: "limited", reason: "normalizer-samples-invalid" } : curve.mode === "ramp" ? { state: "ready", reason: "" } : { state: "pending", reason: curve.mode === "warmup" ? "normalizer-warming-up" : "normalizer-hold" };
+      publish(entry);
+    };
+    const syncMeter = (entry) => {
+      if (entry.meter && (entry.meter.source !== entry.video.currentSrc || entry.meter.path !== runtime.media.context.routePath || entry.meter.document !== runtime.media.context.documentGeneration)) stopMeter(entry);
+      if (scope.disposed || !entry.wanted || runtime.config.normalizerEnabled !== true || runtime.state.player?.video !== entry.video) {
+        stopMeter(entry);
+        return;
+      }
+      if (entry.meter) {
+        if (entry.state !== "on" || !runtime.mediaCurrent()) tickMeter(entry);
+        return;
+      }
+      if (!context || !entry.source || !entry.connected || entry.state !== "on" || !runtime.mediaCurrent()) return;
+      const control = createNormalizer(context.sampleRate);
+      if (!control) {
+        entry.normalizerStatus = { state: "limited", reason: "normalizer-sample-rate-unsupported" };
+        return;
+      }
+      try {
+        const splitter = context.createChannelSplitter(2), left = context.createAnalyser(), right = context.createAnalyser();
+        left.fftSize = control.fftSize;
+        right.fftSize = control.fftSize;
+        entry.meter = {
+          control,
+          splitter,
+          left,
+          right,
+          leftBuffer: new Float32Array(control.fftSize),
+          rightBuffer: new Float32Array(control.fftSize),
+          scope: runtime.createScope(),
+          source: entry.video.currentSrc,
+          path: runtime.media.context.routePath,
+          document: runtime.media.context.documentGeneration
+        };
+        meters.add(entry);
+        entry.compMix.connect(splitter);
+        splitter.connect(left, 0);
+        splitter.connect(right, 1);
+        entry.meter.scope.interval(() => tickMeter(entry), 100);
+        tickMeter(entry);
+      } catch {
+        stopMeter(entry);
+        entry.normalizerStatus = { state: "limited", reason: "normalizer-unavailable" };
       }
     };
     const controller = {
@@ -400,6 +578,9 @@
           }
         }
       }, 1e3);
+      scope.add(() => {
+        for (const entry of [...meters]) stopMeter(entry);
+      });
       scope.on(target, "pagehide", (event) => {
         for (const entry of connected) entry.preview = null;
         if (!event.persisted) {
