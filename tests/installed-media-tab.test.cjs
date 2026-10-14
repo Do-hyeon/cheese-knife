@@ -1,7 +1,8 @@
 const test=require('node:test'),assert=require('node:assert/strict'),{EventEmitter}=require('node:events'),vm=require('node:vm');
 const E='abcdefghijklmnopabcdefghijklmnop',A='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',popupURL=`chrome-extension://${E}/popup.html`;
-const mediaURL=popupURL+`?mediaSettings=1&targetTabId=7&targetWindowId=9&targetChannelId=${A}`;
 function fixture(mode='ok'){
+  const fixtureURL=mode==='vod'?'https://chzzk.naver.com/video/12345':`https://chzzk.naver.com/live/${A}`;
+  const mediaURL=popupURL+`?mediaSettings=1&targetTabId=7&targetWindowId=9${mode==='vod'?'':`&targetChannelId=${A}`}`;
   const events=[],listeners=new Set(),bus=new EventEmitter(),pages=[];
   const actualContexts=[{contextType:'POPUP',documentId:'popup-doc',documentUrl:popupURL,documentOrigin:`chrome-extension://${E}`,frameId:0,incognito:false},
     {contextType:'TAB',documentId:'tab-doc',documentUrl:mediaURL,documentOrigin:`chrome-extension://${E}`,frameId:0,tabId:8,windowId:9,incognito:false}];
@@ -15,13 +16,13 @@ function fixture(mode='ok'){
     getContexts:async filter=>actualContexts.filter(value=>(!filter.documentIds||filter.documentIds.includes(value.documentId))&&
       (!filter.documentUrls||filter.documentUrls.includes(value.documentUrl))&&(!filter.contextTypes||filter.contextTypes.includes(value.contextType))&&
       (!filter.tabIds||filter.tabIds.includes(value.tabId)))},
-    tabs:{query:async()=>[{id:7,windowId:9,url:`https://chzzk.naver.com/live/${A}`,incognito:false}],getCurrent:async()=>({id:8,windowId:9,incognito:false})},
+    tabs:{query:async()=>[{id:7,windowId:9,url:fixtureURL,incognito:false}],getCurrent:async()=>({id:8,windowId:9,incognito:false})},
     action:{openPopup:async()=>{events.push('popup');for(let i=0;i<(mode==='overflow'?17:1);i++)sender(1,popupURL);}}};
   const workerGlobal=vm.createContext({chrome,console});
   const worker={evaluate:async(fn,arg)=>vm.runInContext(`(${fn.toString()})(${JSON.stringify(arg)})`,workerGlobal),url:()=>`chrome-extension://${E}/background.js`};
   const settingsPage={url:()=>mediaURL,isClosed:()=>false,context:()=>context,evaluate:async fn=>fn.toString().includes('getCurrent')?{id:8,windowId:9,incognito:false}:true,
     waitForFunction:async()=>{},locator:()=>({waitFor:async()=>{},isEnabled:async()=>true})};
-  const fixturePage={url:()=>`https://chzzk.naver.com/live/${A}`,context:()=>context,bringToFront:async()=>{events.push('front');}};
+  const fixturePage={url:()=>fixtureURL,context:()=>context,bringToFront:async()=>{events.push('front');}};
   pages.push(fixturePage);
   const context=new EventEmitter();context.pages=()=>pages;context.newCDPSession=async()=>({send:async()=>({targetInfo:{browserContextId:'owned'}}),detach:async()=>{events.push('page-detach');}});
   bus.send=async(method,params)=>{
@@ -54,4 +55,9 @@ for(const mode of ['missing-document','hidden','disabled','unlabelled','unfocuse
 test('media helper rejects invalid total deadlines before touching Chrome',async()=>{
   const {openInstalledMediaSettings}=await import('../scripts/extension-e2e/popup-cdp.mjs');assert.equal(typeof openInstalledMediaSettings,'function');
   for(const timeoutMs of [0,-1,1.5,15001,Infinity,'15000']){const f=fixture();await assert.rejects(openInstalledMediaSettings({...f.args,timeoutMs}),{code:'media-tab-timeout-invalid'});assert.equal(f.events.length,0);}
+});
+test('media helper qualifies VOD style pair without inventing a channel target',async()=>{
+  const {openInstalledMediaSettings}=await import('../scripts/extension-e2e/popup-cdp.mjs'),f=fixture('vod');
+  const result=await openInstalledMediaSettings(f.args);assert.equal(new URL(result.settingsPage.url()).searchParams.has('targetChannelId'),false);
+  assert.equal(result.tabWriterQualified,true);
 });

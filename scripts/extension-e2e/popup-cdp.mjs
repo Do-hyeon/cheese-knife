@@ -108,9 +108,9 @@ export async function openInstalledMediaSettings({context,worker,fixturePage,ext
     if(tabs.length!==1||!tab||typeof tab.id!=='number'||!Number.isSafeInteger(tab.id)||tab.id<0||!Number.isSafeInteger(tab.windowId)||tab.windowId<0||
       tab.incognito!==false||tab.url!==fixturePage.url())throw fail('media-tab-target-invalid');
     const channel=/^https:\/\/chzzk\.naver\.com\/(?:live\/)?([a-f0-9]{32})\/?$/.exec(tab.url)?.[1];
-    if(!channel)throw fail('media-tab-target-invalid');
+    if(!channel&&!/^https:\/\/chzzk\.naver\.com\/video\/[0-9]+\/?$/.test(tab.url))throw fail('media-tab-target-invalid');
     const expected=new URL(popupURL);expected.searchParams.set('mediaSettings','1');expected.searchParams.set('targetTabId',String(tab.id));
-    expected.searchParams.set('targetWindowId',String(tab.windowId));expected.searchParams.set('targetChannelId',channel);
+    expected.searchParams.set('targetWindowId',String(tab.windowId));if(channel)expected.searchParams.set('targetChannelId',channel);
     const ownPageSession=await run(()=>context.newCDPSession(fixturePage));pageSession=ownPageSession;
     const info=record(await run(()=>ownPageSession.send('Target.getTargetInfo'))),targetInfo=record(info?.targetInfo);
     if(typeof targetInfo?.browserContextId!=='string'||!targetInfo.browserContextId)throw fail('media-tab-context-invalid');

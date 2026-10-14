@@ -88,3 +88,11 @@ ACK 유실 patch7+새 입력5의 조회/event는 요청[7]/저장7/표시draft5/
 - source/asset/owner 연결86/86, 최신 고정 입력 전체1358/1357pass/0fail/0cancelled/기존skip1,54.82초;9foundation 통과. 초기 type/fixture/import/경계 실패와 중간 전체1354 결과는 private Native 원장에 별도 보존하며 최종 입력으로 전용하지 않는다. 역사 기준·타입 규칙·lint 억제·합격 오차는 변경하지 않았다.
 
 이 준비 소스의 clean 로컬 SHA·새 물리 격리 복사본으로 실제 qualification을 실행한다. 실제 TAB 저장/합성 외 BFCache·media 보존4관측·config/media 손실 대조·원래 Task5/6·whole-F00 최종 Astra max는 아직이다. 실제 최초 네트워크 navigation 간격도 완전 egress 보호라고 주장하지 않는다. push/PR/버전/릴리즈/스토어 변경은 없다.
+
+## Task5C 실제 qualification A — 범위별 성공
+
+소스 baf0015d6d4dd50a53e3282688cbf2de09e3edd6의 새 물리 격리 복사본/physical 의존성/새 owned Chromium 프로필에서 기존 runner `--qualification=media-tab`를 실행했다. exit0,6.781초. 실제 툴바 버튼으로 연 새 own TAB의 production sender·CURRENT 문서 결합, 전역 초기 scope·현재 채널 저장/MAIN config 반영, 같은URL 두 TAB의 독립 필드 병합과 값·채널 삭제 복원을 확인했다. 가짜 writer/대상 API나 positive storage.set으로 대체하지 않았다.
+
+public Browser.close ACK·browser disconnection·exact owned profile root0 모두 true. source/after의 SHA 및 sourceSha256 `7013b2791993bf3926df8517b5fefed8737f65adf773f77994ecaa043b4f7902`가 동일하다. 프로필/candidate/summary는 private output에 보존했다. 최초 popup navigation 간격 보호는 false로 명시한다.
+
+A는 저장4관측·실제 스토어 업데이트/플랫폼 rollback·BFCache·모든 설정 조합 성공이 아니다. 추가 VOD/targetless/saved/프리셋/확인/키보드/좁은 화면/합성 및 실제 복원 구분은 다음 입력 B에서 수행한다. 이 추가 caller/fixture의 단위 연결50/50·전체1360/1359pass/0fail/기존skip1,55.75초는 준비 검증이며 B actual 성공으로 세지 않는다. 원래 Task5/6·전체 최종 Astra max는 아직 남아 있다.

@@ -34,6 +34,13 @@ test('fixture router rejects duplicate response URLs', async () => {
     code: 'fixture-response-duplicate',
   });
 });
+test('VOD fixture is exact same-origin and reuses the deterministic player only',async()=>{
+  const {FIXTURE_VOD_URL,loadFixtureResponses,fixtureDecision}=await routerModule(),{openOwnedRoot}=await ownedModule();
+  assert.equal(FIXTURE_VOD_URL,'https://chzzk.naver.com/video/12345');
+  const responses=await loadFixtureResponses(await openOwnedRoot(path.resolve('.')));
+  const vod=fixtureDecision(FIXTURE_VOD_URL,responses);assert.equal(vod.action,'fulfill');assert.match(vod.body,/id="live_player_layout"/);
+  assert.equal(fixtureDecision(FIXTURE_VOD_URL+'?unknown=1',responses).action,'abort');
+});
 
 test('installed extension fixtures expose only deterministic integration anchors and bounded metadata', async () => {
   const { FIXTURE_LIVE_URL, FIXTURE_CHANNEL_URL, loadFixtureResponses, fixtureDecision } = await routerModule();

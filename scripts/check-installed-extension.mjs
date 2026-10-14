@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { checkPackage } from './check-package.mjs';
-import { FIXTURE_LIVE_URL, fixtureDecision, loadFixtureResponses } from './extension-e2e/fixture-router.mjs';
+import { FIXTURE_LIVE_URL, FIXTURE_VOD_URL, fixtureDecision, loadFixtureResponses } from './extension-e2e/fixture-router.mjs';
 import { launchInstalledExtension, parseInstalledE2EArgs, reacquireExtensionWorker, openInstalledMediaSettings,
   openMediaBrowserSession, closeInstalledMediaBrowser } from './extension-e2e/harness.mjs';
 import { refreshTransitionWorker } from './extension-e2e/transition-preparation.mjs';
@@ -431,6 +431,7 @@ export async function runInstalledMediaTabScenario({ context, worker, extensionI
   try{
     const {settingsPage}=await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession});
     assertCondition(await settingsPage.locator('#media-scope').inputValue()==='global','media-tab-initial-scope');
+    assertCondition(!Object.hasOwn(await storageSnapshot(worker),'mediaProfiles'),'media-tab-read-created-store');
     await settingsPage.locator('#media-scope').selectOption('current');
     await settingsPage.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
     await settingsPage.locator('#media-audio-enable').click();
@@ -449,13 +450,69 @@ export async function runInstalledMediaTabScenario({ context, worker, extensionI
     await waitUntil(()=>Promise.all([settingsPage,second].map(tab=>tab.locator('#compressorThreshold').inputValue())),values=>values.every(value=>value==='-30'),'media-tab-sync-failed');
     await settingsPage.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
     await second.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+    await second.setViewportSize({width:480,height:900});
+    const narrow=await second.evaluate(()=>{
+      const video=document.getElementById('brightness').closest('details').getBoundingClientRect();
+      const audio=document.getElementById('compressorThreshold').closest('details').getBoundingClientRect();
+      return document.documentElement.scrollWidth<=document.documentElement.clientWidth&&video.left===audio.left&&video.top!==audio.top;
+    });assertCondition(narrow,'media-tab-narrow-layout');
+    const arrow=second.locator('#arrowSeek'),originalArrow=await arrow.isChecked();
+    await arrow.focus();await arrow.press('Space');
+    await waitUntil(()=>storageSnapshot(worker),value=>value?.config?.arrowSeek===!originalArrow,'media-tab-keyboard-save');
+    await arrow.focus();await arrow.press('Space');
+    await waitUntil(()=>storageSnapshot(worker),value=>value?.config?.arrowSeek===originalArrow,'media-tab-keyboard-restore');
+    await second.locator('#settings-status[data-phase="ready"]').waitFor({timeout:15000});
+    await second.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+    await second.locator('#media-preset-name').fill('F00 native audio');await second.locator('#media-preset-create').click();
+    await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.presets.length===1,'media-tab-preset-save');
+    const management=await context.newPage();await management.goto(`chrome-extension://${extensionId}/popup.html?mediaSettings=1`,{waitUntil:'domcontentloaded'});
+    await management.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+    assertCondition(await management.locator('#media-scope').inputValue()==='global'&&
+      await management.locator('#media-scope option[value="current"]').evaluate(option=>option.disabled),'media-tab-targetless-retarget');
+    await management.locator('#media-scope').selectOption('saved:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+    await management.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+    await management.locator('#compressorRatio').fill('9');
+    await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.channels[0]?.audio?.values.compressorRatio===9,'media-tab-saved-scope');
+    await second.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
     await second.locator('#compressorThreshold').fill(original);
     await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.channels[0]?.audio?.values.compressorThreshold===Number(original),'media-tab-restore-failed');
     await second.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+    const beforeCancel=await storageSnapshot(worker);second.once('dialog',dialog=>{void dialog.dismiss();});
+    await second.locator('#media-channel-delete').click();assertCondition(isDeepStrictEqual(await storageSnapshot(worker),beforeCancel),'media-tab-confirm-cancel-write');
     second.once('dialog',dialog=>{void dialog.accept();});await second.locator('#media-channel-delete').click();
     await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.channels.length===0,'media-tab-delete-restore-failed');
+    await management.locator('#media-scope').selectOption('global');await management.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+    management.once('dialog',dialog=>{void dialog.accept();});await management.locator('#media-preset-delete').click();
+    await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.presets.length===0,'media-tab-preset-restore');
+    const vod=await context.newPage();await vod.goto(FIXTURE_VOD_URL,{waitUntil:'domcontentloaded'});
+    await vod.waitForFunction(()=>window[Symbol.for('cheese-knife.runtime.v1')]?.configReady,null,{timeout:15000});
+    const {settingsPage:vodSettings}=await openInstalledMediaSettings({context,worker,fixturePage:vod,extensionId,browserSession});
+    assertCondition(await vodSettings.locator('#media-scope option[value="current"]').evaluate(option=>option.disabled),'media-tab-vod-channel-invented');
+    const stylesLink=await vodSettings.locator('#stylesConfig').evaluate(element=>element.closest('a').href);
+    const styles=await context.newPage();await styles.goto(stylesLink,{waitUntil:'domcontentloaded'});
+    await styles.locator('#settings-status[data-phase="ready"]').waitFor({timeout:15000});
+    const loads=await Promise.all([page,vod].map(tab=>tab.evaluate(()=>window.__knifeFixture.loads)));
+    await styles.locator('#left-chat').check();await styles.locator('#settings-status[data-phase="ready"]').waitFor({timeout:15000});
+    await styles.locator('#reload').click();await vod.waitForFunction(before=>window.__knifeFixture.loads===before+1,loads[1],{timeout:15000});
+    assertCondition(await page.evaluate(()=>window.__knifeFixture.loads)===loads[0],'media-tab-vod-reloaded-other');
+    await styles.locator('#left-chat').uncheck();await styles.locator('#settings-status[data-phase="ready"]').waitFor({timeout:15000});
+    await styles.locator('#reload').click();await vod.waitForFunction(before=>window.__knifeFixture.loads===before+2,loads[1],{timeout:15000});
+    const beforeRetire=await storageSnapshot(worker);
+    await management.evaluate(()=>{window.dispatchEvent(new PageTransitionEvent('pagehide',{persisted:true}));window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));});
+    assertCondition(!(await management.locator('#brightness').isEnabled())&&await management.locator('#settings-status').getAttribute('data-phase')==='reconnect-required','media-tab-restored-ready');
+    management.once('dialog',dialog=>{void dialog.accept();});await management.locator('#settings-reconnect').click();
+    await management.locator('#settings-status[data-phase="ready"]').waitFor({timeout:15000});
+    assertCondition(isDeepStrictEqual(await storageSnapshot(worker),beforeRetire),'media-tab-reconnect-wrote');
+    await management.evaluate(()=>{window.__knifeNativePersisted=false;window.addEventListener('pageshow',event=>{window.__knifeNativePersisted=event.persisted;});});
+    await management.goto('about:blank');await management.goBack({waitUntil:'domcontentloaded'});
+    const actualRestore=await management.evaluate(()=>({persisted:window.__knifeNativePersisted===true,
+      phase:document.getElementById('settings-status').dataset.phase,disabled:document.getElementById('brightness').disabled}));
+    if(actualRestore.persisted)assertCondition(actualRestore.phase==='reconnect-required'&&actualRestore.disabled,'media-tab-native-restore-ready');
+    else await management.locator('#settings-status[data-phase="ready"]').waitFor({timeout:15000});
     assertCondition(pageErrors.length===0&&routeErrors.length===0,'media-tab-page-error');
-    return {mediaTab:passed({popupAttached:true,tabWriterQualified:true,currentSaved:true,mainApplied:true,twoTabMerge:true,restored:true}),
+    return {mediaTab:passed({popupAttached:true,tabWriterQualified:true,currentSaved:true,mainApplied:true,twoTabMerge:true,restored:true,
+      targetless:true,savedScope:true,presetSaved:true,confirmCancelPreserved:true,keyboard:true,narrowLayout:true,vodStylePair:true,
+      syntheticPersistedLocked:true,ownReconnect:true,actualBackForwardSmoke:true,bfcacheObserved:actualRestore.persisted}),
       network:passed({fixtureRoutes:true,initialPopupNavigationCovered:false})};
   }finally{context.off('page',observe);}
 }
