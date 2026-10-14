@@ -137,7 +137,7 @@ var KnifeMediaProfiles = (() => {
       const channel: KnifeChannelRecord = { channelId: item.channelId, createdRevision: item.createdRevision, revision: item.revision };
       for (const domain of ['audio', 'video'] as const) {
         if (!Object.hasOwn(item, domain)) continue;
-        const binding = ownRecord(item[domain], ['createdRevision', 'values']);
+        const binding = ownRecord(domain === 'audio' ? item.audio : item.video, ['createdRevision', 'values']);
         if (!binding || !creation(binding.createdRevision, store.revision) || binding.createdRevision < channel.createdRevision) return invalid();
         const values = validateValues(domain, binding.values);
         if (!values.ok) return invalid();
@@ -311,3 +311,5 @@ var KnifeMediaProfiles = (() => {
   return Object.freeze({ audioFields, videoFields, readStore, validateValues, resolveMediaSettings, mergeMediaOperation,
     isChannelId: channelId, isPresetId: presetId, isPresetName: label, isCounter: counter });
 })();
+// Publish the bundled namespace for the other MAIN feature entries.
+globalThis.KnifeMediaProfiles = KnifeMediaProfiles;

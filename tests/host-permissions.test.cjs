@@ -22,5 +22,6 @@ test('host policy and manifest use HTTPS main only without changing static scrip
   assert.deepEqual(manifest.content_scripts.map(item => item.matches), [expectedOrigins, expectedOrigins]);
   assert.deepEqual(manifest.content_scripts.map(({ matches, js, ...item }) => item),
     baseline.content_scripts.map(({ js, ...item }) => item));
-  assert.deepEqual(manifest.content_scripts.map(item => item.js), baseline.content_scripts.map(item => ['media-profiles.js', ...item.js]));
+  assert.deepEqual(manifest.content_scripts.map(item => item.js), baseline.content_scripts.map(item =>
+    item.world==='MAIN'?item.js:['media-profiles.js',...item.js]));
 });

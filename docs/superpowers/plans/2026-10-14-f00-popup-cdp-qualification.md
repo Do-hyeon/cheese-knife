@@ -8,6 +8,8 @@
 
 **Spec:** Existing F00 Task5 actual-popup STOP gate; user approval of the isolated CDP alternative. Original failed qualification evidence remains unchanged.
 
+**Current status:** Actual CDP popup attachment works, but the production popup sender lacks documentId/frameId and fails the approved sender gate before input. See [qualification results](../validation/2026-10-14-f00-popup-cdp-qualification.md). Qualification is not PASS. A separate settings-TAB or lifecycle/session authorization design requires user approval; do not lower the sender condition or invent metadata.
+
 ## Boundaries and failure behavior
 
 - Only a newly created F00 profile and candidate built from the approved local source; never viewing Chrome, P09, global MCP settings or extension permissions.
@@ -22,8 +24,8 @@
 ## Steps
 
 - [x] Astra max read-only plan review: Critical0/Important1/Minor2. Static support is feasible, not actual-popup PASS. Important normal-close evidence and both minor boundary/actionability points are incorporated above; runtime proof remains required.
-- [ ] RED: pure target selector rejects foreign URL/context, duplicates and missing target. Command routing rejects wrong session, handles target close, timeout and protocol error; deterministic fake event transport at this boundary only.
-- [ ] Implement the small qualification support in the existing extension-e2e harness area, with the selected public APIs. Do not create a generic browser transport library. Unit tests and strict development types pass before actual browser use.
+- [x] RED: pure target selector rejects foreign URL/context, duplicates and missing target. Command routing rejects wrong session, handles target close, timeout and protocol error; deterministic fake event transport at this boundary only.
+- [x] Implement the small qualification support in the existing extension-e2e harness area, with the selected public APIs. Do not create a generic browser transport library. Unit tests and strict development types pass before actual browser use.
 - [ ] Execute a fresh occurrence: original Page capture observation remains false if absent; separate CDP capture flag, actual POPUP sender facts, current synthetic tab equality, control initial→changed→restored durable values, normal close and owned process0 must all be true. Unsupported attach/evaluation fails explicitly and stops the installed-popup gate.
 - [ ] Record result/provenance and Task5 adapter interface in the main F00 plan only after actual success. No installed preservation PASS, public update/rollback PASS or F00 completion claim from this probe.
 

@@ -1,7 +1,7 @@
 {
   "background.js": "927f26ce4d86eb5081f0b91a339d8ed3b8996d96b6400a872015b89b5ba318a8",
   "config.js": "5185e0568a419289d01fece8d45880f8506a4258be78c13955cb67d64b55806f",
-  "media-profiles.js": "87d7a0736206d69c37f7b07ca1520e04fe62a87ff2fb51d196e71fc6c2b71875",
+  "media-profiles.js": "e252043c003323bb8473178db4e5840ed6314ab0f2d82f2ab5194b59902e87f1",
   "permission.js": "fb2ad721eefb5d30c4a3803a957b7f8681bba6614efaabd23094f31c49924cc5",
   "popup.js": "e8cea9d5f035cdbe7ca3c1389ec70502303adfe9246f0a87421550923759dea2",
   "settings-broker.js": "1d6f1822a3271bf13096b4d6ce8c302c9ff2d2f747cadccc89cee0ba362aa37f",
@@ -14,6 +14,6 @@
   "web/main.js": "f3c05da7c76f01fcc9bdb06b9ccc65272dc5124b8589ee5f9ab197cd7a006924",
   "web/player.js": "cf0ff36dbb080f6596e9cde1d3e2463fe714c8c1fedaa45ba576391fb00f6cc1",
   "web/preview.js": "7334249e6f6462fd1ccab1fedc3308b934551550cd912278b0b7afbbd286901d",
-  "web/runtime.js": "dccb9bb281db599c8ccd1df5576c1f637a40576e8f69273b7e15ade6aab5ea78",
+  "web/runtime.js": "dd6efeecae8fd658d668ba5e7af2cdcf03c76164d285bd0d2869f0f963feebc4",
   "web/site-adapter.js": "fab739263e06dcbd970988dd5db57a7836587234b7e824fa1b62877e01b1601a"
 }

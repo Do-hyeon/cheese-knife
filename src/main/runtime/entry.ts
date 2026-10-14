@@ -1,3 +1,4 @@
+import '../../settings/media-profiles';
 import type { FeatureState, KnifeRuntime, RuntimeLifecycle, RuntimeState } from './contracts';
 import { createLifecycle } from './lifecycle';
 import { parseRoute } from './route';

@@ -18,7 +18,7 @@ test('development typecheck covers the helper and consumers without weakening pr
   }
   assert.equal(Object.hasOwn(config.compilerOptions, 'skipLibCheck'), false);
   assert.deepEqual(config.compilerOptions.types, ['node']);
-  assert.deepEqual(config.files, ['tests/helpers.cjs', 'tests/bridge.test.cjs', 'tests/helper-contracts.test.cjs', 'tests/development-types.test.cjs']);
+  assert.deepEqual(config.files, ['scripts/extension-e2e/popup-cdp.mjs','tests/helpers.cjs', 'tests/bridge.test.cjs', 'tests/helper-contracts.test.cjs', 'tests/development-types.test.cjs']);
   const product = JSON.parse(await fs.readFile('tsconfig.json', 'utf8'));
   assert.equal(product.compilerOptions.allowJs, false);
   assert.deepEqual(product.compilerOptions.types, ['chrome']);

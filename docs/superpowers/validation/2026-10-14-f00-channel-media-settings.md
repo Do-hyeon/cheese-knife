@@ -27,7 +27,7 @@
 
 ## 남은 실행
 
-Tasks1–4 로컬 구현/개별 회귀를 확인했다. 현재는 Task5 진입이며 실제 설치형 popup qualification/저장4관측·최종 전체 Astra max는 아직 남아 있다.
+Tasks1–4의 당시 입력에 대한 로컬 구현/개별 회귀를 확인했다. 현재 Task5는 실제 popup sender 문서 식별 사실 부재로 승인 대기다. [실제 관측·MAIN 보완·현재 회귀](2026-10-14-f00-popup-cdp-qualification.md)를 별도로 기록하며 popup 저장/4관측·최종 전체 Astra max는 아직 남아 있다.
 
 - 기존10초 callback transport를 두 client가 공유하고 v1 API는 유지한다. media client는 별도 snapshot/epoch·필드 generation·scope·pendingRequest/pendingValues를 갖는다. UNKNOWN/CONFLICT는 unsent input보다 우선이며 최신 read-back이 원래 생성 토큰/값을 확인할 때만 무쓰기 확정한다.
 - 전역을 기본으로 명시 채널/저장 채널·독립 audio/video enable/전역 상속·프리셋 생성/적용/이름 변경/삭제를 제공한다. 미설정 도메인 적용은 차단하고 VOD/시크릿/불명 target의 현재 채널 선택을 막는다. 채널 삭제 후 selector는 명시 scope를 유지하며 자동 재생성/retarget하지 않는다.
@@ -55,3 +55,9 @@ Tasks1–4 로컬 구현/개별 회귀를 확인했다. 현재는 Task5 진입�
 - 최종 전체 **1280건/1279통과/실패0/취소0/기존 private 자료 부재 skip1**,53.91초. **9foundation 모두 통과**. 마지막 metadata 수정과 같은 런타임 입력으로 픽셀24/24·오디오 수치도 재실행했다.
 - 이전 전체1272의 type graph/import assertion2건과 전체1278의 오디오 CLI 고정 해시1건 실패는 기록했다. CLI의 정확한 승인된 v2 bootstrap 블록만 대조에서 분리하고 나머지 전체 본문은 동일6f8338... 해시로 계속 보호한다. 역사 기준·DSP·합격 오차를 갱신해 통과시킨 것이 아니다.
 - root dist58·원본 CRX/ZIP/private 자료·보호 브랜치·manifest 권한/범위·제품2.13.3 불변; 사용자 시청/P09 프로필 접근0. 완료된 체크리스트는 F00 아카이브로 분리했다.
+
+## Task5 현재 중지점
+
+실제 설치형 진입에서 MAIN의 동일 standalone 파일 중복 주입 의존성을 발견했다. 기존 순수 원본을 runtime에 포함하고 다른 MAIN feature용 namespace를 공개하는 방식으로 보완했으며 권한·자산 수·버전은 그대로다. 실제 현재 I 실행에서 MAIN ready/파서 통과를 확인했다. 기존 Task4의 로컬 수치를 실제 설치형 성공으로 승격하지 않는다.
+
+CDP attachment는 성공하지만 실제 toolbar popup의 production 요청에 sender.documentId/frameId가 없어 현행 v2 인증이 거부한다. 입력/저장 이전 STOP이며 인증 조건은 낮추지 않았다. 별도 own 설정 TAB 등의 UX/인증 경로 상세 설계와 독립 검토 승인이 필요하다. Task5 완료 원장을 기록하지 않으며 저장4관측·Task6은 아직 미실행이다.

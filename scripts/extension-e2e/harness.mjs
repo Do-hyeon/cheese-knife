@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { openOwnedRoot } from '../owned-files.mjs';
+export {selectPopupTarget,attachPopupCDP} from './popup-cdp.mjs';
 
 const harnessError = (code, cause) => Object.assign(new Error(code, cause ? { cause } : undefined), { code });
 const runIdPattern = /^[A-Za-z0-9]{1,64}$/;

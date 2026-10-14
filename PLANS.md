@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F00 Task5 — 실제 popup qualification·설치형 저장 보존**. Task4 전체1280/1279pass/0fail/0cancelled/기존skip1·9foundation gate·현재 입력의 실제 픽셀24/24 및 합성 WebAudio 수치 검사를 확인했다. 승인된 Tasks1–6을 계속 진행하며 실제 시청 Chrome/P09 변경·push/PR·배포는 포함하지 않는다. 실제 설치형 저장4관측과 whole-F00 Astra max는 아직 남아 있다.
+최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F00 Task5 WAITING-USER — 실제 팝업 sender의 문서 식별 사실 부재**. 공개 CDP 팝업 연결은 성공했으나 실제 production 요청에도 documentId/frameId가 없어 승인된 인증 게이트에서 입력 전에 중지했다. MAIN 중복 파일 주입 의존성은 실제 실행에서 보완했으며 현재 후속 보완 전체1286/1285pass/0fail/기존skip1·9gate·픽셀24/24·합성 오디오 수치 검사도 통과했다. Tasks5–6·저장4관측·whole-F00 Astra max는 미완료; 기존 Task4 검사 수치는 아카이브의 당시 입력 증거다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -44,7 +44,7 @@
 
 | ID | 작업 묶음 | 상태 | 다음 게이트 |
 | --- | --- | --- | --- |
-| F00 | 채널별 미디어 저장·프리셋 | DOING | 승인된 Tasks1–6 순차 구현·격리 검증·최종 Astra max; push/PR 금지 |
+| F00 | 채널별 미디어 저장·프리셋 | WAITING-USER | 별도 own 설정 TAB 또는 팝업 세션 인증의 상세 설계/검토·수용기준 승인; 기존 sender 조건 완화 금지 |
 | F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | WAITING-DEPENDENCY | F00 저장 계약/구현 검증 뒤 별도 상세 설계·계획·승인 |
 | AF05-B 실제 수용 / AF05 종료 | 차기 게시본 설치·업데이트 | WAITING-DEPENDENCY | 차기 게시와 실제 검사 별도 승인 후 수행; F00/F01과 독립 |
 | DT02 | 선택 파일의 native TS 실행 | DEFERRED | 실제 유지보수 이득과 검사/실행 경계 보존이 증명되면 재설계 |
@@ -62,7 +62,7 @@
 - [ ] Task6 fresh 전체 회귀/9foundation·점검도구·패키지/설치·보호 대조·whole-F00 Astra max·로컬 마감. 실제 미실행 경로는 별도 기록.
 - [ ] F00 전체 범위 공개 지시를 받은 뒤 한글 PR/CI 확인. 현재 push/PR 금지; 자동 병합/배포 없음.
 
-실제 popup의 Playwright Page capture는 실패했다. 승인된 [격리 CDP 대안](docs/superpowers/plans/2026-10-14-f00-popup-cdp-qualification.md)에 Astra max 최초0/1/2·계획 보완을 반영했으나 실제 실행 성공은 아직 아니다. 기존 source/runtime 생성과 pinned 게시본 load graph를 구분하며, capture 실패를 fake active tab이나 직접 storage 저장으로 대체하지 않는다.
+실제 popup의 Playwright Page capture는 실패했고, 승인된 [격리 CDP 대안](docs/superpowers/plans/2026-10-14-f00-popup-cdp-qualification.md)의 실제 attachment는 성공했다. 다만 production client에도 sender.documentId/frameId가 없어 현재 인증을 통과하지 못한다. [실제 관측과 중지 기록](docs/superpowers/validation/2026-10-14-f00-popup-cdp-qualification.md)을 유지하며 별도 설정 TAB 방식의 설계·Astra max 검토 승인이 필요하다. 문서 식별자를 위조하거나 직접 storage 저장으로 성공을 대체하지 않는다.
 
 ## 6. AF05-B — 게시 후 남은 실제 수용
 
@@ -106,6 +106,6 @@
 
 ## 10. 현재 사용자 개입 지점
 
-현재 Tasks1–6 로컬 구현·격리 검증·최종 Astra max는 승인됐다. 사용자 개입이 없는 이 범위는 순차 진행한다. 실제 시청 Chrome/P09 변경·새 권한/의존성/외부 전송·공개가 필요한 경우만 별도 승인 요청하며 push/PR은 하지 않는다.
+Tasks1–6 로컬 구현·격리 검증·최종 Astra max의 기존 승인은 유지한다. 현재는 실제 toolbar POPUP이 sender 문서 식별 계약을 충족하지 못해 **인증 경로/UX의 상세 재설계 승인**이 필요하다. 이 승인 전에는 실제 UI 저장/4관측과 전체 마감을 진행하지 않는다. 권장안은 기존 own top-document 검증을 유지하는 별도 설정 TAB이며, 구현 승인 없이 저장 경계를 완화하지 않는다.
 
 실제 설치/새로고침·P09 변경·새 의존성/권한/외부 전송·버전·공개는 별도 STOP 게이트다. 이전 MCP 연결/종료 승인이나 다른 작업의 공개 승인을 재사용하지 않는다.

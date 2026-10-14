@@ -84,7 +84,7 @@ var KnifeMediaProfiles = (() => {
       const channel = { channelId: item.channelId, createdRevision: item.createdRevision, revision: item.revision };
       for (const domain of ["audio", "video"]) {
         if (!Object.hasOwn(item, domain)) continue;
-        const binding = ownRecord(item[domain], ["createdRevision", "values"]);
+        const binding = ownRecord(domain === "audio" ? item.audio : item.video, ["createdRevision", "values"]);
         if (!binding || !creation(binding.createdRevision, store.revision) || binding.createdRevision < channel.createdRevision) return invalid();
         const values = validateValues(domain, binding.values);
         if (!values.ok) return invalid();
@@ -281,3 +281,4 @@ var KnifeMediaProfiles = (() => {
     isCounter: counter
   });
 })();
+globalThis.KnifeMediaProfiles = KnifeMediaProfiles;
