@@ -131,3 +131,5 @@ clean 물리 후보 source `ba286ec871308da7a025029a297632e461f734ce`, sourceSha
 각 실행은 private summary에 보존했다. media의5회 종료3증명은 실행한 parent admission에서 필수 검사했으며, 다음 소스에서는 보고서에도 boolean만 명시해 보존한다. 실제 플랫폼 업데이트/rollback은 아니고 같은 소유 경로의 코드 재실행이다. T2.13.4/R2.13.5는 기존 TEST ONLY 파생본이며 공개 번호 선정이 아니다.
 
 남은 실제 창·top-frame/iframe·설정 닫기/재열기 관측을 기존 qualification에 추가했다. 연결59/59 및 최신 전체1377/1376pass/0fail/기존skip1,56.206초. 새 actual C 실행 전 준비 결과이며 C 성공으로 세지 않는다. 실제 저장 commit과 창 닫기의 정확한 상대 시간은 강제로 만들지 않고, durable queued late commit의 결정적 순서는 별도 client 시험으로 유지한다.
+
+C(source150d512) 실제 실행은 두 창 merge/iframe 검사 뒤 후속 helper의 active-window 불일치로 실패했다. source/after 불변, close3증명 모두 true다. 인증 완화 없이 두 창 병합 관측 후 자기 설정 탭을 원래 창으로 복원·focus하는 검사 수명주기를 보완했다. 연결44/44가 통과했으며 다음 clean source의 실제 D로 확인한다. 별도 clean150d512 전체1377/1376pass/0fail/기존skip1,56.245초와9foundation은 통과했지만 C actual 실패를 지우거나 D 성공으로 전용하지 않는다.

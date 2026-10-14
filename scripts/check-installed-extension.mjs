@@ -454,6 +454,9 @@ export async function runInstalledMediaTabScenario({ context, worker, extensionI
     await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.channels[0]?.audio?.values.compressorThreshold===-30&&
       value?.mediaProfiles?.channels[0]?.audio?.values.compressorRatio===8,'media-tab-merge-failed');
     await waitUntil(()=>Promise.all([settingsPage,second].map(tab=>tab.locator('#compressorThreshold').inputValue())),values=>values.every(value=>value==='-30'),'media-tab-sync-failed');
+    await worker.evaluate(async({tabId,windowId})=>{await chrome.tabs.move(tabId,{windowId,index:-1});await chrome.windows.update(windowId,{focused:true});},
+      {tabId:secondTab.id,windowId:firstWindow});
+    assertCondition(await second.evaluate(async()=>{const tab=await chrome.tabs.getCurrent();return tab?.windowId;})===firstWindow,'media-tab-window-restore');
     await second.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
     await second.locator('#media-video-enable').click();
     await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.channels[0]?.video,'media-tab-video-enable');
