@@ -347,7 +347,7 @@ var createMediaSettingsClient = (chromeApi: typeof chrome) => {
     if (disposed || busy || !snapshot || !snapshot.canWrite || selection.kind === 'global' || ['unknown', 'conflict', 'failed', 'repair-required', 'unavailable'].includes(phase)) return;
     const pending = [...dirty].filter(([, entry]) => entry.status === 'pending'), domain = pending[0]?.[1].domain;
     if (!domain) return;
-    const channel = snapshot.channel, binding = channel?.[domain];
+    const channel = snapshot.channel, binding = domain === 'audio' ? channel?.audio : channel?.video;
     if (!channel || !binding) { code = 'domain-not-enabled'; phase = 'failed'; emit(); return; }
     const entries = pending.filter(([, entry]) => entry.domain === domain);
     for (const [, entry] of entries) entry.status = 'sent';
@@ -359,9 +359,11 @@ var createMediaSettingsClient = (chromeApi: typeof chrome) => {
   function editFields(domain: 'audio', patch: Partial<KnifeAudioValues>): void;
   function editFields(domain: 'video', patch: Partial<KnifeVideoValues>): void;
   function editFields(domain: KnifeMediaDomain, patch: Partial<KnifeMediaValues>) {
-    if (disposed || !snapshot?.canWrite || selection.kind === 'global' || !snapshot.channel?.[domain] || ['unknown', 'conflict', 'failed'].includes(phase)) return;
+    if (domain !== 'audio' && domain !== 'video') return;
+    if (disposed || !snapshot?.canWrite || selection.kind === 'global' || !(domain === 'audio' ? snapshot.channel?.audio : snapshot.channel?.video) || ['unknown', 'conflict', 'failed'].includes(phase)) return;
     if (!Object.keys(patch).length) return;
-    const check = KnifeMediaProfiles.validateValues(domain, { ...view().values[domain], ...patch });
+    const values=view().values;
+    const check = KnifeMediaProfiles.validateValues(domain, { ...(domain === 'audio' ? values.audio : values.video), ...patch });
     if (!check.ok) { code = check.code; phase = 'failed'; emit(); return; }
     for (const [id, value] of Object.entries(patch)) dirty.set(`${domain}:${id}`, { domain, id, value, generation: ++generation, status: 'pending' });
     epoch++; code = null; phase = 'saving'; emit(); flush();

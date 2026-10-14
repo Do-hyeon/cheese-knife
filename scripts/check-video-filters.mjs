@@ -3,6 +3,9 @@ import fs from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { readPublishedPayload } from './extension-e2e/published-payload.mjs';
+import { openOwnedRoot } from './owned-files.mjs';
+import { fileURLToPath } from 'node:url';
+const files=await openOwnedRoot(fileURLToPath(new URL('../',import.meta.url)));
 const browser = await chromium.launch({ headless: true, ...(process.argv.includes('--chrome') ? { channel: 'chrome' } : {}) });
 const cases = [
   { name: 'neutral', change: {}, expected: [100, 80, 60], nodes: 0 },
@@ -47,7 +50,7 @@ try {
     };
   });
   for (const file of ['media-profiles.js','config.js','web/main.js','web/runtime.js','web/site-adapter.js','web/player.js']) {
-    await page.evaluate(await fs.readFile(file, 'utf8'));
+    await page.evaluate(await files.readFile(file, 'utf8'));
   }
   await page.addStyleTag({ content: await fs.readFile('web/main.css', 'utf8') });
   await page.evaluate(() => {
@@ -209,7 +212,7 @@ try {
           {channelId:'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',createdRevision:1,revision:1,video:{createdRevision:1,
             values:{brightness:2,contrast:1,gamma:1,saturation:1,sharpness:0}}}],presets:[]}}),onChanged:{addListener(){},removeListener(){}}}},
         runtime:{onMessage:{addListener(){},removeListener(){}}},i18n:{getMessage:key=>key}};});
-      for(const name of ['media-profiles.js','config.js'])await negative.evaluate(await fs.readFile(name,'utf8'));
+      for(const name of ['media-profiles.js','config.js'])await negative.evaluate(await files.readFile(name,'utf8'));
       await negative.evaluate(item.oldBridge?historical('web/main.js'):await fs.readFile('web/main.js','utf8'));
       await negative.evaluate(item.oldOwner?historical('web/runtime.js'):await fs.readFile('web/runtime.js','utf8'));
       await negative.evaluate(await fs.readFile('web/site-adapter.js','utf8'));

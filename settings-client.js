@@ -431,7 +431,7 @@ var createMediaSettingsClient = (chromeApi) => {
     if (disposed || busy || !snapshot || !snapshot.canWrite || selection.kind === "global" || ["unknown", "conflict", "failed", "repair-required", "unavailable"].includes(phase)) return;
     const pending = [...dirty].filter(([, entry]) => entry.status === "pending"), domain = pending[0]?.[1].domain;
     if (!domain) return;
-    const channel = snapshot.channel, binding = channel?.[domain];
+    const channel = snapshot.channel, binding = domain === "audio" ? channel?.audio : channel?.video;
     if (!channel || !binding) {
       code = "domain-not-enabled";
       phase = "failed";
@@ -452,9 +452,11 @@ var createMediaSettingsClient = (chromeApi) => {
     });
   }
   function editFields(domain, patch) {
-    if (disposed || !snapshot?.canWrite || selection.kind === "global" || !snapshot.channel?.[domain] || ["unknown", "conflict", "failed"].includes(phase)) return;
+    if (domain !== "audio" && domain !== "video") return;
+    if (disposed || !snapshot?.canWrite || selection.kind === "global" || !(domain === "audio" ? snapshot.channel?.audio : snapshot.channel?.video) || ["unknown", "conflict", "failed"].includes(phase)) return;
     if (!Object.keys(patch).length) return;
-    const check = KnifeMediaProfiles.validateValues(domain, { ...view().values[domain], ...patch });
+    const values = view().values;
+    const check = KnifeMediaProfiles.validateValues(domain, { ...domain === "audio" ? values.audio : values.video, ...patch });
     if (!check.ok) {
       code = check.code;
       phase = "failed";

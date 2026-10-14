@@ -4,6 +4,18 @@ const fs = require('node:fs/promises');
 const { ESLint } = require('eslint');
 const { page, load, runtime, deliverScoped: deliver, playerHTML, flush } = require('./helpers.cjs');
 
+test('media client uses fixed domain property access without object-injection findings', async () => {
+  const lint=new ESLint({overrideConfigFile:'eslint.security.config.mjs'});
+  const results=await lint.lintFiles(['settings-client.js']);
+  assert.deepEqual(results.flatMap(file=>file.messages),[]);
+});
+
+test('scoped pixel proof reads selected resources through the owned filesystem boundary', async () => {
+  const lint=new ESLint({overrideConfigFile:'eslint.security.config.mjs'});
+  const results=await lint.lintFiles(['scripts/check-video-filters.mjs']);
+  assert.deepEqual(results.flatMap(file=>file.messages),[]);
+});
+
 test('preview autoplay proof loads the production site adapter boundary', async () => {
   const source = await fs.readFile('scripts/check-preview-autoplay.mjs', 'utf8');
   assert.match(source, /readFile\('web\/site-adapter\.js'/);

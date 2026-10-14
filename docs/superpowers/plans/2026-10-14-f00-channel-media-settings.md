@@ -10,7 +10,7 @@
 
 **Spec:** [Approved F00 design](../specs/2026-10-14-f00-channel-media-settings-design.md), user approved2026-10-14; normative reviewed body SHA-256 `DEE5028C6E33DFDEC4DA85E96CC2C21F1A1183053D913AD97035381F1789DD91`, pre-user-approval metadata document SHA-256 `B3CF5E61C3F10874F6D5B8FE5F45A1EF4EC16C014D4CDE0E363838C61C375104` (historical input, not current bytes). [Design review](../validation/2026-10-14-f00-design-review.md) retains initial0/3/2 and targeted5-item closure.
 
-**상태:** Native 실행과 [TAB 보완 계획](2026-10-14-f00-media-settings-tab.md) 승인2026-10-14, Task5A 구현/검증 중. 실제 POPUP CDP attachment는 성공했지만 production sender.documentId/frameId 부재로 입력 전에 인증이 실패한 이력은 유지한다. 인증을 완화하지 않고 승인된 별도 TAB 경로로 실제 수용을 진행한다. Tasks1–4·MAIN 보완은 기존 로컬 체크포인트이며 Tasks5–6·whole-F00는 미완료다. [원래 계획 검토](../validation/2026-10-14-f00-plan-review.md)의 최초0/6/1·7항목 targeted closure와 TAB 계획의 최초0/3/1·4항목 targeted closure는 제품 PASS가 아니다. 사용자 승인 문서는 이후 한글로 작성한다. 이 원래 영문 계획의 기술 본문/과거 입력은 유지하고 새 보완 실행은 한글 계획이 소유한다. 시청 Chrome/P09·공개 변경0, 제품2.13.3 유지. push/PR/병합/배포 승인 없음.
+**상태:** Native 실행과 [TAB 보완 계획](2026-10-14-f00-media-settings-tab.md) 승인2026-10-14. Task5A/B는 완료했고 Task5C 실제 화면 검증·원래 Task5/6을 진행 중이다. 실제 POPUP의 sender.documentId/frameId 부재 이력은 유지하며 인증을 완화하지 않는다. 별도 TAB의 실제 저장 A/B, media 보존4관측 및 config/media 손실 대조 A는 통과했고, 추가 두 창/iframe/후속 창 동작의 C/D 실패를 보완해 최신 clean 입력으로 재검증한다. 기존 도구 경고8 외 새5개는 RED/GREEN으로 보완했으며 최신 actual/audit·whole-F00 검토는 아직이다. [원래 계획 검토](../validation/2026-10-14-f00-plan-review.md)의 최초0/6/1·7항목 targeted closure와 TAB 계획의 최초0/3/1·4항목 targeted closure는 제품 PASS가 아니다. 앞으로 승인 요청 문서는 한글로 작성한다. 원래 영문 기술 본문·과거 입력은 유지하고 새 보완 실행은 한글 계획이 소유한다. 시청 Chrome/P09·공개 변경0, 제품2.13.3 유지. push/PR/병합/배포 승인 없음.
 
 ## Global Constraints
 

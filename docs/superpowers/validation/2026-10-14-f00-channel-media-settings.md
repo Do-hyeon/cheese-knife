@@ -133,3 +133,13 @@ clean 물리 후보 source `ba286ec871308da7a025029a297632e461f734ce`, sourceSha
 남은 실제 창·top-frame/iframe·설정 닫기/재열기 관측을 기존 qualification에 추가했다. 연결59/59 및 최신 전체1377/1376pass/0fail/기존skip1,56.206초. 새 actual C 실행 전 준비 결과이며 C 성공으로 세지 않는다. 실제 저장 commit과 창 닫기의 정확한 상대 시간은 강제로 만들지 않고, durable queued late commit의 결정적 순서는 별도 client 시험으로 유지한다.
 
 C(source150d512) 실제 실행은 두 창 merge/iframe 검사 뒤 후속 helper의 active-window 불일치로 실패했다. source/after 불변, close3증명 모두 true다. 인증 완화 없이 두 창 병합 관측 후 자기 설정 탭을 원래 창으로 복원·focus하는 검사 수명주기를 보완했다. 연결44/44가 통과했으며 다음 clean source의 실제 D로 확인한다. 별도 clean150d512 전체1377/1376pass/0fail/기존skip1,56.245초와9foundation은 통과했지만 C actual 실패를 지우거나 D 성공으로 전용하지 않는다.
+
+D(source038eff2)에서는 이동한 설정 Page의 다음 클릭 actionability가 timeout했다. 원시 trace에서 버튼 disabled가 없던 snapshot도 확인했으므로 BFCache나 제품 저장 실패로 단정하지 않는다. 두 창 저장·동기화 관측 후 자기 second를 닫고 원래 창에 새 toolbar→TAB 문서를 열어 후속 검사를 분리한다. 대상/문서 인증을 바꾸거나 force click/positive storage 쓰기를 하지 않는다.
+
+## Task6 중간 품질·도구 결과와 보완
+
+038eff2의 별도 clean 전체1377/1376pass/0fail/기존skip1,57.043초·9foundation·isolated package·객관 합성 audio·pixel24/24가 통과했다. 실제 audit의 입력 snapshot matched=true, npm0/Gitleaks dir0/git0이다. ESLint13은 기존 owned-files8과 새 client domain3/pixel FS2 패턴 경고이며 무취약성 인증이나 clean audit가 아니다.
+
+두 신규 RED 시험으로5개 경고를 재현했다. client는 audio/video 고정 속성 접근, pixel 도구의 선택 파일 읽기는 기존 owned 경로 capability로 보완했다. 규칙·억제·역사 경고를 변경하지 않았다. 생성 client의 raw SHA7b15b31e9d1b9ba10e87abdf0ada397d8e04bcbcbfd8fbe04ad050cf731e68e8과 current 실행 pin f11c373e438244f94ddd92d37d8eee46d55ecbcd26cdb47ced930812fbc916e9를 구분한다. raw SHA를 pin에 넣었던 중간 실패도 원장에 유지한다.
+
+보완 연결60/60·9foundation·전체1379/1378pass/0fail/기존skip1,56.058초. 새 clean 후보의 actual/도구 결과와 whole-F00 최종 Astra max가 남아 있다. 과거 C/D 실패와 중간 품질 결과를 최신 입력의 성공으로 대체하지 않는다.

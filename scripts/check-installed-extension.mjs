@@ -442,7 +442,7 @@ export async function runInstalledMediaTabScenario({ context, worker, extensionI
     await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.channels[0]?.audio?.values.compressorThreshold===-35,'media-tab-save-failed');
     await page.waitForFunction(()=>window[Symbol.for('cheese-knife.runtime.v1')]?.config.compressorThreshold===-35,null,{timeout:15000});
     await settingsPage.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
-    const {settingsPage:second}=await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession});
+    let {settingsPage:second}=await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession});
     await second.locator('#media-scope').selectOption('current');await second.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
     const firstWindow=await settingsPage.evaluate(async()=>{const tab=await chrome.tabs.getCurrent();return tab?.windowId;});
     const secondTab=await second.evaluate(async()=>{const tab=await chrome.tabs.getCurrent();return {id:tab?.id,windowId:tab?.windowId};});
@@ -454,9 +454,10 @@ export async function runInstalledMediaTabScenario({ context, worker, extensionI
     await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.channels[0]?.audio?.values.compressorThreshold===-30&&
       value?.mediaProfiles?.channels[0]?.audio?.values.compressorRatio===8,'media-tab-merge-failed');
     await waitUntil(()=>Promise.all([settingsPage,second].map(tab=>tab.locator('#compressorThreshold').inputValue())),values=>values.every(value=>value==='-30'),'media-tab-sync-failed');
-    await worker.evaluate(async({tabId,windowId})=>{await chrome.tabs.move(tabId,{windowId,index:-1});await chrome.windows.update(windowId,{focused:true});},
-      {tabId:secondTab.id,windowId:firstWindow});
+    await second.close();await worker.evaluate(windowId=>chrome.windows.update(windowId,{focused:true}),firstWindow);
+    ({settingsPage:second}=await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession}));
     assertCondition(await second.evaluate(async()=>{const tab=await chrome.tabs.getCurrent();return tab?.windowId;})===firstWindow,'media-tab-window-restore');
+    await second.locator('#media-scope').selectOption('current');
     await second.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
     await second.locator('#media-video-enable').click();
     await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.channels[0]?.video,'media-tab-video-enable');
