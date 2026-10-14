@@ -61,22 +61,25 @@ mediaOpen.textContent = chrome.i18n.getMessage('media_open');
 (document.getElementById('media-entry-guide') as HTMLElement).textContent = chrome.i18n.getMessage('media_entry_guide');
 targetStatus.textContent = mediaLocation.code ? chrome.i18n.getMessage('media_target_invalid') : chrome.i18n.getMessage('media_global_guide');
 let originalTab: chrome.tabs.Tab | null = null, opening = false;
-let targetCaptured = false;
-stylesLink.addEventListener('click', event => { if (!targetCaptured) event.preventDefault(); });
+let targetCaptured = false, retired = false;
+stylesLink.addEventListener('click', event => { if (retired || !targetCaptured) event.preventDefault(); });
 const capturedTab = chrome.tabs.getCurrent().then(async ownTab => {
+  if (retired) return null;
   if (mediaLocation.mode === 'media') return mediaLocation.target ? validateCapturedTarget(mediaLocation.target) : null;
   if (ownTab || mediaLocation.code) return null;
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (retired) return null;
   originalTab = tab ?? null;
   mediaEntry.hidden = false;
   mediaOpen.disabled = !tab || !safeId(tab.id) || !safeId(tab.windowId) || tab.incognito !== false;
   return hostTab(tab);
 }).catch(() => null);
 async function openMediaTab(): Promise<void> {
-  if (opening || mediaOpen.disabled || !originalTab || !safeId(originalTab.id) || !safeId(originalTab.windowId) || originalTab.incognito !== false) return;
+  if (retired || opening || mediaOpen.disabled || !originalTab || !safeId(originalTab.id) || !safeId(originalTab.windowId) || originalTab.incognito !== false) return;
   opening = true; mediaOpen.disabled = true;
   try {
     const target = await capturedTab, originalWindow = await chrome.windows.get(originalTab.windowId);
+    if (retired) return;
     if (originalWindow.id !== originalTab.windowId || originalWindow.incognito !== false) throw new Error('media-open-unavailable');
     const url = new URL(chrome.runtime.getURL('popup.html')); url.searchParams.set('mediaSettings', '1');
     if (target) {
@@ -85,11 +88,12 @@ async function openMediaTab(): Promise<void> {
       if (channel) url.searchParams.set('targetChannelId', channel);
     }
     await chrome.tabs.create({ windowId: originalTab.windowId, url: url.href });
-  } catch { targetStatus.textContent = chrome.i18n.getMessage('media_open_failed'); }
-  finally { opening = false; mediaOpen.disabled = false; }
+  } catch { if (!retired) targetStatus.textContent = chrome.i18n.getMessage('media_open_failed'); }
+  finally { opening = false; mediaOpen.disabled = retired; }
 }
 mediaOpen.addEventListener('click', () => { void openMediaTab(); });
 void capturedTab.then(tab => {
+  if (retired) return;
   const url = new URL(chrome.runtime.getURL('styles.html'));
   if (tab) { url.searchParams.set('targetTabId', String(tab.id)); url.searchParams.set('targetWindowId', String(tab.windowId)); }
   stylesLink.href = url.href; targetCaptured = true; stylesLink.setAttribute('aria-disabled', 'false');
@@ -139,6 +143,7 @@ const mediaDomain = (id: string): KnifeMediaDomain | null => KnifeMediaProfiles.
   : KnifeMediaProfiles.videoFields.some(field => field.id === id) ? 'video' : null;
 const channelBinding = (channel: KnifeChannelRecord | null | undefined, domain: KnifeMediaDomain) => domain === 'audio' ? channel?.audio : channel?.video;
 function editField(id: string, value: KnifeScalar) {
+  if (retired) return;
   const domain = mediaDomain(id);
   if (!domain || !mediaView || mediaView.selection.kind === 'global') settingsClient.edit({ type: 'config', id, value });
   else if (domain === 'audio') mediaClient?.editFields('audio', { [id]: value });
@@ -169,6 +174,7 @@ const renderFields = new Map<string, (view: KnifeSettingsView) => void>();
       warning.textContent = "⚠️";
       warning.addEventListener("click", event => {
         event.preventDefault();
+        if (retired) return;
         chrome.tabs.create({
           url: navigator.userAgent.includes("Firefox")
             ? "about:preferences"
@@ -312,7 +318,7 @@ function confirmedPresetValues(domain: KnifeMediaDomain): Extract<KnifeValuesRes
   return validated.ok ? validated : null;
 }
 function renderMedia() {
-  if (!globalView) return;
+  if (retired || !globalView) return;
   const selected = mediaView?.selection.kind !== 'global' && mediaView?.selection !== undefined;
   for (const [id, render] of renderFields) {
     const domain = mediaDomain(id);
@@ -369,19 +375,21 @@ function renderMedia() {
 mediaClient?.subscribe(view => { mediaView = view; renderMedia(); });
 void capturedTab.then(tab => {
   const id = mediaLocation.target?.channelId;
+  if (retired) return;
   if (tab && id && tab.incognito === false) currentScope = { kind: 'current', tabId: tab.id, windowId: tab.windowId, channelId: id };
   if (mediaClient && mediaLocation.target && !tab) targetStatus.textContent = chrome.i18n.getMessage('media_target_changed');
   renderMedia();
 });
 scopeSelect.addEventListener('change', () => {
+  if (retired) return;
   const next: KnifeMediaSelection | null = scopeSelect.value === 'global' ? { kind: 'global' } : scopeSelect.value === 'current' ? currentScope
     : scopeSelect.value.startsWith('saved:') ? { kind: 'saved', channelId: scopeSelect.value.slice(6) } : null;
   if (next && mediaClient) void mediaClient.selectScope(next).then(() => renderMedia());else renderMedia();
 });
-const perform = (request: KnifeMediaMutation) => { void mediaClient?.perform(request).catch(() => renderMedia()); };
+const perform = (request: KnifeMediaMutation) => { if (!retired) void mediaClient?.perform(request).catch(() => renderMedia()); };
 function confirmPerform(request: KnifeMediaMutation, key: string, target: string) {
   const view = mediaView;
-  if (!view || view.phase !== 'ready' || !view.snapshot?.canWrite || view.pendingKeys.length || view.pendingRequest) return;
+  if (retired || !view || view.phase !== 'ready' || !view.snapshot?.canWrite || view.pendingKeys.length || view.pendingRequest) return;
   if (!window.confirm(`${text(key)}\n${target}`)) return;
   if (mediaView?.phase !== 'ready' || !mediaView.snapshot?.canWrite || globalView?.phase !== 'ready' ||
     mediaView.pendingKeys.length || mediaView.pendingRequest || JSON.stringify(mediaView.selection) !== JSON.stringify(view.selection)) return;
@@ -434,5 +442,35 @@ function selectedPreset() { return mediaView?.snapshot?.store?.presets.find(pres
 });
 presetSelect.addEventListener('change',renderMedia);
 presetDomain.addEventListener('change',renderMedia);
-window.addEventListener('pagehide', () => { settingsClient.dispose();mediaClient?.dispose(); }, { once: true });
+const reconnect = document.getElementById('settings-reconnect') as HTMLButtonElement;
+reconnect.textContent = text('settings_reconnect');
+function showReconnectionRequired(): void {
+  for (const status of [settingsStatus, mediaStatus]) {
+    status.dataset.phase = 'reconnect-required';status.textContent = text('settings_reconnect_required');
+  }
+  reconnect.hidden = false;reconnect.disabled = false;
+}
+function retireSettingsDocument(): void {
+  if (retired) return;retired = true;
+  const draft = document.getElementById('settings-retired-draft') as HTMLElement;
+  const globalPending = globalView?.pendingKeys.length || globalView?.phase === 'saving' || globalView?.phase === 'unknown';
+  const mediaPending = mediaView?.pendingRequest || mediaView?.pendingKeys.length;
+  draft.hidden = !globalPending && !mediaPending;
+  draft.textContent = draft.hidden ? '' : JSON.stringify({
+    global: globalPending ? globalView?.values : null,
+    media: mediaPending ? { request: mediaView?.pendingRequest, values: mediaView?.values, saved: mediaView?.snapshot?.values } : null,
+  }, null, 2);
+  for (const client of [settingsClient, mediaClient]) {
+    try { client?.dispose(); } catch { /* Extension reload can retire its API before pagehide; keep the UI locked. */ }
+  }
+  for (const input of document.querySelectorAll<HTMLInputElement | HTMLButtonElement | HTMLSelectElement>('input,button,select')) input.disabled = true;
+  stylesLink.setAttribute('aria-disabled','true');showReconnectionRequired();
+}
+let reconnecting = false;
+reconnect.addEventListener('click', () => {
+  if (!retired || reconnecting || !window.confirm(text('settings_reconnect_confirm'))) return;
+  reconnecting = true;reconnect.disabled = true;location.reload();
+});
+window.addEventListener('pagehide', retireSettingsDocument);
+window.addEventListener('pageshow', event => { if (event.persisted && retired) showReconnectionRequired(); });
 })();

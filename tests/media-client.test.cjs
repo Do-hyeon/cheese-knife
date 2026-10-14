@@ -5,8 +5,8 @@ const A='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',P='11111111-1111-4111-8111-1111111111
 const saved={kind:'saved',channelId:A};
 function client(t,h){const dom=page();for(const file of ['media-profiles.js','config.js','style-schema.js','settings-contract.js','settings-client.js'])load(dom,file);
   assert.equal(typeof dom.window.createMediaSettingsClient,'function','media client must exist');
-  const instance=dom.window.createMediaSettingsClient(h.apiFor('popup'));let view;instance.subscribe(next=>{view=next;});
-  t.after(()=>{instance.dispose();dom.window.close();});return {...instance,dom,view:()=>view};}
+  const api=h.apiFor('popup'),instance=dom.window.createMediaSettingsClient(api);let view;instance.subscribe(next=>{view=next;});
+  t.after(()=>{instance.dispose();dom.window.close();});return {...instance,api,dom,view:()=>view};}
 async function enabled(t){const h=settingsHarness(t),c=client(t,h);await h.settle();assert.equal((await c.selectScope(saved)).ok,true);
   assert.equal((await c.perform({action:'enable-channel-domain',selection:saved,domain:'audio',expectedMediaRevision:0,expectedGlobalRevision:0,expectedRecord:null})).ok,true);
   await h.settle();return {h,c};}
@@ -105,6 +105,14 @@ test('unknown channel enable confirms only its original creation without another
   await gate.reached;gate.fail();await assert.rejects(pending);await h.settle();const before=h.calls.filter(x=>x.kind==='commit').length;
   await c.refresh();await h.settle();assert.equal(c.view().phase,'ready');assert.equal(c.view().pendingRequest,null);
   assert.equal(h.calls.filter(x=>x.kind==='commit').length,before);assert.equal(h.messages.filter(x=>x.message.action==='enable-channel-domain').length,1);
+});
+test('media transport retires even when invalidated Chrome rejects listener cleanup',async t=>{
+  const {h,c}=await enabled(t),gate=h.holdNext('callback:create-preset');const pending=c.perform({action:'create-preset',id:P,
+    expectedMediaRevision:1,domain:'audio',name:'Quiet',values:structuredClone(c.view().values.audio)});
+  await gate.reached;const outcome=pending.then(()=> 'unexpected',error=>error.code);
+  c.api.storage={...c.api.storage,onChanged:{...c.api.storage.onChanged,removeListener:()=>{throw Error('Extension context invalidated.');}}};
+  assert.throws(()=>c.dispose(),/context invalidated/);
+  assert.equal(await Promise.race([outcome,new Promise(resolve=>setTimeout(()=>resolve('still-pending'),100))]),'disposed');
 });
 test('media read codec rejects malformed protocol identity versions values and catalogue',async t=>{
   for(const corrupt of [reply=>{reply.protocol=1;},reply=>{reply.requestId='other';},reply=>{reply.stored=true;},

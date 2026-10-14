@@ -10,7 +10,7 @@
 
 **명세:** [승인된 탭 보완 설계](../specs/2026-10-14-f00-media-settings-tab-design.md), 목업/UI·명세·툴바→탭 수용기준 승인2026-10-14. [원래 F00 설계](../specs/2026-10-14-f00-channel-media-settings-design.md)는 명시한 UI 변경 이외에는 유지한다. [설계 검토](../validation/2026-10-14-f00-settings-tab-design-review.md)의 최초0/5/1·6항목 확인은 제품 검증 성공이 아니다.
 
-**상태:** 사용자 상세 계획/기존 Native 실행 승인2026-10-14. 입력 소스870637e, 브랜치 codex/f00-channel-media-settings. [새 계획 검토](../validation/2026-10-14-f00-settings-tab-plan-review.md)의 최초 Critical0/Important3/Minor1·4항목 보완 확인 완료. 사용자의 요청에 따라 영어 서술을 한글로 옮겼으며 승인된 인터페이스·수치·시험·중지 조건은 유지했다. 원래 Tasks1–4 완료는 다시 실행하지 않는다. 이 계획과 원래 Task5/6·설치 보존·F00 전체 최종 검토는 아직 미완료다.
+**상태:** 사용자 상세 계획/기존 Native 실행 승인2026-10-14. 승인 당시 입력870637e, 브랜치 codex/f00-channel-media-settings. Task5A/B 로컬 검증 완료; Task5C는 수명주기/helper/상위 owner의 준비 검증 후 실제 qualification으로 진행한다. 준비 checkpoint는 실제 Chrome·Task5C/F00 완료가 아니다. [새 계획 검토](../validation/2026-10-14-f00-settings-tab-plan-review.md)의 최초 Critical0/Important3/Minor1·4항목 보완 확인 완료. 사용자의 요청에 따라 영어 서술을 한글로 옮겼으며 승인된 인터페이스·수치·시험·중지 조건은 유지했다. 원래 Tasks1–4 완료는 다시 실행하지 않는다. 실제 보존4관측·원래 Task5/6·F00 전체 최종 검토는 아직 미완료다.
 
 ## 공통 제한
 

@@ -223,9 +223,12 @@ var createSettingsClient = (chromeApi) => {
     dispose() {
       if (disposed) return;
       disposed = true;
-      chromeApi.storage.onChanged.removeListener(onChanged);
-      subscribers.clear();
-      transport.dispose();
+      try {
+        chromeApi.storage.onChanged.removeListener(onChanged);
+      } finally {
+        subscribers.clear();
+        transport.dispose();
+      }
     }
   };
 };
@@ -518,9 +521,12 @@ var createMediaSettingsClient = (chromeApi) => {
     dispose() {
       if (disposed) return;
       disposed = true;
-      chromeApi.storage.onChanged.removeListener(onChanged);
-      transport.dispose();
-      subscribers.clear();
+      try {
+        chromeApi.storage.onChanged.removeListener(onChanged);
+      } finally {
+        transport.dispose();
+        subscribers.clear();
+      }
     }
   };
 };

@@ -77,3 +77,14 @@ ACK 유실 patch7+새 입력5의 조회/event는 요청[7]/저장7/표시draft5/
 최초 RED71건 중11expected fail. 중간 jsdom realm 배열/UUID 정렬 가정은 시험 경계만 수정했다. 집중76/76·dictionary 연결56/56, 최종 전체1320/1319pass/0fail/0cancelled/기존skip1,54.30초,9foundation 통과. 첫 전체 dictionary 경고는 고정 audio/video 분기로 보완했고 후속 MAIN symlink EBUSY는 동일 입력 재실행으로 통과했다. 모든 실패 로그는 Native private 원장에 유지하며 규칙/역사 기준/오디오 수치 기대값은 바꾸지 않았다.
 
 실제 TAB writer/BFCache/보존·F00 전체 최종 검토는 아직이다. Task5C와 원래 Tasks5/6을 이어간다.
+
+## Task5C 실제 검증 직전 준비 체크포인트 — 완료 아님
+
+- pagehide 시 마지막 global/media 입력·불명 요청을 보존하고 두 client를 폐기하며 편집을 영구 잠근다. persisted 복원은 ready가 아닌 재연결 필요 표시다. native 확인 후 own 설정 문서만 reload하며 자동 재초기화/재전송/rollback은 없다. 늦은 대상 캡처도 opener를 되살리지 않는다.
+- invalidated Chrome 리스너 정리가 던져도 finally에서 pending transport/subscriber를 정리한다. 실제 보내진 durable commit은 취소했다고 표현하지 않는다. 합성 lifecycle35/35·client 연결50/50으로 재현/보완했으며 jsdom reload 관측은 실제 새 문서/BFCache 성공이 아니다.
+- 기존 strict popup-cdp helper에 실제 toolbar→TAB 경로를 추가했다. worker observer를 먼저 준비하고 최대16개 production metadata만 기록한다. 새 Page의 실제 tabId→CURRENT TAB 문서→사전 metadata를 결합해 같은URL 이전 문서를 대체하지 않는다. 공개 CDP mouse 입력 전에 label/focus/hit-target/ready를 확인한다. 문서/auth 부재·중복·timeout·시크릿/frame·cleanup 실패를 거부한다. helper는 빌린 browser session을 닫지 않는다.
+- 상위 runner의 정확한 선택 옵션과 실제 Windows close owner를 연결했다. public Browser.close ACK·disconnection·exact owned root0 후에만 잔여 context.close를 수행한다. source dirty/실행 중 변경·독립 동결58-name metadata+media-profiles.js exact59 자산을 launch 전후에 검사한다. 일반 config runner/전환 schema/기존 기본 cleanup은 유지한다.
+- 새 qualification의 자기 profile/candidate는 PASS에도 최종 통합 증거까지 보존한다. summary 쓰기/cleanup 실패 때 자료를 먼저 없애지 않기 위한 국소 결정이며 비용은 private output 디스크 사용이다. 정상 종료 proof는 계속 필수다. 실제 사용자 Chrome/P09·로그인·동기화는 접근하지 않는다.
+- source/asset/owner 연결86/86, 최신 고정 입력 전체1358/1357pass/0fail/0cancelled/기존skip1,54.82초;9foundation 통과. 초기 type/fixture/import/경계 실패와 중간 전체1354 결과는 private Native 원장에 별도 보존하며 최종 입력으로 전용하지 않는다. 역사 기준·타입 규칙·lint 억제·합격 오차는 변경하지 않았다.
+
+이 준비 소스의 clean 로컬 SHA·새 물리 격리 복사본으로 실제 qualification을 실행한다. 실제 TAB 저장/합성 외 BFCache·media 보존4관측·config/media 손실 대조·원래 Task5/6·whole-F00 최종 Astra max는 아직이다. 실제 최초 네트워크 navigation 간격도 완전 egress 보호라고 주장하지 않는다. push/PR/버전/릴리즈/스토어 변경은 없다.

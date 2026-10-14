@@ -176,8 +176,9 @@ var createSettingsClient = (chromeApi: typeof chrome) => {
   return {
     subscribe(fn: (view: KnifeSettingsView) => void) { if (disposed) return () => {}; subscribers.add(fn); fn(view()); return () => subscribers.delete(fn); },
     edit, refresh, retryStyles, reloadTarget, discardPending,
-    dispose() { if (disposed) return; disposed = true; chromeApi.storage.onChanged.removeListener(onChanged);
-      subscribers.clear(); transport.dispose(); },
+    dispose() { if (disposed) return; disposed = true;
+      try { chromeApi.storage.onChanged.removeListener(onChanged); }
+      finally { subscribers.clear(); transport.dispose(); } },
   };
 };
 
@@ -384,5 +385,7 @@ var createMediaSettingsClient = (chromeApi: typeof chrome) => {
   chromeApi.storage.onChanged.addListener(onChanged); void refresh();
   return { subscribe(fn: (view: KnifeMediaView) => void) { if (disposed) return () => {};subscribers.add(fn);fn(view());return () => { subscribers.delete(fn); }; },
     selectScope, editFields, perform: (request: KnifeMediaMutation) => mutateMedia(request), refresh, discardPending,
-    dispose() { if (disposed) return; disposed = true; chromeApi.storage.onChanged.removeListener(onChanged); transport.dispose(); subscribers.clear(); } };
+    dispose() { if (disposed) return; disposed = true;
+      try { chromeApi.storage.onChanged.removeListener(onChanged); }
+      finally { transport.dispose(); subscribers.clear(); } } };
 };

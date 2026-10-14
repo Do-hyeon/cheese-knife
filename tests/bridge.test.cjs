@@ -8,7 +8,8 @@ function bridge(t, mainFirst, get = async () => ({ config: { arrowSeek: false },
   const dom = page(playerHTML);
   /** @type {((changes: unknown) => void) | undefined} */
   let storageListener;
-  dom.window.chrome = {
+  // Supply only the external Chrome boundary exercised by the real bridge.
+  Reflect.set(dom.window, 'chrome', {
     storage: { local: { get,
       onChanged: {
         /** @param {(changes: unknown) => void} fn */
@@ -19,7 +20,7 @@ function bridge(t, mainFirst, get = async () => ({ config: { arrowSeek: false },
       getMessage: key => key,
     },
     runtime: { id: 'fixture-extension-id', onMessage: { addListener() {}, removeListener() {} } },
-  };
+  });
   load(dom, 'media-profiles.js'); load(dom, 'config.js');
   if (mainFirst) { load(dom, 'web/main.js'); load(dom, 'web/runtime.js'); }
   else { load(dom, 'web/runtime.js'); load(dom, 'web/main.js'); }

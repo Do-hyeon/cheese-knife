@@ -203,3 +203,44 @@ test('channel preset copies confirmed scoped values but inherited domain waits f
   assert.equal(mutations(h).length,before);gate.release();await h.settle();doc.getElementById('media-preset-create').click();await h.settle();
   assert.equal(h.saved.mediaProfiles.presets.length,2);assert.equal(h.saved.mediaProfiles.presets.find(preset=>preset.domain==='video').values.brightness,2);
 });
+test('restored disposed settings document cannot keep ready editors or write again',async t=>{
+  const {h,dom,doc}=await ui(t,'?mediaSettings=1');const before=h.messages.length,listeners=h.changes.listeners.size;
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow'));assert.equal(doc.getElementById('brightness').disabled,false);
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide',{persisted:true}));
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow',{persisted:true}));
+  for(const element of doc.querySelectorAll('input,select,button:not(#settings-reconnect)'))assert.equal(element.disabled,true,element.id);
+  assert.notEqual(doc.getElementById('settings-status').dataset.phase,'ready');assert.notEqual(doc.getElementById('media-status').dataset.phase,'ready');
+  edit(dom,'brightness',2);doc.getElementById('media-refresh').dispatchEvent(new dom.window.Event('click'));await h.settle();
+  assert.equal(h.messages.length,before);assert.equal(h.changes.listeners.size,listeners-2);
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide',{persisted:true}));assert.equal(h.changes.listeners.size,listeners-2);
+});
+test('retirement retains global pending intent while late commit cannot unlock editors',async t=>{
+  const {h,dom,doc}=await ui(t,'?mediaSettings=1'),gate=h.holdNext('callback:patch');edit(dom,'brightness',2);await gate.reached;
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide',{persisted:true}));
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow',{persisted:true}));
+  const draft=doc.getElementById('settings-retired-draft');assert.ok(draft);assert.equal(draft.hidden,false);assert.match(draft.textContent,/brightness.*2/);
+  gate.release();await h.settle();assert.equal(h.saved.config.brightness,2);assert.equal(doc.getElementById('brightness').disabled,true);
+  assert.match(doc.getElementById('settings-status').textContent,/저장.*완료|이미.*저장/);assert.notEqual(doc.getElementById('settings-status').dataset.phase,'ready');
+});
+test('retirement preserves unknown media request and latest unsent draft without retry',async t=>{
+  const {h,dom,doc}=await channel(t),gate=h.holdNext('callback:patch-channel-fields');edit(dom,'compressorRatio',7);await gate.reached;
+  edit(dom,'compressorRatio',5);gate.fail();await h.settle();const before=mutations(h).length;
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide',{persisted:true}));dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow',{persisted:true}));
+  const draft=doc.getElementById('settings-retired-draft');assert.ok(draft);assert.match(draft.textContent,/compressorRatio.*5/);assert.match(draft.textContent,/patch-channel-fields/);
+  h.changes.emit({mediaProfiles:{newValue:h.saved.mediaProfiles}},'local');await h.settle();assert.equal(mutations(h).length,before);
+  assert.equal(doc.getElementById('compressorRatio').disabled,true);assert.equal(h.saved.mediaProfiles.channels[0].audio.values.compressorRatio,7);
+});
+test('reconnect requires confirmation then reloads only own document once',async t=>{
+  let reloads=0;const {h,dom,doc}=await ui(t,'?mediaSettings=1','tab',(_,dom)=>dom.virtualConsole.on('jsdomError',error=>{
+    if(error.type==='not-implemented'&&error.message.includes('navigation'))reloads++;}));
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide',{persisted:true}));dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow',{persisted:true}));
+  const button=doc.getElementById('settings-reconnect');assert.ok(button);assert.equal(button.hidden,false);dom.window.confirm=message=>{assert.match(message,/입력|저장/);return false;};
+  button.click();assert.equal(reloads,0);dom.window.confirm=()=>true;button.click();button.click();
+  assert.equal(reloads,1);assert.equal(h.calls.some(c=>c.kind==='tab-reload'),false);
+});
+test('late initial capture cannot enable toolbar opener after document retires',async t=>{
+  const h=settingsHarness(t),gate=h.holdNext('tab-query');const {dom}=await h.openUi('popup',{surface:'toolbar'});await gate.reached;
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide',{persisted:true}));gate.release();await h.settle();
+  assert.equal(dom.window.document.getElementById('media-open').disabled,true);
+  assert.notEqual(dom.window.document.getElementById('settings-status').dataset.phase,'ready');
+});

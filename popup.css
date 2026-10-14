@@ -93,7 +93,7 @@ summary {
 #settings-status[data-phase="failed"], #settings-status[data-phase="unknown"], #settings-status[data-phase="repair-required"] { color: #9a3412; }
 #media-controls { font-size: 13px; line-height: 1.5; }
 #media-controls select, #media-preset-name { max-width: 100%; box-sizing: border-box; }
-#media-draft { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; }
+#media-draft, #settings-retired-draft { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; }
 #media-controls > label, #media-presets > label { display: block; margin-top: 6px; }
 .media-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 #media-status[data-phase="failed"], #media-status[data-phase="unknown"], #media-status[data-phase="conflict"], #media-status[data-phase="repair-required"] { color: #9a3412; }

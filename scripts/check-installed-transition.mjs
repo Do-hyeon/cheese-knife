@@ -161,7 +161,7 @@ export function superviseTransitionChild({ child, nonce, roots, deadlineMs = 600
   });
 }
 
-async function sourceAttestation(files) {
+export async function sourceAttestation(files) {
   const command = args => execFileSync('git', args, { cwd: files.root, encoding: 'utf8', timeout: 15000, maxBuffer: 2097152, stdio: ['ignore', 'pipe', 'pipe'] });
   if (command(['status', '--porcelain', '--untracked-files=no']).trim()) throw fail('transition-source-dirty');
   const sourceCommit = command(['rev-parse', 'HEAD']).trim();
@@ -429,6 +429,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === scriptPath) {
       const args = process.argv.slice(2), controls = args.filter(value => value.startsWith('--control='));
       if (controls.length > 1 || (controls.length === 1 && controls[0] !== '--control=storage-loss')) throw fail('transition-control-invalid');
       const options = parseInstalledE2EArgs(args.filter(value => !value.startsWith('--control=')));
+      if (options.qualification !== undefined) throw fail('installed-e2e-args-invalid');
       const report = await runInstalledTransition({ ...options, ...(controls.length ? { control: 'storage-loss' } : {}) });
       console.log(JSON.stringify({ ok: report.ok, runId: report.runId, control: report.control, phases: report.result.phases.length }));
     } catch (error) { console.error(error?.code || error?.message); process.exitCode = 1; }

@@ -1,10 +1,13 @@
 import { randomBytes } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { checkPackage } from './check-package.mjs';
 import { FIXTURE_LIVE_URL, fixtureDecision, loadFixtureResponses } from './extension-e2e/fixture-router.mjs';
-import { launchInstalledExtension, parseInstalledE2EArgs, reacquireExtensionWorker } from './extension-e2e/harness.mjs';
+import { launchInstalledExtension, parseInstalledE2EArgs, reacquireExtensionWorker, openInstalledMediaSettings,
+  openMediaBrowserSession, closeInstalledMediaBrowser } from './extension-e2e/harness.mjs';
+import { refreshTransitionWorker } from './extension-e2e/transition-preparation.mjs';
 import { openOwnedRoot } from './owned-files.mjs';
 import { removeCandidate, verifyCandidate } from './verify-candidate.mjs';
 
@@ -410,6 +413,53 @@ export async function runInstalledScenarioSequence(args, implementations = {}) {
   return { ...baseSections, ...multiWindowSections, ...lifecycleSections };
 }
 
+/** Actual toolbar-to-TAB UI in the caller's new disposable profile; no positive storage writes. */
+export async function runInstalledMediaTabScenario({ context, worker, extensionId, responses, browserSession }) {
+  const pageErrors=[],routeErrors=[];
+  const observe=page=>page.on('pageerror',()=>{if(pageErrors.length<32)pageErrors.push(true);});
+  for(const page of context.pages())observe(page);context.on('page',observe);
+  await context.route(/^https?:\/\//,async route=>{
+    try{const decision=fixtureDecision(route.request().url(),responses);
+      if(decision.action==='fulfill')await route.fulfill({status:decision.status,contentType:decision.contentType,body:decision.body});
+      else await route.abort('blockedbyclient');
+    }catch{routeErrors.push(true);await route.abort('blockedbyclient').catch(()=>{});}
+  });
+  await context.routeWebSocket(/.*/,socket=>socket.close());
+  const page=await context.newPage();await page.setViewportSize({width:1280,height:720});
+  await page.goto(FIXTURE_LIVE_URL,{waitUntil:'domcontentloaded',timeout:15000});
+  await page.waitForFunction(()=>window[Symbol.for('cheese-knife.runtime.v1')]?.media.phase==='ready',null,{timeout:15000});
+  try{
+    const {settingsPage}=await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession});
+    assertCondition(await settingsPage.locator('#media-scope').inputValue()==='global','media-tab-initial-scope');
+    await settingsPage.locator('#media-scope').selectOption('current');
+    await settingsPage.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+    await settingsPage.locator('#media-audio-enable').click();
+    await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.channels[0]?.audio,'media-tab-enable-failed');
+    await settingsPage.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+    const original=await settingsPage.locator('#compressorThreshold').inputValue();
+    await settingsPage.locator('#compressorThreshold').fill('-35');
+    await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.channels[0]?.audio?.values.compressorThreshold===-35,'media-tab-save-failed');
+    await page.waitForFunction(()=>window[Symbol.for('cheese-knife.runtime.v1')]?.config.compressorThreshold===-35,null,{timeout:15000});
+    await settingsPage.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+    const {settingsPage:second}=await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession});
+    await second.locator('#media-scope').selectOption('current');await second.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+    await Promise.all([settingsPage.locator('#compressorThreshold').fill('-30'),second.locator('#compressorRatio').fill('8')]);
+    await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.channels[0]?.audio?.values.compressorThreshold===-30&&
+      value?.mediaProfiles?.channels[0]?.audio?.values.compressorRatio===8,'media-tab-merge-failed');
+    await waitUntil(()=>Promise.all([settingsPage,second].map(tab=>tab.locator('#compressorThreshold').inputValue())),values=>values.every(value=>value==='-30'),'media-tab-sync-failed');
+    await settingsPage.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+    await second.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+    await second.locator('#compressorThreshold').fill(original);
+    await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.channels[0]?.audio?.values.compressorThreshold===Number(original),'media-tab-restore-failed');
+    await second.locator('#media-status[data-phase="ready"]').waitFor({timeout:15000});
+    second.once('dialog',dialog=>{void dialog.accept();});await second.locator('#media-channel-delete').click();
+    await waitUntil(()=>storageSnapshot(worker),value=>value?.mediaProfiles?.channels.length===0,'media-tab-delete-restore-failed');
+    assertCondition(pageErrors.length===0&&routeErrors.length===0,'media-tab-page-error');
+    return {mediaTab:passed({popupAttached:true,tabWriterQualified:true,currentSaved:true,mainApplied:true,twoTabMerge:true,restored:true}),
+      network:passed({fixtureRoutes:true,initialPopupNavigationCovered:false})};
+  }finally{context.off('page',observe);}
+}
+
 const defaultDependencies = {
   openRepository: () => openOwnedRoot(repositoryRoot),
   verifyCandidate,
@@ -419,6 +469,15 @@ const defaultDependencies = {
   launchInstalledExtension,
   chromiumApi: chromium,
   scenario: runInstalledScenarioSequence,
+  mediaScenario: runInstalledMediaTabScenario,
+  refreshTransitionWorker, openMediaBrowserSession, closeInstalledMediaBrowser,
+  platform: process.platform,
+  sourceAttestation: async files => (await import('./check-installed-transition.mjs')).sourceAttestation(files),
+  expectedMediaFiles: async files => {
+    const { validatePayloadMetadata } = await import('./extension-e2e/published-payload.mjs');
+    const rows = validatePayloadMetadata(JSON.parse(await files.readFile('tests/fixtures/installed-extension/published-payload.json','utf8')));
+    return [...rows.map(row=>`dist/${row.name}`),'dist/media-profiles.js'].sort();
+  },
 };
 
 const relativeOwnedPath = (root, absolute) => {
@@ -427,8 +486,9 @@ const relativeOwnedPath = (root, absolute) => {
   return slash(relative);
 };
 
-export async function runInstalledExtensionE2E({ headed = false, runId, dependencies = {} } = {}) {
+export async function runInstalledExtensionE2E({ headed = false, runId, qualification, dependencies = {} } = {}) {
   if (!/^[A-Za-z0-9]{1,64}$/.test(runId || '')) throw runnerError('installed-e2e-run-id-invalid');
+  if (qualification !== undefined && qualification !== 'media-tab') throw runnerError('installed-e2e-qualification-invalid');
   const startedAt = Date.now();
   const deps = { ...defaultDependencies, ...dependencies };
   const files = await deps.openRepository();
@@ -441,11 +501,17 @@ export async function runInstalledExtensionE2E({ headed = false, runId, dependen
   let traceStopped = false;
   let report;
   let primaryError;
+  let browserSession, shutdownProof, source, after;
 
   const remember = error => { if (!primaryError) primaryError = error; };
   try {
+    if (qualification === 'media-tab') {
+      if (deps.platform !== 'win32') throw runnerError('media-qualification-platform-unsupported');
+      source = await deps.sourceAttestation(files);
+    }
     const candidate = await deps.verifyCandidate(runId);
     candidateBuilt = true;
+    if (qualification === 'media-tab' && !isDeepStrictEqual(candidate.files, await deps.expectedMediaFiles(files))) throw runnerError('media-candidate-assets-invalid');
     await deps.checkPackage(candidate.dist);
     await files.ensureDirectory('output/playwright');
     if (await files.lstat(artifactRelative, { optional: true })) throw runnerError('installed-artifact-exists');
@@ -463,6 +529,11 @@ export async function runInstalledExtensionE2E({ headed = false, runId, dependen
     };
     let launched = await deps.launchInstalledExtension(launchOptions);
     context = launched.context;
+    if (qualification === 'media-tab') {
+      launched = await deps.refreshTransitionWorker(launched);context = launched.context;
+      browserSession = await deps.openMediaBrowserSession(context);
+      if (!browserSession || typeof browserSession.send !== 'function' || typeof browserSession.on !== 'function' || typeof browserSession.off !== 'function') throw runnerError('media-browser-session-unavailable');
+    }
     await context.tracing.start({ screenshots: true, snapshots: true, sources: false });
     traceStarted = true;
     const restartSession = async () => {
@@ -478,7 +549,9 @@ export async function runInstalledExtensionE2E({ headed = false, runId, dependen
       traceStopped = false;
       return launched;
     };
-    const sections = await deps.scenario({ ...launched, responses, artifactPath, restartSession });
+    const sections = qualification === 'media-tab'
+      ? await deps.mediaScenario({ ...launched, responses, artifactPath, browserSession })
+      : await deps.scenario({ ...launched, responses, artifactPath, restartSession });
     await context.tracing.stop();
     traceStopped = true;
     report = { ok: true, runId, ...sections };
@@ -498,18 +571,30 @@ export async function runInstalledExtensionE2E({ headed = false, runId, dependen
       }
     }
   } finally {
-    if (context) {
+    if (qualification === 'media-tab' && context) {
+      try {
+        shutdownProof = await deps.closeInstalledMediaBrowser({ context, browserSession, profilePath });
+        if (!shutdownProof || shutdownProof.browserCloseAcknowledged !== true || shutdownProof.browserDisconnected !== true || shutdownProof.ownedRootClosed !== true) throw runnerError('media-close-unconfirmed');
+      } catch (error) { remember(error); }
+    }
+    if (context && (qualification !== 'media-tab' || shutdownProof?.browserCloseAcknowledged && shutdownProof?.browserDisconnected && shutdownProof?.ownedRootClosed)) {
       try { await context.close(); } catch (error) { remember(error); }
     }
-    if (profilePath) {
+    if (profilePath && qualification !== 'media-tab') {
       try { await files.removeTree(relativeOwnedPath(files.root, profilePath)); } catch (error) { remember(error); }
     }
-    if (candidateBuilt) {
+    if (candidateBuilt && qualification !== 'media-tab') {
       try { await deps.removeCandidate(runId); } catch (error) { remember(error); }
     }
   }
 
+  if (qualification === 'media-tab' && source) {
+    try { after = await deps.sourceAttestation(files);if (!isDeepStrictEqual(source, after)) throw runnerError('media-source-changed'); }
+    catch (error) { remember(error); }
+  }
   if (primaryError && report?.ok) report = { ok: false, runId, error: { code: primaryError?.code || 'installed-e2e-cleanup-failed' } };
+  if (qualification === 'media-tab' && report) report = { ...report, qualification, shutdown: shutdownProof ?? null,
+    profileRetained: !!profilePath, candidateRetained: candidateBuilt, source, after };
   if (report) report.durationMs = Date.now() - startedAt;
   if (artifactCreated) {
     try {
