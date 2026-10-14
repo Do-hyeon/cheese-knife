@@ -41,3 +41,11 @@
 보완 코드의 clean SHA, 집중/전체·9기반·설치·저장 손실·오디오·픽셀·패키지·audit·보호 및 동일 검토자 targeted 판정은 완료 후 기록한다. 현재는 F00 전체 완료나 공개 준비 완료를 주장하지 않는다.
 
 보완 checkpoint 전 격리 overlay 검증: 9개 기반 PASS, 집중116/116 PASS, 전체1402/1401 pass/0 fail/0 cancelled/기존 skip1,57.861초. 활성 F00 실행 해시만 새 생성 자산 세 개와 맞췄다. 이 결과를 아직 실행하지 않은 새 clean 후보의 실제 설치/DSP/audit 성공으로 대신하지 않는다.
+
+## 동일 검토자 재확인에서 발견한 수정 유발 표시 회귀
+
+첫 보완 `71076b049d96f4460d534eea96eb848f82b0020d`의 독립 집중116/116 PASS,13.834초. R1/R2는 닫힘, R3 원증상은 해결됐으나 별도 **Minor/P3 1건** 때문에 R3 마감은 보류했다. 최초 전체0/3/0은 그대로이며 새로운 전체 검토로 세지 않는다.
+
+오디오 그래프를 만든 A→B 뒤 B는 ON/wet1인데, configure가 과거 A까지 apply→suspend→announce(off)하여 전체 compressor 상태를 disabled로 덮었다. 검토자의 이전 audio만 메모리 로드하는 대조는2개/1 pass/1 fail,0.457초였고 root의 영구 회귀도 disabled≠ready로 RED였다. 비선택 entry는 기존 silent bypass, 현재 선택 entry의 권한/eligibility 상실만 wanted 보존 suspension으로 분리한다. 보호 guard를 제거하지 않는다. 두 영상의 source를 실제 fixture entry별로 허용하고 source2·선택 ON/wet1/상태ready를 검증한다.
+
+71076b0의 새 물리 후보에서는9기반·전체1402/1401 pass/0 fail/기존 skip1,58.363초·격리 build/package/audio/pixel을 통과했다. 실제 설치·저장 전환·audit는 시작 전이었고, 이 결과는 다음 표시 보완 입력의 성공으로 전용하지 않는다.

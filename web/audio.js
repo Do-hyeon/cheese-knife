@@ -90,7 +90,11 @@
     };
     const apply = (entry) => {
       if (!entry.compressor) return;
-      if (!runtime.mediaCurrent() || runtime.selectPlayer()?.video !== entry.video || !eligible(entry.video)) {
+      if (runtime.selectPlayer()?.video !== entry.video) {
+        bypassEntry(entry);
+        return;
+      }
+      if (!runtime.mediaCurrent() || !eligible(entry.video)) {
         controller.suspend(entry.video);
         return;
       }

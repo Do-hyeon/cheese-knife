@@ -21,7 +21,7 @@ function setup(t, suspended = false, manualClock = false, suppliedConfig = { com
       if (failures.resumeReject) return Promise.reject(new Error('resume unavailable'));
       return new Promise(resolve => { resolveResume = () => { this.state = 'running'; resolve(); }; });
     }
-    createMediaElementSource(element) { assert.equal(element, video);sources++;failures.onSource?.(dom);return node('source'); }
+    createMediaElementSource(element) { if(failures.sourceVideos)assert.ok(failures.sourceVideos.has(element));else assert.equal(element, video);sources++;failures.onSource?.(dom);return node('source'); }
     createGain() {
       gains++;
       if (failures.gainAt === gains) throw new Error('gain unavailable');
@@ -174,6 +174,15 @@ test('removing and reinserting a video retires its old manual OFF entry',async t
   const parent=video.parentElement;video.remove();api.reconcile();deliver(dom,{compressorDefault:true});await flush();
   parent.append(video);api.reconcile();deliver(dom,{compressorDefault:true});await flush();
   assert.equal(audio.getState(video),'on');assert.equal(sources(),1);
+});
+test('inactive audio graphs cannot overwrite the selected ON player status',async t=>{
+  const sourceVideos=new Set(),{dom,audio,video,nodes,sources}=setup(t,false,false,{compressorDefault:true},{sourceVideos}),api=runtime(dom);
+  sourceVideos.add(video);load(dom,'web/player.js');await flush();
+  const other=video.cloneNode();Object.defineProperty(other,'currentSrc',{value:'blob:https://chzzk.naver.com/other',configurable:true});
+  sourceVideos.add(other);video.replaceWith(other);api.reconcile();deliver(dom,{compressorDefault:true});await flush();
+  assert.equal(audio.getState(video),'off');assert.equal(audio.getState(other),'on');assert.equal(sources(),2);
+  api.notify();assert.equal(nodes.filter(node=>node.type==='gain')[4].gain.value,1);
+  assert.equal(audio.getState(other),'on');assert.equal(api.statuses.compressor.state,'ready');
 });
 test('fallback without any new bridge frame uses unconfirmed authority rather than the previous channel binding',async t=>{
   const {dom,audio,video,time}=setup(t,false,false,{}, {clock:true}),api=runtime(dom);
