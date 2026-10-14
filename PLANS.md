@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F00 Task6 DOING — 전체 Astra max의 Important 3건 보완·새 입력 재검증**. Tasks1–5/TAB5A–C의 완료 범위는 아카이브로 이동했다. clean189db36의9foundation·전체1387/1386pass/0fail/기존skip1·패키지/오디오/픽셀/설치 positive·negative·config15/media4관측 및 각각 손실 대조, 실제 TAB 세 번/매 종료3증명은 보완 전 증거다. [최종 독립 검토](docs/superpowers/validation/2026-10-14-f00-final-review.md)는 최초 Critical0/Important3/Minor0이며 영상 재진입 intent·읽기 실패 복구·같은 video 소스 복귀의 누락을 재현했다. 국소 보완과 집중 RED/GREEN 뒤 새 코드의 전체 게이트/targeted 확인을 진행한다. audit의 동일 기존 경고8/raw exit1, 실제 BFCache·자연 worker 중단·스토어 업데이트/rollback 미검증은 유지한다. 아직 F00 전체 DONE이 아니다.
+최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F00 로컬 구현 완료 / F01 상세 설계 착수 승인 대기**. Tasks1–6/TAB5A–C의 완료 이력은 아카이브로 이동했다. 최종 코드08bd528의9기반·전체1403/1402pass/0fail/기존skip1·패키지/오디오/픽셀/설치 positive·negative·config15/media4관측 및 각각 손실 대조·실제 TAB 세 번/매 종료3증명을 확인했다. [최종 독립 검토](docs/superpowers/validation/2026-10-14-f00-final-review.md)의 최초0/3/0 및 수정 유발 Minor1은 동일 검토자가 모두 닫힘을 확인했다. audit의 동일 기존 경고8/raw exit1과 실제 BFCache·자연 worker 중단·스토어 업데이트/rollback 미검증은 유지한다. **로컬 완료는 공개 준비 완료나 공개 승인과 다르다.**
 
 ## 1. 고정 결정과 공개 경계
 
@@ -44,22 +44,20 @@
 
 | ID | 작업 묶음 | 상태 | 다음 게이트 |
 | --- | --- | --- | --- |
-| F00 | 채널별 미디어 저장·프리셋 | DOING | whole-F00 Astra max 최종 검토/보완 및 로컬 마감; 기존 sender 조건 완화 금지 |
-| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | WAITING-DEPENDENCY | F00 저장 계약/구현 검증 뒤 별도 상세 설계·계획·승인 |
+| F00 | 채널별 미디어 저장·프리셋 | DONE (로컬) | 전체 범위 push/한글 PR은 명시 지시 후; 병합·배포는 별도 승인 |
+| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | WAITING-USER | 별도 상세 설계·목업·Astra max 검토 착수 승인, 이후 계획/실행 승인 |
 | AF05-B 실제 수용 / AF05 종료 | 차기 게시본 설치·업데이트 | WAITING-DEPENDENCY | 차기 게시와 실제 검사 별도 승인 후 수행; F00/F01과 독립 |
 | DT02 | 선택 파일의 native TS 실행 | DEFERRED | 실제 유지보수 이득과 검사/실행 경계 보존이 증명되면 재설계 |
 | F02–F05 | 후속 기능 | BACKLOG-BLOCKED | F00/F01 검증과 각 범위 승인 |
 
 완료된 P/INC/AF 준비/DT 유지보수는 [완료 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md)로 이동했다. PR #42/#43 통합·해당 브랜치 정리는 완료됐지만 AF05 게시 후 실제 수용은 완료가 아니다.
 
-## 5. F00 — 현재 작업 체크리스트
+## 5. F00 — 로컬 완료 및 공개 대기
 
 문서: [승인 상세 설계](docs/superpowers/specs/2026-10-14-f00-channel-media-settings-design.md) · [설계 검토/보완](docs/superpowers/validation/2026-10-14-f00-design-review.md) · [구현 계획](docs/superpowers/plans/2026-10-14-f00-channel-media-settings.md) · [계획 검토/7항목 closure](docs/superpowers/validation/2026-10-14-f00-plan-review.md).
 
-완료된 설계·계획 승인 및 Tasks1–4은 [F00 완료 단계 아카이브](docs/superpowers/archive/2026-10-14-f00-completed-stages.md)로 이동했다. 현재 실행 승인은 Tasks1–6 로컬 구현·격리 검증·최종 Astra max에 한정되며 공개와 실제 시청 Chrome/P09는 제외한다.
+완료된 설계·계획 승인·Tasks1–6/TAB5A–C·전체 검토/보완 및 로컬 마감은 [F00 완료 단계 아카이브](docs/superpowers/archive/2026-10-14-f00-completed-stages.md)와 [최종 검토 기록](docs/superpowers/validation/2026-10-14-f00-final-review.md)으로 이동했다. F00의 현재 승인 범위는 끝났으며 F01·공개·실제 시청 Chrome/P09 변경으로 자동 이어가지 않는다.
 
-- [ ] Task6 whole-F00 Astra max 최초0/3/0의 Important 3건 보완·새 입력의 집중/전체·실제 격리 재검증·동일 검토자 targeted 확인. 최초 발견 수와 판단 제외는 유지한다.
-- [ ] 로컬 마감. 현재 완료된 [Task5/TAB5C·종합 실행 검증](docs/superpowers/archive/2026-10-14-f00-completed-stages.md)과 실제 미검증 제한을 구분하며 검토 전 F00 전체 DONE 처리하지 않는다.
 - [ ] F00 전체 범위 공개 지시를 받은 뒤 한글 PR/CI 확인. 현재 push/PR 금지; 자동 병합/배포 없음.
 
 실제 popup의 Playwright Page capture는 실패했고, 승인된 [격리 CDP 대안](docs/superpowers/plans/2026-10-14-f00-popup-cdp-qualification.md)의 attachment는 성공했다. production client sender의 documentId/frameId 부재 실패는 [관측 기록](docs/superpowers/validation/2026-10-14-f00-popup-cdp-qualification.md)에 유지한다. [별도 TAB 설계](docs/superpowers/specs/2026-10-14-f00-media-settings-tab-design.md)·목업/UI·수용기준·상세 계획과 기존 Native 실행은 승인됐다. 문서 식별자를 위조하거나 직접 storage 저장으로 성공을 대체하지 않는다.
@@ -90,7 +88,6 @@
 | F04 | 2–4채널 멀티뷰 | 독립 재생·음량·화질·채팅·부분 교체 |
 | F05 | 통나무파워 조회 | 데이터 최소화·계정 분리·새 권한 별도 승인 |
 
-- [ ] F00 로컬 구현/회귀·최종 독립 검토 완료.
 - [ ] F01 상세 설계·Astra max 검토·계획/실행 승인.
 - [ ] F01 구현·객관 출력 상한/전환/수명주기/저장·F00 통합 검증. 주관적 청취만으로 완료하지 않는다.
 - [ ] 각 F00/F01 기능 전체의 별도 공개 지시·한글 PR·공개 CI·병합 확인. Task/문서 PR로 더 쪼개지 않는다.

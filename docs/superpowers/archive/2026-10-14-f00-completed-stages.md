@@ -1,6 +1,6 @@
 # F00 완료 단계 이력
 
-이 문서는 F00의 완료된 설계·계획·개별 구현 단계를 보존한다. F00 전체 완료나 공개 승인이 아니며, 현재 커서와 잔여 작업은 [PLANS.md](../../../PLANS.md)에서 관리한다. 과거 승인을 다른 단계나 공개 권한으로 재사용하지 않는다.
+이 문서는 F00의 완료된 설계·계획·개별 구현 단계와 마지막 로컬 전체 마감을 보존한다. F00 로컬 구현은 완료했지만 공개 승인이나 모든 실제 플랫폼 검증 완료는 아니다. 현재 커서와 잔여 승인 단계는 [PLANS.md](../../../PLANS.md)에서 관리한다. 과거 승인을 다른 단계나 공개 권한으로 재사용하지 않는다. 아래 각 checkpoint의 ‘아직 미완료’는 당시 상태이며 최종 판단은 마지막 Task6 절이 소유한다.
 
 ## 설계·계획 및 실행 승인
 
@@ -77,3 +77,14 @@ generated client/popup와 active pin만 갱신했다. 실제 Chrome/TAB 저장·
 - [x] root dist58/제품2.13.3/원본 ZIP·CRX/보호 브랜치/권한·origin·exclusion 보존 대조. 사용자 Chrome/P09·버전/push/PR/배포 변경 없음.
 
 중간 C–O 실패와 원인별 RED/GREEN은 [F00 검증 기록](../validation/2026-10-14-f00-channel-media-settings.md)에 유지한다. 이는 구현·격리 실행 검증의 완료 범위다. **whole-F00 최종 Astra max와 보완·로컬 F00 전체 마감은 아직이며 공개 준비 완료가 아니다.**
+
+## Task6 — F00 로컬 전체 마감
+
+- [x] 새 whole-F00 Astra max 최초 Critical0/Important3/Minor0의 세 증상을 재현하고 보완했다. 동일 검토자 targeted에서 발견한 수정 유발 Minor/P3 1건도 RED/GREEN으로 보완하고 모두 닫힘을 확인했다. 최초 수와 판단 제외를 유지하며 새 전체0건 검토로 세지 않는다.
+- [x] 최종 코드08bd528의 새 물리 후보:9기반·전체1403/1402pass/0fail/기존skip1,56.829초·21 entry/exact59·오디오14cases/12alignments/18transitions/stress·pixel24/24·기본 설치/MAIN negative PASS.
+- [x] 실제 TAB A/B/C 모두 PASS,10.731/10.602/11.487초. source/after426ce2223e949420a86d6bc56f0ad113bd6a94ef4d7d812bf8cc6b4640feea23 동일. 두 창/iframe/닫기·재열기/VOD/복원 및 각3종 종료 증명true.
+- [x] config5사례15관측 및 config-loss, media4관측 및 final-new4 A-only media-loss가 정확한 경계로 통과했다. media 두 실행의5launch 각각3종 종료 증명true/normal exit, cleanup0/secondary0. 독립 literal/토큰/revision/JSON 직렬화 보존이며 실제 플랫폼 rollback 인증이 아니다.
+- [x] audit input matched=true, npm0/Gitleaks0/0, 기존 동일 ESLint8/raw exit1. owned-files 소스의 main 대비 불변·동일 위치/규칙을 확인했다. 신규 경고/억제/규칙 변경 없음. 원본 root dist58·제품2.13.3·ZIP/CRX/보호 브랜치/권한·origin·P09 보존.
+- [x] 제공된 Native task-done은 BASE189db36→08bd528의 마감 집중117/117 성공 뒤 Task6 완료를 기록했다. 완료 체크리스트/상태를 일치시키고 F01·공개·실제 수용은 active PLANS의 별도 승인 단계로 남겼다.
+
+최종 근거: [전체 독립 검토·보완·게이트](../validation/2026-10-14-f00-final-review.md). 모든 private 자료/프로필/trace는 보존하고 커밋하지 않았다. 실제 BFCache·자연 worker suspension·in-place runtime.reload·실제 Chrome/store 업데이트/rollback은 미검증이며 기존8경고/skip1과 함께 유지한다. **F00 local implementation complete**, F01/Gain·push/PR/병합·버전/릴리즈/스토어 변경 없음.

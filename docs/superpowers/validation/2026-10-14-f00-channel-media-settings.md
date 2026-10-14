@@ -2,6 +2,8 @@
 
 2026-10-14 / Native 실행 승인. 기준 main45100969200dfb5e33737db60c9a3fa7450f4450, 로컬 브랜치 codex/f00-channel-media-settings. [설계](../specs/2026-10-14-f00-channel-media-settings-design.md)·[계획](../plans/2026-10-14-f00-channel-media-settings.md). 사용자 시청 Chrome/P09·push/PR·버전·릴리즈·스토어 변경은 제외한다.
 
+**최신 상태:** F00 로컬 구현·격리 검증·전체 Astra max 및 보완을 마쳤다. 최종 코드08bd528과1403/1402pass/0fail/기존skip1 및 전체 게이트는 [최종 마감 기록](2026-10-14-f00-final-review.md)이 소유한다. 아래 ‘아직’/‘진행 중’은 각 checkpoint 당시의 역사 기록이며 현재 커서가 아니다. 공개 준비·F01·실제 시청 Chrome/store 수용은 별도 승인 단계다.
+
 ## Task2 — 동일 큐 v2 저장 경계
 
 - v1 API는 유지하고 새 v2 요청을 동일64대기 큐로 직렬화했다. media 저장은 mediaProfiles 한 키만, 전역 프리셋 적용은 기존 전역 변경 키만 한 번 저장한다.
@@ -175,3 +177,9 @@ poll50524b8의 독립 actual M/N은 전체11.321초/19.373초 PASS, O는 자연 
 실제 BFCache는 P/Q/R 모두 false, 자연 worker suspension와 in-place runtime.reload도 관측되지 않았다. 기존 시청 Chrome/P09·실제 스토어 신규 업데이트/플랫폼 rollback·계정/장치/실방송 전체 조합은 미검증이다. 합성/격리 결과로 보안·정책 준수나 무취약성을 인증하지 않는다. 기존8경고/skip1와 중간 실패는 삭제하거나 PASS로 재표기하지 않았다.
 
 완료된 실행 범위는 아카이브로 이동했으며 현재 PLANS.md의 잔여는 fresh whole-F00 Astra max·필요 보완/검증·로컬 마감이다. 최종 검토 전 F00 전체 DONE 또는 공개 준비 완료를 선언하지 않는다. push/PR/버전/릴리즈/스토어 변경 없음.
+
+## 최종 보완 후 로컬 F00 마감
+
+위189db36 이후 fresh whole-F00 Astra max 최초0/3/0과 수정 유발 Minor1을 모두 보완하고 동일 검토자의 targeted 닫힘을 확인했다. 최종08bd528의 독립적인 새 physical 후보에서9기반·전체1403/1402pass/0fail/기존skip1·패키지59·오디오/픽셀·actual TAB3회·기본 설치/MAIN negative·config15/media4관측과 각 손실 대조·점검도구 및 보호를 다시 확인했다. 검토자 결과/저자 결과·과거 실패·기존8경고/raw exit1·미관측 조건은 구분해서 유지한다.
+
+세부 입력 hash·원래 발견 수·종료 증명·실행 시간·한계는 [최종 검토/마감](2026-10-14-f00-final-review.md), 완료 체크리스트는 [F00 아카이브](../archive/2026-10-14-f00-completed-stages.md)에서 확인한다. Native Task6 완료와 **F00 local implementation complete**를 기록했다. 로컬 마감 이후 문서 변경만 수행하며 F01·push/PR/병합/버전/릴리즈/스토어·실제 시청 Chrome/P09 작업은 하지 않는다.
