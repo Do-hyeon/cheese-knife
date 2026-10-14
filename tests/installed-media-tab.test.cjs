@@ -17,7 +17,7 @@ function fixture(mode='ok'){
       (!filter.documentUrls||filter.documentUrls.includes(value.documentUrl))&&(!filter.contextTypes||filter.contextTypes.includes(value.contextType))&&
       (!filter.tabIds||filter.tabIds.includes(value.tabId)))},
     tabs:{query:async()=>[{id:7,windowId:9,url:fixtureURL,incognito:false}],getCurrent:async()=>({id:8,windowId:9,incognito:false})},
-    action:{openPopup:async()=>{events.push('popup');for(let i=0;i<(mode==='overflow'?17:1);i++)sender(1,popupURL);}}};
+    action:{openPopup:async options=>{assert.equal(JSON.stringify(options),'{"windowId":9}');events.push('popup');for(let i=0;i<(mode==='overflow'?17:1);i++)sender(1,popupURL);}}};
   const workerGlobal=vm.createContext({chrome,console});
   const worker={evaluate:async(fn,arg)=>vm.runInContext(`(${fn.toString()})(${JSON.stringify(arg)})`,workerGlobal),url:()=>`chrome-extension://${E}/background.js`};
   const settingsPage={url:()=>mediaURL,isClosed:()=>false,context:()=>context,evaluate:async fn=>fn.toString().includes('getCurrent')?{id:8,windowId:9,incognito:false}:true,

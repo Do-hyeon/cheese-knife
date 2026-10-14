@@ -116,7 +116,7 @@ export async function openInstalledMediaSettings({context,worker,fixturePage,ext
     if(typeof targetInfo?.browserContextId!=='string'||!targetInfo.browserContextId)throw fail('media-tab-context-invalid');
     const browserContextId=targetInfo.browserContextId;
     context.on('page',onPage);
-    await run(()=>worker.evaluate(()=>chrome.action.openPopup()));
+    await run(()=>worker.evaluate(windowId=>chrome.action.openPopup({windowId}),tab.windowId));
     const target=await wait(async()=>{
       const targets=record(await run(()=>browserSession.send('Target.getTargets')));
       try{return selectPopupTarget(targets?.targetInfos,popupURL,browserContextId);}catch(error){if(record(error)?.code==='popup-target-unavailable')return null;throw error;}
