@@ -1,6 +1,6 @@
 # F00 — 채널별 오디오·영상 설정 저장 상세 설계
 
-2026-10-14 / Asia-Seoul. 상태: **Astra max 최초 검토·5항목 보완/targeted 확인 완료·사용자 written-spec 승인 완료**. 기준 소스 `45100969200dfb5e33737db60c9a3fa7450f4450`(PR #43 병합/main CI 통과), 게시 기준2.13.3. 현재는 별도 승인된 [구현 계획](../plans/2026-10-14-f00-channel-media-settings.md)의 Native 실행 중 Task5 인증 경로 재설계 승인 대기다. 이 문서의 과거 설계 승인은 실제 프로필 변경·버전·push/PR·배포 권한이 아니다. MAIN의 기존 순수 원본 번들 보완은 후속 관측 기록에 분리하고, 여기의 reviewed normative body는 변경하지 않는다. [검토 기록](../validation/2026-10-14-f00-design-review.md)의 최초 Critical0/Important3/Minor2와5항목 closure를 구분한다.
+2026-10-14 / Asia-Seoul. 상태: **Astra max 최초 검토·5항목 보완/targeted 확인 완료·사용자 written-spec 승인 완료**. 기준 소스 `45100969200dfb5e33737db60c9a3fa7450f4450`(PR #43 병합/main CI 통과), 게시 기준2.13.3. 현재 별도 승인된 [구현 계획](../plans/2026-10-14-f00-channel-media-settings.md)의 Task5 실행은 중지됐고, [별도 설정 TAB 보완 설계](2026-10-14-f00-media-settings-tab-design.md)·Astra max 검토의 준비 승인을 받았다. 새 written-spec/수용기준·구현 승인은 아직이다. 이 문서의 과거 설계 승인은 실제 프로필 변경·버전·push/PR·배포 권한이 아니다. MAIN의 기존 순수 원본 번들 보완은 후속 관측 기록에 분리하고, 여기의 reviewed normative body는 변경하지 않는다. [검토 기록](../validation/2026-10-14-f00-design-review.md)의 최초 Critical0/Important3/Minor2와5항목 closure를 구분한다.
 
 ## 1. 확정 목적과 범위
 
