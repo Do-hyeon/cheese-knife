@@ -96,3 +96,23 @@ ACK 유실 patch7+새 입력5의 조회/event는 요청[7]/저장7/표시draft5/
 public Browser.close ACK·browser disconnection·exact owned profile root0 모두 true. source/after의 SHA 및 sourceSha256 `7013b2791993bf3926df8517b5fefed8737f65adf773f77994ecaa043b4f7902`가 동일하다. 프로필/candidate/summary는 private output에 보존했다. 최초 popup navigation 간격 보호는 false로 명시한다.
 
 A는 저장4관측·실제 스토어 업데이트/플랫폼 rollback·BFCache·모든 설정 조합 성공이 아니다. 추가 VOD/targetless/saved/프리셋/확인/키보드/좁은 화면/합성 및 실제 복원 구분은 다음 입력 B에서 수행한다. 이 추가 caller/fixture의 단위 연결50/50·전체1360/1359pass/0fail/기존skip1,55.75초는 준비 검증이며 B actual 성공으로 세지 않는다. 원래 Task5/6·전체 최종 Astra max는 아직 남아 있다.
+
+## Task5C 실제 qualification B — 추가 수용 확인
+
+source1f3830a2d2efbd62359eb0a01ec32d42b80b3966의 새 clean 물리 복사본/새 owned profile, 기존 runner F00TabQualification1f3830aB, exit0,8.958초. 실제 current 저장·두 TAB 병합/복원에 더해 targetless/저장 채널·preset 저장/삭제·native 확인 취소의 raw 무변경·실제 Space키 저장/복원·480px 카드1열/overflow0·VOD pair/원래 VOD만 두 번 적용용 reload를 확인했다.
+
+실제 extension 문서에서 합성 persisted 잠금과 확인 후 own reload 무쓰기를 관측했고 back/forward도 실행했다. **bfcacheObserved=false**이므로 실제 BFCache 복원은 미검증이다. native reload/back-forward smoke와 합성 잠금은 구분한다. public Browser.close ACK·disconnection·exact owned root0 모두 true, source/after sourceSha256 `c2fff2cc18ffed4df7ebd392c2f759e38fc571a39ccb40acf0c498adf54b3908` 동일. private summary/profile/candidate 및 실패 없는 원시 결과를 보존했다. 시청 Chrome/P09/root dist/공개 변경은 없다.
+
+이제 media-preservation의 seed+old/new/rollback/new4관측과 occurrence별 child close-proof IPC, 별도 config/media 손실 대조·안내/개인정보·Task6 전체 검증 및 fresh whole-F00 Astra max를 이어간다. B 성공은 이 잔여 작업의 성공이 아니다.
+
+## Task5 보존 도구 연결 — 실제 전환 전 준비
+
+media 전용 selector/seed+4관측·occurrence0..4·종료3증명의 parent/child 경로를 구현했다. 기존 config schema/고유 phase ID/손실 control은 유지하고 current exact59와 published exact58 자산을 구분한다. 값·토큰·리비전은 독립 literal oracle, 이후 rollback/final-new의 media JSON 직렬화도 first-new와 대조한다. Chrome 내부 저장 파일의 byte 동일성은 인증하지 않는다.
+
+손실 파생본은 final-new occurrence4에서만 A audio를 제거하고 global/다른 채널/복사된 preset/revision을 유지한다. 두 cold boot에도 marker key나 중복 삭제가 없다. parent는 정확한 손실 원인·occurrence/raw/실행 근거·모든 선행 관측·정상 종료·close3증명·후속 오류 없음이 일치할 때만 control 성공을 판정한다. timeout/권한/인벤토리/종료 오류는 대체 성공이 아니다.
+
+상위 정상 경로 validator 연결 RED, 직렬화 순서 RED와 기존 native pure helper 의존성 실패를 재현해 보완했다. 연결72/72, 직렬화/parent42/42, native pure 경로43/43 및9foundation이 통과했다. 최초 전체1377건 중1375pass/1fail/기존skip1은 기록하며, lazy UI import로 보완한 뒤 새 전체 결과를 별도로 기록한다. 아직 actual4관측 PASS는 아니다.
+
+README 두 언어와 개인정보처리방침에 미공개 F00의 로컬 채널 설정·preset 이름/수동 삭제/제거 시 소멸/비전송과 Gain·VOD·iframe·시크릿·혼재 세대 제한을 추가했다. 현재 스토어2.13.3 기능으로 오인하지 않도록 개발 중 범위를 표시하며 공개 URL/dashboard는 변경하지 않았다.
+
+의존성 보완 후 전체 재실행1377/1376pass/0fail/0cancelled/기존skip1,55.716초. 루트 보호 대조는 manifest 허용 차이/보호 ZIP·CRX/버전2.13.3/dist58 모두 통과했다. 실제 전환용 clean 로컬 checkpoint를 만들며 원래 Task5/6 전체 완료는 선언하지 않는다.

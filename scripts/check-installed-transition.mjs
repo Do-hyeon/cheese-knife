@@ -7,11 +7,12 @@ import { chromium } from 'playwright';
 import { openOwnedRoot } from './owned-files.mjs';
 import { verifyCandidate, removeCandidate } from './verify-candidate.mjs';
 import { loadFixtureResponses } from './extension-e2e/fixture-router.mjs';
-import { launchInstalledExtension, parseInstalledE2EArgs } from './extension-e2e/harness.mjs';
+import { launchInstalledExtension, parseInstalledE2EArgs, openMediaBrowserSession, closeInstalledMediaBrowser } from './extension-e2e/harness.mjs';
 import { refreshTransitionWorker } from './extension-e2e/transition-preparation.mjs';
 export { refreshTransitionWorker };
-import { readPublishedPayload, PUBLISHED_PAYLOAD_BASELINE } from './extension-e2e/published-payload.mjs';
-import { TRANSITION_CASES, transitionSeed, expectedTransitionRaw, expectedTransitionState, assertTransitionState, runTransitionPhase } from './extension-e2e/transition-scenario.mjs';
+import { readPublishedPayload, PUBLISHED_PAYLOAD_BASELINE, validatePayloadMetadata } from './extension-e2e/published-payload.mjs';
+import { TRANSITION_CASES, transitionSeed, expectedTransitionRaw, expectedTransitionState, assertTransitionState, runTransitionPhase,
+  MEDIA_TRANSITION_PHASES, runInstalledMediaPreservationScenario, expectedInstalledMediaStore, matchesInstalledMediaLoss } from './extension-e2e/transition-scenario.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url), repositoryRoot = path.resolve(path.dirname(scriptPath), '..');
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -33,7 +34,7 @@ const timeout = async (work, milliseconds, code) => {
 };
 
 export function phasePayload(payload, phase, control) {
-  if (!['old', 'new', 'rollback'].includes(phase) || (control !== undefined && control !== 'storage-loss')) throw fail('transition-control-invalid');
+  if (!['old', 'new', 'rollback'].includes(phase) || (control !== undefined && !['storage-loss','media-profile-loss'].includes(control))) throw fail('transition-control-invalid');
   return payload.entries.map(entry => {
     let bytes = Buffer.from(entry.bytes);
     if (entry.name === 'manifest.json' && phase !== 'old') {
@@ -42,13 +43,23 @@ export function phasePayload(payload, phase, control) {
       manifest.version_name = `AF05-B2 TEST ONLY ${phase}`;
       bytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
     }
-    if (entry.name === 'settings-broker.js' && phase === 'new' && control === 'storage-loss') {
+    if (entry.name === 'settings-broker.js' && phase === 'new' && control) {
       const source = bytes.toString('utf8'), boot = 'boot = enqueue(async () => {', read = 'const raw = await read(true), revision = contract.readRevision(raw.settingsRevision);';
       const index = source.indexOf(read), bootIndex = source.indexOf(boot);
       if (index < 0 || bootIndex < 0 || source.split(read).length !== 2 || source.split(boot).length !== 2 ||
           !/^\r?\n {6}$/.test(source.slice(bootIndex + boot.length, index))) throw fail('transition-control-preparation');
       const eol = source.slice(bootIndex + boot.length, index).startsWith('\r') ? '\r\n' : '\n';
-      bytes = Buffer.from(`${source.slice(0, index)}await chromeApi.storage.local.remove('config');${eol}      ${source.slice(index)}`);
+      const injected = control === 'storage-loss' ? "await chromeApi.storage.local.remove('config');" :
+        "const mediaLossRaw = await chromeApi.storage.local.get(['mediaProfiles']);" + eol +
+        "      const mediaLossStore = mediaLossRaw.mediaProfiles;" + eol +
+        "      if (!mediaLossStore || mediaLossStore.schema !== 1 || !Array.isArray(mediaLossStore.channels)) throw new Error('media-loss-control-invalid');" + eol +
+        "      const mediaLossA = mediaLossStore?.channels?.find(channel => channel.channelId === 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');" + eol +
+        "      if (mediaLossA?.audio) {" + eol +
+        "      delete mediaLossA.audio;" + eol +
+        "      if (!mediaLossA.video) mediaLossStore.channels = mediaLossStore.channels.filter(channel => channel !== mediaLossA);" + eol +
+        "      await chromeApi.storage.local.set({ mediaProfiles: mediaLossStore });" + eol +
+        "      }";
+      bytes = Buffer.from(`${source.slice(0, index)}${injected}${eol}      ${source.slice(index)}`);
     }
     return { name: entry.name, bytes, sha256: sha256(bytes) };
   });
@@ -95,6 +106,37 @@ export function validateTransitionResult(result, nonce, control, launches) {
   }
 }
 
+export function validateInstalledMediaTransitionResult(result,nonce,control,launches) {
+  const seed=result?.seeds?.[0],phases=result?.phases,firstNew=phases?.find(value=>value.launchOccurrence===2),presetId=firstNew?.presetId;
+  if(result?.scenario!=='media-preservation'||!result.source?.sourceCommit||!isDeepStrictEqual(result.source,result.after)||
+    !/^[a-f0-9]{64}$/.test(result.candidateInventory||'')||result.seeds?.length!==1||seed.caseId!=='valid-ui'||seed.writes!==1||
+    !/^[a-p]{32}$/.test(seed.extensionId||'')||!isDeepStrictEqual(seed.raw,transitionSeed('valid-ui',nonce))||
+    !Array.isArray(phases)||phases.length!==(control?3:4)||launches.length!==5)throw fail('media-result-incomplete');
+  const prepare=version=>({developerMode:true,workerClosed:true,extensionId:seed.extensionId,version,state:'ENABLED'});
+  if(!isDeepStrictEqual(seed.preparation,prepare('2.13.3')))throw fail('media-result-incomplete');
+  const store=expectedInstalledMediaStore(nonce,presetId);
+  for(const [index,phase] of phases.entries()){
+    const occurrence=index+1,wanted=MEDIA_TRANSITION_PHASES.at(index),version=wanted==='old'?'2.13.3':wanted==='rollback'?'2.13.5':'2.13.4';
+    const steps=occurrence===2?['startup','create-media','observe-ui']:['startup','observe-ui'];
+    if(phase.caseId!=='valid-ui'||phase.phase!==wanted||phase.launchOccurrence!==occurrence||phase.extensionId!==seed.extensionId||
+      !/^[a-f0-9]{64}$/.test(phase.inventorySha256||'')||!/^[a-f0-9]{64}$/.test(phase.manifestSha256||'')||
+      !isDeepStrictEqual(phase.preparation,prepare(version))||!isDeepStrictEqual(phase.records?.map(value=>value.step),steps)||
+      !isDeepStrictEqual(phase.final,phase.records.at(-1)?.observation))throw fail('media-result-incomplete');
+    for(const record of phase.records){
+      const expected={raw:{...transitionSeed('valid-ui',nonce),...(occurrence>=3||occurrence===2&&record.step!=='startup'?{mediaProfiles:store}:{})},
+        execution:{extensionId:seed.extensionId,version,brokerMatches:true}};
+      if(!isDeepStrictEqual(record.observation,expected))throw fail('media-result-incomplete');
+      if(occurrence>=3&&JSON.stringify(record.observation.raw.mediaProfiles)!==JSON.stringify(firstNew.final.raw.mediaProfiles))throw fail('media-result-incomplete');
+    }
+  }
+  for(const [launchOccurrence,phase] of ['seed',...MEDIA_TRANSITION_PHASES].entries()){
+    const launch=launches.at(launchOccurrence);
+    if(launch?.caseId!=='valid-ui'||launch.phase!==phase||launch.launchOccurrence!==launchOccurrence||
+      launch.launchId!==`valid-ui:${launchOccurrence}:${phase}`||launch.closed!==true||launch.shutdown?.browserCloseAcknowledged!==true||
+      launch.shutdown?.browserDisconnected!==true||launch.shutdown?.ownedRootClosed!==true)throw fail('media-result-incomplete');
+  }
+}
+
 export async function terminateTransitionChild(child) {
   if (child.exitCode !== null || child.signalCode !== null) return;
   if (!Number.isSafeInteger(child.pid) || child.pid <= 0) throw fail('transition-child-pid');
@@ -105,7 +147,9 @@ export async function terminateTransitionChild(child) {
   }, 5000, 'transition-kill-failed');
 }
 
-export function superviseTransitionChild({ child, nonce, roots, deadlineMs = 600000, phaseTimeoutMs = 130000, killChild = terminateTransitionChild }) {
+export function superviseTransitionChild({ child, nonce, roots, scenario, deadlineMs = 600000, phaseTimeoutMs = 130000, killChild = terminateTransitionChild }) {
+  if (scenario !== undefined && scenario !== 'media-preservation') throw fail('transition-scenario-invalid');
+  const media = scenario === 'media-preservation';
   return new Promise(resolve => {
     const launches = new Map(), cleanupErrors = [], secondaryErrors = [];
     let failure = null, result, receivedResult = false, finished = false, phaseTimer;
@@ -142,17 +186,28 @@ export function superviseTransitionChild({ child, nonce, roots, deadlineMs = 600
           receivedResult = true; result = message.result; return;
         }
         const assigned = roots.find(value => value.caseId === message.caseId && value.root === message.root);
-        if (!assigned || !['seed', 'old', 'new', 'rollback'].includes(message.phase) || message.launchId !== `${message.caseId}:${message.phase}`) throw fail('transition-ipc');
+        const launchId = media ? `${message.caseId}:${message.launchOccurrence}:${message.phase}` : `${message.caseId}:${message.phase}`;
+        if (!assigned || !['seed', 'old', 'new', 'rollback'].includes(message.phase) || message.launchId !== launchId ||
+          media && (!Number.isInteger(message.launchOccurrence) || message.launchOccurrence < 0 || message.launchOccurrence > 4)) throw fail('transition-ipc');
         if (message.type === 'launch-intent') {
           if (failure || receivedResult || launches.has(message.launchId) || [...launches.values()].some(value => !value.closed)) throw fail('transition-ipc');
           const previous = [...launches.values()].filter(value => value.caseId === message.caseId);
-          if (['seed', 'old', 'new', 'rollback'].at(previous.length) !== message.phase) throw fail('transition-ipc');
-          launches.set(message.launchId, { caseId: message.caseId, phase: message.phase, launchId: message.launchId, root: message.root, closed: false });
+          if ((media ? ['seed','old','new','rollback','new'] : ['seed', 'old', 'new', 'rollback']).at(previous.length) !== message.phase ||
+            media && message.launchOccurrence !== previous.length) throw fail('transition-ipc');
+          launches.set(message.launchId, { caseId: message.caseId, phase: message.phase, launchId: message.launchId, root: message.root,
+            ...(media ? { launchOccurrence: message.launchOccurrence } : {}), closed: false });
           clearTimeout(phaseTimer); phaseTimer = setTimeout(() => { void expire('transition-phase-timeout'); }, phaseTimeoutMs);
           child.send({ ...message, type: 'launch-ack' }, error => { if (error) remember(error); });
         } else if (message.type === 'close-success') {
           const launch = launches.get(message.launchId);
           if (!launch || launch.closed || launch.root !== message.root) throw fail('transition-ipc');
+          if (media) {
+            const proof = message.shutdown;
+            if (!proof || typeof proof !== 'object' || Array.isArray(proof) || Object.keys(proof).length !== 3 ||
+              !Object.hasOwn(proof,'browserCloseAcknowledged') || !Object.hasOwn(proof,'browserDisconnected') || !Object.hasOwn(proof,'ownedRootClosed') ||
+              proof.browserCloseAcknowledged !== true || proof.browserDisconnected !== true || proof.ownedRootClosed !== true) throw fail('transition-ipc');
+            launch.shutdown = { browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:true };
+          }
           launch.closed = true; clearTimeout(phaseTimer);
         } else throw fail('transition-ipc');
       } catch (error) { remember(error); }
@@ -173,7 +228,7 @@ export async function sourceAttestation(files) {
     toolchainSha256: sha256(await files.readFile('scripts/check-toolchain.mjs')) };
 }
 
-async function payloadFromDirectory(directory) {
+async function payloadFromDirectory(directory, expectedNames) {
   const files = await openOwnedRoot(directory), entries = [];
   async function visit(folder) {
     for (const item of await files.readdir(folder, { withFileTypes: true })) {
@@ -184,12 +239,12 @@ async function payloadFromDirectory(directory) {
     }
   }
   await visit(''); entries.sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
-  if (entries.length !== 58) throw fail('transition-inventory');
+  if (!isDeepStrictEqual(entries.map(entry=>entry.name),expectedNames)) throw fail('transition-inventory');
   return { entries, inventorySha256: sha256(JSON.stringify(entries.map(({ name, sha256 }) => [name, sha256]))) };
 }
 
 async function checkInventory(directory, expected) {
-  const actual = await payloadFromDirectory(directory);
+  const actual = await payloadFromDirectory(directory,expected.map(entry=>entry.name));
   if (!isDeepStrictEqual(actual.entries.map(({ name, sha256 }) => [name, sha256]), expected.map(({ name, sha256 }) => [name, sha256]))) throw fail('transition-inventory');
   return actual.inventorySha256;
 }
@@ -226,7 +281,7 @@ async function requestLaunch(message) {
 export async function executeTransitionChild(options, dependencies = {}) {
   const deps = { openRepository: () => openOwnedRoot(repositoryRoot), openWorkRoot: openOwnedRoot, sourceAttestation,
     readPublishedPayload, verifyCandidate, loadFixtureResponses, launchInstalledExtension, refreshTransitionWorker,
-    runTransitionPhase, requestLaunch, send, ...dependencies };
+    runTransitionPhase, runInstalledMediaPreservationScenario, openMediaBrowserSession, closeInstalledMediaBrowser, requestLaunch, send, ...dependencies };
   const files = await deps.openRepository(), phases = [], seeds = [], cleanupErrors = [], secondaryErrors = [];
   let failure, source, after, candidateInventory, active;
   const noticed = new Set();
@@ -240,34 +295,42 @@ export async function executeTransitionChild(options, dependencies = {}) {
     await deps.send({ type: 'failure', nonce: options.nonce, failure });
   };
   try {
+    if (options.scenario !== undefined && options.scenario !== 'media-preservation') throw fail('transition-scenario-invalid');
+    const media=options.scenario==='media-preservation';
+    if (options.control !== undefined && (media ? options.control !== 'media-profile-loss' : options.control !== 'storage-loss')) throw fail('transition-control-invalid');
     source = await deps.sourceAttestation(files);
     const published = await deps.readPublishedPayload();
+    const metadata=validatePayloadMetadata(JSON.parse(await (await openOwnedRoot(repositoryRoot)).readFile('tests/fixtures/installed-extension/published-payload.json','utf8')));
+    const currentNames=[...metadata.map(entry=>entry.name),'media-profiles.js'].sort();
     const first = await deps.verifyCandidate(options.candidateIds[0], files.root);
-    const current = await payloadFromDirectory(first.dist);
+    const current = await payloadFromDirectory(first.dist,currentNames);
     const second = await deps.verifyCandidate(options.candidateIds[1], files.root);
-    if (current.inventorySha256 !== (await payloadFromDirectory(second.dist)).inventorySha256) throw fail('transition-build-reproducibility');
+    if (current.inventorySha256 !== (await payloadFromDirectory(second.dist,currentNames)).inventorySha256) throw fail('transition-build-reproducibility');
     candidateInventory = current.inventorySha256;
     const responses = await deps.loadFixtureResponses(files);
     let failureArtifacts = false;
     for (const assigned of options.roots) {
       const work = await deps.openWorkRoot(await files.resolve(assigned.root, { type: 'directory' }));
       const profilePath = await work.ensureDirectory('profile'), extensionPath = await work.ensureDirectory('extension'), artifactPath = await work.ensureDirectory('trace');
-      let expectedId;
-      for (const phase of ['seed', 'old', 'new', 'rollback']) {
-        active = { caseId: assigned.caseId, phase, step: 'replace', stage: 'replace' };
-        const entries = phasePayload(phase === 'new' ? current : published, phase === 'seed' ? 'old' : phase, phase === 'new' ? options.control : undefined);
+      let expectedId,presetId;
+      for (const [launchOccurrence,phase] of (media ? ['seed',...MEDIA_TRANSITION_PHASES] : ['seed', 'old', 'new', 'rollback']).entries()) {
+        active = { caseId: assigned.caseId, phase, step: 'replace', stage: 'replace',...(media?{launchOccurrence}:{}) };
+        const entries = phasePayload(phase === 'new' ? current : published, phase === 'seed' ? 'old' : phase,
+          phase === 'new' && (!media || launchOccurrence===4) ? options.control : undefined);
         await replacePayload(work, entries);
         active = { ...active, step: 'prelaunch', stage: 'inventory' };
         const beforeHash = await checkInventory(extensionPath, entries);
-        const intent = { type: 'launch-intent', nonce: options.nonce, caseId: assigned.caseId, phase, launchId: `${assigned.caseId}:${phase}`, root: assigned.root };
+        const intent = { type: 'launch-intent', nonce: options.nonce, caseId: assigned.caseId, phase,
+          launchId:media?`${assigned.caseId}:${launchOccurrence}:${phase}`:`${assigned.caseId}:${phase}`,root:assigned.root,...(media?{launchOccurrence}:{}) };
         active = { ...active, step: 'launch', stage: 'launch' };
         await deps.requestLaunch(intent);
-        let context, traced = false, closed = false, phaseError;
+        let context,browserSession,shutdown,traced = false, closed = false, phaseError;
         try {
           let launched = await deps.launchInstalledExtension({ chromiumApi: chromium, extensionPath, profilePath, artifactPath, headed: options.headed });
           context = launched.context;
           context.setDefaultTimeout(15000);
           launched = await deps.refreshTransitionWorker(launched);
+          if(media)browserSession=await deps.openMediaBrowserSession(context);
           if (expectedId && expectedId !== launched.extensionId) throw fail('transition-execution');
           expectedId ||= launched.extensionId;
           await context.tracing.start({ screenshots: false, snapshots: true, sources: false }); traced = true;
@@ -283,8 +346,10 @@ export async function executeTransitionChild(options, dependencies = {}) {
             if (!isDeepStrictEqual(await launched.worker.evaluate(() => chrome.storage.local.get(null)), seed)) throw fail('transition-seed-write');
             seeds.push({ caseId: assigned.caseId, raw: seed, extensionId: expectedId, writes: 1, preparation: launched.preparation });
           } else {
-            const result = await deps.runTransitionPhase({ ...launched, responses, caseId: assigned.caseId, phase,
-              runNonce: options.nonce, expectedBrokerSource: entries.find(entry => entry.name === 'settings-broker.js').bytes.toString('utf8') });
+            const args={ ...launched, responses, caseId: assigned.caseId, phase,runNonce:options.nonce,
+              expectedBrokerSource:entries.find(entry=>entry.name==='settings-broker.js').bytes.toString('utf8') };
+            const result = media ? await deps.runInstalledMediaPreservationScenario({...args,launchOccurrence,browserSession,presetId}) : await deps.runTransitionPhase(args);
+            if(media&&launchOccurrence===2)presetId=result.presetId;
             phases.push({ ...result, extensionId: expectedId, inventorySha256: beforeHash, preparation: launched.preparation,
               manifestSha256: entries.find(entry => entry.name === 'manifest.json').sha256 });
           }
@@ -314,8 +379,11 @@ export async function executeTransitionChild(options, dependencies = {}) {
               catch (error) { cleanupErrors.push({ code: error?.code || 'transition-trace-failed', caseId: assigned.caseId, phase }); }
             }
             try {
-              await timeout(async () => { for (const page of context.pages()) await page.close(); await context.close(); }, 10000, 'transition-close-timeout');
-              closed = true; await deps.send({ ...intent, type: 'close-success' });
+              if(media){shutdown=await deps.closeInstalledMediaBrowser({context,browserSession,profilePath});
+                if(shutdown?.browserCloseAcknowledged!==true||shutdown?.browserDisconnected!==true||shutdown?.ownedRootClosed!==true)throw fail('media-close-unconfirmed');
+                await context.close();
+              }else await timeout(async () => { for (const page of context.pages()) await page.close(); await context.close(); }, 10000, 'transition-close-timeout');
+              closed = true;await deps.send({...intent,type:'close-success',...(media?{shutdown}:{})});
             } catch (error) { cleanupErrors.push({ code: error?.code || 'transition-close-failed', caseId: assigned.caseId, phase }); }
           }
         }
@@ -329,7 +397,8 @@ export async function executeTransitionChild(options, dependencies = {}) {
   } catch (error) { await noticeFailure(error); }
   try { after = await deps.sourceAttestation(files); if (source && !isDeepStrictEqual(source, after)) throw fail('transition-source-changed'); }
   catch (error) { await noticeFailure(error); }
-  await deps.send({ type: 'result', nonce: options.nonce, result: { source, after, candidateInventory, seeds, phases, failure, cleanupErrors, secondaryErrors } });
+  await deps.send({ type: 'result', nonce: options.nonce, result: { source, after, candidateInventory, seeds, phases, failure, cleanupErrors, secondaryErrors,
+    ...(options.scenario?{scenario:options.scenario}:{}) } });
 }
 
 // This path is below the freshly claimed artifact root; Playwright needs an absolute output path.
@@ -342,9 +411,11 @@ const dependenciesDefault = {
   removeCandidate,
 };
 
-export async function runInstalledTransition({ runId, headed = false, control, dependencies = {} } = {}) {
+export async function runInstalledTransition({ runId, headed = false, scenario, control, dependencies = {} } = {}) {
   if (!/^[A-Za-z0-9]{1,64}$/.test(runId || '') || typeof headed !== 'boolean') throw fail('installed-e2e-args-invalid');
-  if (control !== undefined && control !== 'storage-loss') throw fail('transition-control-invalid');
+  if (scenario !== undefined && scenario !== 'media-preservation') throw fail('transition-scenario-invalid');
+  const media=scenario==='media-preservation';
+  if (control !== undefined && (media ? control !== 'media-profile-loss' : control !== 'storage-loss')) throw fail('transition-control-invalid');
   const deps = { ...dependenciesDefault, ...dependencies }, files = await deps.openRepository();
   const nonce = randomBytes(16).toString('hex'), artifact = `output/playwright/installed-extension-transition-${runId}`;
   const claim = `output/playwright/installed-transition-claim-${runId}.lock`, candidateIds = [`B2${runId}A`, `B2${runId}B`];
@@ -360,12 +431,12 @@ export async function runInstalledTransition({ runId, headed = false, control, d
       if (await files.lstat(directory, { optional: true })) throw fail('transition-candidate-exists');
       await files.ensureDirectory(directory); candidates.push(id);
     }
-    for (const caseId of control ? ['valid-ui'] : TRANSITION_CASES) {
+    for (const caseId of media || control ? ['valid-ui'] : TRANSITION_CASES) {
       roots.push({ caseId, root: relative(files, await files.makeTempDirectory('output/playwright/installed-transition-work-')) });
     }
     child = deps.forkChild();
-    const pending = deps.supervise({ child, nonce, roots });
-    child.send({ nonce, roots, candidateIds, artifact, runId, headed, control }, error => { if (error) child.emit('error', error); });
+    const pending = deps.supervise({ child, nonce, roots,...(media?{scenario}:{}) });
+    child.send({ nonce, roots, candidateIds, artifact, runId, headed, control,...(media?{scenario}:{}) }, error => { if (error) child.emit('error', error); });
     supervision = await pending;
     primary = supervision.failure;
     const result = supervision.result;
@@ -373,7 +444,10 @@ export async function runInstalledTransition({ runId, headed = false, control, d
     if (Array.isArray(result?.cleanupErrors)) cleanupErrors.push(...result.cleanupErrors);
     secondaryErrors.push(...(supervision.secondaryErrors || []), ...(result?.secondaryErrors || []));
     cleanupErrors.push(...supervision.cleanupErrors);
-    if (control && primary && supervision.normalExit && !supervision.unconfirmedRoots.length && !cleanupErrors.length && !secondaryErrors.length &&
+    if(media&&control&&primary&&supervision.normalExit&&!supervision.unconfirmedRoots.length&&!cleanupErrors.length&&!secondaryErrors.length&&
+      matchesInstalledMediaLoss(primary,nonce,result?.seeds?.[0]?.extensionId,result?.phases?.find(value=>value.launchOccurrence===2)?.presetId)){
+      validateInstalledMediaTransitionResult(result,nonce,control,supervision.launches);report={ok:true,scenario,control,detected:primary,result};primary=null;
+    }else if (!media && control && primary && supervision.normalExit && !supervision.unconfirmedRoots.length && !cleanupErrors.length && !secondaryErrors.length &&
         matchesStorageLoss(primary, nonce, result?.seeds?.[0]?.extensionId)) {
       validateTransitionResult(result, nonce, control, supervision.launches);
       const old = result?.phases;
@@ -381,13 +455,14 @@ export async function runInstalledTransition({ runId, headed = false, control, d
       report = { ok: true, control, detected: primary, result }; primary = null;
     } else if (!primary && !secondaryErrors.length) {
       if (control) throw fail('transition-control-unexpected-pass');
-      validateTransitionResult(result, nonce, control, supervision.launches);
+      if(media)validateInstalledMediaTransitionResult(result,nonce,control,supervision.launches);else validateTransitionResult(result, nonce, control, supervision.launches);
       report = { ok: true, result };
     }
   } catch (error) { primary ||= genericFailure(error); }
   finally {
     const uncertain = new Set(supervision?.unconfirmedRoots || (child && !supervision ? roots.map(value => value.root) : []));
     for (const assigned of roots) {
+      if(media)continue;
       if (uncertain.has(assigned.root) || (child && !supervision?.normalExit)) {
         cleanupErrors.push({ code: 'cleanup-unconfirmed', caseId: assigned.caseId, phase: null }); continue;
       }
@@ -395,6 +470,7 @@ export async function runInstalledTransition({ runId, headed = false, control, d
       catch (error) { cleanupErrors.push({ code: error?.code || 'transition-root-cleanup', caseId: assigned.caseId, phase: null }); }
     }
     for (const id of candidates) {
+      if(media)continue;
       if (child && !supervision?.normalExit) { cleanupErrors.push({ code: 'cleanup-unconfirmed', caseId: null, phase: null }); continue; }
       try { await deps.removeCandidate(id); }
       catch (error) { cleanupErrors.push({ code: error?.code || 'transition-candidate-cleanup', caseId: null, phase: null }); }
@@ -406,7 +482,8 @@ export async function runInstalledTransition({ runId, headed = false, control, d
   }
   report = { ...(report || {}), ...(supervision?.result ? { result: supervision.result } : {}), ok: !primary && cleanupErrors.length === 0 && secondaryErrors.length === 0, runId, ...(control ? { control } : {}),
     ...(primary ? { failure: primary } : {}), cleanupErrors: cleanupErrors.slice(0, 32), secondaryErrors: secondaryErrors.slice(0, 32),
-    retainedRoots: roots.filter(value => supervision?.unconfirmedRoots.includes(value.root) || (child && !supervision?.normalExit)),
+    retainedRoots: roots.filter(value => media || supervision?.unconfirmedRoots.includes(value.root) || (child && !supervision?.normalExit)),
+    ...(media?{scenario,candidatesRetained:true}:{}),
     limits: ['bundled-code-relaunch-not-native-update', 'no-platform-rollback', 'detached-browser-needs-close-ack'] };
   if (artifactCreated) {
     const text = `${JSON.stringify(report, null, 2)}\n`;
@@ -426,11 +503,13 @@ if (process.argv[1] && path.resolve(process.argv[1]) === scriptPath) {
     });
   } else {
     try {
-      const args = process.argv.slice(2), controls = args.filter(value => value.startsWith('--control='));
-      if (controls.length > 1 || (controls.length === 1 && controls[0] !== '--control=storage-loss')) throw fail('transition-control-invalid');
-      const options = parseInstalledE2EArgs(args.filter(value => !value.startsWith('--control=')));
+      const args = process.argv.slice(2), controls = args.filter(value => value.startsWith('--control=')),scenarios=args.filter(value=>value.startsWith('--scenario='));
+      if(scenarios.length>1||scenarios.length===1&&scenarios[0]!=='--scenario=media-preservation')throw fail('transition-scenario-invalid');
+      const media=scenarios.length===1;
+      if (controls.length > 1 || (controls.length === 1 && controls[0] !== (media?'--control=media-profile-loss':'--control=storage-loss'))) throw fail('transition-control-invalid');
+      const options = parseInstalledE2EArgs(args.filter(value => !value.startsWith('--control=')&&!value.startsWith('--scenario=')));
       if (options.qualification !== undefined) throw fail('installed-e2e-args-invalid');
-      const report = await runInstalledTransition({ ...options, ...(controls.length ? { control: 'storage-loss' } : {}) });
+      const report = await runInstalledTransition({ ...options,...(media?{scenario:'media-preservation'}:{}),...(controls.length?{control:media?'media-profile-loss':'storage-loss'}:{}) });
       console.log(JSON.stringify({ ok: report.ok, runId: report.runId, control: report.control, phases: report.result.phases.length }));
     } catch (error) { console.error(error?.code || error?.message); process.exitCode = 1; }
   }
