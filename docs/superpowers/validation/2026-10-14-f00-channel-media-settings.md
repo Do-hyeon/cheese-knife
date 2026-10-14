@@ -155,3 +155,23 @@ H의 boolean/count 진단은 own 팝업1개·normal 창·focused·activeLive 모
 poll50524b8의 독립 actual M/N은 전체11.321초/19.373초 PASS, O는 자연 popup 종료와 detach 요청의 경합으로 실패했다. 새 보완은 정확한 No-session 오류에만 독립 getTargets에서 자기 target 부재를 증명한 경우 정상 정리로 처리한다. 대상 생존·불명 shape·다른 오류는 실패를 유지하며, detach 전체8초·helper 전체15초 예산도 유지한다. RED9건 중1fail→helper/strict43/43 GREEN.
 
 동시 browser/오디오/감사 실행과 겹친 전체1383/1381pass/1fail/skip1(기존 HLS verifier incomplete)을 기록했다. 정확 원인은 확정하지 않으며 다른 작업 없는 동일 입력 HLS verifier12/12와 보완 후 전체1387/1386pass/0fail/기존skip1,55.954초를 확인했다. timeout·기대 hash·오차·skip·역사 원장은 바꾸지 않았다. 최신 실제 연속3회와 남은 패키지/전환/도구/최종 검토로 이어간다.
+
+## 최종 독립 검토 직전 종합 실행 결과
+
+소스189db36bac2a0c7500fd61bc57e8d66eba385f99 / 새 physical final-natural-retirement, actual sourceSha25615b5415770c7adcf5815c98fabdf67f115008dd293a168f882fc8ec9827a0009. tracked clean·동일 source/after 확인. 모든 source 실행은 proper candidate cwd, 기존 물리 의존성/검증된 게시 ZIP 복사본이며 사용자 프로필을 쓰지 않았다.
+
+| 게이트 | 결과 |
+| --- | --- |
+| foundation9/전체 | 모두 exit0.1387tests/1386pass/0fail/0cancelled/기존skip1,56.478초 |
+| 패키지 | v2.13.3,21entry resources/exact59. root dist58은 불변 |
+| 오디오/영상 | 합성14cases/12alignments/18transitions·stress PASS, source/compressor1개·48kHz. 실제 pixel24/24 |
+| 기본 설치/negative | 기존 전체 설치 시나리오 PASS(62.611초), MAIN 제거는 main-runtime-missing을 정확히 검출 |
+| actual TAB P/Q/R | 세 실행 모두 PASS(10.877/11.362/11.605초), 두 창·iframe·닫기/재열기·복원·키보드/480px/VOD/확인. close3facts 각각 true |
+| config 전환/손실 | 기존5사례15관측 PASS, 별도 config 제거 control의 정확한 startup 오류 검출 |
+| media 전환/손실 |4관측/no-recreate/raw·JSON serialization 보존, final-new4 A-only 손실 검출. 각각5launch/normal exit/close3facts 전부 true/cleanup0/secondary0 |
+| 도구 감사 | input matched=true, npm0/Gitleaks dir0/git0, ESLint 동일 owned-files8. raw exit1을 유지하며 clean 감사로 표현하지 않음 |
+| 보호 대조 | 권한/origin/exclusion·제품2.13.3·root dist58·원본 ZIP/CRX/보호 브랜치 불변, nativeProfileAccessed=false |
+
+실제 BFCache는 P/Q/R 모두 false, 자연 worker suspension와 in-place runtime.reload도 관측되지 않았다. 기존 시청 Chrome/P09·실제 스토어 신규 업데이트/플랫폼 rollback·계정/장치/실방송 전체 조합은 미검증이다. 합성/격리 결과로 보안·정책 준수나 무취약성을 인증하지 않는다. 기존8경고/skip1와 중간 실패는 삭제하거나 PASS로 재표기하지 않았다.
+
+완료된 실행 범위는 아카이브로 이동했으며 현재 PLANS.md의 잔여는 fresh whole-F00 Astra max·필요 보완/검증·로컬 마감이다. 최종 검토 전 F00 전체 DONE 또는 공개 준비 완료를 선언하지 않는다. push/PR/버전/릴리즈/스토어 변경 없음.

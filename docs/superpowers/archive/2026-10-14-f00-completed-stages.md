@@ -64,3 +64,16 @@
 - [x] 집중76/76, dictionary 보완 연결56/56, 최종 전체1320/1319pass/0fail/0cancelled/기존skip1,54.30초;9foundation 통과. 최초 전체 dictionary 경고와 뒤의 Windows symlink EBUSY 실패는 별도 남겼다. 규칙/억제/역사 oracle 변경 없이 보완·같은 입력 재실행했다.
 
 generated client/popup와 active pin만 갱신했다. 실제 Chrome/TAB 저장·BFCache·보존4관측은 이 단위 결과로 완료하지 않으며 Task5C 및 원래 Tasks5–6을 계속한다. 제품2.13.3/시청 Chrome/P09/root dist/공개는 변경하지 않는다.
+
+## Task5C·Task5와 종합 실행 검증 완료 범위
+
+- [x] 폐기 문서는 마지막 의도/불명 결과를 보관하고 편집을 영구 잠근다. native 확인 후 own reload만 허용하며 늦은 callback/조회가 쓰기·ready를 되살리지 않는다. 실제 BFCache는 미관측이며 합성 잠금/실제 back-forward smoke와 구분한다.
+- [x] 실제 toolbar→새 TAB의 production sender/CURRENT 문서 결합·대상 고정·두 창 독립 필드·main-only channel overlay/iframe global·닫기 후 저장 재읽기·preset/confirm·keyboard/480px/VOD pair·복원을 확인했다. helper가 만든 정확한 popup만 소멸을 확인하고 자연 No-session은 독립 target 부재 증명이 있을 때만 정리 완료로 인정한다. auth/자동 retry/positive storage 쓰기 대체 없음.
+- [x] clean189db36의 독립 actual P/Q/R 세 번 전체 PASS(10.877/11.362/11.605초). source/after15b5415770c7adcf5815c98fabdf67f115008dd293a168f882fc8ec9827a0009 동일, Browser.close ACK/disconnection/exact owned root0 모두 true.
+- [x] 기본 config5사례15관측 및 config-loss 별도 PASS. media seed0→old1/new2/rollback3/new4의4관측·first-new 생성1회·독립 raw/토큰/revision/JSON 직렬화 보존 PASS. media-profile-loss는 final-new4/startup/candidate-init의 A audio만 손실시킨 정확한 오류로 감지했다. media 각 실행5launch의3종 종료 증명을 보고서/parent가 확인했다.
+- [x] README 두 언어/개인정보 고지에 미공개 F00 로컬 채널·preset 이름/수동 삭제/제거 시 소멸/비전송 및 Gain·VOD·iframe·시크릿·혼재 코드 제한을 추가했다. URL/dashboard/게시본은 변경하지 않았다.
+- [x] fresh189db36의9foundation·전체1387/1386pass/0fail/기존skip1,56.478초·isolated package v2.13.3/59자산·audio14cases/12alignments/18transitions 및 stress·pixel24/24·기존 설치 positive/MAIN negative가 통과했다. 실제 worker suspension/in-place extension reload는 미관측으로 남긴다.
+- [x] 같은 입력 audit matched=true, npm0/Gitleaks dir0/git0/ESLint8. 기존 owned-files의26/27/45/74/79/94/115/125행·열·규칙과 정확히 일치하며 해당 소스는 main 대비 불변이다. raw exit1/기존 skip1·역사 경고·중간 실패를 보존했다. 신규5개 패턴은 고정 도메인/owned 경로로 보완했으며 억제/규칙 변경 없음.
+- [x] root dist58/제품2.13.3/원본 ZIP·CRX/보호 브랜치/권한·origin·exclusion 보존 대조. 사용자 Chrome/P09·버전/push/PR/배포 변경 없음.
+
+중간 C–O 실패와 원인별 RED/GREEN은 [F00 검증 기록](../validation/2026-10-14-f00-channel-media-settings.md)에 유지한다. 이는 구현·격리 실행 검증의 완료 범위다. **whole-F00 최종 Astra max와 보완·로컬 F00 전체 마감은 아직이며 공개 준비 완료가 아니다.**

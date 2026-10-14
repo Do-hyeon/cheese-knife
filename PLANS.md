@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F00 Task5 DOING — 실제 TAB qualification A/B 통과, media 보존4관측·종료 IPC 구현으로 진행**. Task5A/B는 아카이브이며 C의 실제 툴바→TAB/auth·저장/복원·두 화면·VOD 스타일 대상·입력/좁은 화면·재연결과 종료3증명을 확인했다. 실제 BFCache는 관측되지 않았고 보존4관측·손실 부정 대조·원래 Task6·whole-F00 최종 Astra max는 아직이다. 실제 POPUP의 문서 식별 부재를 완화하지 않으며 qualification을 F00 전체 완료로 세지 않는다.
+최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F00 Task6 DOING — 종합 격리 검증 통과 후 whole-F00 Astra max 최종 검토**. Tasks1–5/TAB5A–C의 완료 범위는 아카이브로 이동했다. clean189db36의9foundation·전체1387/1386pass/0fail/기존skip1·패키지/오디오/픽셀/설치 positive·negative·config15/media4관측 및 각각 손실 대조를 확인했다. 실제 TAB 세 번의 독립 검사/매 종료3증명도 통과했다. audit는 npm0/Gitleaks0/0·동일 기존 경고8이며 raw exit1을 유지한다. 실제 BFCache·자연 worker 중단·실제 스토어 업데이트/rollback은 미검증이며 whole-F00 최종 검토/보완·로컬 마감은 아직이다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -44,7 +44,7 @@
 
 | ID | 작업 묶음 | 상태 | 다음 게이트 |
 | --- | --- | --- | --- |
-| F00 | 채널별 미디어 저장·프리셋 | DOING | 승인된 TAB Task5A–C 순차 구현/검증, 원래 Task5/6 마감; 기존 sender 조건 완화 금지 |
+| F00 | 채널별 미디어 저장·프리셋 | DOING | whole-F00 Astra max 최종 검토/보완 및 로컬 마감; 기존 sender 조건 완화 금지 |
 | F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | WAITING-DEPENDENCY | F00 저장 계약/구현 검증 뒤 별도 상세 설계·계획·승인 |
 | AF05-B 실제 수용 / AF05 종료 | 차기 게시본 설치·업데이트 | WAITING-DEPENDENCY | 차기 게시와 실제 검사 별도 승인 후 수행; F00/F01과 독립 |
 | DT02 | 선택 파일의 native TS 실행 | DEFERRED | 실제 유지보수 이득과 검사/실행 경계 보존이 증명되면 재설계 |
@@ -58,9 +58,8 @@
 
 완료된 설계·계획 승인 및 Tasks1–4은 [F00 완료 단계 아카이브](docs/superpowers/archive/2026-10-14-f00-completed-stages.md)로 이동했다. 현재 실행 승인은 Tasks1–6 로컬 구현·격리 검증·최종 Astra max에 한정되며 공개와 실제 시청 Chrome/P09는 제외한다.
 
-- [ ] Task5C media child의 occurrence별 종료3증명/IPC를 원래 보존4관측 경로에 연결한다. 실제 TAB qualification A/B와 준비 검증은 [검증 기록](docs/superpowers/validation/2026-10-14-f00-channel-media-settings.md)에 분리한다. 실제 BFCache는 미관측이며 합성 PASS로 대체하지 않는다.
-- [ ] Task5 승인된 실제 UI qualification·격리 old→new→old→new 저장 보존·config/media 손실 negative·개인정보/사용 안내. 이전 POPUP attachment 성공을 저장 인증 성공으로 세지 않는다.
-- [ ] Task6 fresh 전체 회귀/9foundation·점검도구·패키지/설치·보호 대조·whole-F00 Astra max·로컬 마감. 실제 미실행 경로는 별도 기록.
+- [ ] Task6 whole-F00 Astra max 최종 독립 검토. Critical/Important 보완·집중/전체 검증 및 원래 판단 제외/초기 발견 수를 기록한다.
+- [ ] 로컬 마감. 현재 완료된 [Task5/TAB5C·종합 실행 검증](docs/superpowers/archive/2026-10-14-f00-completed-stages.md)과 실제 미검증 제한을 구분하며 검토 전 F00 전체 DONE 처리하지 않는다.
 - [ ] F00 전체 범위 공개 지시를 받은 뒤 한글 PR/CI 확인. 현재 push/PR 금지; 자동 병합/배포 없음.
 
 실제 popup의 Playwright Page capture는 실패했고, 승인된 [격리 CDP 대안](docs/superpowers/plans/2026-10-14-f00-popup-cdp-qualification.md)의 attachment는 성공했다. production client sender의 documentId/frameId 부재 실패는 [관측 기록](docs/superpowers/validation/2026-10-14-f00-popup-cdp-qualification.md)에 유지한다. [별도 TAB 설계](docs/superpowers/specs/2026-10-14-f00-media-settings-tab-design.md)·목업/UI·수용기준·상세 계획과 기존 Native 실행은 승인됐다. 문서 식별자를 위조하거나 직접 storage 저장으로 성공을 대체하지 않는다.
@@ -107,6 +106,6 @@
 
 ## 10. 현재 사용자 개입 지점
 
-현재 승인된 TAB Task5A–C와 원래 Tasks5–6 로컬 구현/격리 검증/최종 Astra max는 사용자 개입 없이 순차 진행한다. 사용자 상세 계획/Native 승인2026-10-14 및 한글 승인 문서 방침을 반영했다. 문서 인증·시크릿 제한·대상 재검증은 유지하며 실제 검증의 권한/지원 경계에서만 중지한다.
+현재는 승인된 whole-F00 최종 Astra max·필요 보완/재검증·로컬 마감을 사용자 개입 없이 진행한다. 새로운 실제 사용자 Chrome/P09·설치/교체·권한/외부 전송 범위·push/PR/병합/릴리즈/스토어 변경이 필요하면 중지한다. 이후 승인 요청 문서는 한글로 작성한다.
 
 실제 설치/새로고침·P09 변경·새 의존성/권한/외부 전송·버전·공개는 별도 STOP 게이트다. 이전 MCP 연결/종료 승인이나 다른 작업의 공개 승인을 재사용하지 않는다.
