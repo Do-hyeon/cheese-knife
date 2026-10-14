@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F01 상세 구현 계획·Astra max 검토**. 최신 목업은 사용자 승인됐으며 [승인 목업](docs/superpowers/mockups/2026-10-14-f01-audio-settings.html)과 [구성 점검](docs/superpowers/validation/2026-10-14-f01-mockup-layout-review.md)을 기준으로 계획을 마감한다. F00은 [PR #44](https://github.com/Do-hyeon/cheese-knife/pull/44)의 공개 CI 통과·병합·해당 로컬/원격 브랜치 정리를 완료했다. F01 자료는 별도 로컬 브랜치에 복원했고 공개하지 않았다. 릴리즈는 F00·F01·F02 및 최종 통합 게이트 완료 후이며 제품2.13.3·스토어·시청용 Chrome/P09·root dist는 유지한다.
+최신화: 2026-10-14 / Asia-Seoul. 현재 커서: **F01 상세 계획·Native 격리 실행 묶음 승인 대기**. [한글 상세 계획](docs/superpowers/plans/2026-10-14-f01-audio-processing.md)의9Task를 작성했고 [fresh Astra max 검토](docs/superpowers/validation/2026-10-14-f01-plan-review.md)의 Important3은 보완 후 같은 reviewer가 모두 닫힘/잔여0/0/0을 확인했다. 최신 승인 목업·저장/DSP 수용 조건은 유지하며 제품 구현/Native 실행 성공을 뜻하지 않는다. F00 PR #44는 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -45,7 +45,7 @@
 | ID | 작업 묶음 | 상태 | 다음 게이트 |
 | --- | --- | --- | --- |
 | F00 | 채널별 미디어 저장·프리셋 | DONE (통합) | PR #44 공개 CI 통과·병합·해당 브랜치 정리 완료; 릴리즈 없음 |
-| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | PLAN-REVIEW | 최신 목업 승인 완료; 상세 구현 계획/Astra max 검토 후 계획/실행 승인 |
+| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | WAITING-USER | 상세 계획/동일 Astra 재확인 완료; 계획·Native/자기 격리 실행 묶음 승인 |
 | AF05-B 실제 수용 / AF05 종료 | 차기 게시본 설치·업데이트 | WAITING-DEPENDENCY | 차기 게시와 실제 검사 별도 승인 후 수행; F00/F01과 독립 |
 | DT02 | 선택 파일의 native TS 실행 | DEFERRED | 실제 유지보수 이득과 검사/실행 경계 보존이 증명되면 재설계 |
 | F02–F05 | 후속 기능 | BACKLOG-BLOCKED | F00/F01 검증과 각 범위 승인 |
@@ -93,8 +93,9 @@
 설계·검토·UI 반복 보완 완료 이력은 [F01 설계·목업 아카이브](docs/superpowers/archive/2026-10-14-f01-design-and-mockup-history.md)에 보존한다.
 
 - [x] 2026-10-14 최신 F01 목업 사용자 승인. 기능/저장 계약 승인은 유지하며 제품 구현·실제 렌더링/음성 출력 인증으로 전용하지 않는다.
-- [ ] 최신 UI의 preset 생성/적용 확정 snapshot·scope 변경 처리 및 Gain trusted 더블클릭 의도를 상세 계획/Astra max 검토에 포함. 과거 검토/목업 성공으로 native 권한 검증을 대체하지 않는다.
-- [ ] F01 상세 구현 계획·검토·실행 방식 승인. F00과 별도 PR 범위를 유지하며 현재 push/PR은 하지 않는다.
+- [x] 최신 UI의 preset 생성 진입/적용 확정 snapshot·scope 변경 처리 및 Gain trusted 더블클릭 의도를 상세 계획/Astra max 검토에 포함. 과거 검토/목업 성공으로 native 권한 검증을 대체하지 않는다.
+- [x] F01 한글 상세9Task 계획·fresh Astra max 최초0/3/0·필수 보완·동일 reviewer targeted0/0/0. [검토 기록](docs/superpowers/validation/2026-10-14-f01-plan-review.md)과 실제 미실행을 구분한다.
+- [ ] 사용자 상세 계획·권장 Native/자기 물리 후보·번들 Chromium 격리 실행 묶음 승인. F00 공개 승인과 구분하며 현재 F01 push/PR은 하지 않는다.
 - [ ] F01 구현·객관 출력 상한/전환/수명주기/저장·F00 통합 검증. 주관적 청취만으로 완료하지 않는다.
 - [ ] F01/F02 기능 전체의 별도 공개 지시·한글 PR·공개 CI·병합 확인. F00 PR #44 통합은 완료했고 Task/문서 PR로 더 쪼개지 않는다.
 - [ ] 최종 통합 commit의 전체 회귀·점검도구·패키지·설치/저장 전환·native baseline/제한 대조.
@@ -102,6 +103,20 @@
 - [ ] F02 상세 설계·검토·계획/실행 승인 및 구현·객관 검증.
 - [ ] 최소 F00/F01/F02 및 통합 게이트 후 세 자리 형식의 공개 번호·릴리즈·제출/게시 각각 별도 승인.
 - [ ] 게시 후 실제 수용은6절에서 관리. 이 후행 게이트를 준비 PR의 선행 조건으로 바꾸지 않는다.
+
+### F01 구현 체크리스트 — 실행 승인 전 모두 미착수
+
+세부 파일/ABI·RED/GREEN·실패 대조·명령은 [상세 계획](docs/superpowers/plans/2026-10-14-f01-audio-processing.md)이 소유한다. 아래 순서는 병렬 구현이나 개별 PR 승인으로 바꾸지 않는다.
+
+- [ ] T1 schema2·읽기 무쓰기·명시 전환/전역 alias·Gain 상속 계약.
+- [ ] T2 protocol3·기존 broker 한 queue·native probe/legacy import·Gain actor/epoch/receipt.
+- [ ] T3 최소 production protocol3/공통 수동 master·실제 Blob/volume fixture·제한된 ISOLATED Gain UI → dist61/runtime19 로컬 checkpoint → Native qualification. 실패하면 중지/새 설계 승인, EQ/normalizer를 먼저 구현하지 않는다.
+- [ ] T4 source1·전체/하위 상태·고정8EQ·headroom·기존 delay/limiter/ramp 보호.
+- [ ] T5 순수 RMS 제어·좌우 meter·실제 dB automation·window/hold/error·수명 정리.
+- [ ] T6 승인 TAB UI·확정 preset snapshot/confirm·legacy/upgrade·공통 수동 master 연결·최종dist62/runtime20.
+- [ ] T7 clean checkpoint·실제 설치/다중 창/전환·정확한 저장 손실 대조·document/종료 증명.
+- [ ] T8 clean checkpoint·기존14/12/18/stress와 새 EQ/normalizer/전환/수명 객관 출력 검증.
+- [ ] T9 종합 타입/생성·전체/패키지/도구·보호/고지·whole-F01 Astra max 최종 검토/보완·로컬 마감. 완료 후에만 별도 공개 지시를 요청한다.
 
 ## 9. 검증 진입점
 
@@ -111,6 +126,6 @@
 
 ## 10. 현재 사용자 개입 지점
 
-최신 목업 사용자 승인을 기록했다. 현재는 한글 F01 상세 구현 계획·Astra max 공격적 검토·필수 보완을 마감하고 계획/Native 등 실행 방식의 묶음 승인을 받는다. 목업의 local 입력/탭/상태 예시는 실제 오디오·저장·Chrome API에 연결되지 않으며 실제 렌더링/접근성·native 음성 출력은 미검증이다. 기존 file URL 브라우저 보안 차단을 우회하지 않는다. F01 제품 구현·push/PR/병합·버전·릴리즈·스토어 작업은 별도 승인 전 금지다. F00 PR/병합 승인과 F01 실행 승인을 혼동하지 않는다.
+현재 사용자 개입은 **검토 마감된 상세 계획·권장 Native/격리 실행 묶음 승인**이다. root의 순차 T1–T9, 자기 clean checkpoint/물리 후보·번들 Chromium 새 profile·close/process 증명·고정 fixture/해당 CDP 입력, 기존 승인 범위 npm/Gitleaks/ESLint, whole-F01 Astra max 최종 검토를 포함한다. 사용자 Chrome/P09·새 권한/의존성/외부 전송 확대·버전·릴리즈·스토어·push/PR은 제외한다. T3 qualification 실패 또는 수용 수치/알고리즘 변경 필요 시 중지하고 묶음 설계로 다시 승인받는다. 목업/이번 문서·정적 검토 성공을 실제 오디오·저장·Chrome/native 성공으로 전용하지 않는다. 기존 file URL 보안 차단을 우회하지 않는다. 실행 승인 전 제품 구현과 Native 검사는 하지 않는다.
 
 실제 설치/새로고침·P09 변경·새 의존성/권한/외부 전송·버전·공개는 별도 STOP 게이트다. 이전 MCP 연결/종료 승인이나 다른 작업의 공개 승인을 재사용하지 않는다.
