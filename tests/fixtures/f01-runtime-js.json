@@ -1,6 +1,7 @@
 [
   "background.js",
   "config.js",
+  "gain-authority.js",
   "media-profiles.js",
   "permission.js",
   "popup.js",

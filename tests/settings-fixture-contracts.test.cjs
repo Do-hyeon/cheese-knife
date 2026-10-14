@@ -111,7 +111,7 @@ function callbackScript(fixture,mode) {
 const {settingsHarness,config}=require(${JSON.stringify(fixture)});
 const cleanup=[],rejections=[],watchdog=setTimeout(()=>process.exit(2),10000);
 const onReject=e=>rejections.push(e.message);process.on('unhandledRejection',onReject);
-(async()=>{const sources={generation:'f00',sources:Object.fromEntries(['media-profiles.js','config.js','style-schema.js','settings-contract.js','settings-broker.js'].map(f=>[f,fs.readFileSync(f,'utf8')]))};
+(async()=>{const sources={generation:'f01',sources:Object.fromEntries(['media-profiles.js','gain-authority.js','config.js','style-schema.js','settings-contract.js','settings-broker.js'].map(f=>[f,fs.readFileSync(f,'utf8')]))};
 const h=settingsHarness({after:f=>cleanup.push(f)}, {}, sources);await h.initialize();const c=h.client('popup');await h.settle();const api=c.api;
 let calls=0;const observations=[];const gate=h.holdNext('callback:patch');
 api.runtime.sendMessage({namespace:'cheese-knife-settings',protocol:1,requestId:'probe',action:'patch',operations:[config('arrowSeek',false)]},reply=>{
@@ -137,10 +137,10 @@ test('fixture compatibility: callback exceptions retain actual cleanup and count
 
 test('fixture compatibility: post-eval Chrome replacement and original nullable src exception', async t => {
   /** @type {NonNullable<Parameters<typeof settingsHarness>[2]>} */
-  const sources={generation:'f00',sources:{
+  const sources={generation:'f01',sources:{
     'media-profiles.js':fs.readFileSync('media-profiles.js','utf8'),
     'config.js':fs.readFileSync('config.js','utf8')+`;globalThis.fixtureReads=0;const prior=chrome;chrome=new Proxy(prior,{get(target,key){if(key==='storage')fixtureReads++;return Reflect.get(target,key);}});`,
-    'style-schema.js':fs.readFileSync('style-schema.js','utf8'), 'settings-contract.js':fs.readFileSync('settings-contract.js','utf8'), 'settings-broker.js':fs.readFileSync('settings-broker.js','utf8'),
+    'gain-authority.js':fs.readFileSync('gain-authority.js','utf8'), 'style-schema.js':fs.readFileSync('style-schema.js','utf8'), 'settings-contract.js':fs.readFileSync('settings-contract.js','utf8'), 'settings-broker.js':fs.readFileSync('settings-broker.js','utf8'),
   }};
   const h=settingsHarness(t,{},sources); await h.initialize(); await h.patch('popup',[config('arrowSeek',false)]); assert.ok(h.worker);
   const reads=h.worker.window.eval('fixtureReads'); assert.ok(typeof reads==='number'&&reads>0);
@@ -212,7 +212,7 @@ function diagnostics(result,targets) {
   for(const [file,rows] of targets) assert.deepEqual([...(seen.get(file)||[])].sort((a,b)=>a-b),[...rows.keys()].sort((a,b)=>a-b),file);
 }
 
-test('fixture checker keeps strict options and the exact F00 fifteen-file graph', () => {
+test('fixture checker keeps strict options and the exact F01 sixteen-file graph', () => {
   const project=JSON.parse(fs.readFileSync('tsconfig.settings-fixture.json','utf8')), parent=JSON.parse(fs.readFileSync('tsconfig.development.json','utf8'));
   assert.deepEqual(project,{extends:'./tsconfig.development.json',compilerOptions:{moduleDetection:'legacy',types:['node','chrome']},files:['tests/settings-fixture.cjs','tests/settings-fixture-contracts.test.cjs'],include:[]});
   for(const key of ['allowJs','checkJs','noEmit','strict','noUncheckedIndexedAccess','exactOptionalPropertyTypes','useUnknownInCatchVariables']) assert.equal(parent.compilerOptions[key],true);
@@ -222,7 +222,7 @@ test('fixture checker keeps strict options and the exact F00 fifteen-file graph'
   assert.deepEqual(actual.sort(),[
     'tests/settings-fixture.cjs','tests/settings-fixture-contracts.test.cjs','tests/helpers.cjs',
     'src/settings/config.ts','src/settings/style-schema.ts','src/settings/contract.ts','src/settings/client.ts','src/settings/broker.ts',
-    'src/settings/media-profiles.ts','src/shared/media-contracts.ts',
+    'src/settings/media-profiles.ts','src/settings/gain-authority.ts','src/shared/media-contracts.ts',
     'src/main/runtime/contracts.ts','src/main/site-adapter/contracts.ts','src/main/features/audio/contracts.ts','src/main/features/player/contracts.ts','src/main/features/preview/contracts.ts',
   ].sort());
 });
@@ -272,7 +272,7 @@ test('fixture actual internal bindings reject five goals and each one-boundary w
   copy=copy.replace(/<reference path="([^"]+)" \/>/g,(match,relative)=>{
     references++; const replacement=`<reference path="${path.resolve('tests',relative).replaceAll('\\','/')}" />`; rewrites.push([match,replacement]); return replacement;
   });
-  assert.equal(references,6);
+  assert.equal(references,7);
   let restored=copy.replace(absoluteHelper,helper); for(const [before,after] of rewrites) restored=restored.replace(after,before);
   assert.equal(restored,original);
   const controls=[

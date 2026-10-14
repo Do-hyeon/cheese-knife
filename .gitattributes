@@ -1,6 +1,7 @@
 vendor/hls.light.private.js text eol=lf
 src/settings/*.ts text eol=lf
 /media-profiles.js text eol=lf linguist-generated=true
+/gain-authority.js text eol=lf linguist-generated=true
 /settings-contract.js text eol=lf linguist-generated=true
 /settings-client.js text eol=lf linguist-generated=true
 /settings-broker.js text eol=lf linguist-generated=true

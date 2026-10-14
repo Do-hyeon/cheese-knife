@@ -52,6 +52,24 @@ type KnifeScopedSnapshot = { baseConfig: Record<string, KnifeScalar>; effectiveC
   revisionStatus: 'ready' | 'repair-required'; audioBindingKey: string; audioKind: 'global' | 'channel'; videoKind: 'global' | 'channel' };
 type KnifeMediaMergeResult = { ok: false; code: string } | { ok: true; changed: boolean; nextStore: KnifeMediaStore;
   globalOperations?: KnifeSettingsOperation[]; channelToken?: KnifeChannelToken; recordRevision?: number; presetToken?: KnifePresetToken };
+type KnifeNewAudioMutation<T> = T extends { domain: 'audio'; values: KnifeAudioValues }
+  ? Omit<T, 'values'> & { values: KnifeAudioValuesV2 }
+  : T extends { domain: 'audio'; patch: Partial<KnifeAudioValues> }
+    ? Omit<T, 'patch'> & { patch: Partial<KnifeAudioValuesV2> } : T;
+type KnifeMediaMutationV2 = KnifeNewAudioMutation<KnifeMediaMutation>;
+type KnifeCoreAudio = KnifeAudioValues | KnifeAudioValuesV2;
+type KnifeCoreChannel = Omit<KnifeChannelRecord, 'audio'> & { audio?: { createdRevision: number; values: KnifeCoreAudio } };
+type KnifeCorePreset = Omit<KnifePresetRecord, 'domain' | 'values'> &
+  ({ domain: 'audio'; values: KnifeCoreAudio } | { domain: 'video'; values: KnifeVideoValues });
+type KnifeCoreStore = { schema: 1 | 2; revision: number; channels: KnifeCoreChannel[]; presets: KnifeCorePreset[] };
+type KnifeCoreValuesResult = { ok: false; code: string } | { ok: true; domain: 'audio'; values: KnifeCoreAudio }
+  | { ok: true; domain: 'video'; values: KnifeVideoValues };
+type KnifeMediaMergeResultV2 = { ok: false; code: string } | {
+  ok: true; changed: boolean; nextStore: KnifeMediaStoreV2; globalValues?: KnifeAudioValuesV2 | KnifeVideoValues;
+  domain?: KnifeMediaDomain; channelToken?: KnifeChannelToken; recordRevision?: number; presetToken?: KnifePresetToken };
+type KnifeCoreMergeResult = { ok: false; code: string } | { ok: true; changed: boolean; nextStore: KnifeCoreStore;
+  globalOperations?: KnifeSettingsOperation[]; globalValues?: KnifeCoreAudio | KnifeVideoValues; domain?: KnifeMediaDomain;
+  channelToken?: KnifeChannelToken; recordRevision?: number; presetToken?: KnifePresetToken };
 
 var KnifeMediaProfiles = (() => {
   const audioFields: readonly KnifeConfigLeaf[] = Object.freeze([
@@ -196,28 +214,36 @@ var KnifeMediaProfiles = (() => {
     if (channel) result.profileState = 'scoped';
     return result;
   }
-  function patchValues(domain: KnifeMediaDomain, values: KnifeMediaValues, patch: unknown): KnifeValuesResult {
-    const descriptors = fields(domain);
-    if (!descriptors) return failure('invalid-domain');
-    const checked = ownRecord(patch, descriptors.map(field => field.id), []);
-    return checked ? validateValues(domain, { ...values, ...checked }) : failure('invalid-patch');
-  }
-  const equalValues = (a: KnifeMediaValues, b: KnifeMediaValues) => Object.keys(a).every(key =>
+  const equalValues = (a: KnifeCoreAudio | KnifeVideoValues, b: KnifeCoreAudio | KnifeVideoValues) => Object.keys(a).every(key =>
     Object.getOwnPropertyDescriptor(a, key)?.value === Object.getOwnPropertyDescriptor(b, key)?.value);
-  function mergeMediaOperation(input: KnifeMediaStore, request: KnifeMediaMutation,
-      global: { config: Record<string, KnifeScalar>; revision: number }): KnifeMediaMergeResult {
-    const read = readLegacyStore(input);
+  function mergeStoreOperation(input: KnifeMediaStore | KnifeMediaStoreV2, request: KnifeMediaMutation | KnifeMediaMutationV2,
+      global: { config: Record<string, KnifeScalar>; revision: number }): KnifeCoreMergeResult {
+    const modern = input.schema === 2;
+    const read = modern ? readStore(input) : readLegacyStore(input);
     if (read.state !== 'valid' && read.state !== 'absent') return failure(read.code);
     if (!counter(global.revision)) return failure('invalid-global-revision');
-    const store = read.store;
+    const store: KnifeCoreStore = read.store;
+    const validate = (domain: KnifeMediaDomain, value: unknown): KnifeCoreValuesResult => {
+      if (!modern || domain === 'video') return validateValues(domain, value);
+      const result = validateAudioV2(value);
+      return result.ok ? { ...result, domain: 'audio' } : result;
+    };
+    const projected = (domain: KnifeMediaDomain) => modern && domain === 'audio' ? projectGlobalAudio(global.config) : project(domain, global.config);
+    const patched = (domain: KnifeMediaDomain, values: KnifeCoreAudio | KnifeVideoValues, patch: unknown): KnifeCoreValuesResult => {
+      const descriptors = modern && domain === 'audio' ? audioFieldsV2 : fields(domain)!;
+      const checked = ownRecord(patch, descriptors.map(field => field.id), []);
+      if (!checked) return failure('invalid-patch');
+      // A direct Gain edit owns its value; choosing inheritance alone retains the stored number.
+      return validate(domain, { ...values, ...checked, ...(modern && domain === 'audio' && Object.hasOwn(checked, 'audioGain') ? { gainInherited: false } : {}) });
+    };
     const nextRevision = store.revision + 1;
-    const success = (changed: boolean, extra: Partial<Extract<KnifeMediaMergeResult, { ok: true }>> = {}): KnifeMediaMergeResult => {
+    const success = (changed: boolean, extra: Partial<Extract<KnifeCoreMergeResult, { ok: true }>> = {}): KnifeCoreMergeResult => {
       if (changed) {
         if (!counter(nextRevision)) return failure('revision-exhausted');
         store.revision = nextRevision;
         store.channels.sort((a, b) => a.channelId.localeCompare(b.channelId));
         store.presets.sort((a, b) => a.id.localeCompare(b.id));
-        if (readLegacyStore(store).state !== 'valid') return failure('media-limit');
+        if ((modern ? readStore(store) : readLegacyStore(store)).state !== 'valid') return failure('media-limit');
       }
       return { ok: true, changed, nextStore: store, ...extra };
     };
@@ -230,11 +256,15 @@ var KnifeMediaProfiles = (() => {
     if (request.action === 'apply-preset-global') {
       const preset = sourcePreset(request.presetToken);
       if (!preset || request.expectedGlobalRevision !== global.revision) return failure('conflict');
+      if (modern) {
+        const values = preset.domain === 'audio' ? copyAudioPreset(preset.values as KnifeAudioValuesV2, projectGlobalAudio(global.config)) : preset.values;
+        return success(false, { globalValues: values, domain: preset.domain });
+      }
       const globalOperations: KnifeSettingsOperation[] = Object.entries(preset.values).map(([id, value]) => ({ type: 'config', id, value }));
       return success(false, { globalOperations });
     }
     if (request.action === 'create-preset') {
-      const values = validateValues(request.domain, request.values);
+      const values = validate(request.domain, request.values);
       if (!presetId(request.id) || !label(request.name) || !values.ok) return failure('invalid-preset');
       const existing = store.presets.find(preset => preset.id === request.id);
       if (existing) return existing.createdRevision === request.expectedMediaRevision + 1 && existing.revision === 1 &&
@@ -243,7 +273,7 @@ var KnifeMediaProfiles = (() => {
       if (request.expectedMediaRevision !== store.revision) return failure('conflict');
       if (store.presets.length >= 64) return failure('media-limit');
       const preset = { id: request.id, createdRevision: nextRevision, revision: 1, name: request.name,
-        domain: values.domain, values: values.values } as KnifePresetRecord;
+        domain: values.domain, values: values.values } as KnifeCorePreset;
       store.presets.push(preset);
       return success(true, { presetToken: { id: preset.id, createdRevision: nextRevision, revision: 1 } });
     }
@@ -254,18 +284,18 @@ var KnifeMediaProfiles = (() => {
       if (request.action === 'delete-preset') { store.presets = store.presets.filter(item => item !== preset); return success(true); }
       if (request.name !== undefined && !label(request.name)) return failure('invalid-name');
       const name = request.name ?? preset.name;
-      let values: KnifeValuesResult = { ok: true, ...{ domain: preset.domain, values: preset.values } } as KnifeValuesResult;
+      let values: KnifeCoreValuesResult = { ok: true, ...{ domain: preset.domain, values: preset.values } } as KnifeCoreValuesResult;
       if ('values' in request && request.values !== undefined) {
         if (request.expectedPresetRevision !== preset.revision || request.domain !== preset.domain) return failure('conflict');
-        values = validateValues(preset.domain, request.values);
+        values = validate(preset.domain, request.values);
       } else if ('patch' in request && request.patch !== undefined) {
         if (request.domain !== preset.domain) return failure('conflict');
-        values = patchValues(preset.domain, preset.values, request.patch);
+        values = patched(preset.domain, preset.values, request.patch);
       }
       if (!values.ok) return failure(values.code);
       if (preset.name === name && equalValues(preset.values, values.values)) return success(false);
       if (!bump(preset)) return failure('revision-exhausted');
-      const updated = { ...preset, name, domain: values.domain, values: values.values } as KnifePresetRecord;
+      const updated = { ...preset, name, domain: values.domain, values: values.values } as KnifeCorePreset;
       store.presets[store.presets.indexOf(preset)] = updated;
       return success(true, { presetToken: { id: preset.id, createdRevision: preset.createdRevision, revision: updated.revision } });
     }
@@ -274,7 +304,7 @@ var KnifeMediaProfiles = (() => {
     let channel = store.channels.find(item => item.channelId === id);
     if (request.action === 'enable-channel-domain') {
       if (request.expectedGlobalRevision !== global.revision) return failure('conflict');
-      const values = validateValues(request.domain, project(request.domain, global.config));
+      const values = validate(request.domain, projected(request.domain));
       if (!values.ok) return values;
       if (request.expectedMediaRevision !== store.revision) {
         const existing = channel?.[request.domain];
@@ -311,15 +341,16 @@ var KnifeMediaProfiles = (() => {
     const binding = channel[request.domain];
     if (!binding || request.channelToken.channelId !== id || request.channelToken.recordCreatedRevision !== channel.createdRevision ||
         request.channelToken.domainCreatedRevision !== binding.createdRevision) return failure('conflict');
-    let values: KnifeValuesResult;
-    if (request.action === 'patch-channel-fields') values = patchValues(request.domain, binding.values, request.patch);
+    let values: KnifeCoreValuesResult;
+    if (request.action === 'patch-channel-fields') values = patched(request.domain, binding.values, request.patch);
     else {
       if (request.expectedRecordRevision !== channel.revision) return failure('conflict');
       if ('presetToken' in request) {
         const preset = sourcePreset(request.presetToken);
         if (!preset || preset.domain !== request.domain) return failure('conflict');
-        values = validateValues(request.domain, preset.values);
-      } else values = validateValues(request.domain, request.values);
+        values = validate(request.domain, modern && preset.domain === 'audio'
+          ? copyAudioPreset(preset.values as KnifeAudioValuesV2, binding.values as KnifeAudioValuesV2) : preset.values);
+      } else values = validate(request.domain, request.values);
     }
     if (!values.ok) return values;
     if (equalValues(binding.values, values.values)) return success(false);
@@ -327,6 +358,20 @@ var KnifeMediaProfiles = (() => {
     if (values.domain === 'audio') channel.audio = { createdRevision: binding.createdRevision, values: values.values };
     else channel.video = { createdRevision: binding.createdRevision, values: values.values };
     return success(true, { channelToken: { channelId: id, recordCreatedRevision: channel.createdRevision, domainCreatedRevision: binding.createdRevision }, recordRevision: channel.revision });
+  }
+  function mergeMediaOperation(input: KnifeMediaStore, request: KnifeMediaMutation,
+      global: { config: Record<string, KnifeScalar>; revision: number }): KnifeMediaMergeResult {
+    const read = readLegacyStore(input);
+    if (read.state !== 'valid') return failure(read.state === 'absent' ? 'invalid-media-store' : read.code);
+    const result = mergeStoreOperation(read.store, request, global);
+    // This entry point cannot accept schema2; the core validates the final schema-specific shape.
+    return result as KnifeMediaMergeResult;
+  }
+  function mergeMediaOperationV2(input: KnifeMediaStoreV2, request: KnifeMediaMutationV2,
+      global: { config: Record<string, KnifeScalar>; revision: number }): KnifeMediaMergeResultV2 {
+    const read = readStore(input);
+    if (read.state !== 'valid' || read.store.schema !== 2) return failure('media-upgrade-required');
+    return mergeStoreOperation(read.store, request, global) as KnifeMediaMergeResultV2;
   }
   function validateAudioV2(raw: unknown): KnifeAudioResultV2 {
     const values = ownRecord(raw, audioFieldsV2.map(field => field.id));
@@ -452,7 +497,7 @@ var KnifeMediaProfiles = (() => {
     return result;
   }
   return Object.freeze({ audioFields, audioFieldsV2, videoFields, readStore, readLegacyStore, validateValues, validateAudioV2,
-    projectAudioV2, projectGlobalAudio, upgradeMediaStore, copyAudioPreset, resolveMediaSettings, resolveLegacyMediaSettings, mergeMediaOperation,
+    projectAudioV2, projectGlobalAudio, upgradeMediaStore, copyAudioPreset, resolveMediaSettings, resolveLegacyMediaSettings, mergeMediaOperation, mergeMediaOperationV2,
     isChannelId: channelId, isPresetId: presetId, isPresetName: label, isCounter: counter });
 })();
 // Publish the bundled namespace for the other MAIN feature entries.

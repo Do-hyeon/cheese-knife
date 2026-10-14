@@ -9,6 +9,7 @@ import { openOwnedRoot } from './owned-files.mjs';
 
 export const SETTINGS_RUNTIME_ENTRIES = Object.freeze([
   Object.freeze({ source: 'src/settings/media-profiles.ts', output: 'media-profiles.js', global: 'KnifeMediaProfiles' }),
+  Object.freeze({ source: 'src/settings/gain-authority.ts', output: 'gain-authority.js', global: 'createPlayerGainAuthority' }),
   Object.freeze({ source: 'src/settings/config.ts', output: 'config.js', global: 'KnifeHostPolicy' }),
   Object.freeze({ source: 'src/settings/style-schema.ts', output: 'style-schema.js', global: 'STYLES' }),
   Object.freeze({ source: 'src/settings/contract.ts', output: 'settings-contract.js', global: 'KnifeSettingsContract' }),

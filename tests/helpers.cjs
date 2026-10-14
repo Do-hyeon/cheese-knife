@@ -10,6 +10,7 @@ function page(html = '', url = base) {
   const dom = new JSDOM(`<html><body>${html}</body></html>`, { url, runScripts: 'outside-only', pretendToBeVisual: true });
   // jsdom omits this native browser encoding API; the real Node implementation is shared.
   Reflect.set(dom.window, 'TextEncoder', TextEncoder);
+  Reflect.set(dom.window, 'structuredClone', structuredClone);
   return dom;
 }
 /** @param {JSDOM} dom @param {string} file */

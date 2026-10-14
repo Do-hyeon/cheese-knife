@@ -65,7 +65,7 @@ runtime은 기존 settings transform(런타임 import/export 금지)와 MAIN bun
 - [x] RED 실행: `node --test tests/f01-media-schema.test.cjs tests/media-profiles.test.cjs tests/settings-compatibility.test.cjs`. 격리 후보에서 새 계약 부재 실패와 별칭/기존 순차 patch 회귀 실패를 확인했다.
 - [x] 구현: schema1 reader/형태를 그대로 보존하고 schema2 reader/projection/upgrade를 추가한다. upgrade는 IDs/이름/createdRevision/video 유지, record/preset/store revision 각각+1·MAX_SAFE/256KiB/정수 overflow 사전 실패. 새 global audioDefault는 기존 compressorDefault로만 정규화; raw unknown audioDefault 보존/우선0·두 요청 명칭 충돌 거부.
 - [x] GREEN: 집중99/99·전체1411통과/실패0/기존private증거1skip·9개 기반/build/package 통과. gainInherited=true preset은 적용 대상 Gain 쌍 보존, 새 owned preset은 확정 유효값/false를 복사한다. boot/read는 migration을 쓰지 않는다.
-- [ ] 로컬 커밋: 해당 원본·테스트·필요 생성 출력만 명시 staging. push/PR 없음.
+- [x] 로컬 커밋: 해당 원본·테스트·필요 생성 출력만 명시 staging. T1 79bf6e2, push/PR 없음.
 
 ## Task 2 — protocol3·명시 upgrade/import·한 queue의 Gain epoch
 
@@ -73,12 +73,12 @@ runtime은 기존 settings transform(런타임 import/export 금지)와 MAIN bun
 
 **입출력:** T1 값/reader → own TAB protocol3 reply 또는 Gain 전용 view/ticket. T3은 이 namespace만, T6은 own TAB action만 소비한다.
 
-- [ ] RED: `upgrade is explicit and unknown is not success`에서 schema1 일반 write0/upgrade set1/기대 revision 불일치0/ACK loss unknown/재조회 일치도 미확정/폐기 뒤 다음 조작을 assert한다. absent upgrade0·첫 global Gain은 config/settingsRevision만 변경·첫 channel/preset은 schema2를 생성한다.
-- [ ] RED: `fixed legacy read rejects same-url replacement`는 원래 tab/window/frame0/document 전후 검사·2초/합계4초·raw64자·다른 탭 재탐색0·가져오기 직전 fresh value/document/global revision mismatch0·취소0·unknown raw 보존을 assert한다. 읽기·상속 선택은 knifeGain 쓰기/삭제0.
-- [ ] RED: actor64/TTL60s/scope64/receipt64 busy, before-write epoch invalidation, owned A→B→A·동일 값 상속/토큰 변경, external/nonmonotonic 변경 무효화, 성공 뒤 자기 ACK epoch와 늦은 중복 notify 유지, 실패 뒤 옛 ticket 복구0. v1 patch/preset/import/upgrade/reset/delete 등 **모든** 저장 경로를 연결한 tests로 누락을 탐지한다.
-- [ ] 구현: 정확한 own sender/TAB gate는 유지한다. player native tabs.get/frame0 probe는 별도 함수로 구현; worker namespace listener도 같은 enqueue를 사용한다. tabs.onUpdated URL/종료와 storage.onChanged를 background에서 authority에 전달하며 source/권한 변경은 fresh view 제한. 서로 다른 필드 최신 raw merge·동일 Gain 쌍 경쟁 conflict, 전역/상속 채널 의존 epoch와 owned 채널 독립을 적용한다. 시작한 write를 timeout 뒤 취소했다고 하지 않고 outstanding actor/receipt로 후속 commit을 잠근다.
-- [ ] GREEN: `node --test tests/f01-gain-authority.test.cjs tests/f01-media-upgrade.test.cjs tests/media-broker.test.cjs tests/settings-broker.test.cjs`; 부적절한 sender/action/extra key 및 exception/timeout0-write 대조. queue·receipt 중간 순서의 가상 clock 테스트와 실제 설치 증거를 구분한다.
-- [ ] 필요한 classic authority 출력·worker import 및 테스트 load order를 함께 갱신하고 로컬 커밋한다.
+- [x] RED: `upgrade is explicit and unknown is not success`에서 schema1 일반 write0/upgrade set1/기대 revision 불일치0/ACK loss unknown/재조회 일치도 미확정을 고정했다. absent upgrade0·첫 global Gain은 config/settingsRevision만 변경·첫 channel/preset은 schema2를 생성한다. TAB의 폐기·다음 조작 UI는 T6/T7에서 통합 검증한다.
+- [x] RED: `fixed legacy read rejects same-url replacement`는 원래 tab/window/frame0/document 전후 검사·2초/합계4초·raw64자·다른 탭 재탐색0·가져오기 직전 fresh value/document/global revision mismatch0·unknown raw 보존을 고정했다. 실제 고정 함수도 직렬화해 읽기만 확인했다. 취소 UI는 T6/T7에서 확인한다.
+- [x] RED: actor64/TTL60s/scope64/receipt64 busy, before-write epoch invalidation, owned A→B→A·동일 값 상속/토큰 변경, external/nonmonotonic 변경 무효화, 성공 뒤 자기 ACK epoch와 늦은 중복 notify 유지, 실패 뒤 옛 ticket 복구0. 공통 write hook과 v1 patch/preset/import/upgrade/reset/delete 경로 및 늦은 raw 경쟁을 연결했다.
+- [x] 구현: own sender/TAB gate·player native tabs.get/frame0 고정 probe·같은 enqueue·URL/종료/storage/권한 변경 신호를 연결했다. 서로 다른 필드 최신 raw merge·같은 Gain 쌍 conflict·상속 의존 epoch/owned 독립·receipt와 진행 중 actor 잠금을 유지한다.
+- [x] GREEN: 집중61/61·전체1433통과/실패0/기존private증거1skip·9개 기반/build/package 통과. 부적절한 sender/action/extra key·exception/합계4초 초과의 쓰기0를 대조했다. 가상 native 경계/clock과 실제 설치 증거는 구분한다.
+- [x] 필요한 classic authority 출력·worker import·생성/strict fixture graph·독립60/18 pin을 갱신해 로컬 보존한다. push/PR 없음.
 
 ## Task 3 — 제한된 플레이어 Gain actor·Native 선행 자격 확인
 

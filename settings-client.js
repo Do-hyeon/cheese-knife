@@ -263,7 +263,7 @@ var createSettingsRequestTransport = (chromeApi) => {
             finish("response-unknown");
             return;
           }
-          const reply = protocol === 1 ? validate?.(action, value, requestId) : validateMediaReply(action, value, requestId);
+          const reply = protocol === 1 ? validate?.(action, value, requestId) : protocol === 3 ? validateMediaReplyV3(action, value, requestId) : validateMediaReply(action, value, requestId);
           if (!reply) finish("response-unknown");
           else finish(null, reply);
         });
@@ -278,6 +278,29 @@ var createSettingsRequestTransport = (chromeApi) => {
     for (const cancel of [...pending]) cancel();
   } };
 };
+function validateMediaReplyV3(request, value, requestId) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const reply = value;
+  if (reply.protocol !== 3 || reply.requestId !== requestId || typeof reply.ok !== "boolean" || typeof reply.stored !== "boolean" || reply.code !== void 0 && reply.code !== null && typeof reply.code !== "string" || reply.stage !== void 0 && reply.stage !== null && typeof reply.stage !== "string") return null;
+  if (!reply.ok) return typeof reply.code === "string" && !reply.stored ? reply : null;
+  const snapshot = reply.snapshot, readOnly = ["get-media-snapshot", "read-legacy-gain"].includes(request.action);
+  if (reply.stored === readOnly || !snapshot || !snapshot.version || !snapshot.values || !snapshot.selection || typeof snapshot.canWrite !== "boolean" || !(snapshot.code === null || typeof snapshot.code === "string") || !["global", "scoped", "repair-required"].includes(snapshot.profileState) || !["site-legacy", "global-owned", "channel-owned"].includes(snapshot.gainOrigin)) return null;
+  const selection = "selection" in request ? request.selection : { kind: "global" };
+  if (JSON.stringify(snapshot.selection) !== JSON.stringify(selection) || !KnifeMediaProfiles.isCounter(snapshot.version.globalRevision) || snapshot.version.mediaRevision !== null && !KnifeMediaProfiles.isCounter(snapshot.version.mediaRevision) || !KnifeMediaProfiles.validateAudioV2(snapshot.values.audio).ok || !KnifeMediaProfiles.validateValues("video", snapshot.values.video).ok) return null;
+  if (snapshot.store === null) {
+    if (snapshot.profileState !== "repair-required" || snapshot.version.mediaRevision !== null || snapshot.canWrite) return null;
+  } else {
+    const read = KnifeMediaProfiles.readStore(snapshot.store);
+    if (read.state !== "valid" || read.store.revision !== snapshot.version.mediaRevision || read.store.schema === 1 && snapshot.canWrite) return null;
+    if (snapshot.channel !== null && !read.store.channels.some((channel) => JSON.stringify(channel) === JSON.stringify(snapshot.channel))) return null;
+  }
+  if (JSON.stringify(reply.version) !== JSON.stringify(snapshot.version) || reply.profileState !== snapshot.profileState) return null;
+  if (request.action === "read-legacy-gain") {
+    const legacy = reply.legacyGain;
+    if (!legacy || !["valid", "fallback"].includes(legacy.state) || !Number.isFinite(legacy.value) || legacy.value < 0 || legacy.value > 2 || typeof legacy.documentId !== "string" || !legacy.documentId.length || legacy.documentId.length > 128 || legacy.tabId !== request.selection.tabId || legacy.windowId !== request.selection.windowId || typeof legacy.url !== "string") return null;
+  }
+  return reply;
+}
 function validateMediaReply(request, value, requestId) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const reply = value;

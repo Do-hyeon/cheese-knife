@@ -1,12 +1,13 @@
 {
-  "background.js": "927f26ce4d86eb5081f0b91a339d8ed3b8996d96b6400a872015b89b5ba318a8",
+  "background.js": "dd7955b5950378f7c1b2963297fafec71c11737047736ac2b76448cf2b09a7d2",
   "config.js": "d6e57e0bb5f9ad29cf2b432a2978f03850234b6e49de673282bfa89827a8b63d",
-  "media-profiles.js": "987ba40538ce0b9c54411a771a094996fc8087a1fc770b59c1d2070cfccb2efe",
+  "gain-authority.js": "f14c66517c496cfd033f68c6b28c1db409e9898433508306ddd1227a31d02340",
+  "media-profiles.js": "8d5bd780be8b699adf817ad8a205c791ca6c1b2ef20de3c987c1cc1652f71fc5",
   "permission.js": "fb2ad721eefb5d30c4a3803a957b7f8681bba6614efaabd23094f31c49924cc5",
   "popup.js": "8bcb562efb2f390c6b03478c5f6e865db99a5fdebb8981ddebd8f7c69853c5eb",
-  "settings-broker.js": "e3167f5493fd583989ec38fe110af98d42a8404b268502200b688fd64ea7d781",
-  "settings-client.js": "1bf55005267d4fcf18dadb4c64a97366e1b3d192b93af2b29f05e44b6b367b4e",
-  "settings-contract.js": "6ec030a7285d903e89da271b98a417f92bffe96a2ec0f3ca1999f20e6fcf5810",
+  "settings-broker.js": "842f5157d94978797a5894ec5a7c44d517112ddf2bb0d1b8e02860b1338318cf",
+  "settings-client.js": "e6baafa54dd750aed29554bf6f57ab76e754040c9665d5d3259c109544c4f6e8",
+  "settings-contract.js": "827173da2c2f36c042d55441fd0ba4bcff0e40121c328f811a215629b7bef5ec",
   "style-schema.js": "2eca52b03d282f97d21f143f267f86af86fcbb3ddb2c452edd7d2149df010ccc",
   "styles.js": "206efcc1a5e15db9574e290b70a7f022f081906c23e96362dd19332ce1e0c33d",
   "web/audio.js": "8ed0c7984b852317e6158c8e36b63f2dd078a86903d5633b57c3e206b170e728",
@@ -14,6 +15,6 @@
   "web/main.js": "f3c05da7c76f01fcc9bdb06b9ccc65272dc5124b8589ee5f9ab197cd7a006924",
   "web/player.js": "d8a05815668324827f9b61ca440cf47a693c84165d0345c130c207984dee0a3e",
   "web/preview.js": "7334249e6f6462fd1ccab1fedc3308b934551550cd912278b0b7afbbd286901d",
-  "web/runtime.js": "8f16d3bbee4db2137dfcb6ee1e28eb536d327a57d668cc96ecf289240ce6320f",
+  "web/runtime.js": "f60d17fc1859cc1188d2afe97760dd816d6b97f386ded26378f086e2fe4eb811",
   "web/site-adapter.js": "fab739263e06dcbd970988dd5db57a7836587234b7e824fa1b62877e01b1601a"
 }

@@ -1,5 +1,6 @@
 /// <reference path="../src/settings/config.ts" />
 /// <reference path="../src/settings/media-profiles.ts" />
+/// <reference path="../src/settings/gain-authority.ts" />
 /// <reference path="../src/settings/style-schema.ts" />
 /// <reference path="../src/settings/contract.ts" />
 /// <reference path="../src/settings/client.ts" />
@@ -16,9 +17,9 @@ const { page, load, flush, clock } = require('./helpers.cjs');
 // Partial merges retain explicit undefined fields under exactOptionalPropertyTypes.
 /** @typedef {{[K in keyof chrome.scripting.RegisteredContentScript]?:chrome.scripting.RegisteredContentScript[K]|undefined}&{id:string}} FixtureScript */
 /** @typedef {{id:number,windowId:number,url?:string|undefined,incognito?:boolean|undefined}} FixtureTab */
-/** @typedef {Pick<ReturnType<typeof createSettingsBroker>,'initialize'|'invalidateStyles'>&{listener:(message:unknown,sender:unknown,respond:(response:unknown)=>void)=>boolean}} FixtureBroker */
+/** @typedef {Pick<ReturnType<typeof createSettingsBroker>,'initialize'|'invalidateStyles'>&Partial<Pick<ReturnType<typeof createSettingsBroker>,'observeGainChanges'>>&{listener:(message:unknown,sender:unknown,respond:(response:unknown)=>void)=>boolean}} FixtureBroker */
 /** @typedef {ReturnType<typeof createSettingsClient>} FixtureClient */
-/** @typedef {(message:KnifeSettingsRequest|KnifeMediaRequest,callback:(response:unknown)=>void)=>void} FixtureSend */
+/** @typedef {(message:KnifeSettingsRequest|KnifeMediaRequest|KnifeMediaRequestV3,callback:(response:unknown)=>void)=>void} FixtureSend */
 /** @typedef {(value:RawStore)=>Promise<void>} FixtureStorageWrite */
 /** @typedef {(value:FixtureChrome)=>FixtureClient} FixtureClientFactory */
 /** @typedef {(value:unknown)=>FixtureBroker} FixtureBrokerFactory */
@@ -30,7 +31,7 @@ const { page, load, flush, clock } = require('./helpers.cjs');
  * i18n:{getMessage:(key:string)=>string},
  * storage:{onChanged:FixtureEvent<[RawStore,string]>,local:{onChanged:FixtureEvent<[RawStore,string]>,get:(keys?:string[]|RawStore|null)=>Promise<RawStore>,set:FixtureStorageWrite,remove:(key:string|string[])=>Promise<void>}},
  * scripting:{getRegisteredContentScripts:(options?:{ids?:string[]|undefined})=>Promise<FixtureScript[]>,registerContentScripts:(scripts:FixtureScript[])=>Promise<void>,updateContentScripts:(scripts:FixtureScript[])=>Promise<void>,unregisterContentScripts:(options?:{ids?:string[]|undefined})=>Promise<void>},
- * tabs:{getCurrent:()=>Promise<FixtureTab|undefined>,get:(id:number)=>Promise<FixtureTab>,reload:(id:number)=>Promise<void>,query:(options:chrome.tabs.QueryInfo)=>Promise<(FixtureTab|undefined)[]>,sendMessage:(id:number,message:unknown)=>Promise<unknown>,create:(options:chrome.tabs.CreateProperties)=>Promise<void>},
+ * tabs:{onUpdated:FixtureEvent<[number,{url?:string}]>,onRemoved:FixtureEvent<[number]>,getCurrent:()=>Promise<FixtureTab|undefined>,get:(id:number)=>Promise<FixtureTab>,reload:(id:number)=>Promise<void>,query:(options:chrome.tabs.QueryInfo)=>Promise<(FixtureTab|undefined)[]>,sendMessage:(id:number,message:unknown)=>Promise<unknown>,create:(options:chrome.tabs.CreateProperties)=>Promise<void>},
  * windows:{get:(id:number)=>Promise<{id:number,incognito:boolean}>},
  * permissions:{contains:(options:chrome.permissions.Permissions)=>Promise<boolean>,onRemoved:FixtureEvent<[chrome.permissions.Permissions]>,onAdded:FixtureEvent<[chrome.permissions.Permissions]>}
  * }} FixtureChrome */
@@ -53,16 +54,18 @@ function event() {
 }
 /** @typedef {'config.js'|'style-schema.js'|'settings-contract.js'|'settings-broker.js'} PublishedWorkerFile */
 /** @typedef {PublishedWorkerFile|'media-profiles.js'} F00WorkerFile */
-/** @typedef {{generation:'published',sources:Readonly<Record<PublishedWorkerFile,string>>}|{generation:'f00',sources:Readonly<Record<F00WorkerFile,string>>}} WorkerSources */
+/** @typedef {F00WorkerFile|'gain-authority.js'} F01WorkerFile */
+/** @typedef {{generation:'published',sources:Readonly<Record<PublishedWorkerFile,string>>}|{generation:'f00',sources:Readonly<Record<F00WorkerFile,string>>}|{generation:'f01',sources:Readonly<Record<F01WorkerFile,string>>}} WorkerSources */
 /** @type {PublishedWorkerFile[]} */ const publishedWorkerFiles = ['config.js', 'style-schema.js', 'settings-contract.js', 'settings-broker.js'];
-/** @type {F00WorkerFile[]} */ const workerFiles = ['media-profiles.js', ...publishedWorkerFiles];
+/** @type {F00WorkerFile[]} */ const f00WorkerFiles = ['media-profiles.js', ...publishedWorkerFiles];
+/** @type {F01WorkerFile[]} */ const workerFiles = ['media-profiles.js', 'gain-authority.js', ...publishedWorkerFiles];
 /** @param {unknown} value @returns {WorkerSources} */
 function validatedSources(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || Reflect.ownKeys(value).length !== 2) throw new Error('fixture-worker-sources');
   const generation = Object.getOwnPropertyDescriptor(value, 'generation')?.value;
   const sources = Object.getOwnPropertyDescriptor(value, 'sources')?.value;
-  if (!['published', 'f00'].includes(generation) || !sources || typeof sources !== 'object' || Array.isArray(sources)) throw new Error('fixture-worker-sources');
-  const names = generation === 'published' ? publishedWorkerFiles : workerFiles;
+  if (!['published', 'f00', 'f01'].includes(generation) || !sources || typeof sources !== 'object' || Array.isArray(sources)) throw new Error('fixture-worker-sources');
+  const names = generation === 'published' ? publishedWorkerFiles : generation === 'f00' ? f00WorkerFiles : workerFiles;
   if (Reflect.ownKeys(sources).length !== names.length) throw new Error('fixture-worker-sources');
   const entries = names.map(file => [file, Object.getOwnPropertyDescriptor(sources, file)?.value]);
   if (!entries.every(([, source]) => typeof source === 'string' && source.trim())) throw new Error('fixture-worker-sources');
@@ -74,7 +77,7 @@ function settingsHarness(t, stored = {}, workerSources) {
   const saved = /** @type {RawStore} */ (structuredClone(stored)), gates = /** @type {Map<string,FixtureGate[]>} */ (new Map()), allGates = /** @type {FixtureGate[]} */ ([]), changes = /** @type {FixtureEvent<[RawStore,string]>} */ (event());
   const calls = /** @type {FixtureCall[]} */ ([]), registrations = /** @type {Map<string,FixtureScript>} */ (new Map()), tabs = /** @type {Map<number,FixtureTab>} */ (new Map([[7, { id: 7, windowId: 9, incognito: false, url: 'https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' }]]));
   const contexts = /** @type {Map<string,chrome.runtime.ExtensionContext>} */ (new Map()); let contextSequence = 0;
-  const windows = /** @type {import('jsdom').JSDOM[]} */ ([]), clients = /** @type {FixtureClient[]} */ ([]), messages = /** @type {{api:object,message:KnifeSettingsRequest|KnifeMediaRequest,subscribers:number}[]} */ ([]), metrics = /** @type {WeakMap<object,FixtureMetric>} */ (new WeakMap());
+  const windows = /** @type {import('jsdom').JSDOM[]} */ ([]), clients = /** @type {FixtureClient[]} */ ([]), messages = /** @type {{api:object,message:KnifeSettingsRequest|KnifeMediaRequest|KnifeMediaRequestV3,subscribers:number}[]} */ ([]), metrics = /** @type {WeakMap<object,FixtureMetric>} */ (new WeakMap());
   let counter = 0, activeWrites = 0, maxWrites = 0, activeCss = 0, maxCss = 0, permissionGranted = true, /** @type {import('jsdom').JSDOM|undefined} */ worker, /** @type {FixtureBroker} */ broker, /** @type {(()=>boolean)|undefined} */ stopInvalidation;
   let selectedSources = workerSources === undefined ? undefined : validatedSources(workerSources);
   let versioned = selectedSources !== undefined, activityEpoch = 0, /** @type {number|undefined} */ settledEpoch, activeBoundaries = 0, pendingRequests = 0;
@@ -145,6 +148,7 @@ function settingsHarness(t, stored = {}, workerSources) {
         unregisterContentScripts: async options => { await cssBoundary('css-unregister', options); for (const id of options?.ids || [...registrations.keys()]) registrations.delete(id); },
       },
       tabs: {
+        onUpdated: event(), onRemoved: event(),
         getCurrent: async () => { await boundary('tab-current', {}); return options?.surface === 'toolbar' ? undefined :
           { id: ownTabId, windowId: 9, incognito: false, url: options?.documentUrl ?? getURL(`${name}.html`) }; },
         get: async id => { await boundary('tab-get', { id }); if (!tabs.has(id)) throw new Error('missing-tab'); return structuredClone(/** @type {FixtureTab} */ (tabs.get(id))); },
@@ -196,14 +200,14 @@ function settingsHarness(t, stored = {}, workerSources) {
     /** @type {{chrome:unknown}} */ (worker.window).chrome = apiFor();
     if (sources) for (const source of Object.values(sources.sources)) worker.window.eval(source);
     else {
-      for (const f of ['media-profiles.js', 'config.js', 'style-schema.js', 'settings-contract.js']) load(worker, f);
+      for (const f of ['media-profiles.js', 'gain-authority.js', 'config.js', 'style-schema.js', 'settings-contract.js']) load(worker, f);
       if (fs.existsSync('settings-broker.js')) load(worker, 'settings-broker.js');
     }
     assert.equal(typeof worker.window.createSettingsBroker, 'function', 'settings writer must exist');
     // Constructor ABI after eval is assumed; scripts may replace the Chrome slot.
     broker = /** @type {FixtureBrokerFactory} */ (worker.window.createSettingsBroker)(/** @type {{chrome:unknown}} */ (worker.window).chrome);
     const activeBroker = broker;
-    /** @param {RawStore} delta */ const signal = delta => { if (delta.styles || delta.styleParameters || delta.settingsRevision) { noteActivity(); activeBroker.invalidateStyles(); } };
+    /** @param {RawStore} delta */ const signal = delta => { activeBroker.observeGainChanges?.(delta); if (delta.styles || delta.styleParameters || delta.settingsRevision) { noteActivity(); activeBroker.invalidateStyles(); } };
     changes.addListener(signal); stopInvalidation = () => changes.removeListener(signal);
   }
   startWorker();

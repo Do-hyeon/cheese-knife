@@ -8,6 +8,14 @@ type MediaAbiProof = RequireMediaAbi<typeof KnifeMediaProfiles extends {
     context: {channelId: string | null; topFrame: boolean; incognito: boolean}): KnifeMediaResolution;
   mergeMediaOperation(store: KnifeMediaStore, request: KnifeMediaMutation,
     global: {config: Record<string, KnifeScalar>; revision: number}): KnifeMediaMergeResult;
+  mergeMediaOperationV2(store: KnifeMediaStoreV2, request: KnifeMediaMutationV2,
+    global: {config: Record<string, KnifeScalar>; revision: number}): KnifeMediaMergeResultV2;
+} ? true : false>;
+type GainAbiProof = RequireMediaAbi<ReturnType<typeof createPlayerGainAuthority> extends {
+  view(native: KnifeGainNative, raw: KnifeUnknownRecord): KnifeGainView | KnifeGainFailure;
+  beforeWrite(raw: KnifeUnknownRecord, changes: KnifeUnknownRecord): void;
+  observe(changes: KnifeUnknownRecord): void;
+  retireTab(tabId: number): void;
 } ? true : false>;
 
 export function proofContext(context: string, evidence: unknown) {

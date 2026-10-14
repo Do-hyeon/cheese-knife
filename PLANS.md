@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T2 protocol3·Gain 저장 권위 구현 진입**. 사용자가 [한글 상세 계획](docs/superpowers/plans/2026-10-14-f01-audio-processing.md)의9Task와 Native 격리 실행 묶음을 승인했다. [fresh Astra max 계획 검토](docs/superpowers/validation/2026-10-14-f01-plan-review.md)의 Important3은 같은 reviewer 확인으로 모두 닫혔다(잔여0/0/0). 이는 실제 구현/Native 성공을 뜻하지 않는다. F00 PR #44는 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
+최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T3 플레이어 Gain·최소 protocol3 연결·Native 자격 확인 준비**. 사용자가 [한글 상세 계획](docs/superpowers/plans/2026-10-14-f01-audio-processing.md)의9Task와 Native 격리 실행 묶음을 승인했다. [fresh Astra max 계획 검토](docs/superpowers/validation/2026-10-14-f01-plan-review.md)의 Important3은 같은 reviewer 확인으로 모두 닫혔다(잔여0/0/0). 이는 실제 구현/Native 성공을 뜻하지 않는다. F00 PR #44는 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -109,7 +109,7 @@
 세부 파일/ABI·RED/GREEN·실패 대조·명령은 [상세 계획](docs/superpowers/plans/2026-10-14-f01-audio-processing.md)이 소유한다. 아래 순서는 병렬 구현이나 개별 PR 승인으로 바꾸지 않는다.
 
 - [x] T1 schema2·읽기 무쓰기·명시 전환/전역 alias·Gain 상속 계약. 격리 집중99/99·전체1411통과/실패0/기존 private 증거1skip·9개 기반/build/package 통과. 기존 F00 pin 보존·새 F01 pin 분리.
-- [ ] T2 protocol3·기존 broker 한 queue·native probe/legacy import·Gain actor/epoch/receipt.
+- [x] T2 protocol3·기존 broker 한 queue·native probe/legacy import·Gain actor/epoch/receipt. 집중61/61·전체1433통과/실패0/기존private증거1skip·9개 기반/build/package 통과. 후보dist60/runtime18. native 문서/입력의 실제 성공은 T3에서 별도 확인한다.
 - [ ] T3 최소 production protocol3/공통 수동 master·실제 Blob/volume fixture·제한된 ISOLATED Gain UI → dist61/runtime19 로컬 checkpoint → Native qualification. 실패하면 중지/새 설계 승인, EQ/normalizer를 먼저 구현하지 않는다.
 - [ ] T4 source1·전체/하위 상태·고정8EQ·headroom·기존 delay/limiter/ramp 보호.
 - [ ] T5 순수 RMS 제어·좌우 meter·실제 dB automation·window/hold/error·수명 정리.

@@ -3,8 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { settingsHarness, config } = require('./settings-fixture.cjs');
 const {page,load,runtime,playerHTML}=require('./helpers.cjs');
-const files = ['media-profiles.js', 'config.js', 'style-schema.js', 'settings-contract.js', 'settings-broker.js'];
-const current = () => ({ generation: 'f00', sources: Object.fromEntries(files.map(file => [file, fs.readFileSync(file, 'utf8')])) });
+const files = ['media-profiles.js', 'gain-authority.js', 'config.js', 'style-schema.js', 'settings-contract.js', 'settings-broker.js'];
+const current = () => ({ generation: 'f01', sources: Object.fromEntries(files.map(file => [file, fs.readFileSync(file, 'utf8')])) });
 
 test('tagged published four-file worker still writes through the unchanged v1 contract', async t => {
   const { readPublishedWorkerSources } = await import('../scripts/published-settings-baseline.mjs');
@@ -15,7 +15,7 @@ test('tagged published four-file worker still writes through the unchanged v1 co
   assert.equal(h.saved.config.arrowSeek, false);
 });
 
-test('tagged F00 five-file worker loads the pure dependency before config and v1 writer', async t => {
+test('tagged F01 six-file worker loads media and authority before config and v1 writer', async t => {
   const h = settingsHarness(t, {}, current());
   await h.initialize(); await h.settle();
   assert.equal(typeof h.worker.window.KnifeMediaProfiles?.readStore, 'function');

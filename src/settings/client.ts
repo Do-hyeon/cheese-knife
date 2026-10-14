@@ -184,6 +184,8 @@ var createSettingsClient = (chromeApi: typeof chrome) => {
 
 type KnifeMediaCall = KnifeMediaMutation | { action: 'get-media-snapshot'; selection: KnifeMediaSelection };
 type KnifeMediaTransport = { promise: Promise<{ reply: KnifeMediaReply; requestSequence: number }>; requestSequence: number; cancel: () => void };
+type KnifeMediaCallV3<T = KnifeMediaRequestV3> = T extends KnifeMediaRequestV3 ? Omit<T, 'namespace' | 'protocol' | 'requestId'> : never;
+type KnifeMediaTransportV3 = { promise: Promise<{ reply: KnifeMediaReplyV3; requestSequence: number }>; requestSequence: number; cancel: () => void };
 type KnifeGlobalReplyValidator = (action: KnifeSettingsAction, value: unknown, requestId: string) => KnifeSettingsReply | null;
 type KnifeMediaView = { selection: KnifeMediaSelection; snapshot: KnifeMediaSnapshot | null;
   values: { audio: KnifeAudioValues; video: KnifeVideoValues }; phase: KnifeMediaPhase; pendingKeys: string[];
@@ -193,14 +195,15 @@ var createSettingsRequestTransport = (chromeApi: typeof chrome) => {
   const pending = new Set<() => void>(); let sequence = 0, disposed = false;
   function send(protocol: 1, action: KnifeSettingsAction, payload: KnifeUnknownRecord, validate: KnifeGlobalReplyValidator): KnifeTransport & { cancel: () => void };
   function send(protocol: 2, request: KnifeMediaCall): KnifeMediaTransport;
-  function send(protocol: 1 | 2, action: KnifeSettingsAction | KnifeMediaCall, payload: KnifeUnknownRecord = {}, validate?: KnifeGlobalReplyValidator) {
+  function send(protocol: 3, request: KnifeMediaCallV3): KnifeMediaTransportV3;
+  function send(protocol: 1 | 2 | 3, action: KnifeSettingsAction | KnifeMediaCall | KnifeMediaCallV3, payload: KnifeUnknownRecord = {}, validate?: KnifeGlobalReplyValidator) {
     const requestId = `settings-${++sequence}`, requestSequence = sequence;
     const request = protocol === 1 ? { namespace: 'cheese-knife-settings', protocol, action, requestId, ...payload }
-      : { namespace: 'cheese-knife-settings', protocol, requestId, ...action as KnifeMediaCall };
+      : { namespace: 'cheese-knife-settings', protocol, requestId, ...action as KnifeMediaCall | KnifeMediaCallV3 };
     let cancel = () => {};
-    const promise = new Promise<{ reply: KnifeSettingsReply | KnifeMediaReply; requestSequence: number }>((resolve, reject) => {
+    const promise = new Promise<{ reply: KnifeSettingsReply | KnifeMediaReply | KnifeMediaReplyV3; requestSequence: number }>((resolve, reject) => {
       let ended = false;
-      const finish = (code: string | null, reply?: KnifeSettingsReply | KnifeMediaReply) => {
+      const finish = (code: string | null, reply?: KnifeSettingsReply | KnifeMediaReply | KnifeMediaReplyV3) => {
         if (ended) return; ended = true; clearTimeout(timer); pending.delete(cancel);
         if (code) reject(Object.assign(new Error(code), { code }));
         else if (reply) resolve({ reply, requestSequence });
@@ -212,6 +215,7 @@ var createSettingsRequestTransport = (chromeApi: typeof chrome) => {
         chromeApi.runtime.sendMessage(request, (value: unknown) => {
           if (chromeApi.runtime.lastError) { finish('response-unknown'); return; }
           const reply = protocol === 1 ? validate?.(action as KnifeSettingsAction, value, requestId)
+            : protocol === 3 ? validateMediaReplyV3(action as KnifeMediaCallV3, value, requestId)
             : validateMediaReply(action as KnifeMediaCall, value, requestId);
           if (!reply) finish('response-unknown'); else finish(null, reply);
         });
@@ -221,6 +225,39 @@ var createSettingsRequestTransport = (chromeApi: typeof chrome) => {
   }
   return { send, dispose() { disposed = true; for (const cancel of [...pending]) cancel(); } };
 };
+
+function validateMediaReplyV3(request: KnifeMediaCallV3, value: unknown, requestId: string): KnifeMediaReplyV3 | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const reply = value as KnifeMediaReplyV3;
+  if (reply.protocol !== 3 || reply.requestId !== requestId || typeof reply.ok !== 'boolean' || typeof reply.stored !== 'boolean' ||
+      reply.code !== undefined && reply.code !== null && typeof reply.code !== 'string' ||
+      reply.stage !== undefined && reply.stage !== null && typeof reply.stage !== 'string') return null;
+  if (!reply.ok) return typeof reply.code === 'string' && !reply.stored ? reply : null;
+  const snapshot = reply.snapshot, readOnly = ['get-media-snapshot', 'read-legacy-gain'].includes(request.action);
+  if (reply.stored === readOnly || !snapshot || !snapshot.version || !snapshot.values || !snapshot.selection ||
+      typeof snapshot.canWrite !== 'boolean' || !(snapshot.code === null || typeof snapshot.code === 'string') ||
+      !['global', 'scoped', 'repair-required'].includes(snapshot.profileState) ||
+      !['site-legacy', 'global-owned', 'channel-owned'].includes(snapshot.gainOrigin)) return null;
+  const selection = 'selection' in request ? request.selection : { kind: 'global' };
+  if (JSON.stringify(snapshot.selection) !== JSON.stringify(selection) || !KnifeMediaProfiles.isCounter(snapshot.version.globalRevision) ||
+      snapshot.version.mediaRevision !== null && !KnifeMediaProfiles.isCounter(snapshot.version.mediaRevision) ||
+      !KnifeMediaProfiles.validateAudioV2(snapshot.values.audio).ok || !KnifeMediaProfiles.validateValues('video', snapshot.values.video).ok) return null;
+  if (snapshot.store === null) {
+    if (snapshot.profileState !== 'repair-required' || snapshot.version.mediaRevision !== null || snapshot.canWrite) return null;
+  } else {
+    const read = KnifeMediaProfiles.readStore(snapshot.store);
+    if (read.state !== 'valid' || read.store.revision !== snapshot.version.mediaRevision || read.store.schema === 1 && snapshot.canWrite) return null;
+    if (snapshot.channel !== null && !read.store.channels.some(channel => JSON.stringify(channel) === JSON.stringify(snapshot.channel))) return null;
+  }
+  if (JSON.stringify(reply.version) !== JSON.stringify(snapshot.version) || reply.profileState !== snapshot.profileState) return null;
+  if (request.action === 'read-legacy-gain') {
+    const legacy = reply.legacyGain;
+    if (!legacy || !['valid', 'fallback'].includes(legacy.state) || !Number.isFinite(legacy.value) || legacy.value < 0 || legacy.value > 2 ||
+        typeof legacy.documentId !== 'string' || !legacy.documentId.length || legacy.documentId.length > 128 ||
+        legacy.tabId !== request.selection.tabId || legacy.windowId !== request.selection.windowId || typeof legacy.url !== 'string') return null;
+  }
+  return reply;
+}
 
 function validateMediaReply(request: KnifeMediaCall, value: unknown, requestId: string): KnifeMediaReply | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;

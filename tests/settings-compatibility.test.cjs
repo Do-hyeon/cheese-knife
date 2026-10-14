@@ -4,8 +4,8 @@ const fs = require('node:fs');
 const { createHash } = require('node:crypto');
 const { settingsHarness, config, style, parameter, getURL, extensionId } = require('./settings-fixture.cjs');
 const published = import('../scripts/published-settings-baseline.mjs').then(m => ({ generation: 'published', sources: m.readPublishedWorkerSources() }));
-const files = ['media-profiles.js', 'config.js', 'style-schema.js', 'settings-contract.js', 'settings-broker.js'];
-const current = Object.freeze({ generation: 'f00', sources: Object.freeze(Object.fromEntries(files.map(file => [file, fs.readFileSync(file, 'utf8')])) ) });
+const files = ['media-profiles.js', 'gain-authority.js', 'config.js', 'style-schema.js', 'settings-contract.js', 'settings-broker.js'];
+const current = Object.freeze({ generation: 'f01', sources: Object.freeze(Object.fromEntries(files.map(file => [file, fs.readFileSync(file, 'utf8')])) ) });
 const plain = value => JSON.parse(JSON.stringify(value));
 const count = (h, kind) => h.calls.filter(call => call.kind === kind).length;
 function assertWorker(h, sources) {

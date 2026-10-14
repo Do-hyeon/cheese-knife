@@ -144,18 +144,25 @@ var KnifeMediaProfiles = (() => {
     if (channel) result.profileState = "scoped";
     return result;
   }
-  function patchValues(domain, values, patch) {
-    const descriptors = fields(domain);
-    if (!descriptors) return failure("invalid-domain");
-    const checked = ownRecord(patch, descriptors.map((field) => field.id), []);
-    return checked ? validateValues(domain, { ...values, ...checked }) : failure("invalid-patch");
-  }
   const equalValues = (a, b) => Object.keys(a).every((key) => Object.getOwnPropertyDescriptor(a, key)?.value === Object.getOwnPropertyDescriptor(b, key)?.value);
-  function mergeMediaOperation(input, request, global) {
-    const read = readLegacyStore(input);
+  function mergeStoreOperation(input, request, global) {
+    const modern = input.schema === 2;
+    const read = modern ? readStore(input) : readLegacyStore(input);
     if (read.state !== "valid" && read.state !== "absent") return failure(read.code);
     if (!counter(global.revision)) return failure("invalid-global-revision");
     const store = read.store;
+    const validate = (domain, value) => {
+      if (!modern || domain === "video") return validateValues(domain, value);
+      const result = validateAudioV2(value);
+      return result.ok ? { ...result, domain: "audio" } : result;
+    };
+    const projected = (domain) => modern && domain === "audio" ? projectGlobalAudio(global.config) : project(domain, global.config);
+    const patched = (domain, values2, patch) => {
+      const descriptors = modern && domain === "audio" ? audioFieldsV2 : fields(domain);
+      const checked = ownRecord(patch, descriptors.map((field) => field.id), []);
+      if (!checked) return failure("invalid-patch");
+      return validate(domain, { ...values2, ...checked, ...modern && domain === "audio" && Object.hasOwn(checked, "audioGain") ? { gainInherited: false } : {} });
+    };
     const nextRevision = store.revision + 1;
     const success = (changed, extra = {}) => {
       if (changed) {
@@ -163,7 +170,7 @@ var KnifeMediaProfiles = (() => {
         store.revision = nextRevision;
         store.channels.sort((a, b) => a.channelId.localeCompare(b.channelId));
         store.presets.sort((a, b) => a.id.localeCompare(b.id));
-        if (readLegacyStore(store).state !== "valid") return failure("media-limit");
+        if ((modern ? readStore(store) : readLegacyStore(store)).state !== "valid") return failure("media-limit");
       }
       return { ok: true, changed, nextStore: store, ...extra };
     };
@@ -176,11 +183,15 @@ var KnifeMediaProfiles = (() => {
     if (request.action === "apply-preset-global") {
       const preset = sourcePreset(request.presetToken);
       if (!preset || request.expectedGlobalRevision !== global.revision) return failure("conflict");
+      if (modern) {
+        const values2 = preset.domain === "audio" ? copyAudioPreset(preset.values, projectGlobalAudio(global.config)) : preset.values;
+        return success(false, { globalValues: values2, domain: preset.domain });
+      }
       const globalOperations = Object.entries(preset.values).map(([id2, value]) => ({ type: "config", id: id2, value }));
       return success(false, { globalOperations });
     }
     if (request.action === "create-preset") {
-      const values2 = validateValues(request.domain, request.values);
+      const values2 = validate(request.domain, request.values);
       if (!presetId(request.id) || !label(request.name) || !values2.ok) return failure("invalid-preset");
       const existing = store.presets.find((preset2) => preset2.id === request.id);
       if (existing) return existing.createdRevision === request.expectedMediaRevision + 1 && existing.revision === 1 && existing.domain === values2.domain && existing.name === request.name && equalValues(existing.values, values2.values) ? success(false, { presetToken: { id: existing.id, createdRevision: existing.createdRevision, revision: 1 } }) : failure("conflict");
@@ -209,10 +220,10 @@ var KnifeMediaProfiles = (() => {
       let values2 = { ok: true, ...{ domain: preset.domain, values: preset.values } };
       if ("values" in request && request.values !== void 0) {
         if (request.expectedPresetRevision !== preset.revision || request.domain !== preset.domain) return failure("conflict");
-        values2 = validateValues(preset.domain, request.values);
+        values2 = validate(preset.domain, request.values);
       } else if ("patch" in request && request.patch !== void 0) {
         if (request.domain !== preset.domain) return failure("conflict");
-        values2 = patchValues(preset.domain, preset.values, request.patch);
+        values2 = patched(preset.domain, preset.values, request.patch);
       }
       if (!values2.ok) return failure(values2.code);
       if (preset.name === name && equalValues(preset.values, values2.values)) return success(false);
@@ -226,7 +237,7 @@ var KnifeMediaProfiles = (() => {
     let channel = store.channels.find((item) => item.channelId === id);
     if (request.action === "enable-channel-domain") {
       if (request.expectedGlobalRevision !== global.revision) return failure("conflict");
-      const values2 = validateValues(request.domain, project(request.domain, global.config));
+      const values2 = validate(request.domain, projected(request.domain));
       if (!values2.ok) return values2;
       if (request.expectedMediaRevision !== store.revision) {
         const existing = channel?.[request.domain];
@@ -263,14 +274,14 @@ var KnifeMediaProfiles = (() => {
     const binding = channel[request.domain];
     if (!binding || request.channelToken.channelId !== id || request.channelToken.recordCreatedRevision !== channel.createdRevision || request.channelToken.domainCreatedRevision !== binding.createdRevision) return failure("conflict");
     let values;
-    if (request.action === "patch-channel-fields") values = patchValues(request.domain, binding.values, request.patch);
+    if (request.action === "patch-channel-fields") values = patched(request.domain, binding.values, request.patch);
     else {
       if (request.expectedRecordRevision !== channel.revision) return failure("conflict");
       if ("presetToken" in request) {
         const preset = sourcePreset(request.presetToken);
         if (!preset || preset.domain !== request.domain) return failure("conflict");
-        values = validateValues(request.domain, preset.values);
-      } else values = validateValues(request.domain, request.values);
+        values = validate(request.domain, modern && preset.domain === "audio" ? copyAudioPreset(preset.values, binding.values) : preset.values);
+      } else values = validate(request.domain, request.values);
     }
     if (!values.ok) return values;
     if (equalValues(binding.values, values.values)) return success(false);
@@ -278,6 +289,17 @@ var KnifeMediaProfiles = (() => {
     if (values.domain === "audio") channel.audio = { createdRevision: binding.createdRevision, values: values.values };
     else channel.video = { createdRevision: binding.createdRevision, values: values.values };
     return success(true, { channelToken: { channelId: id, recordCreatedRevision: channel.createdRevision, domainCreatedRevision: binding.createdRevision }, recordRevision: channel.revision });
+  }
+  function mergeMediaOperation(input, request, global) {
+    const read = readLegacyStore(input);
+    if (read.state !== "valid") return failure(read.state === "absent" ? "invalid-media-store" : read.code);
+    const result = mergeStoreOperation(read.store, request, global);
+    return result;
+  }
+  function mergeMediaOperationV2(input, request, global) {
+    const read = readStore(input);
+    if (read.state !== "valid" || read.store.schema !== 2) return failure("media-upgrade-required");
+    return mergeStoreOperation(read.store, request, global);
   }
   function validateAudioV2(raw) {
     const values = ownRecord(raw, audioFieldsV2.map((field) => field.id));
@@ -434,6 +456,7 @@ var KnifeMediaProfiles = (() => {
     resolveMediaSettings,
     resolveLegacyMediaSettings,
     mergeMediaOperation,
+    mergeMediaOperationV2,
     isChannelId: channelId,
     isPresetId: presetId,
     isPresetName: label,

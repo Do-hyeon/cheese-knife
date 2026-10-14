@@ -7,7 +7,7 @@ const dependencies = ['media-profiles.js', 'config.js', 'style-schema.js', 'sett
 test('classic Chrome worker imports dependencies and installs callback listener synchronously', async t => {
   const h = settingsHarness(t); const dom = page(); t.after(() => dom.window.close()); const api = h.apiFor(); dom.window.chrome = api;
   const imported = []; dom.window.importScripts = (...files) => { for (const file of files) { imported.push(file); load(dom, file); } };
-  load(dom, 'background.js'); assert.deepEqual(imported, dependencies); assert.equal(api.runtime.onMessage.listeners.size, 1);
+  load(dom, 'background.js'); assert.deepEqual(imported, ['media-profiles.js', 'gain-authority.js', ...dependencies.slice(1)]); assert.equal(api.runtime.onMessage.listeners.size, 1);
   const message = { namespace: 'cheese-knife-settings', protocol: 1, action: 'get-snapshot', requestId: 'load-fixture' };
   const sender = { id: api.runtime.id, url: api.runtime.getURL('popup.html'), frameId: 0 };
   const reply = await new Promise(resolve => { assert.equal([...api.runtime.onMessage.listeners][0](message, sender, resolve), true); });
