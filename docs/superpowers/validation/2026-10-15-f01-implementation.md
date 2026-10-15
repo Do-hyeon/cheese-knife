@@ -318,7 +318,13 @@ root dist58·제품2.13.3·사용자 Chrome/P09·모든 실패 증거와 로컬 
 
 원본 실패 파일을 변경하지 않은 별도 복사본에서 PowerShell/Node24.19의 mt 호출은 각각exit0, 기존 prepareWindowsBundledChromium만 호출한 새 bootstrap-diagnostic-lC6T5u도exit0이었다. 따라서 SDK 자체 고장이나 파일 잠금을 확정하지 않는다. 제품/신호 없이 기존 launcher의 준비·종료만 최대4회 확인하는 진단은 첫 회(profile-JrpyVl)151.0.7922.34/종료3증명true, 두 번째(profile-ewuYjB)media-close-unconfirmed로 실패해 즉시 종료했다. 로그는 Native 후보의 output/f01-bootstrap-cycle-d565b6d.log에 보존했다.19:17:03의 자기 진단/프로필 프로세스 조회는0개다. 준비 환경과 종료 ACK/disconnect/root 조회 중 어느 지점이 실패했는지는 아직 특정하지 못했다.
 
-승인된 F01 관측/중간 저장/timeout/정리 보완은 로컬·P의 실제 실패 경로·Q의 전체 사전계측으로 검증했다. 다만 공통 launcher의 준비/종료 진단을 분리해 원래 오류의 code/signal/stderr와 종료 단계별 상태를 보존하는 후속 확인이 필요하다. 현재 설치·SDK/브라우저 교체나 추가 긴 검사·환경 재시도는 하지 않는다. 과거 A..R·새 독립 진단·모든 실패와 O의 미기록 한계는 유지한다. T8 전체 출력/기존 객관 회귀와 T9/Astra max는 미완료이며 push/PR은 없다.
+승인된 F01 관측/중간 저장/timeout/정리 보완은 로컬·P의 실제 실패 경로·Q의 전체 사전계측으로 검증했다. 다만 공통 launcher의 준비/종료 진단을 분리해 원래 오류의 code/signal/stderr와 종료 단계별 상태를 보존하는 후속 확인이 필요했다. 이후 아래 계측을 승인받았으며 SDK/브라우저 교체·새 설치는 하지 않는다. 과거 A..R·새 독립 진단·모든 실패와 O의 미기록 한계는 유지한다. T8 전체 출력/기존 객관 회귀와 T9/Astra max는 미완료이며 push/PR은 없다.
+
+#### 공통 launcher 준비·종료 계측 — 2026-10-15
+
+사용자 승인으로 기존 harness의 준비 단계/source-copy-manifest-tool-ready-marker·원래 SDK 종료 정보, close ACK/disconnect/자기 root 조회 단계별 상태를 실패에 부착했다. SDK는 기존 실행파일/인자를 유지하고15초·64KiB 상한만 적용했다. close의 기존15초 및 정상3증명은 그대로이며 오류 객체/code/cause를 유지한다. audio 실패 JSON은 허용된 진단 필드만 저장하며 문자열4096자·cause 깊이2로 제한하고 환경/임의 오류 payload를 제외한다. browser 생성 이전 실패도 시작/실패 checkpoint에 기록한다.
+
+신규3건은 진단 부재로 RED를 확인한 뒤 GREEN이었다. 집중45/45와 strict audio/development 통과. 최초 전체 실행은 새 테스트의 unknown 문자열 타입 좁히기1건으로1614통과/1실패/기존private1skip이었다. assert 기반 좁히기를 바로잡고 동일 실행 후보를 갱신한 전체 최종 실행은1616개 중1615통과/실패0/기존private1skip(60.585초)이다. 이전 실패 로그는 지우지 않았다. 로그는 execution 후보의 output/f01-launcher-{full,full-final,foundation}.log 및 root output/f01-launcher-{red,green,focused-final}.log에 보존한다. 기반/build/package와 실제 준비·종료 단기 진단은 이어서 수행하며 아직 성공으로 표기하지 않는다.
 
 P(14608b6/6WOy9H)는44.1kHz 수명/빠른 전환12개를 통과한 뒤48kHz의 실제 hidden-condition에서15초 timeout으로 실패했다. 이번에는120개 중간 JSON·preflight/final report를 남기고 두 rate 모두 정상 종료3증명을 확보했다. source/after5필드 일치·pageErrors0이며 강제 종료나 긴 행렬 실행은 없다. 진단에서 원래 방송과 새 blank가 모두visible이었다. 이는 같은 창의 다른 탭이라는 전제가 입증되지 않았음을 보여주며, 당시 window ID가 없으므로 서로 다른 창이었다고 단정하지 않는다.
 

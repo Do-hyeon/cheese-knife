@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T8 수명 관측 보완·3rate 사전검증 완료, 공통 Native launcher 준비/종료 진단 설계 확인 대기**. T1–T7 로컬 게이트를 마쳤으며 T8·T9는 미완료다. T7 완료 이력은 [완료 단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md), 상세 결과는 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)에 유지한다. F00 PR #44 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
+최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T8 공통 Native launcher 준비/종료 계측 승인·구현 및 단기 진단 진행**. T1–T7 로컬 게이트를 마쳤으며 T8·T9는 미완료다. T7 완료 이력은 [완료 단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md), 상세 결과는 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)에 유지한다. F00 PR #44 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -17,7 +17,8 @@ T8 진행: 기존14 steady·12 alignment·18 transition과 모든 수치 허용�
 - [x] 2f494f3의44.1/48/96kHz 사전계측36개·각 실제 세 구간·모든 gain/양쪽 출력 PASS. source/after5필드 일치·종료3증명·pageErrors0, N 실패와 O 원자료 모두 보존.
 - [x] **사용자 승인:** O의 중단 뒤 수명 조작별 timeout·중간 증거 즉시 저장·닫힘/실패 경로의 제한된 보완. O의 exit13·최종 report 부재·긴 전환/RMS raw 미기록은 그대로 보존한다. 원인을 제품/도구로 단정하거나 옛 로그를 전체 PASS로 승격하지 않는다.
 - [x] 보완 집중51/strict·전체1612통과/실패0/기존1skip·9기반/build/package. P에서 이름 있는15초 실패·120중간기록·최종 report·정상 종료를 확인했고 Q에서3rate 실제 수명/같은창 ID·전환36개/세 구간·270중간기록·source5일치·각 종료3증명 PASS. 제품 DSP·기존 수치·고정12자극/rate 불변.
-- [ ] **설계 확인 필요:** Q는 긴 행렬의 새 browser 준비 mt.exe 실패, 제한한 동일입력 R도 준비 실패로 미완료. 독립 prepare/mt 복사본 진단은 성공했으나 제품을 넣지 않은 launcher 단기 진단의 두 번째 종료가 media-close-unconfirmed였다. 원인은 미확정이며 원본 실패는 보존한다. 공통 준비/종료 단계에 exit code·stderr·close ACK/disconnect/root 조회 상태를 남기는 제한된 진단과 단기 준비/종료 게이트를 먼저 보완한다. 설치·SDK/브라우저 교체·추가 긴 검사/환경 재시도는 현재 승인으로 수행하지 않는다.
+- [x] **사용자 승인:** 공통 준비/종료 단계의 원래 exit code·signal·stderr와 close ACK/disconnect/root 조회 상태를 보존하는 계측·회귀·단기 준비/종료 진단. Q/R와 신호 없는 진단 실패는 유지한다. SDK/브라우저 교체·새 설치는 별도 승인 대상이다.
+- [ ] 계측 도구의 엄격 타입·전체 회귀 후 새 clean checkpoint에서 최대4회/첫 실패 중지의 신호 없는 준비·종료 진단을 수행한다. 원인 확인 전 긴 행렬을 재시도하지 않으며 강제 정리를 정상 종료 증명으로 계산하지 않는다.
 - [ ] 수명 관측 보완 뒤 전체 출력/수명과 기존 객관 runner를 새 입력으로 재검증한다. T8·T9는 계속 미완료다.
 - [ ] T8 마감 뒤 T9 전체 회귀·도구 점검·fresh Astra max 최종 전체 검토. 공개 작업 금지는 유지.
 

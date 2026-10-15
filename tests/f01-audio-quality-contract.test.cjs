@@ -254,6 +254,20 @@ test('Native operation timeout and disconnect keep a named failure instead of an
   for(const timeout of [0,NaN,30001])await assert.rejects(()=>audioOperation('invalid',async()=>17,timeout),/audio-operation-invalid/);
 });
 
+test('Native failure reports retain bounded launcher evidence and exclude unrelated error payloads',async()=>{
+  const {nativeFailureDetails}=await import('../scripts/audio-native-browser.mjs');assert.equal(typeof nativeFailureDetails,'function');
+  const original=Object.assign(new Error('manifest failed'),{code:5,signal:null,killed:false,stdout:'o'.repeat(5000),stderr:'denied',secret:'do not save',
+    preparationDiagnostic:{stage:'manifest-tool',elapsedMs:120,profilePath:'owned-profile',secret:'omit'},
+    closeDiagnostic:{stage:'owned-roots',browserCloseAcknowledged:true,browserDisconnected:true,connected:false,queryPending:true,queryCount:1,lastRootCount:null,elapsedMs:15000},forcedRetirement:true});
+  Object.assign(original,{cause:original});
+  const details=nativeFailureDetails(original);
+  assert.equal(details.message,'manifest failed');assert.equal(details.code,5);assert.equal(details.signal,null);assert.equal(details.killed,false);
+  assert.ok(typeof details.stdout==='string');assert.equal(details.stdout.length,4096);assert.equal(details.stderr,'denied');assert.equal(details.secret,undefined);
+  assert.deepEqual(details.preparationDiagnostic,{stage:'manifest-tool',elapsedMs:120,profilePath:'owned-profile'});
+  assert.deepEqual(details.closeDiagnostic,original.closeDiagnostic);assert.equal(details.forcedRetirement,true);
+  assert.ok(JSON.stringify(details).length<20000);assert.equal(JSON.stringify(details).includes('do not save'),false);
+});
+
 test('visibility sibling must share the first native window, never merely be another foreground target',async()=>{
   const {openAudioSiblingTab}=await import('../scripts/audio-native-browser.mjs');
   for(const windowId of [7,9]){

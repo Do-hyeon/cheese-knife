@@ -73,4 +73,12 @@ O 후속의 조작별 timeout·원자료 즉시 저장·중단/종료 경로를 
 
 P의 제한된 실패 경로는 실제 확인했다:48kHz의 원래 탭이hidden이 되지 않아15초 뒤 실패했고120개 JSON·최종 보고서·정상 종료3증명을 보존했다. 같은 창 전제가 없었던 드라이버를 보완해, 실제 링크 클릭으로 연 새 target과 원래 target의 window ID 동일성을 먼저 검증한다. ID가 다르면 실패이며 document.hidden/visibility를 위조하지 않는다. 이 보완은 집중51/51·전체1612통과/실패0/기존1skip·9기반/build/package를 통과했으며 새 Native로 확인한다. 제품 DSP/기존 기준/고정 자극은 불변이다.
 
-Q에서3rate 모두 같은 창 ID/실제 수명과rapid36개를 통과했고270개 중간 JSON·각 정상 종료3증명을 보존했다. 단, 긴 행렬 준비용 새 복사본의 mt.exe 실패로 전체는 미완료다. 제한된 동일입력 R도 준비 실패했으며, 신호 없는 별도 launcher 단기 진단도 두 번째 종료에서 media-close-unconfirmed로 중단됐다. 독립 mt/prepare 호출은 성공했으므로 정확한 원인은 미확정이다. 공통 launcher 준비/종료 단계의 원래 오류/상태를 남기는 후속 진단 설계를 확인하기 전 추가 긴 검사는 중지한다. SDK/브라우저 교체·새 설치는 별도 승인 대상이며 이전 실패를 소급 PASS로 분류하지 않는다.
+Q에서3rate 모두 같은 창 ID/실제 수명과rapid36개를 통과했고270개 중간 JSON·각 정상 종료3증명을 보존했다. 단, 긴 행렬 준비용 새 복사본의 mt.exe 실패로 전체는 미완료다. 제한된 동일입력 R도 준비 실패했으며, 신호 없는 별도 launcher 단기 진단도 두 번째 종료에서 media-close-unconfirmed로 중단됐다. 독립 mt/prepare 호출은 성공했으므로 정확한 원인은 미확정이다. 이후 사용자가 아래 공통 launcher 계측·단기 진단을 승인했다. SDK/브라우저 교체·새 설치는 별도 승인 대상이며 이전 실패를 소급 PASS로 분류하지 않는다.
+
+## 7. 승인된 공통 launcher 계측·단기 진단
+
+- SDK 호출은 기존 도구·인자 그대로15초/출력64KiB 상한을 적용한다. 원래 오류의 code/signal/killed/stdout/stderr를 유지하며 준비 stage·경과시간·자기 profile/도구 경로를 부착한다. 임의 환경·명령줄 덤프는 하지 않으며 보고서 문자열은 각4096자로 제한한다.
+- 정상 종료의 기존 ACK→실제 disconnect→자기 profile root0 조건과15초 상한은 유지한다. 실패 시 단계·ACK 수신·disconnected 이벤트·현재 연결·조회 진행/횟수/마지막 개수·경과시간을 스냅샷으로 남긴다. 원래 오류를 교체하거나 강제 정리를 정상3증명으로 승격하지 않는다.
+- 기존 audio runner의 시작 전 checkpoint·실패 보고서에도 위 진단을 남긴다. 준비 중 실패해 browser가 없어도 별도 실패 JSON을 생성한다.
+- 신규 실패 회귀 RED→GREEN·strict/full/기반/build 후 clean checkpoint로 고정한다. 별도 기존 Native 후보에서 신호/제품 없는 fresh profile 준비·정상 종료를 최대4회 실행하고 첫 실패에 중지한다. 단계별 JSON·전후 source·진단 스크립트 hash와 profile을 보존한다.
+- 진단 결과로 확인된 기존 도구의 국소 결함만 같은 경계에서 보완한다. 원인 없는 자동 재시도·성공만 선택·cache/SDK/provider 교체는 금지한다. 긴 측정 재개 여부는 실제 진단 근거로 판정한다.

@@ -25,18 +25,26 @@ export async function closeInstalledMediaBrowser({context,browserSession,profile
   if(!path.isAbsolute(profilePath)||!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>15000)throw harnessError('media-close-invalid');
   const browser=context.browser();if(!browser)throw harnessError('media-browser-unavailable');
   let disconnected=false,retired=false,timer;
+  const started=Date.now(),diagnostic={stage:'close-ack',browserCloseAcknowledged:false,queryPending:false,queryCount:0,lastRootCount:null};
   const onDisconnected=()=>{disconnected=true;};browser.on('disconnected',onDisconnected);
   try{
     await Promise.race([(async()=>{
       await browserSession.send('Browser.close');
+      diagnostic.browserCloseAcknowledged=true;diagnostic.stage='disconnect';
       while(!disconnected||browser.isConnected()){
         if(retired)throw harnessError('media-close-unconfirmed');await new Promise(resolve=>setTimeout(resolve,10));
       }
-      for(;;){if(retired)throw harnessError('media-close-unconfirmed');const roots=await queryProcesses(profilePath);
+      diagnostic.stage='owned-roots';
+      for(;;){if(retired)throw harnessError('media-close-unconfirmed');diagnostic.queryCount++;diagnostic.queryPending=true;
+        let roots;try{roots=await queryProcesses(profilePath);}finally{diagnostic.queryPending=false;}
         if(!Array.isArray(roots)||roots.length>64)throw harnessError('media-close-roots-invalid');
+        diagnostic.lastRootCount=roots.length;
         if(roots.length===0)return;await new Promise(resolve=>setTimeout(resolve,25));}
     })(),new Promise((_,reject)=>{timer=setTimeout(()=>reject(harnessError('media-close-unconfirmed')),timeoutMs);})]);
     return {browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:true};
+  }catch(error){
+    let connected=null;try{connected=browser.isConnected();}catch{/* Preserve the original failure. */}
+    error.closeDiagnostic={...diagnostic,browserDisconnected:disconnected,connected,elapsedMs:Date.now()-started};throw error;
   }finally{retired=true;clearTimeout(timer);browser.off('disconnected',onDisconnected);}
 }
 
@@ -226,7 +234,16 @@ async function findManifestTool() {
   throw harnessError('manifest-tool-unavailable');
 }
 
+/** Bound SDK failures without retrying or replacing the original native exit information. */
+export async function embedChromiumManifest(manifestTool,manifest,assembly) {
+  return execFileAsync(manifestTool, ['-manifest', manifest, `-outputresource:${assembly};#2`], {
+    windowsHide:true,timeout:15000,maxBuffer:65536,
+  });
+}
+
 export async function prepareWindowsBundledChromium({ chromiumApi, profilePath }) {
+  const started=Date.now(),diagnostic={stage:'source',profilePath};
+  try {
   if (typeof chromiumApi.executablePath !== 'function') throw harnessError('bundled-chromium-path-unavailable');
   const sourceExecutable = chromiumApi.executablePath();
   const sourceRoot = path.dirname(sourceExecutable);
@@ -235,6 +252,7 @@ export async function prepareWindowsBundledChromium({ chromiumApi, profilePath }
   const sourceExecutableRelative = path.basename(sourceExecutable);
   await source.resolve(sourceExecutableRelative, { type: 'file' });
   const { version, payloadRelative } = await findManifestLayout(source);
+  diagnostic.version=version;diagnostic.stage='copy';
   const targetRoot = 'bundled-chromium';
   const targetVersion = `${targetRoot}/${version}`;
   const targetExecutable = `${targetRoot}/chrome.exe`;
@@ -262,9 +280,12 @@ export async function prepareWindowsBundledChromium({ chromiumApi, profilePath }
   await profile.copyFile(`${targetVersion}/chrome_elf.dll`, assemblyRelative);
   const assembly = await profile.resolve(assemblyRelative, { type: 'file' });
   const manifestTool = await findManifestTool();
-  await execFileAsync(manifestTool, ['-manifest', manifest, `-outputresource:${assembly};#2`], { windowsHide: true });
+  diagnostic.stage='manifest-tool';diagnostic.manifestTool=manifestTool;
+  await embedChromiumManifest(manifestTool,manifest,assembly);
+  diagnostic.stage='ready-marker';
   await profile.writeFile(readyMarker, version, 'utf8');
   return profile.resolve(targetExecutable, { type: 'file' });
+  } catch(error) {error.preparationDiagnostic={...diagnostic,elapsedMs:Date.now()-started};throw error;}
 }
 
 export async function launchInstalledExtension({ chromiumApi, extensionPath, profilePath, artifactPath, headed, browserCompatibility }) {

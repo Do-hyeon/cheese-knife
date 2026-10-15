@@ -1,5 +1,30 @@
 import {launchVisibilityBrowser} from './extension-e2e/visibility-browser.mjs';
 
+/** Only local launcher evidence, never arbitrary Error properties or environment dumps.
+ * @param {unknown} cause @param {number} [depth] @returns {Record<string,unknown>}
+ */
+export function nativeFailureDetails(cause,depth=0){
+  /** @type {Record<string,unknown>} */const result={message:cause instanceof Error?cause.message.slice(0,4096):'native-failed'};
+  if(!cause||typeof cause!=='object')return result;
+  const keys=['code','signal','killed','stdout','stderr','forcedRetirement','abortError','profilePath'];
+  for(const key of keys){const value=Reflect.get(cause,key);
+    if(value===null||typeof value==='boolean'||typeof value==='number'&&Number.isFinite(value))result[key]=value;
+    else if(typeof value==='string')result[key]=value.slice(0,4096);
+  }
+  for(const key of ['closeDiagnostic','preparationDiagnostic']){
+    const diagnostic=Reflect.get(cause,key);if(!diagnostic||typeof diagnostic!=='object')continue;
+    /** @type {Record<string,unknown>} */const detail={};
+    for(const field of ['stage','elapsedMs','profilePath','version','manifestTool','browserCloseAcknowledged','browserDisconnected','connected','queryPending','queryCount','lastRootCount']){
+      const value=Reflect.get(diagnostic,field);
+      if(value===null||typeof value==='boolean'||typeof value==='number'&&Number.isFinite(value))detail[field]=value;
+      else if(typeof value==='string')detail[field]=value.slice(0,4096);
+    }
+    result[key]=detail;
+  }
+  const nested=Reflect.get(cause,'cause');if(depth<2&&nested&&nested!==cause)result.cause=nativeFailureDetails(nested,depth+1);
+  return result;
+}
+
 /** @template T @param {string} name @param {()=>Promise<T>} work @param {number} [milliseconds] @returns {Promise<T>} */
 export async function audioOperation(name,work,milliseconds=15000){
   if(!/^[a-zA-Z0-9-]{1,80}$/.test(name)||!Number.isSafeInteger(milliseconds)||milliseconds<1||milliseconds>30000)throw new Error('audio-operation-invalid');
@@ -21,7 +46,10 @@ export async function openAudioMeasurementBrowser(chromiumApi,files){
   if(!loaded||typeof loaded!=='object')throw new Error('audio-browser-provider-invalid');
   const close=Reflect.get(loaded,'closeInstalledMediaBrowser');
   if(typeof close!=='function')throw new Error('audio-browser-provider-invalid');
-  const {browser,context,browserSession,abort}=await launchVisibilityBrowser({chromiumApi,profilePath,artifactPath,headed:false});
+  let launched;
+  try{launched=await launchVisibilityBrowser({chromiumApi,profilePath,artifactPath,headed:false});}
+  catch(cause){if(cause&&typeof cause==='object')Object.assign(cause,{profilePath});throw cause;}
+  const {browser,context,browserSession,abort}=launched;
   if(!browserSession)throw new Error('audio-browser-session-invalid');
   return {browser,context,profilePath,browserSession,async close(){
     try{

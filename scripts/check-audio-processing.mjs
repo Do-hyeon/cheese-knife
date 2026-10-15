@@ -2,7 +2,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
 import {createHash} from 'node:crypto';
-import {openAudioMeasurementBrowser,openAudioMeasurementWindow,openAudioSiblingTab,audioOperation} from './audio-native-browser.mjs';
+import {openAudioMeasurementBrowser,openAudioMeasurementWindow,openAudioSiblingTab,audioOperation,nativeFailureDetails} from './audio-native-browser.mjs';
 import {installProcessingProbe,callProcessingProbe} from './audio-processing-probe.mjs';
 import {AUDIO_ARTIFACT_FILES} from './audio-artifact-core.mjs';
 import {summarizeCapture} from './audio-signal.mjs';
@@ -270,12 +270,17 @@ export async function runAudioProcessing(options){
   /** @type {Record<string,unknown>[]} */const preflightRates=[];
   /** @type {string[]} */const pageErrors=[];
   /** @type {string|null} */let error=null;
+  /** @type {Record<string,unknown>|null} */let errorDetails=null;
   /** @type {Record<string,unknown>|null} */let preflight=null;
   /** @param {Awaited<ReturnType<typeof openAudioMeasurementBrowser>>} measurement */
   const environment=measurement=>({browserVersion:measurement.browser.version(),platform:process.platform,arch:process.arch,nodeVersion:process.version});
   /** @param {number} sampleRate @param {Record<string,unknown>[]} rows @param {'preflight'|'matrix'} phase @param {(page:import('playwright').Page,measurement:Awaited<ReturnType<typeof openAudioMeasurementBrowser>>,row:Record<string,unknown>,save:SaveMeasurement)=>Promise<void>} work */
   const nativeRate=async(sampleRate,rows,phase,work)=>{
-    const measurement=await openAudioMeasurementBrowser(chromium,files),row=/** @type {Record<string,unknown>} */({sampleRate,profilePath:measurement.profilePath,environment:environment(measurement)});rows.push(row);
+    await save('browser-start',{phase,sampleRate});
+    let measurement;
+    try{measurement=await openAudioMeasurementBrowser(chromium,files);}
+    catch(cause){await save('browser-failed',{phase,sampleRate,error:nativeFailureDetails(cause)});throw cause;}
+    const row=/** @type {Record<string,unknown>} */({sampleRate,profilePath:measurement.profilePath,environment:environment(measurement)});rows.push(row);
     /** @type {SaveMeasurement} */const checkpoint=(stage,value)=>save(stage,{phase,sampleRate,value});
     /** @type {import('playwright').Page|undefined} */let page;
     /** @type {unknown} */let failure;
@@ -285,7 +290,7 @@ export async function runAudioProcessing(options){
       const target=page;await audioOperation('prepare-page',()=>preparePage(target,sampleRate,files,html),30000);row.nodes=await facts(page);
       await work(page,measurement,row,checkpoint);
     }catch(cause){
-      failure=cause;row.error=cause instanceof Error?cause.message:'audio-processing-failed';await checkpoint('rate-error',row);
+      failure=cause;row.error=cause instanceof Error?cause.message:'audio-processing-failed';row.errorDetails=nativeFailureDetails(cause);await checkpoint('rate-error',row);
       const target=page;
       if(target)try{row.failureFacts=await audioOperation('failure-facts',()=>target.evaluate(callProcessingProbe,/** @type {const} */({kind:'facts'})),2000);}catch(diagnostic){row.failureFactsError=diagnostic instanceof Error?diagnostic.message:'audio-processing-diagnostic-failed';}
       try{row.failurePages=await audioOperation('failure-pages',()=>Promise.all(measurement.context.pages().map(target=>target.evaluate(()=>({url:location.href,hidden:document.hidden,visibility:document.visibilityState})))),2000);}
@@ -293,6 +298,7 @@ export async function runAudioProcessing(options){
     }finally{
       try{row.shutdown=await measurement.close();}catch(cause){
         failure??=cause;row.shutdownError=cause instanceof Error?cause.message:'audio-browser-close-failed';
+        row.shutdownDetails=nativeFailureDetails(cause);
         row.forcedRetirement=cause&&typeof cause==='object'?Reflect.get(cause,'forcedRetirement')===true:false;
       }
       await checkpoint('rate-final',row);
@@ -310,9 +316,9 @@ export async function runAudioProcessing(options){
       });
       console.log(JSON.stringify({stage:'preflight-rate-complete',sampleRate}));
     }
-  }catch(cause){error=cause instanceof Error?cause.message:'audio-preflight-failed';}
+  }catch(cause){error=cause instanceof Error?cause.message:'audio-preflight-failed';errorDetails=nativeFailureDetails(cause);}
   /** @type {unknown} */const preflightAfter=await Reflect.apply(attest,undefined,[files,required]);
-  preflight={schema:'f01-audio-preflight-v1',runId:options.runId,source,after:preflightAfter,rates:preflightRates,pageErrors:[...pageErrors],error};
+  preflight={schema:'f01-audio-preflight-v1',runId:options.runId,source,after:preflightAfter,rates:preflightRates,pageErrors:[...pageErrors],error,errorDetails};
   const preflightFailures=processingPreflightFailures(preflight,source);
   await files.writeFile(relative+'/preflight.json',JSON.stringify({...preflight,passed:preflightFailures.length===0,failures:preflightFailures},null,2),{flag:'wx'});
   console.log(JSON.stringify({stage:'preflight-complete',report:relative+'/preflight.json',failures:preflightFailures}));
@@ -331,9 +337,9 @@ export async function runAudioProcessing(options){
       });
       console.log(JSON.stringify({stage:'rate-complete',sampleRate}));
     }
-  }catch(cause){error=cause instanceof Error?cause.message:'audio-processing-failed';}
+  }catch(cause){error=cause instanceof Error?cause.message:'audio-processing-failed';errorDetails=nativeFailureDetails(cause);}
   /** @type {unknown} */const after=await Reflect.apply(attest,undefined,[files,required]);
-  const report={schema:'f01-audio-processing-v2',runId:options.runId,source,after,preflight,rates,pageErrors,error,
+  const report={schema:'f01-audio-processing-v2',runId:options.runId,source,after,preflight,rates,pageErrors,error,errorDetails,
     limits:'Synthetic floating output before a silent sink. Not physical speakers, protected streams, or durable Gain actor/storage authority. Retained profiles and raw EQ captures. Finite allocations are not a leak-free proof.'};
   const failures=processingReportFailures(report,source);
   await files.writeFile(relative+'/report.json',JSON.stringify({...report,passed:failures.length===0,failures},null,2),{flag:'wx'});
