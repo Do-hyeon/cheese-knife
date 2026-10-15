@@ -245,3 +245,5 @@ transport 신규3개 및 복귀 관측 누락 거부를 RED→GREEN으로 확인
 648f677의 AP는 startup의 `extension-worker-url-invalid`에서 실패했고 AQ는 시작하지 않았다. 새 raw 실행에 기본 Playwright의 `--disable-component-extensions-with-background-pages`가 빠져 내장 확장의 thunk.js 등도 발견되는 것을 자기 diagnostic에서 확인했다. 원래 worker 선택기를 완화하지 않고 이 기존 제외 flag를 복원했다. 복원한 최소 재현에는 복구판 worker만 있고 실제 hidden/visible·자식 exit0이었다. AP summary의 shutdown=null은 성공 증명이 아니며 그대로 보존한다. startup 실패 경로는 자기 spawn 자식만 종료하고 exit를 기다리며 Native 성공 gate와 구분한다.
 
 복원 뒤 집중32/32·strict·격리 전체1574개 중1573통과/실패0/기존1skip(65.595초)을 확인했다. AP의 정확한 자기 프로필 DeBcON에는 현재 남은 root process가0개였으나 이를 과거 종료3증명으로 바꿔 기록하지 않는다. 후속 AR정상/AS정확한4손실은 새 checkpoint에 고정한다.
+
+27c95b2의 AR은 실제 hidden 관측과 앞선 ABA/스타일/ACK 검사를 지나 두 번째 방송 reload 뒤 클릭에서 중단됐다(40.922초/종료3증명true). 보존한 trace는 call@937의 두 번째 방송 reload, call@947의 같은 page `.knife-comp button` 클릭 대기, 직전 활성화가 다른 설정 TAB임을 보여 준다. 실제 비활성 문서의 클릭 안정화에 강제 focus가 필요하다는 기존 도구 전제가 드러난 것이다. 각 lifecycle 조작 전에 정확한 해당 방송/설정 TAB을 앞으로 가져오도록 순서를 명시한다. 강제 클릭·visibility 위조·제품 변경은 없고 AS는 미실행이다. 새로운 정상/손실 재검증 전 T7 미완료를 유지한다.

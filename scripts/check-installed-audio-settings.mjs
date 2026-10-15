@@ -629,25 +629,30 @@ async function targetAndLifecycleProof(input,first,settings,secondState){
   await settings.locator('#audioDefault').check();
   await waitNative(()=>stored(input.worker),raw=>channelAudio(raw,'c'.repeat(32))?.audioDefault===true,'audio-settings-channel-default');await readyUI(settings);
   if((await audioFacts(first)).wanted!==false)throw fail('audio-settings-default-reset-manual');
+  await other.bringToFront();
   await other.locator('#media-refresh').click();
   await other.locator('#audio-master:not([disabled])').waitFor();
   const secondBinding=await captureNativeTarget(other,secondTab,new URL(second.url()).pathname);
   const oldDocument=await documentId(input.worker,secondTab.id),before=await stored(input.worker);
+  await second.bringToFront();
   await second.reload({waitUntil:'domcontentloaded'});
   await waitNative(()=>audioFacts(second),facts=>facts.ready&&facts.decoded&&facts.blob,'audio-settings-replacement-ready');
   await second.locator('.knife-comp button').click();await waitNative(()=>audioFacts(second),facts=>facts.wanted===true&&facts.audio?.state==='on','audio-settings-replacement-on');
   if(await documentId(input.worker,secondTab.id)===oldDocument)throw fail('audio-settings-replacement-not-observed');
   await rejectNativeTarget(other,secondBinding,false,'audio-target-changed');
+  await other.bringToFront();
   await other.locator('#audio-master').click();
   await other.locator('#audio-master:disabled').waitFor();
   if((await audioFacts(second)).wanted!==true||!isDeepStrictEqual(before,await stored(input.worker)))throw fail('audio-settings-document-retarget');
   const firstBinding=await captureNativeTarget(settings,firstTab,new URL(first.url()).pathname);
+  await settings.bringToFront();
   await input.worker.evaluate(({id,windowId})=>chrome.tabs.move(id,{windowId,index:-1}),{id:firstTab.id,windowId:secondTab.windowId});
   try{
     await rejectNativeTarget(settings,firstBinding,true,'target-context-changed');
     await settings.locator('#audio-master').click();await settings.locator('#audio-master:disabled').waitFor();
     if((await audioFacts(first)).wanted!==false||!isDeepStrictEqual(before,await stored(input.worker)))throw fail('audio-settings-window-retarget');
   }finally{await input.worker.evaluate(({id,windowId})=>chrome.tabs.move(id,{windowId,index:-1}),firstTab);}
+  await settings.bringToFront();
   await settings.locator('#media-refresh').click();await settings.locator('#audio-master:not([disabled])').waitFor();
   await first.evaluate(()=>{
     const video=document.querySelector('video'),old=video?.closest('.pzp-pc');if(!video||!old)throw new Error('audio-settings-pzp-source');
@@ -665,6 +670,7 @@ async function targetAndLifecycleProof(input,first,settings,secondState){
   const session=await input.context.newCDPSession(first);
   try{
     await session.send('Performance.enable');const beforeClose=await session.send('Performance.getMetrics');
+    await other.bringToFront();
     await other.locator('#media-refresh').click();await other.locator('#audio-master:not([disabled])').waitFor();
     const closedBinding=await captureNativeTarget(other,secondTab,new URL(second.url()).pathname);
     await input.worker.evaluate(id=>chrome.tabs.remove(id),secondTab.id);await waitNative(async()=>second.isClosed(),closed=>closed,'audio-settings-original-target-open');
