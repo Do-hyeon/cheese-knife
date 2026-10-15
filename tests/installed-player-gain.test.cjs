@@ -6,6 +6,7 @@ const path = require('node:path');
 test('player Gain runner rejects unknown flags modes duplicate IDs before browser effects', async () => {
   const module = await import(pathToFileURL(path.resolve('scripts/check-installed-player-gain.mjs')));
   assert.deepEqual(module.parsePlayerGainArgs(['--run-id=F01qualification', '--mode=qualification']), { runId: 'F01qualification', mode: 'qualification', headed: false });
+  assert.deepEqual(module.parsePlayerGainArgs(['--run-id=F01gain', '--mode=full']), { runId: 'F01gain', mode: 'full', headed: false });
   for (const args of [[], ['--run-id=../bad', '--mode=qualification'], ['--run-id=A','--run-id=B','--mode=qualification'],
     ['--run-id=A','--mode=unknown'], ['--run-id=A','--mode=qualification','--remote-port=9222']]) assert.throws(() => module.parsePlayerGainArgs(args), /player-gain-args/);
 });

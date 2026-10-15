@@ -1,10 +1,9 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
-import { runInstalledExtensionE2E } from './check-installed-extension.mjs';
+import { runInstalledExtensionE2E, expectedF01MediaFiles } from './check-installed-extension.mjs';
 import { loadAudioFixtureResponses, FIXTURE_AUDIO_URL, fixtureDecision } from './extension-e2e/fixture-router.mjs';
-import { validatePayloadMetadata } from './extension-e2e/published-payload.mjs';
-import { reacquireExtensionWorker } from './extension-e2e/harness.mjs';
+import { reacquireExtensionWorker, openInstalledMediaSettings } from './extension-e2e/harness.mjs';
 import { openOwnedRoot } from './owned-files.mjs';
 
 const fail = code => Object.assign(new Error(code), { code });
@@ -17,7 +16,7 @@ export function parsePlayerGainArgs(args) {
     else if (arg.startsWith('--mode=') && mode === undefined) mode = arg.slice(7);
     else throw fail('player-gain-args');
   }
-  if (!/^[A-Za-z0-9]{1,64}$/.test(runId ?? '') || !['qualification', 'negative'].includes(mode)) throw fail('player-gain-args');
+  if (!/^[A-Za-z0-9]{1,64}$/.test(runId ?? '') || !['qualification', 'negative', 'full'].includes(mode)) throw fail('player-gain-args');
   return { runId, mode, headed };
 }
 async function wait(read, accept, code, milliseconds = 15000) {
@@ -66,7 +65,7 @@ async function observeRange(cdp, nodeId) {
     }`, returnByValue: true });
   } finally { if (object.objectId) await cdp.send('Runtime.releaseObject', { objectId: object.objectId }); }
 }
-async function scenario({ context, worker, responses, artifactPath }, mode) {
+async function scenario({ context, worker, responses, artifactPath, browserSession, extensionId }, mode) {
   const errors = [], page = await context.newPage();
   let activeWorker = worker;
   page.on('pageerror', error => errors.push(String(error.message).slice(0, 160)));
@@ -101,11 +100,12 @@ async function scenario({ context, worker, responses, artifactPath }, mode) {
   const before = await stored(), original = await readback(), cdp = await context.newCDPSession(page);
   const initialSender = await worker.evaluate(() => globalThis.__f01GainWitness.findLast(value => value.frameId === 0));
   requireProof(typeof initialSender?.documentId === 'string' && Number.isSafeInteger(initialSender.tabId), 'player-gain-initial-document-missing');
-  let positiveWitnesses = [], naturalWorkerReplacement = false;
+  let positiveWitnesses = [], naturalWorkerReplacement = false, fullEvidence;
+  const positiveMode = mode !== 'negative';
   try {
     let point = await rangePoint(cdp);
     await observeRange(cdp, point.nodeId);
-    if (mode === 'qualification') {
+    if (positiveMode) {
       await page.mouse.click(point.x, point.y); await page.keyboard.press('Home');
       await wait(async () => ({ raw: await stored(), phase: await page.locator('.knife-gain-owner').getAttribute('data-phase') }),
         value => value.raw.config?.audioGain === 0 && value.raw.config?.gainInherited === false && value.phase === 'ready', 'player-gain-native-ack-missing');
@@ -141,6 +141,40 @@ async function scenario({ context, worker, responses, artifactPath }, mode) {
     } else {
       await enter(); point = await rangePoint(cdp);
     }
+    if (mode === 'full') {
+      const settings = (await openInstalledMediaSettings({ context, worker: activeWorker, fixturePage: page, extensionId, browserSession, mediaProtocol: 3 })).settingsPage;
+      const ready = () => settings.waitForFunction(() => document.getElementById('media-status')?.dataset.phase === 'ready');
+      const channel = raw => raw.mediaProfiles?.channels?.find(value => value.channelId === 'c'.repeat(32))?.audio?.values;
+      try {
+        await ready();await settings.locator('#media-scope').selectOption('current');await ready();
+        await settings.locator('#media-audio-enable').click();await wait(stored, raw => !!channel(raw), 'player-gain-full-channel-missing');await ready();
+        const global = (await stored()).config.audioGain;
+        requireProof(global === 2, 'player-gain-full-global-baseline');
+        point = await rangePoint(cdp);await page.mouse.click(point.x,point.y);await page.keyboard.press('Home');
+        await wait(stored, raw => channel(raw)?.audioGain === 0 && channel(raw)?.gainInherited === false, 'player-gain-full-owned-zero');
+        await wait(readback, value => value.state.gain === 0 && value.state.sources === 1, 'player-gain-full-owned-preview');
+        await page.evaluate(() => {
+          const old = document.querySelector('.pzp-pc'), video = old?.querySelector('video');
+          if (!old || !video) throw new Error('player-gain-full-reparent');
+          const next = old.cloneNode(true);next.querySelector('video').replaceWith(video);old.replaceWith(next);
+        });
+        await page.locator('.knife-gain-owner[data-phase="ready"]').waitFor({state:'visible'});
+        await wait(readback, value => value.state.sources === 1 && value.state.gain === 0 && value.state.state === 'on', 'player-gain-full-reparent-source');
+        requireProof(await page.locator('.knife-gain-owner').count() === 1, 'player-gain-full-owner-duplicate');
+        await page.locator('.knife-comp button').click();await wait(readback, value => value.state.state === 'off', 'player-gain-full-manual-off');
+        await ready();await settings.locator('#eq125-value').fill('1.25');
+        await wait(stored, raw => channel(raw)?.eq125 === 1.25, 'player-gain-full-owned-effect');await ready();
+        requireProof((await readback()).state.state === 'off', 'player-gain-full-patch-reset-master');
+        await page.locator('.knife-comp button').click();
+        await wait(readback, value => value.state.state === 'on' && value.state.gain === 0 && value.state.sources === 1, 'player-gain-full-resume');
+        await page.reload({waitUntil:'domcontentloaded'});await wait(readback, value => value.ready && value.blob && value.decoded, 'player-gain-full-reentry');
+        await page.locator('.knife-comp button').click();await page.locator('.knife-gain-owner[data-phase="ready"]').waitFor({state:'visible'});
+        point = await rangePoint(cdp);
+        requireProof((await readRange(cdp,point.nodeId)).value === 0, 'player-gain-full-owned-reentry-value');
+        const raw = await stored();requireProof(raw.config.audioGain === global && channel(raw)?.audioGain === 0 && channel(raw)?.gainInherited === false && channel(raw)?.eq125 === 1.25, 'player-gain-full-global-or-owned-loss');
+        fullEvidence = {ownedZeroReentry:true,globalPreserved:true,sameVideoSourceOne:true,manualOffAcrossOwnedPatch:true};
+      } finally { await settings.close(); }
+    }
     const checkpoint = await stored();
     const { object } = await cdp.send('DOM.resolveNode', { nodeId: point.nodeId });
     try {
@@ -151,7 +185,7 @@ async function scenario({ context, worker, responses, artifactPath }, mode) {
     requireProof(isDeepStrictEqual(await stored(), checkpoint), 'player-gain-synthetic-write');
     const witnesses = positiveWitnesses.length ? positiveWitnesses : await activeWorker.evaluate(() => globalThis.__f01GainWitness ?? []);
     const positive = witnesses.filter(value => value.action === 'set-gain');
-    if (mode === 'qualification') requireProof(positive.length > 0 && positive.every(value => value.frameId === 0 && typeof value.documentId === 'string' && value.documentId.length > 0 && value.origin === 'https://chzzk.naver.com'), 'player-gain-native-sender-missing');
+    if (positiveMode) requireProof(positive.length > 0 && positive.every(value => value.frameId === 0 && typeof value.documentId === 'string' && value.documentId.length > 0 && value.origin === 'https://chzzk.naver.com'), 'player-gain-native-sender-missing');
     const nativeSender = witnesses.findLast(value => value.frameId === 0 && Number.isSafeInteger(value.tabId));
     requireProof(!!nativeSender, 'player-gain-native-tab-missing');
     const currentDocument = await activeWorker.evaluate(async tabId => chrome.scripting.executeScript({ target: { tabId, frameIds: [0] }, world: 'ISOLATED', func: () => location.href }), initialSender.tabId);
@@ -181,9 +215,10 @@ async function scenario({ context, worker, responses, artifactPath }, mode) {
     const final = await readback();
     requireProof(final.muted === original.muted && final.volume === original.volume && errors.length === 0, 'player-gain-native-original-state-changed');
     await page.screenshot({ path: path.join(artifactPath, 'player-gain.png') });
-    return { playerGain: { passed: true, mode, actualNativeSource: true, trustedPointerKeyboard: mode === 'qualification',
-      nativeSenderFrameDocument: mode === 'qualification', ackAndReentry: mode === 'qualification', resetAndZero: mode === 'qualification', focusAcrossConfigRefresh: mode === 'qualification', syntheticMainRejected: true,
-      actualIframeRejected: true, oldDocumentRejected: true, missingOwnerProbeRejected: true, actorIdleOver60: mode === 'qualification', naturalWorkerReplacement,
+    return { playerGain: { passed: true, mode, actualNativeSource: true, trustedPointerKeyboard: positiveMode,
+      nativeSenderFrameDocument: positiveMode, ackAndReentry: positiveMode, resetAndZero: positiveMode, focusAcrossConfigRefresh: positiveMode, syntheticMainRejected: true,
+      actualIframeRejected: true, oldDocumentRejected: true, missingOwnerProbeRejected: true, actorIdleOver60: positiveMode, naturalWorkerReplacement,
+      ...(mode === 'full' ? {fullEvidence} : {}),
       originalMuteVolumePreserved: true, physicalAudioNotEvaluated: true }, pageErrors: errors };
   } catch (error) {
     const events = await page.evaluate(() => globalThis.__f01GainObservations ?? []).catch(() => []);
@@ -193,14 +228,11 @@ async function scenario({ context, worker, responses, artifactPath }, mode) {
   } finally { await cdp.detach(); }
 }
 export async function runInstalledPlayerGain(options) {
-  if (!options || !['qualification', 'negative'].includes(options.mode) || typeof options.headed !== 'boolean') throw fail('player-gain-args');
+  if (!options || !['qualification', 'negative', 'full'].includes(options.mode) || typeof options.headed !== 'boolean') throw fail('player-gain-args');
   return runInstalledExtensionE2E({ runId: options.runId, headed: options.headed, qualification: 'player-gain', dependencies: {
     loadFixtureResponses: loadAudioFixtureResponses,
     mediaScenario: input => scenario(input, options.mode),
-    expectedMediaFiles: async files => {
-      const rows = validatePayloadMetadata(JSON.parse(await files.readFile('tests/fixtures/installed-extension/published-payload.json', 'utf8')));
-      return [...rows.map(row => `dist/${row.name}`), 'dist/media-profiles.js', 'dist/gain-authority.js', 'dist/web/player-gain.js'].sort();
-    },
+    expectedMediaFiles: expectedF01MediaFiles,
   } });
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

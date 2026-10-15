@@ -126,7 +126,10 @@ var createPlayerGainAuthority = (now = Date.now) => {
     for (const key of changed) scopes.set(key, (scopes.get(key) ?? 0) + 1);
   }
   function receipt(changes) {
-    return JSON.stringify(["config", "settingsRevision", "mediaProfiles"].filter((key) => Object.hasOwn(changes, key)).map((key) => [key, own(own(changes, key), "oldValue"), own(own(changes, key), "newValue")]));
+    return JSON.stringify(["config", "settingsRevision", "mediaProfiles"].filter((key) => Object.hasOwn(changes, key)).map((key) => [key, ...["oldValue", "newValue"].map((field) => {
+      const value = own(own(changes, key), field);
+      return value === void 0 ? [false] : [true, value];
+    })]), (_key, value) => value && typeof value === "object" && !Array.isArray(value) ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, own(value, key)])) : value);
   }
   function beforeWrite(raw, changes) {
     const selected = Object.fromEntries(["config", "settingsRevision", "mediaProfiles"].filter((key) => Object.hasOwn(changes, key)).map((key) => [key, { oldValue: own(raw, key), newValue: own(changes, key) }]));

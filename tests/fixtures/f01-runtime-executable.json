@@ -2,7 +2,7 @@
   "audio-settings-ui.js": "9aea6d46d2b548fa110299bb599db09847a67ba05ad70a21476e0749d3e5de1d",
   "background.js": "dd7955b5950378f7c1b2963297fafec71c11737047736ac2b76448cf2b09a7d2",
   "config.js": "2b80e0d0dfd2a157513b6be521969922c1dcf18f8d5328bb40253801b0e5ae6f",
-  "gain-authority.js": "6c17a29125382cf3b73398f2f8d19e9433cf2a684273e00bff686e786fc6f45d",
+  "gain-authority.js": "586bd0853c5529868ee419dc83925cceeb010d027bd0d38deff535a03641da5b",
   "media-profiles.js": "8d5bd780be8b699adf817ad8a205c791ca6c1b2ef20de3c987c1cc1652f71fc5",
   "permission.js": "fb2ad721eefb5d30c4a3803a957b7f8681bba6614efaabd23094f31c49924cc5",
   "popup.js": "be0d95d82438ff595bbed1e7484e4bded66291afb0ad5d89f3b2d39c762fa34f",

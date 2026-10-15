@@ -108,3 +108,13 @@ T7 실제 설치/두 창/전환·고배율·좁은 화면과 T8 객관 출력·R
 Native 경계의 객체 키 순서 변화 회귀에서 같은 context의 읽기가 `audio-target-changed`로 RED였다. 고정 MAIN 함수 내부의 JSON 문자열 비교를 검증된 context4필드의 엄격한 scalar 동등성으로 바꿨다. 같은 값/다른 키 순서는 허용하지만 playerGeneration 등 실제 값 변경·document/runtime/window/route·원래 TAB 폐기는 여전히 거부한다. focused6개 GREEN, 전체1540개 중1539통과/실패0/기존 private 감사1skip(69.809초) 및9기반/build/package PASS. broker 생성물/F01 실행 pin만 갱신했다.
 
 진단 중 zoom 검사의 별도 결함도 발견했다. Chrome `manual` 모드는 페이지 자동 확대를 하지 않으므로 이전D의 reported factor2/동일 캡처를 실제200% 증거로 쓰지 않는다. [공식 ZoomSettingsMode](https://developer.chrome.com/docs/extensions/reference/api/tabs#type-ZoomSettingsMode)에 따라 owned TAB만 automatic/per-tab 확대하고 DPR2배·CSS viewport 절반·80px 출력 폭·명시적100%복원을 함께 측정하도록 강화했다. 실제 확대 없는 보고서를 거부하는 RED→GREEN 및 관련31개/strict development PASS. 강화된 측정과 relay의 실제 Native 성공은 다음 새 checkpoint에서 확인한다.
+
+### T7 연속 입력/저장 알림 기록 보완
+
+1f11bcc의F는 relay·현재 master OFF 유지·프리셋 생성/이름 변경/cancel/recipe/재적용·실제200% 확대를 진행한 뒤 다이얼 바깥 크기에서 실패했다. 기본 content-box의 테두리 포함 크기 불일치를 RED로 확인하고 border-box 한 줄로72px 바깥 크기를 맞췄다(관련26개 GREEN). 55025a5의G에서는 두 실제 창·숫자 초안/focus/소수 표시·owned A/B·상속 전파까지 실행한 뒤 `audio-settings-owned-restore`로 실패했다. 각 실패는 종료3증명true·전후 source 일치이며 그대로 보존한다.
+
+읽기 전용 관측9a81026의H에서 마지막값0.30 초안은 보존됐지만 실제 저장값0.28 뒤 `failed(gain-busy)`로 멈춘 것을 확인했다. 단순 focus 소실/자동 재전송 문제로 가장하지 않는다. own 저장 알림의 receipt가 객체 키 순서 때문에 일치하지 않아 누적64 상한에 도달했다. 순서를 바꾼 실제 저장 이벤트 구조의100회 쓰기 회귀에서 `gain-busy` RED를 확인했다.
+
+보완은 receipt의 객체 키만 정렬하고 배열 순서·실제 값·old/new 및 absent/null 구분을 보존하는 정확한 직렬화다. 미관측 receipt64의 fail-closed 상한, unknown 외부 이벤트와 ABA/세대/권한 거부는 유지한다. absent/null 오인 대조도 별도 RED→GREEN. 집중38개 GREEN, 전체1543개 중1542통과/실패0/기존 private 감사1skip(69.078초)와9기반/build/package PASS. 새 clean Native 재검증은 아직 필요하다.
+
+계획된 Gain `--mode=full`은 qualification/negative를 유지하면서 실제 TAB에서 채널 사용→플레이어의 owned Gain0→같은 video 재배치/source1→수동 OFF 중 다른 효과 저장→재개/새 문서의0 재진입→전역2 보존을 추가하도록 구현했다. CLI RED→GREEN3개 및 위 전체 검사에 포함됐다. 아직 이 새 full mode의 실제 성공을 주장하지 않는다. F01 저장 형식 전환·T8·T9도 남아 있다.

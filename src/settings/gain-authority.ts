@@ -94,8 +94,12 @@ var createPlayerGainAuthority = (now: () => number = Date.now) => {
     for (const key of changed) scopes.set(key, (scopes.get(key) ?? 0) + 1);
   }
   function receipt(changes: KnifeUnknownRecord) {
+    // Native storage can reorder object keys; preserve array order and distinguish absence from stored null.
     return JSON.stringify(['config', 'settingsRevision', 'mediaProfiles'].filter(key => Object.hasOwn(changes, key))
-      .map(key => [key, own(own(changes, key), 'oldValue'), own(own(changes, key), 'newValue')]));
+      .map(key => [key, ...['oldValue','newValue'].map(field => {
+        const value = own(own(changes,key),field);return value === undefined ? [false] : [true,value];
+      })]), (_key: string, value: unknown) => value && typeof value === 'object' && !Array.isArray(value)
+        ? Object.fromEntries(Object.keys(value).sort().map(key => [key,own(value,key)])) : value);
   }
   function beforeWrite(raw: KnifeUnknownRecord, changes: KnifeUnknownRecord) {
     const selected = Object.fromEntries(['config', 'settingsRevision', 'mediaProfiles'].filter(key => Object.hasOwn(changes, key))

@@ -79,6 +79,36 @@ test('unknown external or nonmonotonic events invalidate all old authority', () 
   assert.equal(a.check(view.ticket, native(1), raw).ok, false);
 });
 
+test('native storage key reordering consumes only matching own receipts beyond 64 writes and keeps fresh authority',()=>{
+  const {authority:a,raw,native}=fixture();let before=raw;
+  const reordered=value=>Array.isArray(value)?value.map(reordered):value&&typeof value==='object'?
+    Object.fromEntries(Object.keys(value).sort().map(key=>[key,reordered(value[key])])):value;
+  for(let index=1;index<=100;index++){
+    const next={config:{gainInherited:false,audioGain:index%2?1.25:1,other:{z:2,a:1}},settingsRevision:index};
+    assert.doesNotThrow(()=>a.beforeWrite(before,next));
+    const current={...before,...next},fresh=a.view(native(1),current);
+    const event=reordered({config:{oldValue:before.config,newValue:next.config},settingsRevision:{oldValue:before.settingsRevision,newValue:index}});
+    a.observe(event);a.observe(event);
+    assert.equal(a.check(fresh.ticket,native(1),current).ok,true,'matching own notification must not invalidate acknowledged identity');before=current;
+  }
+  const fresh=a.view(native(1),before),changed={config:{oldValue:before.config,newValue:{...before.config,audioGain:1.5}},settingsRevision:{oldValue:100,newValue:101}};
+  a.observe(changed);assert.equal(a.check(fresh.ticket,native(1),{...before,config:changed.config.newValue,settingsRevision:101}).ok,false);
+});
+
+test('an absent native old value can match an omitted field but never a stored null value',()=>{
+  const {authority:a}=fixture();let before={settingsRevision:0};
+  const first={audioGain:1.25,gainInherited:false};
+  for(let index=1;index<=64;index++){
+    const next={config:index===1?first:{audioGain:index%2?1.25:1,gainInherited:false},settingsRevision:index};
+    a.beforeWrite(before,next);before={...before,...next};
+  }
+  const more={config:{audioGain:1.5,gainInherited:false},settingsRevision:65};
+  a.observe({config:{oldValue:null,newValue:first},settingsRevision:{oldValue:0,newValue:1}});
+  assert.throws(()=>a.beforeWrite(before,more),/gain-busy/);
+  a.observe({config:{newValue:first},settingsRevision:{oldValue:0,newValue:1}});
+  assert.doesNotThrow(()=>a.beforeWrite(before,more));
+});
+
 test('channel-home player Gain stays global like the F00 MAIN context; only confirmed live route owns a channel', () => {
   const { authority: a, raw, native } = fixture();
   raw.mediaProfiles = { schema: 2, revision: 1, channels: [{ channelId: A, createdRevision: 1, revision: 1,
