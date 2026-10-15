@@ -44,8 +44,8 @@ M의 실제 이득/출력5건은 일치했으나 실제 reset 중간 구간이 �
 - [x] 누락/중복/실패 표본/NaN/시간·출력 손상/세 구간 미확보/환경 불일치/부분 자료 거부 테스트 RED. 새3개 API의 부재로 실패를 먼저 확인했다.
 - [x] 최소 도구 변경 GREEN·strict audio/development·집중 normalizer/객관 계약49/49 통과. 실제 collector의 멈춘 clock 거부도 확인했다.
 - [x] 기존 물리 execution 후보의 전체1608개 중1607통과/실패0/기존private1skip(61.602초),9개 기반/build/package 순차 통과. root dist58·제품2.13.3·DSP/기존 fixture pin 불변.
-- [ ] 로컬 checkpoint → 기존 Native 물리 후보의 정확한 새 SHA/clean detached 준비.
-- [ ] 자기 새 프로필/번들 Chromium/익명 pipe 사전계측36개 실행. 모든 결과 보존. 미성립/실패 시 긴 행렬 전에 중지하고 미검증 수용 방안을 사용자에게 문의한다. 유한 목록을 반복 실행하지 않는다.
+- [x] 로컬 checkpoint → 기존 Native 물리 후보의 정확한 새 SHA/clean detached 준비. 최신2f494f39644fa3901c75930c1305d9b6286f8158.
+- [x] O/KOUZd1의 자기 새 프로필/번들 Chromium/익명 pipe 사전계측36개 전체 PASS. 모든 raw row·실제 세 구간/rate·source/after5필드 일치·종료3증명·pageErrors0을 preflight.json에 보존했다. N의 계측기 실패도 그대로 유지한다.
 - [ ] 통과 시 동일 입력/환경의 EQ108/RMS60/전환72·controls/숨김/두 창 수명 실행. dip0.95·연속성1e−6·peak0.9801·full-scale0·동결14/12/18/stress 유지.
 - [ ] 새 후보의 기존 객관/영상24pixel/미리보기/설치 positive-negative 및 원래 T8 마감 뒤 T9 최종 Astra max whole-F01 검토로 이어간다.
 
@@ -56,3 +56,5 @@ wall 지연과 실제 결과 판정을 분리한다. 위상 분산은 성공 보
 유한 목록에서도 실제 중간 구간이 없으면 여기서 중지한다. 새 제품 출력 문제·DSP 변경·허용치 변경·사용자 Chrome/P09/권한 변경도 별도 승인 대상이다. 모든 과거 A..M/로그/프로필과 새 실패를 보존하며 성공만으로 덮어쓰지 않는다.
 
 계획 보완 판정: 첫 N은36개와 실제 세 구간을 모두 수집했지만96kHz 마지막 row에서 호출 전 tick을 reset으로 잘못 선택했다. 이는 자극 미성립/제품 출력 실패가 아니라 기록 선택 오류임을 원자료와 독립 RED로 확인했다. 승인된 도구 보완 범위에서 호출 인덱스 경계를 고치고 전체/strict 후 새 checkpoint에서 한 번 다시 검증한다. 자극12개·순서·지연·수치와 제품은 변경하지 않으며 N을 소급해 PASS로 재분류하지 않는다. 단순 미성립/제품 실패를 같은 방식으로 반복하지 않는 중지 조건은 유지한다.
+
+O 후속 상태: 사전계측은 통과했으나 긴 검사의44.1kHz 수명 단계에서 응답이 멈췄다. 마지막 정상 진행 로그 이후3분 이상 기다린 뒤 정확한 자기 프로필/부모PID를 확인해 검사용 browser root51264만 종료했다. Node는 unsettled top-level await/exit13으로 끝나 최종 report.json이 없다. preflight.json·EQ raw36개·console 로그·프로필·interruption-note.json은 보존했지만 메모리에만 있던 전환/RMS raw trace는 기록되지 못했다. 단순 retry나 O 전체 PASS로 분류하지 않으며, 수명 관측·중간 증거 저장·닫힘/timeout 경로의 제한된 보완 설계를 사용자와 확인한 뒤 재개한다. 제품 원인인지 도구/브라우저 원인인지는 미확정이다.
