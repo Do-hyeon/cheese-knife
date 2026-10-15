@@ -2,6 +2,8 @@
 
 2026-10-15 / Asia-Seoul. **상태: T9 로컬 마감. Critical0/Important0/Minor2 보류.** push·PR·병합·배포 승인으로 사용하지 않는다.
 
+후속 현황: 위 Minor2는 **이 T9 검토 당시**의 보류다. 이후 사용자 승인으로 [Minor UI 후속 보완·검증](2026-10-15-f01-minor-ui-follow-up.md)을 마쳤다. 원 검토 판정을 덮지 않으며 현재 커서는 PLANS.md가 소유한다.
+
 ## 1. 검토 범위
 
 - 독립 검토자 `/root/f01_whole_branch_astra_max`, `gpt-6-astra` / `max`.

@@ -27,11 +27,13 @@
 **Interfaces:** 기존 currentScope/legacy, showPanel(name, focus), prepareCreation(domain), renderMedia(), native settings scenario를 소비한다. public API/저장 ABI는 추가하지 않는다.
 
 - [x] 기존 generated UI에서 VOD disabled와 save-as focus/첫 빈 관리 진입/기존 목록 보존을 RED로 확인한다. unit fixture 이외의 trusted 입력 증거로 주장하지 않는다.
-- [ ] render에서 legacy 읽기 잠금을 관리하고 채널 미확인 이유를 한글/영문으로 표시한다. pending read도 같은 잠금을 유지한다.
-- [ ] 첫 빈 관리 화면 진입만 펼치고 save-as는 원래 snapshot을 준비한 뒤 펼침→관리 패널 표시→이름 focus 순서로 처리한다. 기존 지연 toggle 회귀는 유지한다.
-- [ ] 집중 회귀 GREEN→생성·popup executable pin만 갱신→전체node:test/9기반/build/package/실제 감사. 검사·빌드는 기존 execution 물리 후보에서만 한다.
-- [ ] clean 로컬 checkpoint의 Native 설정 정상/손실과 실제 빈 생성/포커스/채널 미확인 잠금을 확인한다. 첫 실패에서 멈추고 진단하며 실패를 보존한다.
-- [ ] fresh gpt-6-astra/max 독립 변경 검토, 지적 사항 판정/필수 보완·회귀 및 Task 완료. 원래 F01 전체 검토를 대체하거나 중복 실행하지 않는다.
-- [ ] PLANS Minor 두 건을 실제 보완/검증 범위로 마감하고 F01 전체 PR 후속 필요·현재 push/PR 금지를 명시한다.
+- [x] render에서 legacy 읽기 잠금을 관리하고 채널 미확인 이유를 한글/영문으로 표시한다. pending read도 같은 잠금을 유지한다.
+- [x] 첫 빈 관리 화면 진입만 펼치고 save-as는 원래 snapshot을 준비한 뒤 펼침→관리 패널 표시→이름 focus 순서로 처리한다. 기존 지연 toggle 회귀는 유지한다.
+- [x] 집중 회귀 GREEN→생성·popup executable pin만 갱신→전체node:test/9기반/build/package/실제 감사. 검사·빌드는 기존 execution 물리 후보에서만 한다.
+- [x] clean 로컬 checkpoint의 Native 설정 정상/손실과 실제 빈 생성/포커스/채널 미확인 잠금을 확인한다. 첫 실패에서 멈추고 진단하며 실패를 보존한다.
+- [x] fresh gpt-6-astra/max 독립 변경 검토, 지적 사항 판정/필수 보완·회귀 및 Task 완료. 원래 F01 전체 검토를 대체하거나 중복 실행하지 않는다.
+- [x] PLANS Minor 두 건을 실제 보완/검증 범위로 마감하고 F01 전체 PR 후속 필요·현재 push/PR 금지를 명시한다.
+
+마감: [후속 검증 기록](../validation/2026-10-15-f01-minor-ui-follow-up.md). 최종1631통과/실패0/기존private1skip, Native 정상/정확한4손실·Astra 지적 직접 보완 완료. F01 전체 PR은 다음 공개 승인 게이트이며 이번 실행 범위에 포함하지 않는다.
 
 실행 명령: `node --test tests/f01-preset-ui.test.cjs tests/media-settings-tab.test.cjs`, `node --test tests/*.test.cjs`, 기존9foundation와`build`/`check`, `node scripts/tool-audit.mjs`, Native `node scripts/check-installed-audio-settings.mjs --run-id=F01Minor20261015A`와 별도 `--control=storage-loss` 실행. 입력/해시/전후/종료를 직접 확인한다.

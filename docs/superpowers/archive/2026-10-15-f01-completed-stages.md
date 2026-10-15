@@ -1,5 +1,13 @@
 # F01 완료 단계 이력
 
+## Minor UI 후속 — 두 보류 항목 보완 완료
+
+2026-10-15 사용자 승인으로 VOD/채널 미확인 legacy 읽기·가져오기 잠금/설명·aria, 첫 빈 프리셋 관리 펼침·save-as 이름 focus를 보완했다. VOD legacy 가져오기 자체를 새로 지원하거나 sender/권한을 넓히지 않았으며 직접 Gain 저장은 유지했다.
+
+fresh Astra max 변경 검토는 최초0Critical/1Important/0Minor였다. 첫 자동 펼침의 지연 toggle/재조회 진입에서 잘못된 확정값을 잡는 문제를 각각 RED로 재현하고 canonical ready→동기 capture→예정 toggle 차단으로 보완했다. 보완 후 집중65/전체1631통과/실패0/기존1skip·9기반/build/package62/22·정상/정확한4손실 Native를 통과했다. 최종 task-done도1631통과/0실패/기존1skip(63.195초)다. 작성자의 수정/회귀 결과이며 보완 후 독립 재검토를 받은 것으로 바꾸지 않는다.
+
+최종 Native source4b89ec3의 정상28.191초/손실27.619초, 신규4증명·기존8범주·source5전후일치/pageErrors0/종료3증명 true. 실제 감사 npm/Gitleaks0, ESLint55/rawexit1/inputmatched·catalog 동일과 보호dist58/버전2.13.3을 확인했다. 세부 실패/원 판정·source 구분은 [Minor 후속 검증](../validation/2026-10-15-f01-minor-ui-follow-up.md)에 유지한다. 다음은 **F01 전체 한글 PR 하나**지만 현재 push/PR은 하지 않았으며 별도 공개 승인 뒤 진행한다. F02/릴리즈·실제 플랫폼 수용은 별도 게이트다.
+
 ## T9 — 종합 게이트·고지·전체 검토와 보완
 
 2026-10-15. **최종 task-done 완료: 전체1625중1624통과/실패0/기존private1skip(64.674초)**. 원래 T9 BASE17754dd..제품021a15b 범위로 기록했다. 단계별 사전 마감 근거는 아래에 보존한다.
