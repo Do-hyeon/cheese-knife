@@ -120,11 +120,65 @@ test('audio quality selects the Windows Native launcher only on Windows without 
   }
 });
 
+function withoutDiagnosticGlue(source){
+  const additions=[
+    ["import {execFileSync} from 'node:child_process';\nimport {prepareQualityRun,installQualityTrace,writeQualityDiagnostic} from './audio-quality-diagnostics.mjs';\n",''],
+    [`const diagnosticRun=await prepareQualityRun(files,options.label,process.env.KNIFE_AUDIO_QUALITY_TRACE);
+const diagnosticEvidence={artifact,sourceCommit:execFileSync('git',['rev-parse','HEAD'],{cwd:repositoryRoot,encoding:'utf8'}).trim(),
+  pullRequestHead:process.env.GITHUB_HEAD_SHA??null,platform:process.platform,nodeVersion:process.version,browserVersion:'unavailable',
+  sampleRate:0,audioConfig:{},wanted:false,state:'unavailable',trace:null,shutdown:null};
+let diagnosticFailure=null;
+const diagnosticSecondary=[];
+const diagnosticError=(stage,error)=>{if(diagnosticFailure===null)diagnosticFailure=error;else diagnosticSecondary.push(stage+':'+String(error?.message??error).slice(0,2048));};
+try {
+`,''],
+    ["let diagnosticPage;\ndiagnosticEvidence.browserVersion=browser.version();\n",''],
+    ["  diagnosticPage=page;\n",''],
+    ["  await page.evaluate(()=>{window.__quality.masterFrames=new Float64Array(12);window.__quality.masterFrameCount=0;});\n  if(diagnosticRun.trace)await page.evaluate(installQualityTrace);\n",''],
+    ["      if(chunk.samples.length!==2||!chunk.samples[0]||!chunk.samples[1]||chunk.samples[0].length!==chunk.samples[1].length)throw new Error('Incomplete stereo audio capture window');\n",''],
+    ["        if(kind==='enabled'){const probe=window.__quality,index=probe.masterFrameCount++*2;\n          probe.masterFrames.fill(frame,index,index+1);probe.masterFrames[index+1]=Math.round(probe.context.currentTime*probe.context.sampleRate);}\n",''],
+    ["      const diagnosticCapture=(capture,phase)=>kind==='enabled'?diagnosticRun.collector.retainCapture(capture,{frequency,value,frame},phase):capture;\n",''],
+    [`        before:summarizeCapture(diagnosticCapture(await windowSamples(frame-Math.round(rate*0.08),frame-Math.round(rate*0.04)),'before')),
+        change:summarizeCapture(diagnosticCapture(await windowSamples(frame-Math.round(rate*0.02),frame+Math.round(rate*0.04)),'change')),
+        after:summarizeCapture(diagnosticCapture(await windowSamples(frame+Math.round(rate*0.1),frame+Math.round(rate*0.14)),'after'))});`,
+    `        before:summarizeCapture(await windowSamples(frame-Math.round(rate*0.08),frame-Math.round(rate*0.04))),
+        change:summarizeCapture(await windowSamples(frame-Math.round(rate*0.02),frame+Math.round(rate*0.04))),
+        after:summarizeCapture(await windowSamples(frame+Math.round(rate*0.1),frame+Math.round(rate*0.14)))});`],
+    ["  await files.ensureDirectory(output);await files.writeFile(reportPath,JSON.stringify(report,null,2),{flag:'wx'});",
+      "  await files.ensureDirectory(output);await files.writeFile(reportPath,JSON.stringify(report,null,2));"],
+    [`}catch(error){diagnosticError('quality',error);}
+finally{
+  if(diagnosticPage)try{
+    Object.assign(diagnosticEvidence,await diagnosticPage.evaluate(()=>{
+      const runtime=window[Symbol.for('cheese-knife.runtime.v1')],probe=window.__quality,video=document.querySelector('video');
+      const readback=runtime.audio.getReadback(video),wrapped=window[Symbol.for('cheese-knife.quality-trace')];
+      return {sampleRate:probe.context.sampleRate,audioConfig:Object.fromEntries(KnifeMediaProfiles.audioFieldsV2.map(({id})=>[id,Reflect.get(runtime.config,id)])),
+        wanted:readback.wanted,state:readback.state,actions:Array.from({length:probe.masterFrameCount},(_,index)=>({frame:probe.masterFrames[index*2],afterFrame:probe.masterFrames[index*2+1]})),
+        trace:wrapped?wrapped.snapshot():{complete:probe.gains.length===8,truncated:false,error:null,nodeCount:probe.gains.length,gains:probe.gains.map(node=>node.gain.value),events:[]}};
+    }));
+  }catch(error){diagnosticError('snapshot',error);}
+  try{
+    if(measurement)diagnosticEvidence.shutdown={kind:'windows-native',...await measurement.close()};
+    else{await browser.close();diagnosticEvidence.shutdown={kind:'playwright',browserCloseAcknowledged:true,browserDisconnected:!browser.isConnected()};}
+  }catch(error){diagnosticError('close',error);}
+}
+}catch(error){diagnosticError('launch',error);}
+const diagnostic=diagnosticRun.collector.buildReport({...diagnosticEvidence,error:diagnosticFailure,secondaryErrors:diagnosticSecondary});
+try{await files.ensureDirectory('output/audio-quality');await writeQualityDiagnostic(files,diagnosticRun.paths.diagnostic,diagnostic);}
+catch(error){diagnosticError('diagnostic-write',error);}
+if(diagnosticFailure!==null){console.error(JSON.stringify({diagnosticComplete:diagnostic.complete,secondaryErrors:diagnosticSecondary}));throw diagnosticFailure;}
+if(!diagnostic.complete)throw new Error('Audio diagnostic incomplete: '+diagnostic.validationErrors.join(', '));`,
+      '}finally{if(measurement)await measurement.close();else await browser.close();}'],
+  ];
+  for(const [from,to]of additions){assert.equal(source.split(from).length,2,'only the exact approved diagnostic glue can be reversed');source=source.replace(from,to);}
+  return source;
+}
+
 test('public entry retains frozen CLI calibration and limits apart from exact F01 bootstrap and owned browser glue',async()=>{
   const crypto=require('node:crypto'),source=(await fs.readFile('scripts/audio-artifacts.mjs','utf8')).replaceAll('\r\n','\n');
   const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
   assert.equal(hash(source.slice(source.indexOf('export function parseAudioQualityArgs'),source.indexOf('export async function describeAudioArtifact'))),'6a8fb8a811f17bba7a6ffbdd7f841fea21d4e7470231dd0a5f37a45959eb413b');
-  const cli=(await fs.readFile('scripts/check-audio-quality.mjs','utf8')).replaceAll('\r\n','\n');
+  const cli=withoutDiagnosticGlue((await fs.readFile('scripts/check-audio-quality.mjs','utf8')).replaceAll('\r\n','\n'));
   const previous=`    window.postMessage({namespace:'cheese-knife',protocol:1,type:'config',requestId:runtime.requestId,
       revision:100,config:normalizeConfig({})},location.origin);`;
   const current=`    const config={...normalizeConfig({}),...KnifeMediaProfiles.projectGlobalAudio({})};
@@ -140,6 +194,13 @@ test('public entry retains frozen CLI calibration and limits apart from exact F0
   assert.match(source,/const files = await openOwnedRoot\(root\);\s+return describeAudioArtifactFiles\(files, label\);/);
   const {parseAudioQualityArgs}=await load();
   assert.deepEqual(parseAudioQualityArgs(['--chrome','--chrome','--label','first','--label','last'],process.cwd()),{chrome:true,root:process.cwd(),label:'last'});
+});
+
+test('diagnostic glue cannot conceal a changed measurement window or calibration threshold',async()=>{
+  const crypto=require('node:crypto'),source=(await fs.readFile('scripts/check-audio-quality.mjs','utf8')).replaceAll('\r\n','\n');
+  const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
+  assert.throws(()=>withoutDiagnosticGlue(source.replace('frame-Math.round(rate*0.08)','frame-Math.round(rate*0.09)')),/exact approved diagnostic glue/);
+  assert.notEqual(hash(withoutDiagnosticGlue(source.replace('cases[0].channels[0].rms<0.34','cases[0].channels[0].rms<0.35'))),hash(withoutDiagnosticGlue(source)));
 });
 
 test('public entry hashes actual disk bytes and retains label precedence missing child and link rejection',async t=>{

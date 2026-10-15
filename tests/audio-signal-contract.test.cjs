@@ -111,7 +111,7 @@ function compile(config, args = []) {
 test('audio checker and CI keep strict settings and the test discovery path', async () => {
   const config = JSON.parse(await fs.readFile('tsconfig.audio-tools.json', 'utf8'));
   assert.equal(config.extends, './tsconfig.development.json');
-  assert.deepEqual(config.files, ['scripts/audio-signal.mjs', 'scripts/audio-metrics.mjs', 'scripts/audio-artifact-core.mjs', 'scripts/audio-processing-metrics.mjs', 'scripts/audio-processing-probe.mjs', 'scripts/audio-native-browser.mjs', 'scripts/check-audio-processing.mjs', 'tests/audio-signal-contract.test.cjs', 'tests/audio-quality-contract.test.cjs', 'tests/audio-artifact-contract.test.cjs', 'tests/f01-audio-quality-contract.test.cjs']);
+  assert.deepEqual(config.files, ['scripts/audio-quality-diagnostics.mjs', 'scripts/audio-signal.mjs', 'scripts/audio-metrics.mjs', 'scripts/audio-artifact-core.mjs', 'scripts/audio-processing-metrics.mjs', 'scripts/audio-processing-probe.mjs', 'scripts/audio-native-browser.mjs', 'scripts/check-audio-processing.mjs', 'tests/audio-signal-contract.test.cjs', 'tests/audio-quality-contract.test.cjs', 'tests/audio-artifact-contract.test.cjs', 'tests/f01-audio-quality-contract.test.cjs']);
   assert.deepEqual(config.include, []);
   const result = compile('tsconfig.audio-tools.json', ['--showConfig']);
   assert.equal(result.status, 0, result.stdout + result.stderr);
@@ -135,7 +135,7 @@ test('strict audio checker has no diagnostics and contains only the bounded repo
   assert.equal(listed.status, 0, listed.stdout + listed.stderr);
   const files = listed.stdout.trim().split(/\r?\n/).map(file => path.relative(process.cwd(), file).split(path.sep).join('/'))
     .filter(file => !file.startsWith('../') && !path.isAbsolute(file) && !file.startsWith('node_modules/'));
-  assert.deepEqual(files.sort(), ['scripts/audio-artifact-core.mjs', 'scripts/audio-metrics.mjs', 'scripts/audio-native-browser.mjs', 'scripts/audio-processing-metrics.mjs', 'scripts/audio-processing-probe.mjs', 'scripts/audio-signal.mjs', 'scripts/check-audio-processing.mjs', 'scripts/extension-e2e/visibility-browser.mjs', 'tests/audio-artifact-contract.test.cjs', 'tests/audio-quality-contract.test.cjs', 'tests/audio-signal-contract.test.cjs', 'tests/f01-audio-quality-contract.test.cjs']);
+  assert.deepEqual(files.sort(), ['scripts/audio-artifact-core.mjs', 'scripts/audio-metrics.mjs', 'scripts/audio-native-browser.mjs', 'scripts/audio-processing-metrics.mjs', 'scripts/audio-processing-probe.mjs', 'scripts/audio-quality-diagnostics.mjs', 'scripts/audio-signal.mjs', 'scripts/check-audio-processing.mjs', 'scripts/extension-e2e/visibility-browser.mjs', 'tests/audio-artifact-contract.test.cjs', 'tests/audio-quality-contract.test.cjs', 'tests/audio-signal-contract.test.cjs', 'tests/f01-audio-quality-contract.test.cjs']);
 });
 
 for (const proof of [

@@ -72,22 +72,60 @@ jobs:
         run: npm run build
 
       - name: Check package
+        id: package
         run: npm run check
 
       - name: Check audio quality
-        run: node scripts/check-audio-quality.mjs
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
+        env:
+          GITHUB_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import {runQualityRunSet} from './scripts/audio-quality-diagnostics.mjs';
+          import {openOwnedRoot} from './scripts/owned-files.mjs';
+          if(!/^\d+$/.test(process.env.GITHUB_RUN_ID??'')||!/^\d+$/.test(process.env.GITHUB_RUN_ATTEMPT??''))throw new Error('quality-ci-identity');
+          const prefix=`f01ci-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}`;
+          const result=await runQualityRunSet({files:await openOwnedRoot(process.cwd()),prefix});
+          console.log(JSON.stringify({complete:result.complete,failures:result.failures,paths:result.paths,exits:result.records.map(({label,exitCode})=>({label,exitCode}))}));
+          if(!result.complete)process.exitCode=1;
+          NODE
 
       - name: Run installed-extension E2E
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
         run: npm run test:e2e
 
       - name: Run installed-extension negative control
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
         run: npm run test:e2e:negative
 
       - name: Run installed old-new-old transition
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
         run: node scripts/check-installed-transition.mjs --run-id=B2positive
 
       - name: Run installed storage-loss control
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
         run: node scripts/check-installed-transition.mjs --run-id=B2negative --control=storage-loss
+
+      - name: Upload exact synthetic audio evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: f01-audio-quality-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-u1.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-u1-diagnostic.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-t1.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-t1-diagnostic.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-u2.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-u2-diagnostic.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-t2.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-t2-diagnostic.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-u3.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-u3-diagnostic.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-t3.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-t3-diagnostic.json
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload E2E failure artifacts
         if: failure()
