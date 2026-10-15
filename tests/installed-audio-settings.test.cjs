@@ -7,7 +7,7 @@ const report=()=>({ok:true,runId:'Settings1',qualification:'audio-settings',sour
   audioSettings:{passed:true,checks:['native-ui','two-windows','storage-authority','layout','original-target','preset-draft','input-focus','lifecycle'],lossControls:[],
     nativeInputs:[nativeInputs(),nativeInputs()],nativeWindows:[1,2],nativeTabWindows:[3,4],
     sameScope:{nativeFullRequests:2,heldDispatches:1,committedRevisionDelta:1,lateCode:'conflict',lateStored:false},
-    lifecycle:{oneWindowClosed:true,remainingNativeSource:1,beforeHeap:100,afterHeap:90},quota:{actualQuotaFailure:true,bytesAtLimit:10485760},workerRestart:{actualWorkerReplacement:true},
+    lifecycle:{oneWindowClosed:true,remainingNativeSource:1,beforeHeap:100,afterHeap:90},quota:{actualQuotaFailure:true,bytesAtLimit:10485760},workerRestart:{actualWorkerReplacement:true,nativeStopped:true},
     layout:{viewports:[1280,800,360].map(width=>({width,output:80,shell:580,bands:Array(8).fill(100),scrollable:width===360,overflow:false})),
       zoom:{actual:2,output:80,beforeDpr:1,afterDpr:2,beforeWidth:1280,afterWidth:640}}},pageErrors:[]});
 test('settings runner rejects unsafe IDs unknown/duplicate flags controls and remote profiles before effects',async()=>{
@@ -25,7 +25,7 @@ test('settings runner accepts only full exact observation source and three shutd
 test('native evidence cannot be replaced by zero counts guessed zoom or missing worker and window observations',async()=>{
   const {assertAudioSettingsReport}=await load();
   for(const corrupt of [r=>{r.audioSettings.nativeInputs[0].input=0;},r=>{r.audioSettings.nativeInputs[1].overflow=true;},r=>{r.audioSettings.lifecycle.beforeHeap=0;},
-    r=>{r.audioSettings.workerRestart.actualWorkerReplacement=false;},r=>{r.audioSettings.nativeWindows=[1,1];},r=>{r.audioSettings.layout.zoom.actual=1;},
+    r=>{r.audioSettings.workerRestart.actualWorkerReplacement=false;},r=>{r.audioSettings.workerRestart.nativeStopped=false;},r=>{r.audioSettings.nativeWindows=[1,1];},r=>{r.audioSettings.layout.zoom.actual=1;},
     r=>{r.audioSettings.quota.actualQuotaFailure=false;}]){
     const r=report();corrupt(r);assert.throws(()=>assertAudioSettingsReport(r,{runId:'Settings1',headed:false,control:null}),/audio-settings-proof/);
   }

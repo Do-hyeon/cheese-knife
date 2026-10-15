@@ -87,7 +87,7 @@ export function assertAudioSettingsReport(raw,options){
     !tabWindows.every(value=>Number.isSafeInteger(value)&&value>=0)||lifecycle?.oneWindowClosed!==true||lifecycle.remainingNativeSource!==1||
     ![lifecycle.beforeHeap,lifecycle.afterHeap].every(value=>typeof value==='number'&&Number.isFinite(value)&&value>0)||
     quota?.actualQuotaFailure!==true||typeof quota.bytesAtLimit!=='number'||!Number.isSafeInteger(quota.bytesAtLimit)||quota.bytesAtLimit<1||quota.bytesAtLimit>16*1024*1024||
-    restart?.actualWorkerReplacement!==true||zoom?.actual!==2||typeof zoom.output!=='number'||Math.abs(zoom.output-80)>.1||
+    restart?.actualWorkerReplacement!==true||restart.nativeStopped!==true||zoom?.actual!==2||typeof zoom.output!=='number'||Math.abs(zoom.output-80)>.1||
     ![zoom.beforeDpr,zoom.afterDpr,zoom.beforeWidth,zoom.afterWidth].every(value=>typeof value==='number'&&Number.isFinite(value)&&value>0)||
     Math.abs(Number(zoom.afterDpr)-Number(zoom.beforeDpr)*2)>.01||Math.abs(Number(zoom.afterWidth)*2-Number(zoom.beforeWidth))>2||
     !Array.isArray(layout?.viewports)||layout.viewports.length!==3)throw fail('audio-settings-proof');
@@ -608,17 +608,32 @@ async function restartWorkerProof(input,settings){
   const before=await stored(input.worker),url=input.worker.url();
   const targets=(await input.browserSession.send('Target.getTargets')).targetInfos.filter(target=>target.type==='service_worker'&&target.url===url);
   const old=targets.at(0);if(targets.length!==1||!old)throw fail('audio-settings-worker-target');
-  /** @type {unknown} */let waitError;
-  const arriving=input.context.waitForEvent('serviceworker',{predicate:worker=>worker.url()===url,timeout:15000}).catch(error=>{waitError??=error;return null;});
-  const closed=input.worker.waitForEvent('close',{timeout:15000}).catch(error=>{waitError??=error;});
-  if(!(await input.browserSession.send('Target.closeTarget',{targetId:old.targetId})).success)throw fail('audio-settings-worker-stop');
-  await closed;if(waitError)throw waitError;await settings.locator('#media-refresh').click();
-  const worker=await arriving;
-  if(waitError)throw waitError;if(!worker)throw fail('audio-settings-worker-not-replaced');
-  await waitNative(()=>stored(worker),raw=>isDeepStrictEqual(raw,before),'audio-settings-worker-storage-loss');await readyUI(settings);
-  const current=(await input.browserSession.send('Target.getTargets')).targetInfos.filter(target=>target.type==='service_worker'&&target.url===url);
-  if(current.length!==1||current[0]?.targetId===old.targetId)throw fail('audio-settings-worker-not-replaced');
-  input.worker=worker;return {actualWorkerReplacement:true};
+  const inspector=await input.context.newCDPSession(settings);
+  /** @type {Map<string,{versionId:string,scriptURL:string,runningStatus:string}>} */const versions=new Map();let overflow=false;
+  const observe=(/** @type {{versions:readonly {versionId:string,scriptURL:string,runningStatus:string}[]}} */event)=>{
+    for(const version of event.versions)if(version.scriptURL===url){
+      if(!versions.has(version.versionId)&&versions.size>=4){overflow=true;continue;}
+      versions.set(version.versionId,{versionId:version.versionId,scriptURL:version.scriptURL,runningStatus:version.runningStatus});
+    }
+  };
+  inspector.on('ServiceWorker.workerVersionUpdated',observe);
+  try{
+    await inspector.send('ServiceWorker.enable');
+    const rows=await waitNative(async()=>[...versions.values()].filter(version=>version.runningStatus==='running'),values=>!overflow&&values.length===1,'audio-settings-worker-version');
+    const version=rows[0];if(!version)throw fail('audio-settings-worker-version');
+    await inspector.send('ServiceWorker.stopWorker',{versionId:version.versionId});
+    await waitNative(async()=>versions.get(version.versionId)?.runningStatus,value=>!overflow&&value==='stopped','audio-settings-worker-not-stopped');
+    await settings.locator('#media-refresh').click();
+    const previous=input.worker;
+    const workers=await waitNative(async()=>input.context.serviceWorkers().filter(worker=>worker!==previous&&worker.url()===url),values=>values.length===1,'audio-settings-worker-not-replaced');
+    const worker=workers[0];if(!worker||await worker.evaluate(()=>chrome.runtime.id)!==input.extensionId)throw fail('audio-settings-worker-not-replaced');
+    await waitNative(()=>stored(worker),raw=>isDeepStrictEqual(raw,before),'audio-settings-worker-storage-loss');await readyUI(settings);
+    const current=(await input.browserSession.send('Target.getTargets')).targetInfos.filter(target=>target.type==='service_worker'&&target.url===url);
+    if(current.length!==1||current[0]?.targetId===old.targetId)throw fail('audio-settings-worker-not-replaced');
+    input.worker=worker;return {actualWorkerReplacement:true,nativeStopped:true};
+  }finally{
+    inspector.off('ServiceWorker.workerVersionUpdated',observe);try{await inspector.send('ServiceWorker.disable');}finally{await inspector.detach();}
+  }
 }
 /** @param {AudioSettingsScenario} input @returns {Promise<AudioLossObservation[]>} */
 async function lossControls(input){

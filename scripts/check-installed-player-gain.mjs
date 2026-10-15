@@ -156,7 +156,9 @@ async function scenario({ context, worker, responses, artifactPath, browserSessi
         await page.evaluate(() => {
           const old = document.querySelector('.pzp-pc'), video = old?.querySelector('video');
           if (!old || !video) throw new Error('player-gain-full-reparent');
-          const next = old.cloneNode(true);next.querySelector('video').replaceWith(video);old.replaceWith(next);
+          const next=document.createElement('div'),picture=document.createElement('div'),controls=document.createElement('div'),volume=document.createElement('div');
+          next.className='pzp-pc';picture.className='pzp-pc__video';controls.className='pzp-pc__bottom-buttons-left';volume.className='pzp-pc__volume-control';
+          picture.append(video);controls.append(volume);next.append(picture,controls);old.replaceWith(next);
         });
         await page.locator('.knife-gain-owner[data-phase="ready"]').waitFor({state:'visible'});
         await wait(readback, value => value.state.sources === 1 && value.state.gain === 0 && value.state.state === 'on', 'player-gain-full-reparent-source');

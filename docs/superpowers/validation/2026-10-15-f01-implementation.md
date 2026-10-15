@@ -118,3 +118,11 @@ Native 경계의 객체 키 순서 변화 회귀에서 같은 context의 읽기�
 보완은 receipt의 객체 키만 정렬하고 배열 순서·실제 값·old/new 및 absent/null 구분을 보존하는 정확한 직렬화다. 미관측 receipt64의 fail-closed 상한, unknown 외부 이벤트와 ABA/세대/권한 거부는 유지한다. absent/null 오인 대조도 별도 RED→GREEN. 집중38개 GREEN, 전체1543개 중1542통과/실패0/기존 private 감사1skip(69.078초)와9기반/build/package PASS. 새 clean Native 재검증은 아직 필요하다.
 
 계획된 Gain `--mode=full`은 qualification/negative를 유지하면서 실제 TAB에서 채널 사용→플레이어의 owned Gain0→같은 video 재배치/source1→수동 OFF 중 다른 효과 저장→재개/새 문서의0 재진입→전역2 보존을 추가하도록 구현했다. CLI RED→GREEN3개 및 위 전체 검사에 포함됐다. 아직 이 새 full mode의 실제 성공을 주장하지 않는다. F01 저장 형식 전환·T8·T9도 남아 있다.
+
+### T7 경쟁/worker 도구 검증 진행
+
+c2e377f의I에서는 owned Gain 복원까지 통과한 뒤, 첫 확인창이 열린 상태에서 두 번째 확인창을 기다리는 도구 전제가 실패했다. 28ae095의J에서는 첫 실제 UI 확인 요청의 전송만 보류하고 두 번째 실제 UI 확인 요청을 먼저 저장한 뒤 원래 첫 요청을 한 번 전달했다. worker에서 실제2개 TAB document/frame0를 관측했고, 저장revision+1·늦은 요청의 정확한conflict/storedfalse·자동 재전송0을 검사했다. 이어 ACK 유실/원래 문서 교체·창 이동 거부/같은 video와 새 video/다른 창 종료/실제 quota 실패 및 자기 padding 제거까지 진행했다.
+
+J는 마지막 worker 단계에서 실패했다. CDP `Target.closeTarget`만으로는 이 환경의 worker close/replacement 이벤트를 확인하지 못했다. 실제 worker 정지 증거 없이 통과시키지 않고 ServiceWorker의 정확한 version/stopWorker/stopped 관측 뒤 실제 설정 조회로 새 target·Worker 객체·저장값 동일을 확인하도록 도구를 수정한다. [공식 stopWorker](https://chromedevtools.github.io/devtools-protocol/tot/ServiceWorker/#method-stopWorker)를 사용하며 자연 suspension이나 실제 스토어 업데이트 증명으로 부르지 않는다. 정지 관측이 없는 보고서 RED→GREEN와 strict/관련29개 통과, 실제 새 실행은 남아 있다.
+
+동일 checkpoint의 Gain full K는 실제61초 만료/채널 사용/플레이어의 채널 Gain0 저장까지 진행했으나 재배치 fixture에서 실패했다. 도구가 cloneNode로 확장 소유 컨트롤까지 복제해 정상 사이트 재배치와 달라진 것을 확인했다. 이미 UI 수명 검사에서 쓰는 것처럼 새 사이트 PZP/volume 노드와 같은 실제 video만 이동하도록 수정했다. 제품의 불명확한 소유부 거부 조건은 완화하지 않았다. I/J/K 모두 종료3증명true·전후 source 일치, 실패 증거/프로필 보존. T7 전체 성공은 아직 아니다.
