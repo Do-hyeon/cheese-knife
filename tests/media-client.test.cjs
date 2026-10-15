@@ -19,6 +19,14 @@ test('media client subscribes before read and selection never writes',async t=>{
   const reads=h.messages.filter(entry=>entry.message.action==='get-media-snapshot');assert.ok(reads.length>0);
   assert.ok(reads.every(entry=>entry.message.protocol===3 && entry.subscribers>0));
 });
+test('exhausted media revision is an exact failed operation, not a damaged-store repair or a write',async t=>{
+  const h=settingsHarness(t,{mediaProfiles:{schema:2,revision:Number.MAX_SAFE_INTEGER,channels:[],presets:[]}}),c=client(t,h);
+  await h.settle();await c.selectScope(saved);const before=structuredClone(h.saved);assert.equal(c.view().phase,'ready');
+  const reply=await c.perform({action:'enable-channel-domain',selection:saved,domain:'audio',expectedMediaRevision:Number.MAX_SAFE_INTEGER,expectedGlobalRevision:0,expectedRecord:null});
+  await h.settle();assert.equal(reply.ok,false);assert.equal(reply.stored,false);assert.equal(reply.code,'revision-exhausted');
+  assert.equal(c.view().phase,'failed');assert.equal(c.view().code,'revision-exhausted');assert.deepEqual(h.saved,before);
+  assert.equal(h.calls.filter(call=>call.kind==='commit').length,0);
+});
 test('two independent media clients merge field patches and synchronize without global writes',async t=>{
   const {h,c}=await enabled(t),other=client(t,h);await h.settle();await other.selectScope(saved);
   c.editFields('audio',{compressorThreshold:-35});other.editFields('audio',{compressorRatio:8.125});await h.settle();

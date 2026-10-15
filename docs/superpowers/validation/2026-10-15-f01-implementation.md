@@ -168,3 +168,9 @@ O의 실제 캡처 시각 대조에서 zoom 상태의 fullPage 캡처가 페이�
 schedule·손실 판별·Native phase·보고서 누락의 RED→GREEN, occurrence/role/종료 증명의 감독 회귀 및 실제 strict checkJs 소비자를 포함한 집중102개가 통과했다. 후속 최종 보고서에서 숨겨진 별도 failure를 거부하는 RED→GREEN8개도 추가했다. 이 직전 전체는1561/1560통과/0실패/기존1skip(70.831초)였으며 최신 전체 재실행 중이다. 9기반·후보 build/package는 최신 입력에서 모두 exit0. 이 기록 시점의 새 cold Native 실행은 아직 없으며, UI U/V·Gain M 성공을 전환 성공으로 전용하지 않는다.
 
 최신 전체1562/1561통과/0실패/기존1skip(69.777초) 및9기반/build/package exit0를 확인했다. root dist는58파일·version2.13.3 그대로다. 이제 이 소스와 모든 fixture를 로컬 checkpoint로 고정한 뒤 새 owned 프로필에서 Native positive/negative를 실행한다.
+
+첫 Native W는0db8f8a에서 기존5사례의15phase 관측을 통과한 뒤 valid-v1/F00 화면 연결에서 실패했다. sourceSha256=196a2960c77a12d72aeaee4b2136ed3f5d8cb8bf9baa0d0ca1c4fdb113e23ec0 전후 일치·22launch 종료3증명 전부true·cleanup/secondary0이며 실패 프로필/trace/PNG를 보존했다. 전체 전환 PASS가 아니다.
+
+trace상 toolbar openPopup은 정상 반환했지만, 앞서 연 자기 전역 설정 TAB이 툴바와 정확히 같은 popup.html 주소로 남아 대상 선택이 모호해졌다. 대상 선택을 완화하지 않고 완료된 자기 TAB만 먼저 닫는다. 아울러 schema1 전환 전/F00의 schema2 복귀는 의도한 읽기 전용이므로, 기존 helper의 무조건 writable 검사 대신 명시적인 ready/upgrade-required/repair-required UI gate를 추가했다. native sender/frame/document/window/프로토콜 검사는 동일하며, upgrade code/활성 전환 버튼·읽기 전용 disabled 상태를 각각 요구한다. 잘못된 상태/모드와 writable 혼동 RED→GREEN, 집중45개·strict 통과. 새 checkpoint/전체/Native 재검증 전이다.
+
+실제 client/broker의 미디어 counter MAX는 valid/ready 읽기 후 다음 변경을 `failed (revision-exhausted)`/storedfalse/commit0으로 거부한다. 손상 저장소의 repair-required와 구분하는 직접 회귀를 추가해 Native 기대 값을 보완했다. 집중51개·strict·최종 전체1564/1563통과/0실패/기존1skip(70.762초)이 통과했다. 직전9기반/build/package도 exit0이며, frozen F00에 원래 config-loss 삽입이 정확히 준비되는 것을59파일/격리version2.13.4/broker변경으로 확인했다. 제품·권한·timeout·숫자 gate는 변경하지 않았다.

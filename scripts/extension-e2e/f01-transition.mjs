@@ -205,10 +205,12 @@ export async function runF01TransitionPhase(input){
         await waitCold(snapshot,raw=>raw.settingsRevision===(occurrence===3?10:11),'f01-transition-alias-save');
       }
       if(payload==='f00'){
+        await popup.close();
         const page=await context.newPage();await page.goto('https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',{waitUntil:'domcontentloaded'});
         await page.waitForFunction(()=>{const runtime=/** @type {{configReady?:boolean,ownerProtocol?:number,media?:{phase?:string}}|undefined} */(Reflect.get(window,Symbol.for('cheese-knife.runtime.v1')));
           return runtime?.configReady&&runtime.ownerProtocol===2&&runtime.media?.phase!=='pending';},null,{timeout:15000});
-        const limited=(await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession:input.browserSession,mediaProtocol:2})).settingsPage;
+        const limited=(await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession:input.browserSession,mediaProtocol:2,
+          uiState:occurrence===3?'repair-required':'ready'})).settingsPage;
         if(occurrence===3){
           await limited.locator('#media-status[data-phase="repair-required"]').waitFor({timeout:15000});
           if(!await limited.locator('#media-audio-enable').isDisabled()||!await limited.locator('#compressorThreshold').isDisabled())throw fail('f01-transition-f00-writable');
@@ -223,7 +225,8 @@ export async function runF01TransitionPhase(input){
       const page=await context.newPage();await page.goto('https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',{waitUntil:'domcontentloaded'});
       await page.waitForFunction(()=>{const runtime=/** @type {import('../../src/main/runtime/contracts.js').KnifeRuntime|undefined} */(Reflect.get(window,Symbol.for('cheese-knife.runtime.v1')));
         return runtime?.configReady&&runtime.ownerProtocol===3&&runtime.media.phase!=='pending';},null,{timeout:15000});
-      const settings=(await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession:input.browserSession,mediaProtocol:3})).settingsPage;
+      const settings=(await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession:input.browserSession,mediaProtocol:3,
+        uiState:caseId==='valid-v1'&&occurrence===2?'upgrade-required':'ready'})).settingsPage;
       await readyCold(settings);
       if(caseId==='valid-v1'&&occurrence===2){
         await confirmCold(settings,'#media-upgrade');await waitCold(snapshot,raw=>record(raw.mediaProfiles)?.revision===8,'f01-transition-upgrade');await readyCold(settings);step='upgraded';await check();
@@ -244,7 +247,8 @@ export async function runF01TransitionPhase(input){
         await settings.locator('#audioGain').focus();await settings.keyboard.press('Home');await waitCold(snapshot,raw=>raw.settingsRevision===5,'f01-transition-absent-save');await readyCold(settings);
       }else if(caseId==='media-max'){
         await settings.locator('#media-scope').selectOption('current');await readyCold(settings);await settings.locator('#media-audio-enable').click();
-        await settings.locator('#media-status[data-phase="repair-required"]').waitFor({timeout:15000});
+        await settings.locator('#media-status[data-phase="failed"]').waitFor({timeout:15000});
+        if(!(await settings.locator('#media-status').textContent())?.includes('(revision-exhausted)'))throw fail('f01-transition-max-wrong-failure');
       }else{
         await settings.locator('#media-scope').selectOption('current');await readyCold(settings);
         if(Number(await settings.locator('#audioGain').inputValue())!==0||await settings.locator('#gainInherited').isChecked()||!await settings.locator('#eqEnabled').isChecked()||

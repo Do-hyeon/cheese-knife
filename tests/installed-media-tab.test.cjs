@@ -20,8 +20,13 @@ function fixture(mode='ok'){
     action:{openPopup:async options=>{assert.equal(JSON.stringify(options),'{"windowId":9}');events.push('popup');for(let i=0;i<(mode==='overflow'?17:1);i++)sender(1,popupURL);}}};
   const workerGlobal=vm.createContext({chrome,console});
   const worker={evaluate:async(fn,arg)=>vm.runInContext(`(${fn.toString()})(${JSON.stringify(arg)})`,workerGlobal),url:()=>`chrome-extension://${E}/background.js`};
+  const locked=mode==='upgrade'||mode==='repair',mediaPhase=mode==='repair'?'repair-required':'ready';
+  class Button{constructor(){this.hidden=false;this.disabled=false;}}
+  const mediaDocument={getElementById:id=>id==='settings-status'?{dataset:{phase:'ready'}}:id==='media-status'?{dataset:{phase:mediaPhase},textContent:mode==='upgrade'?'전환 (media-upgrade-required)':''}:
+    id==='media-upgrade'&&mode==='upgrade'?new Button():null};
   const settingsPage={url:()=>mediaURL,isClosed:()=>false,context:()=>context,evaluate:async fn=>fn.toString().includes('getCurrent')?{id:8,windowId:9,incognito:false}:true,
-    waitForFunction:async()=>{},locator:()=>({waitFor:async()=>{},isEnabled:async()=>true})};
+    waitForFunction:async(fn,arg)=>{if(!vm.runInNewContext(`(${fn.toString()})(${JSON.stringify(arg)})`,{document:mediaDocument,HTMLButtonElement:Button}))throw Error('declared-ui-state-unavailable');},
+    locator:()=>({waitFor:async()=>{},isEnabled:async()=>!locked})};
   const fixturePage={url:()=>fixtureURL,context:()=>context,bringToFront:async()=>{events.push('front');}};
   pages.push(fixturePage);
   const context=new EventEmitter();context.pages=()=>pages;context.newCDPSession=async()=>({send:async()=>({targetInfo:{browserContextId:'owned'}}),detach:async()=>{events.push('page-detach');}});
@@ -55,6 +60,15 @@ test('media helper qualifies explicit protocol3 without accepting it as legacy r
   const modern=fixture('protocol3');const result=await openInstalledMediaSettings({...modern.args,mediaProtocol:3});assert.equal(result.tabWriterQualified,true);
   const legacy=fixture('protocol3');await assert.rejects(openInstalledMediaSettings(legacy.args),/media-tab-timeout/);
   assert.equal(modern.listeners.size,0);assert.equal(legacy.listeners.size,0);
+});
+test('media helper distinguishes explicit read-only upgrade and repair presentations from writable readiness',async()=>{
+  const {openInstalledMediaSettings}=await import('../scripts/extension-e2e/popup-cdp.mjs');
+  for(const [mode,uiState]of [['upgrade','upgrade-required'],['repair','repair-required']]){
+    const f=fixture(mode);assert.equal((await openInstalledMediaSettings({...f.args,uiState})).tabWriterQualified,true);assert.equal(f.listeners.size,0);
+    await assert.rejects(openInstalledMediaSettings(fixture(mode).args));
+    await assert.rejects(openInstalledMediaSettings({...fixture().args,uiState}));
+  }
+  const unknown=fixture();await assert.rejects(openInstalledMediaSettings({...unknown.args,uiState:'anything'}),/media-tab-ui-state-invalid/);assert.equal(unknown.events.length,0);
 });
 for(const mode of ['missing-document','hidden','disabled','unlabelled','unfocused','duplicate','wrong-tab','wrong-context-url','incognito','frame','overflow','cleanup-error','no-page','foreign-popup','popup-close-error','popup-close-stuck'])test('media helper refuses '+mode+' and clears only owned listeners',async()=>{
   const {openInstalledMediaSettings}=await import('../scripts/extension-e2e/popup-cdp.mjs');assert.equal(typeof openInstalledMediaSettings,'function');

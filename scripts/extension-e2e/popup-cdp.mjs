@@ -78,10 +78,11 @@ export async function attachPopupCDP(browser,target,timeoutMs=8000,onEvent=()=>{
 /** @typedef {{listener:(message:unknown,sender:chrome.runtime.MessageSender)=>void,observations:MediaSenderObservation[],overflow:boolean}} MediaObserver */
 /**
  * @param {{context:import('playwright').BrowserContext,worker:import('playwright').Worker,fixturePage:import('playwright').Page,
- * extensionId:string,browserSession:PopupBrowserSession,timeoutMs?:number,mediaProtocol?:2|3}} options
+ * extensionId:string,browserSession:PopupBrowserSession,timeoutMs?:number,mediaProtocol?:2|3,uiState?:'ready'|'upgrade-required'|'repair-required'}} options
  * @returns {Promise<{settingsPage:import('playwright').Page,popupAttached:true,tabWriterQualified:true}>}
  */
-export async function openInstalledMediaSettings({context,worker,fixturePage,extensionId,browserSession,timeoutMs=15000,mediaProtocol=2}){
+export async function openInstalledMediaSettings({context,worker,fixturePage,extensionId,browserSession,timeoutMs=15000,mediaProtocol=2,uiState='ready'}){
+  if(!['ready','upgrade-required','repair-required'].includes(uiState))throw fail('media-tab-ui-state-invalid');
   if(mediaProtocol!==2&&mediaProtocol!==3)throw fail('media-tab-protocol-invalid');
   if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>15000)throw fail('media-tab-timeout-invalid');
   if(!/^[a-p]{32}$/.test(extensionId)||fixturePage.context()!==context)throw fail('media-tab-context-invalid');
@@ -200,9 +201,12 @@ export async function openInstalledMediaSettings({context,worker,fixturePage,ext
     if(contexts.length!==1||!current||current.contextType!=='TAB'||current.frameId!==0||current.documentId!==first.documentId||
       current.documentUrl!==expected.href||current.documentOrigin!==`chrome-extension://${extensionId}`||current.incognito!==false||
       current.tabId!==actualTab.id||current.windowId!==actualTab.windowId)throw fail('media-tab-document-invalid');
-    await run(()=>settingsPage.waitForFunction(()=>document.getElementById('settings-status')?.dataset.phase==='ready'&&
-      document.getElementById('media-status')?.dataset.phase==='ready',null,{timeout:remaining()}));
-    if(!(await run(()=>settingsPage.locator('#brightness').isEnabled())))throw fail('media-tab-ui-not-ready');
+    await run(()=>settingsPage.waitForFunction(expected=>{
+      const status=document.getElementById('media-status'),upgrade=document.getElementById('media-upgrade');
+      return document.getElementById('settings-status')?.dataset.phase==='ready'&&status?.dataset.phase===(expected==='repair-required'?'repair-required':'ready')&&
+        (expected!=='upgrade-required'||status.textContent?.includes('(media-upgrade-required)')&&upgrade instanceof HTMLButtonElement&&!upgrade.hidden&&!upgrade.disabled);
+    },uiState,{timeout:remaining()}));
+    if(await run(()=>settingsPage.locator('#brightness').isEnabled())!==(uiState==='ready'))throw fail('media-tab-ui-not-ready');
     if(networkFailure)throw fail('media-tab-network-cleanup-failed');
     return {settingsPage,popupAttached:true,tabWriterQualified:true};
   }finally{
