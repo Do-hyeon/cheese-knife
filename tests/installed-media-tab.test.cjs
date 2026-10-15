@@ -22,7 +22,7 @@ function fixture(mode='ok'){
   const worker={evaluate:async(fn,arg)=>vm.runInContext(`(${fn.toString()})(${JSON.stringify(arg)})`,workerGlobal),url:()=>`chrome-extension://${E}/background.js`};
   const locked=mode==='upgrade'||mode==='repair',mediaPhase=mode==='repair'?'repair-required':'ready';
   class Button{constructor(){this.hidden=false;this.disabled=false;}}
-  const mediaDocument={getElementById:id=>id==='settings-status'?{dataset:{phase:'ready'}}:id==='media-status'?{dataset:{phase:mediaPhase},textContent:mode==='upgrade'?'전환 (media-upgrade-required)':''}:
+  const mediaDocument={getElementById:id=>id==='settings-status'?{dataset:{phase:'ready'}}:id==='media-status'?{dataset:{phase:mediaPhase},textContent:'최신 저장값'}:
     id==='media-upgrade'&&mode==='upgrade'?new Button():null};
   const settingsPage={url:()=>mediaURL,isClosed:()=>false,context:()=>context,evaluate:async fn=>fn.toString().includes('getCurrent')?{id:8,windowId:9,incognito:false}:true,
     waitForFunction:async(fn,arg)=>{if(!vm.runInNewContext(`(${fn.toString()})(${JSON.stringify(arg)})`,{document:mediaDocument,HTMLButtonElement:Button}))throw Error('declared-ui-state-unavailable');},

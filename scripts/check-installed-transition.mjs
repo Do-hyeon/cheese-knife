@@ -427,7 +427,7 @@ export async function executeTransitionChild(options, dependencies = {}) {
           const expectedLoss=f01&&options.control&&(assignment.kind==='legacy'?matchesStorageLoss(error?.failure,options.nonce,expectedId):
             launchOccurrence===3&&presetId&&matchF01TransitionLoss(error?.failure,expectedF01TransitionRaw({caseId:'valid-v1',runNonce:options.nonce,seed:seedFixture,expected:expectedFixture,occurrence:3,step:'startup',presetId}),assignment.loss,expectedId));
           if(expectedLoss)detected.push(error.failure);else{phaseError = error; await noticeFailure(error);}
-          if (context && !failureArtifacts) {
+          if (!expectedLoss && context && !failureArtifacts) {
             failureArtifacts = true;
             try {
               const page = context.pages().at(-1);

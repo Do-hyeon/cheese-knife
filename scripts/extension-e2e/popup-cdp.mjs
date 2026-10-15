@@ -204,7 +204,7 @@ export async function openInstalledMediaSettings({context,worker,fixturePage,ext
     await run(()=>settingsPage.waitForFunction(expected=>{
       const status=document.getElementById('media-status'),upgrade=document.getElementById('media-upgrade');
       return document.getElementById('settings-status')?.dataset.phase==='ready'&&status?.dataset.phase===(expected==='repair-required'?'repair-required':'ready')&&
-        (expected!=='upgrade-required'||status.textContent?.includes('(media-upgrade-required)')&&upgrade instanceof HTMLButtonElement&&!upgrade.hidden&&!upgrade.disabled);
+        (expected!=='upgrade-required'||upgrade instanceof HTMLButtonElement&&!upgrade.hidden&&!upgrade.disabled);
     },uiState,{timeout:remaining()}));
     if(await run(()=>settingsPage.locator('#brightness').isEnabled())!==(uiState==='ready'))throw fail('media-tab-ui-not-ready');
     if(networkFailure)throw fail('media-tab-network-cleanup-failed');

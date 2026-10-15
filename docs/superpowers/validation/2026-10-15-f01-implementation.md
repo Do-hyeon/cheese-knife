@@ -174,3 +174,9 @@ schedule·손실 판별·Native phase·보고서 누락의 RED→GREEN, occurren
 trace상 toolbar openPopup은 정상 반환했지만, 앞서 연 자기 전역 설정 TAB이 툴바와 정확히 같은 popup.html 주소로 남아 대상 선택이 모호해졌다. 대상 선택을 완화하지 않고 완료된 자기 TAB만 먼저 닫는다. 아울러 schema1 전환 전/F00의 schema2 복귀는 의도한 읽기 전용이므로, 기존 helper의 무조건 writable 검사 대신 명시적인 ready/upgrade-required/repair-required UI gate를 추가했다. native sender/frame/document/window/프로토콜 검사는 동일하며, upgrade code/활성 전환 버튼·읽기 전용 disabled 상태를 각각 요구한다. 잘못된 상태/모드와 writable 혼동 RED→GREEN, 집중45개·strict 통과. 새 checkpoint/전체/Native 재검증 전이다.
 
 실제 client/broker의 미디어 counter MAX는 valid/ready 읽기 후 다음 변경을 `failed (revision-exhausted)`/storedfalse/commit0으로 거부한다. 손상 저장소의 repair-required와 구분하는 직접 회귀를 추가해 Native 기대 값을 보완했다. 집중51개·strict·최종 전체1564/1563통과/0실패/기존1skip(70.762초)이 통과했다. 직전9기반/build/package도 exit0이며, frozen F00에 원래 config-loss 삽입이 정확히 준비되는 것을59파일/격리version2.13.4/broker변경으로 확인했다. 제품·권한·timeout·숫자 gate는 변경하지 않았다.
+
+7b4f6dd의 Y/Z는 F00 실제 TAB/v1 −35 읽기를 통과해 이전 대상 모호성 보완을 확인했으나, F01 형식 전환 전 UI gate에서 timeout으로 실패했다. Y23/Z6launch 모두 종료3증명true, sourceSha256=565eda71c608aaac257fc4e287ca3cd431605c75eb5d39f0e90724f86123f48d 전후 일치이며 cleanup/secondary0이다. Z의 원래 config-loss 대조1개는 일치했지만 전체 대조 성공이 아니다.
+
+Y trace/소스에서 snapshot.code와 일반 mediaView.code가 별개임을 확인했다. 형식 전환 가능 코드는 전환 버튼의 표시/활성 조건이며, 일반 상태 문구에는 반복 표시되지 않는다. 실제와 같은 일반 문구로 회귀를 RED 재현한 뒤, 준비 상태+표시·활성 전환 버튼+기존 writable 필드 disabled로 검사한다. 버튼을 결정하는 제품의 정확한 snapshot-code guard는 그대로다. 또한 예상 손실 대조가 이후 예상 밖 실패용 trace 슬롯을 먼저 차지하지 않도록 검사 도구만 보완했다. Native 재검증은 새 checkpoint에서 수행한다.
+
+이 보완의 집중102개·strict·전체1564/1563통과/0실패/기존1skip(73.596초)을 확인했다. 새로운 Native checkpoint를 고정해 정상/손실 대조를 다시 실행하며, 이전 W/Y/Z 실패 기록은 그대로 보존한다.
