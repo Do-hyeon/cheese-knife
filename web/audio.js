@@ -352,10 +352,11 @@
         entry.normalizerStatus = { state: "limited", reason: "normalizer-sample-rate-unsupported" };
         return;
       }
-      const previous = entry.normalizerCurve;
+      const previous = entry.normalizerCurve, time = context.currentTime;
       if (previous && previous.source === entry.video.currentSrc && previous.path === runtime.media.context.routePath && previous.document === runtime.media.context.documentGeneration) {
-        control.fromDb = control.toDb = normalizerDbAt(previous, context.currentTime);
+        control.fromDb = control.toDb = normalizerDbAt(previous, time);
       }
+      automateNormalizer(entry, { fromDb: control.fromDb, toDb: control.toDb, start: time, end: time });
       try {
         const splitter = context.createChannelSplitter(2), left = context.createAnalyser(), right = context.createAnalyser();
         left.fftSize = control.fftSize;
@@ -379,7 +380,11 @@
         entry.meter.scope.interval(() => tickMeter(entry), 100);
         tickMeter(entry);
       } catch {
-        stopMeter(entry);
+        if (entry.meter) stopMeter(entry);
+        else {
+          const now = context.currentTime;
+          automateNormalizer(entry, { fromDb: normalizerDbAt(control, now), toDb: 0, start: now, end: now + 0.01 });
+        }
         entry.normalizerStatus = { state: "limited", reason: "normalizer-unavailable" };
       }
     };

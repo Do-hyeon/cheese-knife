@@ -68,6 +68,27 @@ test('a native clock quantum between planning and scheduling never shortens norm
   assert.ok(Math.abs(end - start - .1) < 1e-10);
 });
 
+test('reentry cancels a retired reset before allocating the next analysis window', async t => {
+  const { audio, video, gain, context } = await boosted(t);
+  await audio.setEnabled(video, false); context().currentTime = 1.115; gain.events.length = 0;
+  const create = context().createAnalyser.bind(context());
+  context().createAnalyser = () => { context().currentTime += .004; return create(); };
+  await audio.setEnabled(video, true);
+  assert.deepEqual(gain.events[0], ['cancel',1.115]);
+  assert.ok(Math.abs(gain.events[1][1] - 10 ** (.35 / 20)) < 1e-10);
+  assert.equal(gain.events.filter(event => event[0] === 'set').every(event => Math.abs(event[1]-10 ** (.35/20))<1e-10), true);
+});
+
+test('failed reentry allocation resets the held normalization to unity in ten milliseconds', async t => {
+  const { audio, video, gain, context, dom } = await boosted(t);
+  await audio.setEnabled(video, false); context().currentTime = 1.115; gain.events.length = 0;
+  context().createAnalyser = () => { throw new Error('native allocation failed'); };
+  await audio.setEnabled(video, true);
+  const reset = gain.events.find(event => event[0] === 'exp');assert.ok(reset);
+  assert.equal(reset[1],1);assert.ok(Math.abs(reset[2]-1.125)<1e-10);
+  assert.equal(runtime(dom).statuses.normalizer.reason,'normalizer-unavailable');
+});
+
 test('source replacement never inherits a retired meter gain or unity reservation', async t => {
   const { audio, video, gain, context } = await boosted(t);
   Object.defineProperty(video, 'currentSrc', { value: 'blob:https://chzzk.naver.com/replaced', configurable: true });

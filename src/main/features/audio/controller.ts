@@ -237,11 +237,12 @@ export function installAudio(target: Window): AudioController | null {
     if (!context || !entry.source || !entry.connected || entry.state !== 'on' || !runtime.mediaCurrent()) return;
     const control = createNormalizer(context.sampleRate);
     if (!control) { entry.normalizerStatus = { state: 'limited', reason: 'normalizer-sample-rate-unsupported' }; return; }
-    const previous = entry.normalizerCurve;
+    const previous = entry.normalizerCurve, time = context.currentTime;
     if (previous && previous.source === entry.video.currentSrc && previous.path === runtime.media.context.routePath &&
         previous.document === runtime.media.context.documentGeneration) {
-      control.fromDb = control.toDb = normalizerDbAt(previous, context.currentTime);
+      control.fromDb = control.toDb = normalizerDbAt(previous, time);
     }
+    automateNormalizer(entry, { fromDb: control.fromDb, toDb: control.toDb, start: time, end: time });
     try {
       const splitter = context.createChannelSplitter(2), left = context.createAnalyser(), right = context.createAnalyser();
       left.fftSize = control.fftSize; right.fftSize = control.fftSize;
@@ -249,7 +250,14 @@ export function installAudio(target: Window): AudioController | null {
         scope: runtime.createScope(), source: entry.video.currentSrc, path: runtime.media.context.routePath, document: runtime.media.context.documentGeneration };
       meters.add(entry); entry.compMix!.connect(splitter); splitter.connect(left, 0); splitter.connect(right, 1);
       entry.meter.scope.interval(() => tickMeter(entry), 100); tickMeter(entry);
-    } catch { stopMeter(entry); entry.normalizerStatus = { state: 'limited', reason: 'normalizer-unavailable' }; }
+    } catch {
+      if (entry.meter) stopMeter(entry);
+      else {
+        const now = context.currentTime;
+        automateNormalizer(entry, { fromDb: normalizerDbAt(control, now), toDb: 0, start: now, end: now + 0.01 });
+      }
+      entry.normalizerStatus = { state: 'limited', reason: 'normalizer-unavailable' };
+    }
   }
 
   const controller: AudioController = {

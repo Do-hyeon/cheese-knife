@@ -112,7 +112,7 @@ compDry와 compressor의 native pre-delay를 기존 compressorDelay(sampleRate)�
 
 normalizer OFF·측정 오류의 unity 복귀는 위 느린 제어속도 제한의 예외이며 기존10ms 연속 전환으로 처리하고 오류는 limited 상태로 표시한다. master OFF는 기존10ms dry 복귀다. 명시 source replacement·route/genuine video 진입은 old meter/EMA/late callback을 폐기한다. 같은 video/PZP-only/hidden 복귀에서는 master 수동 wanted를 보존하되 분석 epoch를 재확인한다. NaN/무한 값을 AudioParam에 전달하거나 반복 오류를 숨기고 boost를 계속 올리지 않는다. OFF/retired/current player 아님이면 timer·meter 연결·buffer 참조를 정리하거나 정지한다.
 
-2026-10-15 국소 보완 승인: master OFF에서는 분석 자원을 즉시 퇴역시키되 normalizer의 현재 이득을 기존 wet fade 종료까지 유지하고 이후10ms에 unity로 복귀한다. 별도 JS timer 없이 native AudioParam 시각으로 예약한다. 같은 source/route/document의 빠른 ON은 퇴역 예약을 즉시 취소하고 계산된 현재 이득에서 새 warm-up을 시작한다. old EMA/buffer는 재사용하지 않으며 source/route/document 교체는0dB의 새 창이다. 단독 normalizer OFF/측정 오류와 기존 출력/dip/연속성 허용치는 변경하지 않는다.
+2026-10-15 국소 보완 승인: master OFF에서는 분석 자원을 즉시 퇴역시키되 normalizer의 현재 이득을 기존 wet fade 종료까지 유지하고 이후10ms에 unity로 복귀한다. 별도 JS timer 없이 native AudioParam 시각으로 예약한다. 같은 source/route/document의 빠른 ON은 퇴역 예약을 즉시 취소하고 계산된 현재 이득에서 새 warm-up을 시작한다. 취소·이득 고정은 analyser/buffer 생성 전에 실행해 생성 중 native 시각 전진으로 옛 예약이 먼저 실행되지 않게 하고, 생성 실패 시10ms unity 복귀·limited를 유지한다. old EMA/buffer는 재사용하지 않으며 source/route/document 교체는0dB의 새 창이다. 단독 normalizer OFF/측정 오류와 기존 출력/dip/연속성 허용치는 변경하지 않는다.
 
 ## 9. 프리셋·저장·다중 창
 

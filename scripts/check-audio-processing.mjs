@@ -206,8 +206,8 @@ async function lifetimeProof(page,measurement,sampleRate,files,html){
   const gainZeroHold=Math.abs(gainAt(zeroAfter,7)-gainAt(zeroBefore,7))<.0001&&zeroAfter.reads===zeroBefore.reads;
   await configure(page,{},1);await page.waitForTimeout(600);
   const other=await measurement.context.newPage();await other.bringToFront();
-  await page.waitForFunction(()=>document.hidden===true);await page.waitForTimeout(1200);const hidden=await facts(page);await page.waitForTimeout(1200);const held=await facts(page);
-  await page.bringToFront();await page.waitForFunction(()=>document.hidden===false);await page.waitForTimeout(550);
+  await page.waitForFunction(()=>document.hidden===true,undefined,{polling:100});await page.waitForTimeout(1200);const hidden=await facts(page);await page.waitForTimeout(1200);const held=await facts(page);
+  await page.bringToFront();await page.waitForFunction(()=>document.hidden===false,undefined,{polling:100});await page.waitForTimeout(550);
   const restored=await facts(page);await other.close();
   await configure(page,{normalizerEnabled:false});await page.waitForTimeout(50);await call(page,{kind:'reset-events'});
   const before=await facts(page);await call(page,{kind:'retired-ticks'});const after=await facts(page);
@@ -266,6 +266,8 @@ export async function runAudioProcessing(options){
         row.lifetime=await lifetimeProof(page,measurement,sampleRate,files,html);
       }catch(cause){
         try{row.failureFacts=await facts(page);}catch(diagnostic){row.failureFactsError=diagnostic instanceof Error?diagnostic.message:'audio-processing-diagnostic-failed';}
+        try{row.failurePages=await Promise.all(measurement.context.pages().map(target=>target.evaluate(()=>({url:location.href,hidden:document.hidden,visibility:document.visibilityState}))));}
+        catch(diagnostic){row.failurePagesError=diagnostic instanceof Error?diagnostic.message:'audio-processing-diagnostic-failed';}
         throw cause;
       }finally{row.shutdown=await measurement.close();}
       console.log(JSON.stringify({stage:'rate-complete',sampleRate}));
