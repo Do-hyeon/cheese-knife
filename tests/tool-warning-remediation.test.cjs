@@ -11,7 +11,7 @@ test('media client uses fixed domain property access without object-injection fi
 });
 test('Native audio settings runner and its typed popup helper have no static-tool observations',async()=>{
   const lint=new ESLint({overrideConfigFile:'eslint.security.config.mjs'});
-  const results=await lint.lintFiles(['scripts/check-installed-audio-settings.mjs','scripts/extension-e2e/popup-cdp.mjs']);
+  const results=await lint.lintFiles(['scripts/check-installed-audio-settings.mjs','scripts/extension-e2e/popup-cdp.mjs','scripts/extension-e2e/f01-transition.mjs']);
   assert.deepEqual(results.flatMap(file=>file.messages),[]);
 });
 

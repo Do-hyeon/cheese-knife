@@ -18,7 +18,7 @@ test('development typecheck covers the helper and consumers without weakening pr
   }
   assert.equal(Object.hasOwn(config.compilerOptions, 'skipLibCheck'), false);
   assert.deepEqual(config.compilerOptions.types, ['node']);
-  assert.deepEqual(config.files, ['scripts/check-installed-audio-settings.mjs','scripts/extension-e2e/popup-cdp.mjs','tests/helpers.cjs', 'tests/bridge.test.cjs', 'tests/helper-contracts.test.cjs', 'tests/development-types.test.cjs']);
+  assert.deepEqual(config.files, ['scripts/extension-e2e/f01-transition.mjs','scripts/check-installed-audio-settings.mjs','scripts/extension-e2e/popup-cdp.mjs','tests/helpers.cjs', 'tests/bridge.test.cjs', 'tests/helper-contracts.test.cjs', 'tests/development-types.test.cjs']);
   const product = JSON.parse(await fs.readFile('tsconfig.json', 'utf8'));
   assert.equal(product.compilerOptions.allowJs, false);
   assert.deepEqual(product.compilerOptions.types, ['chrome']);
@@ -36,6 +36,23 @@ test('strict development typecheck has no diagnostics', () => {
   const result = compile('tsconfig.development.json');
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
+for(const proof of [
+  {name:'root type',code:'readFrozenF00Payload(42, {});',diagnostic:'TS2345'},
+  {name:'binary payload',code:'readFrozenF00Payload("C:/fixture", {}).entries[0]!.bytes.toUpperCase();',diagnostic:'TS2339'},
+  {name:'valid consumer',code:'const entry=readFrozenF00Payload("C:/fixture", {}).entries[0];if(entry)entry.bytes.readUInt32BE(0);',diagnostic:''},
+])test('frozen F00 helper compiler proof: '+proof.name,async t=>{
+  await fs.mkdir('output',{recursive:true});const root=await fs.mkdtemp(path.resolve('output/development-f00-payload-types-'));
+  t.after(()=>fs.rm(root,{recursive:true,force:true}));const file=path.join(root,'proof.mts');
+  const entry=path.relative(root,path.resolve('scripts/extension-e2e/f01-transition.mjs')).split(path.sep).join('/');
+  await fs.writeFile(file,`import {readFrozenF00Payload} from ${JSON.stringify(entry)};\n// Compile only, no Git invocation.\n${proof.code}\n`);
+  const config=path.join(root,'tsconfig.json');await fs.writeFile(config,JSON.stringify({extends:path.resolve('tsconfig.development.json'),files:[file],include:[]}));
+  const result=compile(config);assert.ifError(result.error);const diagnostics=result.stdout+result.stderr;
+  if(!proof.diagnostic)assert.equal(result.status,0,diagnostics);
+  else{assert.ok(result.status!==null&&result.status>0,diagnostics);for(const line of diagnostics.trim().split(/\r?\n/)){
+    assert.match(line,/proof\.mts\(3,\d+\): error /,diagnostics);assert.match(line,new RegExp(proof.diagnostic),diagnostics);
+  }}
 });
 
 for (const proof of [

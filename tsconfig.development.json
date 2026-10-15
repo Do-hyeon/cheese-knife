@@ -15,6 +15,7 @@
     "typeRoots": ["./node_modules/@types"]
   },
   "files": [
+    "scripts/extension-e2e/f01-transition.mjs",
     "scripts/check-installed-audio-settings.mjs",
     "scripts/extension-e2e/popup-cdp.mjs",
     "tests/helpers.cjs",

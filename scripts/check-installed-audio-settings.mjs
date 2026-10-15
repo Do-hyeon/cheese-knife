@@ -221,9 +221,16 @@ async function layoutProof(page,input){
     if(zoom!==2||Math.abs(width-80)>.1)throw fail('audio-settings-zoom');
     zoomMeasurement={actual:zoom,output:width,beforeDpr:before.dpr,afterDpr:scaled.dpr,beforeWidth:before.width,afterWidth:scaled.width,...layout};
     // Full-page capture changes viewport metrics under native zoom; capture the real viewport at each section instead.
-    await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:path.join(input.artifactPath,'audio-zoom200.png')});
-    await page.locator('#compressorRatio').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(input.artifactPath,'audio-zoom200-controls.png')});
-    await page.locator('#eq125').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(input.artifactPath,'audio-zoom200-eq.png')});
+    await page.evaluate(async()=>{scrollTo(0,0);await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(true))));});
+    await page.screenshot({path:path.join(input.artifactPath,'audio-zoom200.png')});
+    for(const [id,name]of [['compressorRatio','controls'],['eq125','eq']]){
+      const visible=await page.locator('#'+id).evaluate(async node=>{
+        node.scrollIntoView({block:'center',inline:'nearest'});await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(true))));
+        const rect=node.getBoundingClientRect();return rect.top>=0&&rect.bottom<=innerHeight;
+      });
+      if(!visible)throw fail('audio-settings-zoom-capture-target');
+      await page.screenshot({path:path.join(input.artifactPath,'audio-zoom200-'+name+'.png')});
+    }
   }finally{
     await input.worker.evaluate(id=>chrome.tabs.setZoom(id,1),own.id);
     await waitNative(()=>page.evaluate(()=>({dpr:devicePixelRatio,width:innerWidth})),
