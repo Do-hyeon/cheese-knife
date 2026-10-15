@@ -50,6 +50,8 @@ async function fixture(t, fault, scenario) {
       const phase = (scenario ? ['seed','old','new','rollback','new'] : ['seed', 'old', 'new', 'rollback'])[launchIndex++]; events.push(`launch:${phase}`);
       paths.push([args.profilePath, args.extensionPath]);
       if (fault === 'launch' && phase === 'old') throw faultError('test-launch');
+      if (fault === 'launch-native' && phase === 'old') throw Object.assign(Error('browser-unavailable'),{code:'browser-unavailable',cause:
+        Object.assign(Error('manifest failed'),{code:5,killed:false,signal:null,stderr:'denied',preparationDiagnostic:{stage:'manifest-tool',elapsedMs:32,profilePath:args.profilePath}})});
       const manifest = JSON.parse(await fs.readFile(path.join(args.extensionPath, 'manifest.json')));
       assert.equal(manifest.version, { seed: '2.13.3', old: '2.13.3', new: '2.13.4', rollback: '2.13.5' }[phase]);
       const pages = [];
@@ -122,6 +124,18 @@ test('postclose inventory error cannot disappear behind the expected storage-los
   assert.equal(result.failure.code, 'transition-storage-preservation');
   assert.ok(result.secondaryErrors.some(error => error.code === 'transition-inventory'));
   assert.equal(f.events.includes('launch:rollback'), false);
+});
+
+test('cold child failure IPC retains bounded native cause and preparation stage, never a successful close',async t=>{
+  const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t,'launch-native');
+  await executeTransitionChild(f.options,f.deps);
+  const failure=f.messages.find(message=>message.type==='failure').failure;
+  assert.equal(failure.code,'browser-unavailable');assert.equal(failure.stage,'launch');
+  assert.ok(failure.diagnostic.native,'IPC failure must include the native failure chain');
+  assert.equal(failure.diagnostic.native.cause.code,5);assert.equal(failure.diagnostic.native.cause.stderr,'denied');
+  assert.equal(failure.diagnostic.native.cause.preparationDiagnostic.stage,'manifest-tool');
+  assert.equal(f.messages.filter(message=>message.type==='close-success').length,1);
+  assert.equal(f.events.includes('launch:new'),false);
 });
 test('media child keeps the same root for seed and four observations, creating only first-new',async t=>{
   const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t,undefined,'media-preservation');await executeTransitionChild(f.options,f.deps);

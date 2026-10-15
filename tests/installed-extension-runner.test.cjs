@@ -5,6 +5,18 @@ const { pathToFileURL } = require('node:url');
 
 const runnerModule = () => import(pathToFileURL(path.resolve('scripts/check-installed-extension.mjs')));
 
+test('installed runner summary preserves original native preparation details through a wrapped launch failure',async()=>{
+  const {runInstalledExtensionE2E}=await runnerModule(),f=runnerFixture(),files=await f.dependencies.openRepository();let summary;
+  const original=Object.assign(Error('browser-unavailable'),{code:'browser-unavailable',cause:Object.assign(Error('sdk failed'),{
+    code:5,signal:null,killed:false,stderr:'denied',secret:'omit',preparationDiagnostic:{stage:'manifest-tool',elapsedMs:17}})});
+  f.dependencies.launchInstalledExtension=async()=>{throw original;};
+  const write=files.writeFile;files.writeFile=async(relative,data)=>{if(relative.endsWith('/summary.json'))summary=JSON.parse(data);return write(relative,data);};
+  await assert.rejects(()=>runInstalledExtensionE2E({runId:'Run1',headed:false,dependencies:f.dependencies}),error=>error===original);
+  assert.ok(summary.error.native,'summary must include the native failure chain');
+  assert.equal(summary.error.native.cause.code,5);assert.equal(summary.error.native.cause.stderr,'denied');
+  assert.equal(summary.error.native.cause.preparationDiagnostic.stage,'manifest-tool');assert.equal(summary.error.native.cause.secret,undefined);
+});
+
 function runnerFixture({ failAt, artifactExists = false } = {}) {
   const events = [];
   const root = path.resolve('.');

@@ -9,6 +9,7 @@ import { launchInstalledExtension, parseInstalledE2EArgs, reacquireExtensionWork
   openMediaBrowserSession, closeInstalledMediaBrowser } from './extension-e2e/harness.mjs';
 import { refreshTransitionWorker } from './extension-e2e/transition-preparation.mjs';
 import { openOwnedRoot } from './owned-files.mjs';
+import { nativeFailureDetails } from './audio-native-browser.mjs';
 import { removeCandidate, verifyCandidate } from './verify-candidate.mjs';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -676,7 +677,7 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
     report = { ok: true, runId, ...sections };
   } catch (error) {
     remember(error);
-    report = { ok: false, runId, error: { code: error?.code || 'installed-e2e-failed',
+    report = { ok: false, runId, error: { code: error?.code || 'installed-e2e-failed',native:nativeFailureDetails(error),
       ...(typeof error?.startupDiagnostic === 'string' ? {startupDiagnostic:error.startupDiagnostic.slice(0,4096)} : {}) } };
     if (context) {
       const page = context.pages().at(-1);
@@ -712,7 +713,7 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
     try { after = await deps.sourceAttestation(files, requiredInputs);if (!isDeepStrictEqual(source, after)) throw runnerError('media-source-changed'); }
     catch (error) { remember(error); }
   }
-  if (primaryError && report?.ok) report = { ok: false, runId, error: { code: primaryError?.code || 'installed-e2e-cleanup-failed' } };
+  if (primaryError && report?.ok) report = { ok: false, runId, error: { code: primaryError?.code || 'installed-e2e-cleanup-failed',native:nativeFailureDetails(primaryError) } };
   if (nativeQualification && report) report = { ...report, qualification, shutdown: shutdownProof ?? null,
     profileRetained: !!profilePath, candidateRetained: candidateBuilt, source, after };
   if (report) report.durationMs = Date.now() - startedAt;

@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { openOwnedRoot } from './owned-files.mjs';
+import { nativeFailureDetails } from './audio-native-browser.mjs';
 import { verifyCandidate, removeCandidate } from './verify-candidate.mjs';
 import { loadFixtureResponses,loadAudioFixtureResponses,FIXTURE_LIVE_URL,FIXTURE_AUDIO_URL } from './extension-e2e/fixture-router.mjs';
 import { launchInstalledExtension, parseInstalledE2EArgs, openMediaBrowserSession, closeInstalledMediaBrowser } from './extension-e2e/harness.mjs';
@@ -23,7 +24,7 @@ const execFileAsync = promisify(execFile);
 const slash = value => value.split(path.sep).join('/');
 const genericFailure = error => error?.failure || { code: String(error?.code || 'transition-failed').slice(0, 240),
   caseId: null, phase: null, step: 'prepare', stage: 'prepare',
-  diagnostic: { name: String(error?.name || 'Error').slice(0, 80), message: String(error?.message || '').replaceAll(repositoryRoot, '<repository>').slice(0, 240) }, cleanupErrors: [] };
+  diagnostic: { name: String(error?.name || 'Error').slice(0, 80), message: String(error?.message || '').replaceAll(repositoryRoot, '<repository>').slice(0, 240),native:nativeFailureDetails(error) }, cleanupErrors: [] };
 const relative = (files, absolute) => {
   const value = slash(path.relative(files.root, absolute));
   if (!value || value === '..' || value.startsWith('../') || path.isAbsolute(value)) throw fail('transition-owned-path');

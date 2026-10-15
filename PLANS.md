@@ -2,15 +2,16 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T8 검증 마감, T9 고지·종합 감사·Astra max 최종 검토**. T1–T8 로컬 게이트를 마쳤으며 T9는 미완료다. 완료 근거는 [단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md), 상세 결과는 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)에 유지한다. F00 PR #44 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
+최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T8 마감, T9 cold 준비 실패의 오류 전달 보완·종합 게이트**. T1–T8 로컬 게이트를 마쳤으며 T9는 미완료다. 완료 근거는 [단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md), 상세 결과는 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)에 유지한다. F00 PR #44 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
 
 ## 1. 고정 결정과 공개 경계
 
 T8의 고정 수치·전체 입력·실패 이력은 아카이브/검증 기록에 유지한다. 최신 Native 입력은f0fb3a5이며 제품 DSP는718db57 그대로다. 준비/종료의 과거 간헐 실패 원인은 미확정이다. 새 계측과4회 준비 게이트·전체 오디오/설치 검증이 통과했다고 과거 실패까지 해결된 것으로 표시하지 않는다.
 
 - [x] T8 전체 오디오·기존 컴프레서·영상24pixel·미리보기3·설치 UI/정확한4손실·MAIN 누락 거부 검증 마감. [완료 근거](docs/superpowers/archive/2026-10-15-f01-completed-stages.md).
-- [ ] T9 로컬 오디오 처리·저장/삭제·legacy·downmix·RMS/gesture 한계를 README/PRIVACY에 간결히 동기화한다. 현재 스토어/정책 URL은 변경하지 않는다.
+- [x] T9 로컬 오디오 처리·저장/삭제·legacy·downmix·RMS/gesture 한계를 README/PRIVACY에 미공개 F00·F01로 구분해 동기화했다. 로컬 링크51개/한글·영문 확인, 현재 스토어/정책 URL은 불변이다.
 - [ ] T9 전체 회귀·9기반/build/package exact62·npm/Gitleaks/ESLint와 기존 경고8/새 경고를 구분하고 보호 파일을 확인한다. 기존 private 감사 skip1은 전체 보안 인증이 아니다.
+- [ ] 현재 후보 Gain full·cold 손실19회는 통과했으나 정상cold는5번째 준비에서 browser-unavailable로 실패했다. 바깥 오류만 남기는 설치/전환 보고서에 기존 제한된 원인 직렬화를 연결해 회귀 후 새checkpoint의 정상cold를한번 확인한다. 재발하면 원래 SDK/프로세스 정보를 남기고 중지하며 과거 실패를 덮지 않는다. SDK/브라우저 교체·설치는 별도 승인이다.
 - [ ] fresh Astra max whole-F01 최종 검토와 필요한 보완·회귀를 마친다. 도구/모델 차단 시 대체 모델을 임의 사용하지 않는다.
 - [ ] 전체 마감 기록을 아카이브로 옮기고 F02/통합·실제 배포 후행 게이트만 남긴다. push/PR·배포 금지는 유지한다.
 
@@ -123,7 +124,7 @@ T8의 고정 수치·전체 입력·실패 이력은 아카이브/검증 기록�
 - [x] T5 순수 RMS 제어·좌우 meter·실제 dB automation·window/hold/error·수명 정리. 집중22/22·전체1482통과/실패0/기존private증거1skip·9개 기반/build/package PASS. Native 속도/출력은 T8에 남는다.
 - [x] T6 승인 TAB UI·확정 preset snapshot/confirm·legacy/upgrade·공통 수동 master 연결·최종dist62/runtime20. 실제 후행 검증은 아래 단계로 분리한다.
 - [x] T7 실제 설치·다중 창·숨김 재연결·ABA·스타일 병합·대상 종료·설정4손실·Gain full·cold19/39. 090452a의 source/after 일치·성공 실행의 종료3증명/cleanup0; 최종 전체1577통과/실패0/기존1skip. 상세 완료/실패 이력은 [아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md)에 분리했다. 정밀 timer/출력·누수 판정은 T8에 남는다.
-- [ ] T8 clean checkpoint·기존14/12/18/stress와 새 EQ/normalizer/전환/수명 객관 출력 검증.
+- [x] T8 f0fb3a5의 기존14/12/18/stress·EQ108/RMS60/전환72·사전36/수명·픽셀/미리보기/설치 대조 검증. 완료 이력은 [아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md).
 - [ ] T9 종합 타입/생성·전체/패키지/도구·보호/고지·whole-F01 Astra max 최종 검토/보완·로컬 마감. 완료 후에만 별도 공개 지시를 요청한다.
 
 ## 9. 검증 진입점
@@ -134,6 +135,6 @@ T8의 고정 수치·전체 입력·실패 이력은 아카이브/검증 기록�
 
 ## 10. 현재 사용자 개입 지점
 
-T3 원인 조사/보완/새 checkpoint 재검증은 추가 승인됐다. 별도 개입이 필요하지 않으면 같은 권한·수치 계약 안에서 계속한다. 실패한 checkpoint와 private 증거는 삭제하거나 성공으로 재해석하지 않는다. 새 자격 검사 성공 전에 T4–T9로 넘어가지 않는다. 사용자 Chrome/P09·새 권한/의존성/외부 전송 확대·버전·릴리즈·스토어·push/PR은 제외한다. whole-F01 Astra max 최종 검토는 전체 구현·검증 뒤다. 목업/문서·정적 성공을 실제 음질·저장·Chrome 성공으로 전용하지 않으며 file URL 보안 차단을 우회하지 않는다.
+현재 T9의 승인된 종합 검증·고지·Astra max 최종 검토는 개입 없이 진행한다. 실패한 checkpoint와 private 증거는 삭제하거나 성공으로 재해석하지 않는다. 사용자 Chrome/P09·새 권한/의존성/외부 전송 확대·버전·릴리즈·스토어·push/PR은 제외한다. 목업/문서·정적 성공을 실제 음질·저장·Chrome 성공으로 전용하지 않으며 file URL 보안 차단을 우회하지 않는다. 과거 T3의 자격 검사 중지·해결 이력은 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)으로 구분한다.
 
 실제 설치/새로고침·P09 변경·새 의존성/권한/외부 전송·버전·공개는 별도 STOP 게이트다. 이전 MCP 연결/종료 승인이나 다른 작업의 공개 승인을 재사용하지 않는다.

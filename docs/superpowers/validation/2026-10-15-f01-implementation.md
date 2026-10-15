@@ -320,6 +320,20 @@ root dist58·제품2.13.3·사용자 Chrome/P09·모든 실패 증거와 로컬 
 
 승인된 F01 관측/중간 저장/timeout/정리 보완은 로컬·P의 실제 실패 경로·Q의 전체 사전계측으로 검증했다. 다만 공통 launcher의 준비/종료 진단을 분리해 원래 오류의 code/signal/stderr와 종료 단계별 상태를 보존하는 후속 확인이 필요했다. 이후 아래 계측을 승인받았으며 SDK/브라우저 교체·새 설치는 하지 않는다. 과거 A..R·새 독립 진단·모든 실패와 O의 미기록 한계는 유지한다. T8 전체 출력/기존 객관 회귀와 T9/Astra max는 미완료이며 push/PR은 없다.
 
+#### T9 종합 점검·고지 — 진행 중
+
+T8 task-done의 최종 전체는1616개 중1615통과/실패0/기존private1skip(69.042초)이었다. T9 BASE는17754dd이며 Native 실행 코드는 f0fb3a5 그대로다. README 한글/영문은 미공개 F00·F01의 현재 ON/OFF와 저장 초기값·플레이어 Gain 자동저장·프리셋 상속·stereo/RMS/gesture·한계를 구분했고, PRIVACY도 새 값의 확장 저장·legacy 사이트값 읽기 전용·임시 PCM/RMS 버퍼·분석 수명/삭제를 양쪽 언어로 갱신했다. 실제 스토어/정책 URL·버전·사용자 프로필은 변경하지 않았다.
+
+실제 도구 감사는 `output/tool-audit/run-2026-10-15T12-03-30-010Z-fQ24p7/summary.json`에 있다. npm12.2.0/Node24.19.0의 전체 개발 의존성 감사0건, Gitleaks8.30.1의dir/git각0건, ESLint10.12.0/security4.2.0/no-unsanitized4.1.5는 오류0·warning55·raw exit1이며 전후 검사 입력 snapshot은 일치했다. 스캐너 경고가 있는데 감사 전체를exit0/깨끗함으로 표시하지 않는다.
+
+기존8건은owned-files의동적경로, 신규47건은진단serializer5·합성metrics19·probe12·runner9·생성broker2다. 별도의 읽기 전용 정적 분류에서55개를 입력 순서/중복 위치까지 유지했다. literal 고정 키·수치 인덱스·고정fixture경로·명시capability와원래tab/document/sender검증에 근거해 이 경고들은not_actionable55/confirmed0/needs_review0으로 판단했다. Node 도구는패키지실행면에없고broker의2개는고정4키를읽어비교할뿐임을구분했다. SECURITY.md는 resolver의해당scope에서없었으며 정책부재 자체로판정을닫지않았다. 기존owned-files8건은medium, 나머지47건은high confidence다. 이 판단은동시OS파일교체의원자적차단이나다른취약점/런타임을증명하지않는다.
+
+55개별 근거는 관리된 독립 artifact `artifacts/f01-eslint-triage-20261015-17754dd.json`(SHA256 `d3c57e782d4ec9684a2c18ef7bc5c61368cc9282264b59f4093ca8c69ab85967`)에저장했다. 원본55경고를삭제하거나새rule무시/경고상한완화/코드표현만바꾸는조치는하지않았다. 정식모델보안스캔·제품전체무취약인증·실제배포승인과구분한다. 기존P02 private원장/skip1은그대로다.
+
+현재후보의Gain full은F01Gain20261015S/71.534초에정상종료했다. cold 손실F01ColdLoss20261015S는seed5/phase9/정확한5손실·19회정상종료·전후source일치·cleanup/secondary0으로통과했다. 반면정상F01Cold20261015S는valid-ui의4회종료뒤legacy-valid/seed의5번째launch가browser-unavailable로실패했다. 해당summary의실패3종료필드는false이며IPC/result-missing/cleanup-unconfirmed도보존한다. 실패profile-CfLTXQ에는준비복사본만있고ready-marker는없다.21:15:40의정확한해당profile현재Chrome조회0은사후관측이지원래정상종료증명은아니다.
+
+SDK/브라우저원인은추정하지않는다. 공통계측은하위Error에원인을보존했으나cold의genericFailure가name/message만남기고일반설치보고서도code만남겨원래cause를잃는전달결함을확인했다. 승인된공통계측범위에서기존제한된nativeFailureDetails를두보고서에도재사용했다. 새IPC/설치summary회귀2건은명시적원인부재Assertion RED→GREEN이며오류객체/실패close/다음단계금지는유지한다. 제품/DSP/SDK/브라우저/수치변경·새모듈은없다. strict후전체회귀·새checkpoint에서정상cold를한번확인하고재발하면원래native정보를보존한채중지한다. T9종합회귀/보호자료/Astra max는계속미완료다.
+
 #### 공통 launcher 준비·종료 계측 — 2026-10-15
 
 최종 후속: f0fb3a5의 신호 없는4회 준비/정상종료 게이트가 모두 통과해 원래 승인T8을 같은clean 입력으로 한 번 재개했다. S/WuDbH4는3rate 사전36개/실제세구간·EQ108·RMS60·전환72·모든출력/수명PASS, source/after5일치·pageErrors0·6회각종료3true·중간JSON789개를 남겼다. 과거 간헐 준비/종료 오류는 재현되지 않았으나 내부 원인은 미확정이며 해결됐다고 선언하지 않는다. 기존14/12/18/stress·24pixel·미리보기3·설치UI/정확한4손실·MAIN누락 대조도같은입력으로 통과했다. [T8 완료 아카이브](../archive/2026-10-15-f01-completed-stages.md)에 실행ID/브라우저/제한을 정리했으며 T9는 별도 미완료다.
