@@ -138,3 +138,13 @@ summary의 source/after 전체가 같고 종료3증명true다. private 증거는
 89a5955/N의 실패 진단에서 native stopped 이후 원래 worker 전역의 임시 UUID 표식은 없어지고 `performance.timeOrigin`은1792029224077.4→1792029243252로 바뀌었으며 runtime ID는 같았다. Playwright Worker 객체와 CDP target ID는 둘 다 재사용됐다. 따라서 객체 wrapper/target ID 교체를 실제 실행 문맥 교체와 동일시한 도구 조건이 틀렸으며, 실제 제품 동작을 바꿀 근거가 아니다. N도 기존 거부 조건대로 실패/증거 보존했고 종료3증명true·source일치다.
 
 새 수용 증거는 정확한 자체 worker version의 stopped→running, 이전 자체 전역 표식의 실제 부재, 유한하고 증가한 새 timeOrigin, 같은 extension ID·원시 저장값, 명시적 TAB 조회 성공을 모두 요구한다. wrapper/target 재사용 여부는 관측값으로 남기며 성공을 꾸미기 위해 ID를 생성하지 않는다. 기존 marker/같은 시작시각/누락·nonfinite/재실행 미관측을 거부하는 RED→GREEN 및 strict/관련30개 PASS. 이 보완의 실제 전체 성공은 다음 새 checkpoint에서 확인한다. 자연 suspension·스토어 업데이트·플랫폼 rollback 증명과는 구분한다.
+
+#### 실제 UI positive/정확한4손실 통과와 캡처 보완
+
+bc8b2f07cb159a6a2e51432cb5656f07d87cf638의 새 프로필O positive는26.165초/exit0/ok=true/audioSettings.passed=true, 별도 새 프로필P의 `--control=storage-loss`는26.079초/exit0/ok=true/audioSettings.passed=false(의도한 음성 대조)다. 두 sourceSha256은60df70fa949275b9aaa842ce1296d92d91353d3086f255a188f8d2d42d4a401e이며 source/after 전체 일치·종료3증명true·pageErrors=[]다.
+
+실제 두 창의 trusted pointer/key/input은각22/41/46과7/42/45다. 합성10/4는 별도 집계했고 실제 입력으로 계산하지 않았다. CAS는 Native full 요청2개/보류 원본 dispatch1/revision+1/late conflict/storedfalse다. worker는 native stopped→running·이전 marker 부재/새 timeOrigin/원시 저장 동일을 모두 확인했고 wrapper/target 재사용true를 그대로 보고했다. 확대는DPR1→2·viewport1280→640·수치80CSSpx를 확인했다.
+
+P는 Gain0·상속false·EQ125=1.25·실제 preset UUID의 누락을 각각 한 필드 차이/정확한code·phase로 검출하고 매회 원시 전체를 복원했다. timeout/추측 기대 값/다른 변경은 일치로 받지 않는다. private summary는 `installed-extension-F01SettingsRealmProof20261015O` 및 `installed-extension-F01SettingsLoss20261015P`에 보존한다.
+
+O의 실제 캡처 시각 대조에서 zoom 상태의 fullPage 캡처가 페이지 viewport를 조절하며 우측을 자르는 것을 발견했다. 기능/실측DPR 증거와 캡처 한계를 구분한다. 고배율 root overflow0·EQ580px/8개 한 줄을 추가로 측정하고 viewport 캡처3장(상단/조작부/EQ)으로 변경했다. 잘못된 고배율 배치를 거부하는 RED→GREEN·strict/관련27개 통과. 이 도구 보완의 새 Native 재검증과 F01 cold 전환/T8/T9는 미완료다.

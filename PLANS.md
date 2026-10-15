@@ -116,7 +116,7 @@
 - [x] T6 승인 TAB UI·확정 preset snapshot/confirm·legacy/upgrade·공통 수동 master 연결·최종dist62/runtime20. 실제 후행 검증은 아래 단계로 분리한다.
 - [ ] T7 clean checkpoint·실제 설치/다중 창/전환·정확한 저장 손실 대조·document/종료 증명.
   - [x] 실제 실행에서 발견한 locale 이름·Native context 키 순서·72px 다이얼·저장 receipt 누적 원인/RED→GREEN 보완. 최신 전체1542통과/실패0/기존private감사1skip·9기반/build/package PASS.
-  - [ ] 실제 UI 검사 전체 완주·4가지 저장 손실 대조. J 실행은 실제 경쟁/ACK유실/문서·창/수명/quota까지 진행했으나 worker 정지/교체 도구 단계에서 실패했다. 부분 관측을 전체 PASS로 쓰지 않는다.
+  - [ ] 실제 UI 검사/4가지 저장 손실 대조의 최종 고배율 캡처·배치 재확인. bc8b2f0의O/P는 전체 gate·정확한4손실·worker 실행 문맥 교체·종료3증명/source 일치 PASS. 시각 대조에서 발견한 zoom fullPage 캡처 한계를 보완했고 viewport 캡처/고배율 root overflow·EQ 한 줄 검사를 강화해 새 checkpoint 재검증한다.
   - [x] Gain full 재배치 fixture 보완 후 실제 재검증. a3403d2의M 실행70.784초 PASS·source일치/종료3증명true·page error0. 자연 worker suspension·물리 출력 증명은 아니다.
   - [ ] F01 저장 형식 전환 CLI/독립 frozen 입력/정확한 손실 대조 구현·실행.
 - [ ] T8 clean checkpoint·기존14/12/18/stress와 새 EQ/normalizer/전환/수명 객관 출력 검증.

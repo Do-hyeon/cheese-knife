@@ -10,7 +10,7 @@ const report=()=>({ok:true,runId:'Settings1',qualification:'audio-settings',sour
     lifecycle:{oneWindowClosed:true,remainingNativeSource:1,beforeHeap:100,afterHeap:90},quota:{actualQuotaFailure:true,bytesAtLimit:10485760},
     workerRestart:{actualWorkerReplacement:true,nativeStopped:true,nativeRunning:true,markerAbsent:true,beforeTimeOrigin:1000,afterTimeOrigin:2000,wrapperReused:true,targetReused:true},
     layout:{viewports:[1280,800,360].map(width=>({width,output:80,shell:580,bands:Array(8).fill(100),scrollable:width===360,overflow:false})),
-      zoom:{actual:2,output:80,beforeDpr:1,afterDpr:2,beforeWidth:1280,afterWidth:640}}},pageErrors:[]});
+      zoom:{actual:2,output:80,beforeDpr:1,afterDpr:2,beforeWidth:1280,afterWidth:640,overflow:false,bands:Array(8).fill(100),shell:580}}},pageErrors:[]});
 test('settings runner rejects unsafe IDs unknown/duplicate flags controls and remote profiles before effects',async()=>{
   const {parseAudioSettingsArgs}=await load();assert.deepEqual(parseAudioSettingsArgs(['--run-id=Settings1']),{runId:'Settings1',headed:false,control:null});
   assert.deepEqual(parseAudioSettingsArgs(['--run-id=Loss1','--headed','--control=storage-loss']),{runId:'Loss1',headed:true,control:'storage-loss'});
@@ -51,7 +51,7 @@ test('same-scope full request race requires two real senders one delayed dispatc
 test('reported zoom without actual browser pixel-ratio and layout scaling is not a 200 percent proof',async()=>{
   const {assertAudioSettingsReport}=await load();
   for(const mutate of [r=>{r.audioSettings.layout.zoom.afterDpr=1;},r=>{r.audioSettings.layout.zoom.afterWidth=1280;},
-    r=>{delete r.audioSettings.layout.zoom.beforeDpr;}]){
+    r=>{delete r.audioSettings.layout.zoom.beforeDpr;},r=>{r.audioSettings.layout.zoom.overflow=true;},r=>{r.audioSettings.layout.zoom.bands[7]=1010;}]){
     const r=report();mutate(r);assert.throws(()=>assertAudioSettingsReport(r,{runId:'Settings1',headed:false,control:null}),/audio-settings-proof/);
   }
 });

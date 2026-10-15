@@ -80,6 +80,7 @@ export function assertAudioSettingsReport(raw,options){
   const controls=result.lossControls;
   const inputs=result.nativeInputs,windows=result.nativeWindows,tabWindows=result.nativeTabWindows;
   const lifecycle=record(result.lifecycle),quota=record(result.quota),restart=record(result.workerRestart),layout=record(result.layout),zoom=record(layout?.zoom);
+  const zoomBands=zoom?.bands;
   const race=record(result.sameScope);
   if(race?.nativeFullRequests!==2||race.heldDispatches!==1||race.committedRevisionDelta!==1||race.lateCode!=='conflict'||race.lateStored!==false)throw fail('audio-settings-proof');
   if(!Array.isArray(inputs)||inputs.length!==2||!Array.isArray(windows)||windows.length!==2||windows[0]===windows[1]||
@@ -93,6 +94,8 @@ export function assertAudioSettingsReport(raw,options){
     zoom?.actual!==2||typeof zoom.output!=='number'||Math.abs(zoom.output-80)>.1||
     ![zoom.beforeDpr,zoom.afterDpr,zoom.beforeWidth,zoom.afterWidth].every(value=>typeof value==='number'&&Number.isFinite(value)&&value>0)||
     Math.abs(Number(zoom.afterDpr)-Number(zoom.beforeDpr)*2)>.01||Math.abs(Number(zoom.afterWidth)*2-Number(zoom.beforeWidth))>2||
+    zoom.overflow!==false||!Array.isArray(zoomBands)||zoomBands.length!==8||!zoomBands.every(y=>typeof y==='number'&&Number.isFinite(y))||
+    zoomBands.some(y=>Math.abs(Number(y)-Number(zoomBands.at(0)))>1)||typeof zoom.shell!=='number'||Math.abs(zoom.shell-580)>.1||
     !Array.isArray(layout?.viewports)||layout.viewports.length!==3)throw fail('audio-settings-proof');
   for(const raw of inputs){
     const counts=record(raw);
@@ -188,7 +191,8 @@ async function numberInput(page,selector,value,worker,accept){
 /** @param {import('playwright').Page} page @param {AudioSettingsScenario} input */
 async function layoutProof(page,input){
   const measurements=[];
-  let zoomMeasurement={actual:0,output:0,beforeDpr:0,afterDpr:0,beforeWidth:0,afterWidth:0};
+  /** @type {{actual:number,output:number,beforeDpr:number,afterDpr:number,beforeWidth:number,afterWidth:number,overflow:boolean,bands:number[],shell:number}} */
+  let zoomMeasurement={actual:0,output:0,beforeDpr:0,afterDpr:0,beforeWidth:0,afterWidth:0,overflow:true,bands:[],shell:0};
   for(const width of [1280,800,360]){
     await page.setViewportSize({width,height:1000});
     const measurement=await page.evaluate(()=>{
@@ -211,9 +215,15 @@ async function layoutProof(page,input){
     const scaled=await waitNative(()=>page.evaluate(()=>({dpr:devicePixelRatio,width:innerWidth})),
       value=>Math.abs(value.dpr-before.dpr*2)<.01&&Math.abs(value.width*2-before.width)<=2,'audio-settings-zoom-not-scaled');
     const width=await page.locator('#audioGain-value').evaluate(node=>node.getBoundingClientRect().width);
+    const layout=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth>innerWidth+1,
+      bands:[...document.querySelectorAll('.f01-eq-band')].map(node=>node.getBoundingClientRect().top),shell:document.querySelector('.f01-eq-shell')?.getBoundingClientRect().width??0}));
+    if(layout.overflow||layout.bands.length!==8||layout.bands.some(y=>Math.abs(y-(layout.bands[0]??NaN))>1)||Math.abs(layout.shell-580)>.1)throw fail('audio-settings-zoom-layout');
     if(zoom!==2||Math.abs(width-80)>.1)throw fail('audio-settings-zoom');
-    zoomMeasurement={actual:zoom,output:width,beforeDpr:before.dpr,afterDpr:scaled.dpr,beforeWidth:before.width,afterWidth:scaled.width};
-    await page.screenshot({path:path.join(input.artifactPath,'audio-zoom200.png'),fullPage:true});
+    zoomMeasurement={actual:zoom,output:width,beforeDpr:before.dpr,afterDpr:scaled.dpr,beforeWidth:before.width,afterWidth:scaled.width,...layout};
+    // Full-page capture changes viewport metrics under native zoom; capture the real viewport at each section instead.
+    await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:path.join(input.artifactPath,'audio-zoom200.png')});
+    await page.locator('#compressorRatio').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(input.artifactPath,'audio-zoom200-controls.png')});
+    await page.locator('#eq125').scrollIntoViewIfNeeded();await page.screenshot({path:path.join(input.artifactPath,'audio-zoom200-eq.png')});
   }finally{
     await input.worker.evaluate(id=>chrome.tabs.setZoom(id,1),own.id);
     await waitNative(()=>page.evaluate(()=>({dpr:devicePixelRatio,width:innerWidth})),
