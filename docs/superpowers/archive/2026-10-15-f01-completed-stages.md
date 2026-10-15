@@ -24,6 +24,17 @@
 
 이 문서는 완료된 단계의 근거를 보존한다. 후속 구현·공개 권한은 현재 PLANS.md와 사용자 승인으로 판단한다. F01 전체 완료나 배포 완료 기록이 아니다.
 
+## T1–T6 — 구현 기반 단계별 마감 이력
+
+아래는 각 단계 당시의 기록이다. 당시 후행 미실행 사항은 위 T8과 아래 T7의 실제 완료 근거로 이어지며, 이 문구를 현재 미완료 커서로 사용하지 않는다.
+
+- [x] T1 schema2·읽기 무쓰기·명시 전환/전역 alias·Gain 상속 계약. 격리 집중99/99·전체1411통과/실패0/기존 private 증거1skip·9개 기반/build/package 통과. 기존 F00 pin 보존·새 F01 pin 분리.
+- [x] T2 protocol3·기존 broker 한 queue·native probe/legacy import·Gain actor/epoch/receipt. 집중61/61·전체1433통과/실패0/기존private증거1skip·9개 기반/build/package 통과. 후보dist60/runtime18. native 문서/입력의 실제 성공은 T3에서 별도 확인한다.
+- [x] T3 최소 production protocol3/공통 수동 master·실제 Blob/volume fixture·제한된 ISOLATED Gain UI. 전체1458통과/실패0/기존private증거1skip·9개 기반/build/package, dist61/runtime19. 포커스 보완 checkpoint6d5b39b의 실제 qualification68.761초/별도 negative6.635초 PASS·page error0·전후 소스 일치/종료 증명3개true. 자연 worker 교체는 미관측이고 TTL61초 첫 조작과 구분한다.
+- [x] T4 source1·전체/하위 상태·고정8EQ·headroom·기존 delay/limiter/ramp 보호. 집중141/141·전체1465통과/실패0/기존private증거1skip·9개 기반/build/package PASS. 실제 EQ 응답/출력은 T8에 남는다.
+- [x] T5 순수 RMS 제어·좌우 meter·실제 dB automation·window/hold/error·수명 정리. 집중22/22·전체1482통과/실패0/기존private증거1skip·9개 기반/build/package PASS. Native 속도/출력은 T8에 남는다.
+- [x] T6 승인 TAB UI·확정 preset snapshot/confirm·legacy/upgrade·공통 수동 master 연결·최종dist62/runtime20. 실제 후행 검증은 아래 단계로 분리한다.
+
 ## T7 — 실제 설치·다중 창·저장 전환/손실 검증
 
 2026-10-15 로컬 마감. Native 검증 입력은 `090452ae63f643ae4588062950fc25bca083af3d`, 전체 소스 해시는 `65a43c7c6641f79e0051a902c6e2213397a79fa191d23f1339b5da72e2259d92`다. 각 실행의 source/after 다섯 필드가 모두 일치했다.

@@ -332,7 +332,13 @@ T8 task-done의 최종 전체는1616개 중1615통과/실패0/기존private1skip
 
 현재후보의Gain full은F01Gain20261015S/71.534초에정상종료했다. cold 손실F01ColdLoss20261015S는seed5/phase9/정확한5손실·19회정상종료·전후source일치·cleanup/secondary0으로통과했다. 반면정상F01Cold20261015S는valid-ui의4회종료뒤legacy-valid/seed의5번째launch가browser-unavailable로실패했다. 해당summary의실패3종료필드는false이며IPC/result-missing/cleanup-unconfirmed도보존한다. 실패profile-CfLTXQ에는준비복사본만있고ready-marker는없다.21:15:40의정확한해당profile현재Chrome조회0은사후관측이지원래정상종료증명은아니다.
 
-SDK/브라우저원인은추정하지않는다. 공통계측은하위Error에원인을보존했으나cold의genericFailure가name/message만남기고일반설치보고서도code만남겨원래cause를잃는전달결함을확인했다. 승인된공통계측범위에서기존제한된nativeFailureDetails를두보고서에도재사용했다. 새IPC/설치summary회귀2건은명시적원인부재Assertion RED→GREEN이며오류객체/실패close/다음단계금지는유지한다. 제품/DSP/SDK/브라우저/수치변경·새모듈은없다. strict후전체회귀·새checkpoint에서정상cold를한번확인하고재발하면원래native정보를보존한채중지한다. T9종합회귀/보호자료/Astra max는계속미완료다.
+SDK/브라우저원인은추정하지않는다. 공통계측은하위Error에원인을보존했으나cold의genericFailure가name/message만남기고일반설치보고서도code만남겨원래cause를잃는전달 결함을확인했다. 승인된공통계측범위에서기존제한된nativeFailureDetails를두보고서에도재사용했다. 새IPC/설치summary회귀2건은명시적원인부재Assertion RED→GREEN이며오류객체/실패close/다음단계금지는유지한다. 제품/DSP/SDK/브라우저/수치변경·새모듈은없다.
+
+보완의strict audio/development·전체1618개중1617통과/실패0/기존private1skip(63.974초)·9기반/build/package62를확인했다. 새clean1e20b0b에서F01Cold20261015T는seed11/phase28/정상종료39회·전후source5일치·cleanup/secondary0으로통과했다. 앞선실패를소급해PASS로만들거나SDK원인해결을주장하지않는다.
+
+같은1e20b0b의최신실제감사는`output/tool-audit/run-2026-10-15T12-27-01-467Z-qoACkY/summary.json`이다. npm0/Gitleaks-dir0/git0/ESLint55/rawexit1·입력snapshot일치이며55개위치/rule/message/catalog는앞선분류입력과완전히같다. 해당경고의코드/guard도불변이므로원본별정적근거와새실행의동일성증거를연결한다. 제품/src/web/locales/실행fixture·수치·manifest/lock/vendor는f0fb3a5와1e20b0b사이차이가없다. T8의S는f0의실제전체입력으로기록하며새source전체해시로바꿔표시하지않는다. executioncopy와root의코드/테스트/설정/asset302개도일치했다. 비교중발견한옛설계mockup한파일만현재승인문서로동기화했으며제품코드는달라지지않았다.
+
+root dist58의전체inventory는공개baseline과같은`a7a23d74b79132479b53d80b3cac2d71ab89a3cdb15b68cdda81732e6064ddd2`,제품버전2.13.3이다. 완료이력은PLANS에서아카이브로이동했고고지/문서로컬링크51개·한글/영문검사도통과했다. 독립Astra max whole-F01최종검토/보완과최종task-done은아직미완료다. push/PR/병합/릴리즈/스토어변경은없다.
 
 #### 공통 launcher 준비·종료 계측 — 2026-10-15
 
