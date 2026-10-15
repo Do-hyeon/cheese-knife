@@ -34,7 +34,7 @@ fresh `/root/f01_minor_ui_astra_max` / gpt-6-astra/max가 `f26cdd2..0f4ab82`와 
 - [x] 최종 source `4b89ec3bd0f3f1c966f1b4a3a88333895cb59a5e`: 정상 F01Minor20261015B28.191초/손실 F01MinorLoss20261015B27.619초, 신규4관측·기존8범주/source5전후일치/pageErrors0/정상종료3true. 손실은wrapper ok=true/internal passed=false·정확한4누락 감지. Native output `f01-minor-4b89ec3-native{,-loss}.log`. 실제 VOD URL 계약은 unit, Native는 채널 없는 pair이며 실제 VOD 스트림 검증으로 부풀리지 않는다.
 - [x] fresh gpt-6-astra/max 변경 범위 독립 검토·Important1 직접 RED→GREEN·전체/Native 재검증. 작성자 보완 뒤 추가 독립 재검토는 하지 않았으며 원 검토 판정0/1/0은 그대로 보존한다.
 - [x] Task1-done 원래BASEf26cdd2..제품4b89ec3: 최종전체1632중1631통과/실패0/기존private1skip(63.195초). PLANS/이전 보류 항목·아카이브 갱신. 기존 과거 판정·실패는 삭제하지 않는다.
-- [ ] **F01 전체 종료 후 한글 PR 하나**가 필요하다. 이번에는 push/PR을 하지 않으며 다음 명시 승인을 받은 뒤 F01 전체 범위 공개 CI까지 진행한다. F02를 F01 PR의 선행 의존성으로 추가하지 않는다. 병합·릴리즈는 별도 승인이고 릴리즈는 F02/통합 후다.
+- [x] Minor 로컬 마감 이후 사용자가 **F01 전체 범위 push·한글 PR 하나·공개 CI 확인**을 명시 승인했다. 실행 상태는 [PR 사전검증](2026-10-15-f01-pr-preflight.md)과 PLANS.md에서 관리한다. F02를 F01 PR의 선행 의존성으로 추가하지 않는다. 병합·릴리즈·스토어 배포는 이번 범위가 아니며 릴리즈는 F02/통합 후다.
 
 보호 확인: root dist58/공개 inventory hash `a7a23d74b79132479b53d80b3cac2d71ab89a3cdb15b68cdda81732e6064ddd2`, 버전2.13.3, 후보와 root의 비Markdown308추적 입력 byte 일치. Native 종료 뒤 자기 F01 Chrome process0. root 제품은 Native4b89ec3에서 바뀌지 않았으며 이후 문서 정리만 한다.
 
