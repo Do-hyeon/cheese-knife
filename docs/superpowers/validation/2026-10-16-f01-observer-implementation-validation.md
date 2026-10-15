@@ -47,3 +47,9 @@
 - 첫 targeted는 I1/최종writer/보존표시 해소와 관련16/16을 확인했지만, I2 후처리 예외가 이미 반환된 자식 종료 기록을 덮는 Important1을 남겼다. 이를 실제 signal/timeout/errors 보존 검사 RED2건으로 재현해 보완했고 시간 상한5/5·strict가 통과했다. 최신 전체는 **1727/통과1726/실패0/기존제외1**(`observer-review-full-corrected.log`), 9기반(`observer-review-foundation-corrected.log`), 격리 build62/check22(`observer-review-build-corrected.log`) 통과다. 남은 동일 reviewer 확인 전에는 Native/push를 하지 않는다.
 - `af35413` 도구 재검사도 입력 전후 일치·npm0/Gitleaks0·정적62/raw exit1이며 경고 항목은 이전과 동일했다(`output/tool-audit/run-2026-10-15T23-05-22-341Z-F7Av45`). 종료 기록 보완 후 감사는 별도 갱신한다. 취소 불가능한 OS metadata의 즉시 종료를 보장하지 않으며, 초과한 실행을 통과시키거나 host 종료 없이 JSON만 완료 증거로 사용하지 않는다.
 - Native base/negative·일반 전환/손실·F01 cold/손실·Windows9회, 조사push 및 Linux15회는 미실행이다. 과거250Hz ON 실패는 미해결이며, 앞으로 관측 집합이 모두 통과해도 이번 조건 미재현으로만 판정한다.
+
+## Task3 최종 gate
+
+`0e868d0`의 잔여 I2를 동일 Astra max가 다시 확인했다. 실제 자식 종료 정보 보존·만료 후 읽기 금지·후속 STOP을 확인하고 deadline5/5를 직접 실행했다. **검토 범위 잔여 Critical/Important 없음, Task4 준비 가능** 판정이다. Native/OS I/O hang/Linux CI는 이 판정에서 제외됐으며, 해당 미확인 범위는 실제 Task4/5가 소유한다. metadata의 정확한 wall-clock 종료 불보장과 JSON 단독 완료 증명 금지는 수용한 한계로 계속 고지한다.
+
+최신 실제 감사는 `output/tool-audit/run-2026-10-15T23-11-15-146Z-PqkLQY`다. 입력 snapshot 일치·npm0/Gitleaks 디렉터리0/Git0·정적62/raw exit1을 확인했다. root dist58/hash도 이전과 같고315개 비Markdown 추적 입력이 실행 사본과 같다. Task3 최종 집중171/171 및 strict를 계획의 task-done으로 다시 확인했다. 이 문서 단계까지 새 Native/push는 미실행이다.
