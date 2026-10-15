@@ -7,7 +7,8 @@ const report=()=>({ok:true,runId:'Settings1',qualification:'audio-settings',sour
   audioSettings:{passed:true,checks:['native-ui','two-windows','storage-authority','layout','original-target','preset-draft','input-focus','lifecycle'],lossControls:[],
     nativeInputs:[nativeInputs(),nativeInputs()],nativeWindows:[1,2],nativeTabWindows:[3,4],
     lifecycle:{oneWindowClosed:true,remainingNativeSource:1,beforeHeap:100,afterHeap:90},quota:{actualQuotaFailure:true,bytesAtLimit:10485760},workerRestart:{actualWorkerReplacement:true},
-    layout:{viewports:[1280,800,360].map(width=>({width,output:80,shell:580,bands:Array(8).fill(100),scrollable:width===360,overflow:false})),zoom:{actual:2,output:80}}},pageErrors:[]});
+    layout:{viewports:[1280,800,360].map(width=>({width,output:80,shell:580,bands:Array(8).fill(100),scrollable:width===360,overflow:false})),
+      zoom:{actual:2,output:80,beforeDpr:1,afterDpr:2,beforeWidth:1280,afterWidth:640}}},pageErrors:[]});
 test('settings runner rejects unsafe IDs unknown/duplicate flags controls and remote profiles before effects',async()=>{
   const {parseAudioSettingsArgs}=await load();assert.deepEqual(parseAudioSettingsArgs(['--run-id=Settings1']),{runId:'Settings1',headed:false,control:null});
   assert.deepEqual(parseAudioSettingsArgs(['--run-id=Loss1','--headed','--control=storage-loss']),{runId:'Loss1',headed:true,control:'storage-loss'});
@@ -28,6 +29,14 @@ test('native evidence cannot be replaced by zero counts guessed zoom or missing 
     const r=report();corrupt(r);assert.throws(()=>assertAudioSettingsReport(r,{runId:'Settings1',headed:false,control:null}),/audio-settings-proof/);
   }
 });
+test('reported zoom without actual browser pixel-ratio and layout scaling is not a 200 percent proof',async()=>{
+  const {assertAudioSettingsReport}=await load();
+  for(const mutate of [r=>{r.audioSettings.layout.zoom.afterDpr=1;},r=>{r.audioSettings.layout.zoom.afterWidth=1280;},
+    r=>{delete r.audioSettings.layout.zoom.beforeDpr;}]){
+    const r=report();mutate(r);assert.throws(()=>assertAudioSettingsReport(r,{runId:'Settings1',headed:false,control:null}),/audio-settings-proof/);
+  }
+});
+
 test('negative mode requires four exact field witnesses rather than a timeout or invented expected value',async()=>{
   const {assertAudioSettingsReport}=await load(),make=()=>{
     const r=report();r.audioSettings.passed=false;

@@ -86,6 +86,8 @@ export function assertAudioSettingsReport(raw,options){
     ![lifecycle.beforeHeap,lifecycle.afterHeap].every(value=>typeof value==='number'&&Number.isFinite(value)&&value>0)||
     quota?.actualQuotaFailure!==true||typeof quota.bytesAtLimit!=='number'||!Number.isSafeInteger(quota.bytesAtLimit)||quota.bytesAtLimit<1||quota.bytesAtLimit>16*1024*1024||
     restart?.actualWorkerReplacement!==true||zoom?.actual!==2||typeof zoom.output!=='number'||Math.abs(zoom.output-80)>.1||
+    ![zoom.beforeDpr,zoom.afterDpr,zoom.beforeWidth,zoom.afterWidth].every(value=>typeof value==='number'&&Number.isFinite(value)&&value>0)||
+    Math.abs(Number(zoom.afterDpr)-Number(zoom.beforeDpr)*2)>.01||Math.abs(Number(zoom.afterWidth)*2-Number(zoom.beforeWidth))>2||
     !Array.isArray(layout?.viewports)||layout.viewports.length!==3)throw fail('audio-settings-proof');
   for(const raw of inputs){
     const counts=record(raw);
@@ -181,7 +183,7 @@ async function numberInput(page,selector,value,worker,accept){
 /** @param {import('playwright').Page} page @param {AudioSettingsScenario} input */
 async function layoutProof(page,input){
   const measurements=[];
-  let zoomMeasurement={actual:0,output:0};
+  let zoomMeasurement={actual:0,output:0,beforeDpr:0,afterDpr:0,beforeWidth:0,afterWidth:0};
   for(const width of [1280,800,360]){
     await page.setViewportSize({width,height:1000});
     const measurement=await page.evaluate(()=>{
@@ -197,13 +199,21 @@ async function layoutProof(page,input){
   }
   await page.setViewportSize({width:1280,height:1000});
   const own=await page.evaluate(()=>chrome.tabs.getCurrent());if(typeof own?.id!=='number')throw fail('audio-settings-zoom-target');
-  await input.worker.evaluate(async id=>{await chrome.tabs.setZoomSettings(id,{mode:'manual',scope:'per-tab'});await chrome.tabs.setZoom(id,2);},own.id);
+  const before=await page.evaluate(()=>({dpr:devicePixelRatio,width:innerWidth}));
+  await input.worker.evaluate(async id=>{await chrome.tabs.setZoomSettings(id,{mode:'automatic',scope:'per-tab'});await chrome.tabs.setZoom(id,2);},own.id);
   try{
     const zoom=await input.worker.evaluate(id=>chrome.tabs.getZoom(id),own.id);
+    const scaled=await waitNative(()=>page.evaluate(()=>({dpr:devicePixelRatio,width:innerWidth})),
+      value=>Math.abs(value.dpr-before.dpr*2)<.01&&Math.abs(value.width*2-before.width)<=2,'audio-settings-zoom-not-scaled');
     const width=await page.locator('#audioGain-value').evaluate(node=>node.getBoundingClientRect().width);
     if(zoom!==2||Math.abs(width-80)>.1)throw fail('audio-settings-zoom');
-    zoomMeasurement={actual:zoom,output:width};await page.screenshot({path:path.join(input.artifactPath,'audio-zoom200.png'),fullPage:true});
-  }finally{await input.worker.evaluate(id=>chrome.tabs.setZoom(id,1),own.id);}
+    zoomMeasurement={actual:zoom,output:width,beforeDpr:before.dpr,afterDpr:scaled.dpr,beforeWidth:before.width,afterWidth:scaled.width};
+    await page.screenshot({path:path.join(input.artifactPath,'audio-zoom200.png'),fullPage:true});
+  }finally{
+    await input.worker.evaluate(id=>chrome.tabs.setZoom(id,1),own.id);
+    await waitNative(()=>page.evaluate(()=>({dpr:devicePixelRatio,width:innerWidth})),
+      value=>Math.abs(value.dpr-before.dpr)<.01&&Math.abs(value.width-before.width)<=1,'audio-settings-zoom-restore');
+  }
   return {viewports:measurements,zoom:zoomMeasurement};
 }
 /** @param {Record<string,unknown>} raw */

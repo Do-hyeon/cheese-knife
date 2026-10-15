@@ -24,6 +24,18 @@ test('own TAB master uses one existing player intent and writes no settings/defa
   assert.equal(reply.ok,true,reply.code);assert.equal(reply.audioState.wanted,false);assert.equal(sets(),1);
   assert.equal(h.calls.filter(call=>call.kind==='commit').length,0);assert.deepEqual(h.saved,{});
 });
+
+test('native scripting object-key reordering preserves exact audio context identity without relaxing changed-field rejection',async t=>{
+  const {h,send,target,sets}=await fixture(t),execute=h.worker.window.chrome.scripting.executeScript;
+  const reorder=value=>value&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.keys(value).sort().map(key=>[key,reorder(value[key])])):
+    Array.isArray(value)?value.map(reorder):value;
+  h.worker.window.chrome.scripting.executeScript=async options=>(await execute({...options,args:reorder(options.args)})).map(reorder);
+  const read=await send({action:'get-audio-state',target});assert.equal(read.ok,true,read.code);
+  const off=await send({action:'set-audio-wanted',target,binding:read.audioState,wanted:false});assert.equal(off.ok,true,off.code);assert.equal(sets(),1);
+  const bad=structuredClone(off.audioState);bad.context.playerGeneration++;
+  const rejected=await send({action:'set-audio-wanted',target,binding:bad,wanted:true});assert.equal(rejected.ok,false);assert.equal(sets(),1);
+  assert.equal(h.calls.filter(call=>call.kind==='commit').length,0);
+});
 test('same URL replacement, runtime ABA, moved window, unknown fields never retarget master',async t=>{
   for(const kind of ['document','runtime','window','field']){
     const {h,send,target,runtime,replace,sets}=await fixture(t),read=await send({action:'get-audio-state',target});assert.equal(read.ok,true,read.code);

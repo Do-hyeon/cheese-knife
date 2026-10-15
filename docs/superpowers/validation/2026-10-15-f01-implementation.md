@@ -100,3 +100,11 @@ T7 실제 설치/두 창/전환·고배율·좁은 화면과 T8 객관 출력·R
 새 Gain 출처 번역 키5종에 Chrome이 허용하지 않는 하이픈이 포함된 것을 발견했다. 공식 [메시지 이름 규칙](https://developer.chrome.com/docs/extensions/how-to/ui/localization-message-formats#name)과 비교하고, 두 언어 전체 키 검사 RED 및 실제 영문 메시지 조회 RED를 확인했다. 키만 underscore로 바꾸고 bounded 출처 enum의 조회 지점을 맞췄다. 기존 Gain 출처 값·저장 형식은 변경하지 않았다.
 
 회귀10개 GREEN, 전체1539개 중1538통과/실패0/기존 private 감사1skip(62.333초), 9개 기반·build/package PASS. UI helper 생성물과 그 F01 실행 pin만 갱신했으며 root dist58/권한/버전은 그대로다. 새 clean checkpoint에서 실제 로딩 재검증이 필요하다. 실패를 감추는 worker timeout 증가·개발자 모드 우회·권한 추가는 하지 않았다.
+
+### T7 실제 로딩 성공 뒤 원래 방송 relay 보완
+
+514b282의D에서는 worker 로딩과 fixture decode/source1, 실제 toolbar→TAB, Gain0·EQ1.25 저장, 1280/800/360px 배치까지 실행됐다. 따라서 이전 시작 실패는 번역 키 수정 뒤 해소됐다. 다만 master가 제한 상태여서 click timeout으로 실패했다. D와 진단d267285의E는 종료3증명true·전후 source 일치이며, E의 정확한 읽기 거부는 `audio-settings-target-read-audio-target-changed`다. 아직 T7 PASS가 아니다.
+
+Native 경계의 객체 키 순서 변화 회귀에서 같은 context의 읽기가 `audio-target-changed`로 RED였다. 고정 MAIN 함수 내부의 JSON 문자열 비교를 검증된 context4필드의 엄격한 scalar 동등성으로 바꿨다. 같은 값/다른 키 순서는 허용하지만 playerGeneration 등 실제 값 변경·document/runtime/window/route·원래 TAB 폐기는 여전히 거부한다. focused6개 GREEN, 전체1540개 중1539통과/실패0/기존 private 감사1skip(69.809초) 및9기반/build/package PASS. broker 생성물/F01 실행 pin만 갱신했다.
+
+진단 중 zoom 검사의 별도 결함도 발견했다. Chrome `manual` 모드는 페이지 자동 확대를 하지 않으므로 이전D의 reported factor2/동일 캡처를 실제200% 증거로 쓰지 않는다. [공식 ZoomSettingsMode](https://developer.chrome.com/docs/extensions/reference/api/tabs#type-ZoomSettingsMode)에 따라 owned TAB만 automatic/per-tab 확대하고 DPR2배·CSS viewport 절반·80px 출력 폭·명시적100%복원을 함께 측정하도록 강화했다. 실제 확대 없는 보고서를 거부하는 RED→GREEN 및 관련31개/strict development PASS. 강화된 측정과 relay의 실제 Native 성공은 다음 새 checkpoint에서 확인한다.

@@ -448,9 +448,10 @@ var createSettingsBroker = (chromeApi) => {
     const runtime = globalThis[/* @__PURE__ */ Symbol.for("cheese-knife.runtime.v1")];
     if (!runtime || runtime.ownerProtocol !== 3 || !runtime.player) return null;
     const context = { ...runtime.media.context }, runtimeRequestId = runtime.requestId, mediaRequestId = runtime.mediaRequestId;
-    if (expected && (runtimeRequestId !== expected.runtimeRequestId || mediaRequestId !== expected.mediaRequestId || JSON.stringify(context) !== JSON.stringify(expected.context))) return null;
+    const sameContext = (other) => ["documentGeneration", "routePath", "channelId", "playerGeneration"].every((key) => context[key] === other[key]);
+    if (expected && (runtimeRequestId !== expected.runtimeRequestId || mediaRequestId !== expected.mediaRequestId || !sameContext(expected.context))) return null;
     const result = wanted === null ? runtime.player.getAudioWanted(context) : await runtime.player.setAudioWanted(wanted, context);
-    if (!result.ok || runtime.requestId !== runtimeRequestId || runtime.mediaRequestId !== mediaRequestId || JSON.stringify(runtime.media.context) !== JSON.stringify(context) || JSON.stringify(result.context) !== JSON.stringify(context)) return null;
+    if (!result.ok || runtime.requestId !== runtimeRequestId || runtime.mediaRequestId !== mediaRequestId || !sameContext(runtime.media.context) || !sameContext(result.context)) return null;
     return { url: location.href, runtimeRequestId, mediaRequestId, context, wanted: result.wanted, state: result.state };
   }
   async function relayAudio(request, sender) {

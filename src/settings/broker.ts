@@ -327,10 +327,12 @@ var createSettingsBroker = (chromeApi: typeof chrome) => {
     const runtime = (globalThis as typeof globalThis & { [key: symbol]: unknown })[Symbol.for('cheese-knife.runtime.v1')] as import('../main/runtime/contracts').KnifeRuntime | undefined;
     if (!runtime || runtime.ownerProtocol !== 3 || !runtime.player) return null;
     const context = { ...runtime.media.context }, runtimeRequestId = runtime.requestId, mediaRequestId = runtime.mediaRequestId;
-    if (expected && (runtimeRequestId !== expected.runtimeRequestId || mediaRequestId !== expected.mediaRequestId || JSON.stringify(context) !== JSON.stringify(expected.context))) return null;
+    // Native scripting may reorder object keys; identity is the four validated scalar fields, not their serialization order.
+    const sameContext = (other: KnifeScopedContext) => (['documentGeneration','routePath','channelId','playerGeneration'] as const).every(key => context[key] === other[key]);
+    if (expected && (runtimeRequestId !== expected.runtimeRequestId || mediaRequestId !== expected.mediaRequestId || !sameContext(expected.context))) return null;
     const result = wanted === null ? runtime.player.getAudioWanted(context) : await runtime.player.setAudioWanted(wanted,context);
     if (!result.ok || runtime.requestId !== runtimeRequestId || runtime.mediaRequestId !== mediaRequestId ||
-        JSON.stringify(runtime.media.context) !== JSON.stringify(context) || JSON.stringify(result.context) !== JSON.stringify(context)) return null;
+        !sameContext(runtime.media.context) || !sameContext(result.context)) return null;
     return { url:location.href,runtimeRequestId,mediaRequestId,context,wanted:result.wanted,state:result.state };
   }
   async function relayAudio(request: Extract<KnifeMediaRequestV3,{ action:'get-audio-state'|'set-audio-wanted' }>, sender: chrome.runtime.MessageSender): Promise<KnifeAudioState> {
