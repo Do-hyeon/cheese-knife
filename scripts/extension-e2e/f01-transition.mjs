@@ -86,6 +86,16 @@ export function f01TransitionStages(assignment,control){
   return F01_TRANSITION_STAGES.slice(0,assignment.loss?4:9);
 }
 
+/** @param {unknown} raw @returns {{id:string,index:number}|null} */
+export function f01CreatedPreset(raw){
+  const presets=record(record(raw)?.mediaProfiles)?.presets;if(!Array.isArray(presets)||presets.length!==2)return null;
+  const matches=presets.map((value,index)=>({value:record(value),index})).filter(row=>row.value?.createdRevision===11&&row.value.revision===1&&
+    row.value.domain==='audio'&&row.value.name==='F01 transition owned');
+  const match=matches.at(0),id=match?.value?.id;
+  if(matches.length!==1||!match||typeof id!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(id)||id==='11111111-1111-4111-8111-111111111111')return null;
+  return {id,index:match.index};
+}
+
 /** @param {unknown} failure @param {unknown} expected @param {F01TransitionLoss} loss @param {string} extensionId */
 export function matchF01TransitionLoss(failure,expected,loss,extensionId){
   const value=record(failure),observation=record(value?.observation),raw=record(structuredClone(observation?.raw)),original=record(expected);
@@ -96,7 +106,8 @@ export function matchF01TransitionLoss(failure,expected,loss,extensionId){
   let target,donor,key;
   if(loss==='preset-id'){
     if(!Array.isArray(store?.presets)||store.presets.length!==2||!Array.isArray(source?.presets)||source.presets.length!==2)return false;
-    target=record(store.presets[1]);donor=record(source.presets[1]);key='id';
+    const created=f01CreatedPreset(expected);if(!created)return false;
+    target=record(store.presets.at(created.index));donor=record(source.presets.at(created.index));key='id';
   }else{
     if(!['owned-gain','inherit-bit','eq-band'].includes(loss)||!Array.isArray(store?.channels)||!Array.isArray(source?.channels))return false;
     target=record(record(record(store.channels[0])?.audio)?.values);donor=record(record(record(source.channels[0])?.audio)?.values);
@@ -144,6 +155,8 @@ export function expectedF01TransitionRaw(input){
   if(!preset||preset.id!=='__NATIVE_PRESET_ID__'||typeof presetId!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(presetId)||
     presetId==='11111111-1111-4111-8111-111111111111')throw fail('f01-transition-expectation-preset');
   preset.id=presetId;
+  store.presets.sort((left,right)=>{const a=record(left)?.id,b=record(right)?.id;
+    if(typeof a!=='string'||typeof b!=='string')throw fail('f01-transition-expectation-fixture');return a<b?-1:a>b?1:0;});
   const off=occurrence===5&&step==='final'||occurrence===6||occurrence===7&&step==='startup';
   raw.settingsRevision=off?10:occurrence>=7?11:9;
   Object.assign(config,{compressorDefault:!off,audioGain:0,gainInherited:false,eqEnabled:true,eq125:1.25});
@@ -242,7 +255,7 @@ export async function runF01TransitionPhase(input){
         await settings.locator('#eq125-value').fill('1.25');await waitCold(channelAudio,audio=>audio?.eq125===1.25,'f01-transition-channel-band');await readyCold(settings);
         await settings.locator('#media-audio-save-preset').click();await settings.locator('#media-preset-create-name').fill('F01 transition owned');await settings.locator('#media-preset-create').click();
         const created=await waitCold(snapshot,raw=>{const presets=record(raw.mediaProfiles)?.presets;return Array.isArray(presets)&&presets.length===2;},'f01-transition-native-preset');
-        const presets=record(created.mediaProfiles)?.presets;const id=Array.isArray(presets)?record(presets[1])?.id:null;if(typeof id!=='string')throw fail('f01-transition-native-preset');presetId=id;await readyCold(settings);
+        const fresh=f01CreatedPreset(created);if(!fresh)throw fail('f01-transition-native-preset');presetId=fresh.id;await readyCold(settings);
         await settings.locator('#media-audio-tab').click();await settings.locator('#media-audio-preset').selectOption(presetId);await confirmCold(settings,'#media-audio-preset-apply');
         await waitCold(snapshot,raw=>record(raw.mediaProfiles)?.revision===12,'f01-transition-channel-owned');await readyCold(settings);
       }else if(caseId==='absent'){

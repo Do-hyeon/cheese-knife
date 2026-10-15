@@ -163,3 +163,24 @@ test('F01 negative report revalidates all nineteen closes and rejects a hidden f
   const missing=structuredClone(launches);missing[18].shutdown.ownedRootClosed=false;
   assert.throws(()=>validateF01TransitionResult(result,nonce,control,missing,seedFixture,expectedFixture),/f01-transition-result/);
 });
+
+test('native-created preset identity and exact loss do not depend on UUID sort position',async()=>{
+  const {f01CreatedPreset,expectedF01TransitionRaw,matchF01TransitionLoss}=await subject();
+  const seed=JSON.parse(fs.readFileSync('tests/fixtures/installed-extension/f01-transition-seed.json','utf8')),
+    expected=JSON.parse(fs.readFileSync('tests/fixtures/installed-extension/f01-transition-expected-media.json','utf8'));
+  const oldId='11111111-1111-4111-8111-111111111111',extensionId='a'.repeat(32);
+  for(const presetId of ['00000000-0000-4000-8000-000000000001','22222222-2222-4222-8222-222222222222']){
+    const raw=expectedF01TransitionRaw({caseId:'valid-v1',runNonce:'a'.repeat(32),seed,expected,occurrence:3,step:'startup',presetId});
+    assert.deepEqual(raw.mediaProfiles.presets.map(row=>row.id),[oldId,presetId].sort());
+    assert.equal(typeof f01CreatedPreset,'function');
+    const fresh=f01CreatedPreset(raw);assert.deepEqual(fresh,{id:presetId,index:presetId<oldId?0:1});
+    const damaged=structuredClone(raw);delete damaged.mediaProfiles.presets[fresh.index].id;
+    const failure={code:'f01-transition-preservation',caseId:'loss-preset-id',phase:'rollback',payload:'f00',launchOccurrence:3,step:'startup',stage:'rollback-init',
+      observation:{raw:damaged,execution:{extensionId,version:'2.13.5',brokerMatches:true}},cleanupErrors:[]};
+    assert.equal(matchF01TransitionLoss(failure,raw,'preset-id',extensionId),true);
+    const wrong=structuredClone(raw);delete wrong.mediaProfiles.presets.find(row=>row.id===oldId).id;
+    assert.equal(matchF01TransitionLoss({...failure,observation:{...failure.observation,raw:wrong}},raw,'preset-id',extensionId),false);
+    const duplicate=structuredClone(raw);duplicate.mediaProfiles.presets[0]={...duplicate.mediaProfiles.presets[fresh.index]};duplicate.mediaProfiles.presets[1]={...duplicate.mediaProfiles.presets[fresh.index]};
+    assert.equal(f01CreatedPreset(duplicate),null);
+  }
+});

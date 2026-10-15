@@ -194,3 +194,7 @@ literal 보완 후 최신 전체1564/1563통과/0실패/기존1skip(71.325초)�
 필수 동작을 분리해 정상 valid-v1 순서를9단계로 보완했다: 게시본seed→F00읽기→F01전환/저장→F00제한·raw동일→F01재개ON→게시본OFF→F01재개OFF→게시본ON→F01재개ON. 정상 전체39launch이며 음성19launch/정확한 기존 witness는 변경 없다. 게시본에서는 실제 details summary를 먼저 클릭한 후 해당 checkbox를 조작한다. 이는 관측2개 추가이지 권한·수치 gate 완화가 아니다. schedule/기대 raw/감독의 RED→GREEN80개, 기존 전체1564/1563/0/skip1(72.580초)이 통과했고, summary 클릭까지 포함한 최종 집중45개/strict 통과 후 전체 재실행 중이다. 새 checkpoint의 정상39/손실19 재검증은 아직 남아 있다.
 
 summary 실제 클릭을 포함한 최종 전체1564/1563통과/0실패/기존1skip(72.618초)도 통과했다. 확장 순서와 모든 fixture를 새 로컬 checkpoint에 포함해 순차 Native 재검증한다.
+
+b96b002의 AE는 새 UUID가 기존111…보다 앞에 정렬된 경우를 만나, 도구의 ‘새 preset은 두 번째’ 가정이 깨졌다. trace에서 기존111…을 선택했음을 확인했고 독립 기대 값의 기존 ID 거부가 이를 검출했다. 제품의 정렬/저장은 정상이며, AE6launch 종료3증명true/sourcebc17e724d70723b93b02feadac6424abf29b0b982fc52bc5c348e0c67e6d0cb4 전후 일치/cleanup·secondary0이다. 음성 전체가 실패했으므로 뒤의 AF 정상 실행은 시작하지 않았다.
+
+새 Native preset은 생성 revision11/항목revision1/domain/name으로 유일하게 식별하고 UUID를 확인한다. 독립 literal 기대 값은 Native UUID를 대입한 뒤 별도로 ID순 정렬하며, 선택·손실 주입·손실 판별도 위치가 아닌 동일 신원을 사용한다. 낮은 UUID 정렬 RED→GREEN과 높은/낮은 UUID·기존 ID 오삭제·중복 신원 대조를 포함한 집중81개/strict/최신 전체1565/1564통과/0실패/기존1skip(71.806초)이 통과했다. 제품·권한·숫자 gate 변경 없이 새 checkpoint에서 정상39/음성19를 순차 재검증한다.

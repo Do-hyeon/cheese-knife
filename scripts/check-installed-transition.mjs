@@ -418,9 +418,11 @@ export async function executeTransitionChild(options, dependencies = {}) {
             if(f01&&assignment.loss&&launchOccurrence===2){
               const raw=await launched.worker.evaluate(()=>chrome.storage.local.get(null));
               if(!isDeepStrictEqual(raw,expectedF01TransitionRaw({caseId:'valid-v1',runNonce:options.nonce,seed:seedFixture,expected:expectedFixture,occurrence:2,step:'final',presetId})))throw fail('f01-transition-loss-preparation');
-              await launched.worker.evaluate(async loss=>{const raw=await chrome.storage.local.get('mediaProfiles'),store=raw.mediaProfiles;
-                if(loss==='preset-id')delete store.presets[1].id;else delete store.channels[0].audio.values[loss==='owned-gain'?'audioGain':loss==='inherit-bit'?'gainInherited':'eq125'];
-                await chrome.storage.local.set({mediaProfiles:store});},assignment.loss);
+              await launched.worker.evaluate(async ({loss,presetId})=>{const raw=await chrome.storage.local.get('mediaProfiles'),store=raw.mediaProfiles;
+                if(loss==='preset-id'){const preset=store.presets.find(row=>row.id===presetId&&row.createdRevision===11&&row.name==='F01 transition owned');
+                  if(!preset)throw new Error('f01-transition-loss-preparation');delete preset.id;
+                }else delete store.channels[0].audio.values[loss==='owned-gain'?'audioGain':loss==='inherit-bit'?'gainInherited':'eq125'];
+                await chrome.storage.local.set({mediaProfiles:store});},{loss:assignment.loss,presetId});
             }
           }
         } catch (error) {
