@@ -124,7 +124,7 @@ async function transitionProof(page,sampleRate){
 /** @param {import('playwright').Page} page */
 async function controlProof(page){
   const rapid=[];
-  for(const milliseconds of /** @type {const} */([5,15,25])){
+  for(const milliseconds of /** @type {const} */([5,10,25])){
     await configure(page,{normalizerEnabled:false,eqEnabled:false,compressorEnabled:false},1,false);
     await call(page,{kind:'signal',frequency:1000,inputDbfs:-36,pattern:'stereo'});
     await configure(page,{normalizerEnabled:true});await page.waitForTimeout(6500);await call(page,{kind:'reset-events'});
@@ -134,7 +134,7 @@ async function controlProof(page){
     if(!reset||!reentry)throw new Error('audio-processing-rapid-evidence');
     const progress=Math.max(0,Math.min(1,(numeric(reentry,'start')-numeric(reset,'start'))/(numeric(reset,'end')-numeric(reset,'start'))));
     const expected=20*Math.log10(numeric(reset,'from'))*(1-progress),actual=20*Math.log10(gainAt(state,7));
-    const timing=milliseconds===5?progress===0:milliseconds===15?progress>0&&progress<1:progress===1;
+    const timing=milliseconds===5?progress===0:milliseconds===10?progress>0&&progress<1:progress===1;
     rapid.push({milliseconds,boundary,state,output,reset,reentry,expectedDb:expected,actualDb:actual,
       passed:timing&&boundary.status==='on'&&state.sources===1&&state.active100msTimers===1&&Math.abs(actual-expected)<.001&&
         output.channels.every(channel=>Math.abs(20*Math.log10(channel.rms)+36-expected)<.05&&channel.peak<=.9801&&channel.overFullScaleSamples===0)});
