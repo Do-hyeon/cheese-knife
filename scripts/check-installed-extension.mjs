@@ -661,8 +661,14 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
       traceStopped = false;
       return launched;
     };
+    const writeZoomCapture = async (name, bytes) => {
+      if (qualification !== 'audio-settings' || !['audio-zoom200.png','audio-zoom200-controls.png','audio-zoom200-eq.png'].includes(name) ||
+        !(bytes instanceof Uint8Array) || bytes.length < 24 || bytes.length > 8388608 ||
+        !Buffer.from(bytes.subarray(0,8)).equals(Buffer.from('89504e470d0a1a0a','hex'))) throw runnerError('media-zoom-capture-invalid');
+      await files.writeFile(`${artifactRelative}/${name}`,bytes,{flag:'wx'});
+    };
     const sections = nativeQualification
-      ? await deps.mediaScenario({ ...launched, responses, artifactPath, browserSession })
+      ? await deps.mediaScenario({ ...launched, responses, artifactPath, browserSession, writeZoomCapture })
       : await deps.scenario({ ...launched, responses, artifactPath, restartSession });
     await context.tracing.stop();
     traceStopped = true;

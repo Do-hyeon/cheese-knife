@@ -96,7 +96,18 @@ for(const qualification of ['media-tab','player-gain','audio-settings']) for(con
     return {sourceCommit:'a'.repeat(40),sourceSha256:mode==='changed-source'&&attestations>1?'c'.repeat(64):'b'.repeat(64)};};
   f.dependencies.refreshTransitionWorker=async value=>{f.events.push('worker-refresh');return value;};
   f.dependencies.openMediaBrowserSession=async()=>{f.events.push('session-open');return mode==='missing-session'?null:{send:async()=>({}),on(){},off(){}};};
-  f.dependencies.mediaScenario=async()=>{f.events.push('media-scenario');if(mode==='scenario')throw Object.assign(Error('scenario'),{code:'media-scenario-failed'});return {mediaTab:{passed:true}};};
+  f.dependencies.mediaScenario=async args=>{
+    f.events.push('media-scenario');if(mode==='scenario')throw Object.assign(Error('scenario'),{code:'media-scenario-failed'});
+    if(qualification==='audio-settings'&&mode==='ok'){
+      assert.equal(typeof args.writeZoomCapture,'function');const before=f.events.filter(event=>event==='json-write').length;
+      for(const [name,bytes]of [['../outside.png',new Uint8Array(24)],['audio-zoom200.png',new Uint8Array(24)],
+        ['audio-zoom200.png',new Uint8Array(8388609)]])await assert.rejects(args.writeZoomCapture(name,bytes),{code:'media-zoom-capture-invalid'});
+      assert.equal(f.events.filter(event=>event==='json-write').length,before);
+      const png=Buffer.alloc(24);Buffer.from('89504e470d0a1a0a','hex').copy(png);
+      await args.writeZoomCapture('audio-zoom200-controls.png',png);assert.equal(f.events.filter(event=>event==='json-write').length,before+1);
+    }
+    return {mediaTab:{passed:true}};
+  };
   f.dependencies.closeInstalledMediaBrowser=async()=>{f.events.push('close-proof');if(mode==='close-proof')throw Object.assign(Error('close'),{code:'media-close-failed'});
     return {browserCloseAcknowledged:true,browserDisconnected:mode!=='missing-proof',ownedRootClosed:true};};
   const pending=runInstalledExtensionE2E({runId:'Run1',qualification,dependencies:f.dependencies});

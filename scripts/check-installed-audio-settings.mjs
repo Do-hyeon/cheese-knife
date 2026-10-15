@@ -5,9 +5,10 @@ import {isDeepStrictEqual} from 'node:util';
 import {openInstalledMediaSettings} from './extension-e2e/popup-cdp.mjs';
 
 /** @typedef {{runId:string,headed:boolean,control:null|'storage-loss'}} AudioSettingsOptions */
+/** @typedef {'audio-zoom200.png'|'audio-zoom200-controls.png'|'audio-zoom200-eq.png'} ZoomCaptureName */
 /** @typedef {{context:import('playwright').BrowserContext,worker:import('playwright').Worker,extensionId:string,
  * responses:readonly {url:string,status:number,contentType:string,body:string}[],artifactPath:string,
- * browserSession:import('playwright').CDPSession}} AudioSettingsScenario */
+ * browserSession:import('playwright').CDPSession,writeZoomCapture:(name:ZoomCaptureName,bytes:Uint8Array)=>Promise<void>}} AudioSettingsScenario */
 /** @typedef {{runId:string,headed:boolean,qualification:'audio-settings',dependencies:{
  * mediaScenario:(input:AudioSettingsScenario)=>Promise<unknown>}}} AudioSettingsExecution */
 /** @param {string} code */
@@ -220,17 +221,27 @@ async function layoutProof(page,input){
     if(layout.overflow||layout.bands.length!==8||layout.bands.some(y=>Math.abs(y-(layout.bands[0]??NaN))>1)||Math.abs(layout.shell-580)>.1)throw fail('audio-settings-zoom-layout');
     if(zoom!==2||Math.abs(width-80)>.1)throw fail('audio-settings-zoom');
     zoomMeasurement={actual:zoom,output:width,beforeDpr:before.dpr,afterDpr:scaled.dpr,beforeWidth:before.width,afterWidth:scaled.width,...layout};
-    // Full-page capture changes viewport metrics under native zoom; capture the real viewport at each section instead.
-    await page.evaluate(async()=>{scrollTo(0,0);await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(true))));});
-    await page.screenshot({path:path.join(input.artifactPath,'audio-zoom200.png')});
-    for(const [id,name]of [['compressorRatio','controls'],['eq125','eq']]){
-      const visible=await page.locator('#'+id).evaluate(async node=>{
-        node.scrollIntoView({block:'center',inline:'nearest'});await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(true))));
-        const rect=node.getBoundingClientRect();return rect.top>=0&&rect.bottom<=innerHeight;
-      });
-      if(!visible)throw fail('audio-settings-zoom-capture-target');
-      await page.screenshot({path:path.join(input.artifactPath,'audio-zoom200-'+name+'.png')});
-    }
+    // Native zoom exposes a Playwright scrolled-clip mismatch; CDP captures the actual surface without a clip or metrics override.
+    const surface=await input.context.newCDPSession(page);
+    try{
+      /** @param {ZoomCaptureName} name */const capture=async name=>{
+        const image=await surface.send('Page.captureScreenshot',{format:'png',fromSurface:true,captureBeyondViewport:false});
+        if(image.data.length>12*1024*1024)throw fail('audio-settings-zoom-capture-limit');
+        const bytes=Buffer.from(image.data,'base64'),viewport=page.viewportSize();
+        if(bytes.length<24||!viewport||bytes.readUInt32BE(16)!==viewport.width||bytes.readUInt32BE(20)!==viewport.height)throw fail('audio-settings-zoom-capture-size');
+        await input.writeZoomCapture(name,bytes);
+      };
+      await page.evaluate(async()=>{scrollTo(0,0);await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(true))));});
+      await capture('audio-zoom200.png');
+      /** @type {[string,ZoomCaptureName][]} */const sections=[['compressorRatio','audio-zoom200-controls.png'],['eq125','audio-zoom200-eq.png']];
+      for(const [id,name]of sections){
+        const visible=await page.locator('#'+id).evaluate(async node=>{
+          node.scrollIntoView({block:'center',inline:'nearest'});await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve(true))));
+          const rect=node.getBoundingClientRect();return rect.top>=0&&rect.bottom<=innerHeight;
+        });
+        if(!visible)throw fail('audio-settings-zoom-capture-target');await capture(name);
+      }
+    }finally{await surface.detach();}
   }finally{
     await input.worker.evaluate(id=>chrome.tabs.setZoom(id,1),own.id);
     await waitNative(()=>page.evaluate(()=>({dpr:devicePixelRatio,width:innerWidth})),
