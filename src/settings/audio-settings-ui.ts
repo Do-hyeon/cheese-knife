@@ -176,7 +176,7 @@ var createAudioSettingsUI = (container: HTMLElement, actions: {
     gainInput.setAttribute('aria-valuetext',next.effectiveGain === null ? text('gain_unconfirmed','기존 사이트 Gain 확인 필요') : gainValue.textContent);
     const source = next.gainOrigin === 'site-legacy' && next.effectiveGain !== null ? 'site-read' :
       next.gainOrigin === 'global-owned' && !next.globalScope && next.values.gainInherited ? 'global-inherited' : next.gainOrigin;
-    gainSource.textContent = text(`source_${source}`,source === 'site-read' ? '사이트 Gain 읽기 확인값' : source === 'global-inherited' ? '전역 Gain 상속' : next.gainOrigin === 'site-legacy' ? '사이트 Gain 미확인' : next.gainOrigin === 'channel-owned' ? '채널 저장값' : '전역 저장값');
+    gainSource.textContent = text(`source_${source.replaceAll('-', '_')}`,source === 'site-read' ? '사이트 Gain 읽기 확인값' : source === 'global-inherited' ? '전역 Gain 상속' : next.gainOrigin === 'site-legacy' ? '사이트 Gain 미확인' : next.gainOrigin === 'channel-owned' ? '채널 저장값' : '전역 저장값');
     inherit.parentElement!.lastChild!.textContent = next.globalScope ? text('inherit_site','기존 사이트 Gain 사용') : text('inherit_global','전역 Gain 사용');
     master.disabled = !next.masterAvailable;master.textContent = next.wanted ? text('on','오디오 보정 ON') : text('off','오디오 보정 OFF');
     master.setAttribute('aria-pressed',String(next.wanted));masterState.textContent = next.masterStatus+

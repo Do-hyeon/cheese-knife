@@ -4,8 +4,8 @@
   "audio_ui_off_note": {"message":"전체 OFF: 설정을 편집·저장할 수 있지만 소리에는 적용되지 않습니다."},
   "audio_ui_inherit_site": {"message":"기존 사이트 Gain 사용"},
   "audio_ui_inherit_global": {"message":"전역 Gain 사용"},
-  "audio_ui_source_site-read": {"message":"사이트 Gain 읽기 확인값"},
-  "audio_ui_source_global-inherited": {"message":"전역 Gain 상속"},
+  "audio_ui_source_site_read": {"message":"사이트 Gain 읽기 확인값"},
+  "audio_ui_source_global_inherited": {"message":"전역 Gain 상속"},
   "audio_ui_master": {
     "message": "오디오 보정"
   },
@@ -48,13 +48,13 @@
   "audio_ui_target": {
     "message": "목표 음량 (dBFS)"
   },
-  "audio_ui_source_site-legacy": {
+  "audio_ui_source_site_legacy": {
     "message": "사이트 Gain 미확인"
   },
-  "audio_ui_source_global-owned": {
+  "audio_ui_source_global_owned": {
     "message": "전역 저장값"
   },
-  "audio_ui_source_channel-owned": {
+  "audio_ui_source_channel_owned": {
     "message": "채널 저장값"
   },
   "audio_ui_on": {

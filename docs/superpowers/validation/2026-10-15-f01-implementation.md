@@ -92,3 +92,11 @@ T7 실제 설치/두 창/전환·고배율·좁은 화면과 T8 객관 출력·R
 새 UI runner와 strict checkJs 대상 helper, 독립 저장 손실 기대 값, 실제 입력 횟수·두 창·원래 문서/창·ACK 유실·quota·worker 교체 관측 계약을 작성했다. 가짜/0 입력 관측, 추측한 손실 값, 새 입력의 HEAD 누락, 실패한 종료 증명을 거부하는 대조를 포함한다. 기존 Native executor의 소유 경계와 종료 증명3개를 재사용한다. 기존 executor 전체의 타입 이전이나 실제 브라우저 통과를 뜻하지 않는다.
 
 격리 후보의 `f01-t7-ui-preflight-full.log`는1536개 중1535통과/실패0/기존 private 감사1skip(69.359초)이다. 9개 기반 검사·build·package도 통과했다. 후보dist62/runtime20, 원본dist58/version2.13.3 유지. 이 입력을 로컬 checkpoint로 고정한 뒤 새 Native 프로필에서 검사하며, 아직 T7 실제 UI 성공·Gain full·F01 전환·객관 오디오 출력 성공은 주장하지 않는다.
+
+### T7 worker 시작 실패와 번역 키 회귀
+
+6023626의 `F01Settings20261015A`와 진단 재현B, 읽기 전용 진단581cfdd의C는 모두 `extension-worker-timeout`으로 실제 UI 시나리오 시작 전 실패했다. 프로필/후보/결과는 보존했다. 전후 source는 일치하지만 worker 발견 전에 launcher가 context를 닫아 기존 summary 종료3증명은 null이다. 이를 성공·정상 종료3증명으로 계산하지 않는다. B의 Playwright 시작 로그에는 실제 자식 종료exit0가 있으며 C의 제한된 관리 화면 진단에는 로드된 확장이 없었다.
+
+새 Gain 출처 번역 키5종에 Chrome이 허용하지 않는 하이픈이 포함된 것을 발견했다. 공식 [메시지 이름 규칙](https://developer.chrome.com/docs/extensions/how-to/ui/localization-message-formats#name)과 비교하고, 두 언어 전체 키 검사 RED 및 실제 영문 메시지 조회 RED를 확인했다. 키만 underscore로 바꾸고 bounded 출처 enum의 조회 지점을 맞췄다. 기존 Gain 출처 값·저장 형식은 변경하지 않았다.
+
+회귀10개 GREEN, 전체1539개 중1538통과/실패0/기존 private 감사1skip(62.333초), 9개 기반·build/package PASS. UI helper 생성물과 그 F01 실행 pin만 갱신했으며 root dist58/권한/버전은 그대로다. 새 clean checkpoint에서 실제 로딩 재검증이 필요하다. 실패를 감추는 worker timeout 증가·개발자 모드 우회·권한 추가는 하지 않았다.

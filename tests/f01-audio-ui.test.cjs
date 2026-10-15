@@ -64,6 +64,25 @@ test('incomplete numeric input blocks confirmed copies until corrected or explic
   fire(input.id,'input','-101');assert.equal(ui.hasDraft(),true);doc.getElementById('audio-comp-reset').click();
   assert.equal(ui.hasDraft(),false);assert.equal(input.value,'-50.00');
 });
+test('localized audio labels use valid Chrome message names in every shipped locale',async()=>{
+  for(const locale of ['en','ko']){
+    const messages=JSON.parse(await require('node:fs/promises').readFile('_locales/'+locale+'/messages.json','utf8'));
+    for(const key of Object.keys(messages))assert.match(key,/^(?!@@)[A-Za-z0-9_@]+$/,locale+': '+key);
+  }
+});
+
+test('Gain source labels resolve the shipped English messages instead of the Korean fallback',t=>{
+  const {dom,doc,ui,state}=setup(t),messages=require('../_locales/en/messages.json');
+  dom.window.chrome={i18n:{getMessage:key=>messages[key]?.message??''}};
+  for(const [gainOrigin,effectiveGain,globalScope,gainInherited,want]of [
+    ['global-owned',1,true,false,'Stored global Gain'],['channel-owned',1,false,false,'Stored channel Gain'],
+    ['site-legacy',null,true,true,'Site Gain not confirmed'],['site-legacy',1,true,true,'Read and confirmed site Gain'],
+    ['global-owned',1,false,true,'Inherited global Gain']]){
+    ui.render({...state,gainOrigin,effectiveGain,globalScope,values:{...state.values,gainInherited}});
+    assert.equal(doc.getElementById('audioGain-source').textContent,want);
+  }
+});
+
 test('EQ and normalizer support precise numeric entry and unobserved legacy Gain never claims 100 percent',t=>{
   const {doc,ui,state,edits,fire}=setup(t);assert.equal(doc.getElementById('eq63-value').type,'number');
   fire('eq63-value','input',1.23456789);assert.equal(edits.at(-1).eq63,1.23456789);

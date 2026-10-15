@@ -4,8 +4,8 @@
   "audio_ui_off_note": {"message":"Processing is OFF: settings can be edited and saved, but are not applied to the sound."},
   "audio_ui_inherit_site": {"message":"Use existing site Gain"},
   "audio_ui_inherit_global": {"message":"Use global Gain"},
-  "audio_ui_source_site-read": {"message":"Read and confirmed site Gain"},
-  "audio_ui_source_global-inherited": {"message":"Inherited global Gain"},
+  "audio_ui_source_site_read": {"message":"Read and confirmed site Gain"},
+  "audio_ui_source_global_inherited": {"message":"Inherited global Gain"},
   "audio_ui_master": {
     "message": "Audio processing"
   },
@@ -48,13 +48,13 @@
   "audio_ui_target": {
     "message": "Target level (dBFS)"
   },
-  "audio_ui_source_site-legacy": {
+  "audio_ui_source_site_legacy": {
     "message": "Site Gain not confirmed"
   },
-  "audio_ui_source_global-owned": {
+  "audio_ui_source_global_owned": {
     "message": "Stored global Gain"
   },
-  "audio_ui_source_channel-owned": {
+  "audio_ui_source_channel_owned": {
     "message": "Stored channel Gain"
   },
   "audio_ui_on": {
