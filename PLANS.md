@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T9 종합 게이트 완료, fresh Astra max 최종 검토 준비**. T1–T8와 T9의 회귀·고지·도구 게이트를 마쳤으며 독립 최종 검토/보완은 미완료다. 완료 근거는 [단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md), 상세 결과는 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)에 유지한다. F00 PR #44 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
+최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T9 Astra max 최종 검토 Important2 보완·재검증 중**. T1–T8와 최초 T9 게이트를 마쳤고, 전체 검토 Critical0/Important2/Minor2를 받아 두 Gain 경쟁 조건을 보완했다. 새 source의 종합·설치형 검증과 같은 검토자의 targeted 확인 전에는 T9/F01 완료가 아니다. [최종 검토](docs/superpowers/validation/2026-10-15-f01-final-review.md), [단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md), [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)에 근거를 유지한다. F00 PR #44 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -54,7 +54,7 @@ T8의 고정 수치·전체 입력·실패 이력은 아카이브/검증 기록�
 | ID | 작업 묶음 | 상태 | 다음 게이트 |
 | --- | --- | --- | --- |
 | F00 | 채널별 미디어 저장·프리셋 | DONE (통합) | PR #44 공개 CI 통과·병합·해당 브랜치 정리 완료; 릴리즈 없음 |
-| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | DOING (T8) | T7 마감 → T8 객관 계측 → T9 Astra max 전체 검토; push/PR 금지 |
+| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | DOING (T9) | Astra max Important2 보완·재검증·targeted 확인; Minor2 보류, push/PR 금지 |
 | AF05-B 실제 수용 / AF05 종료 | 차기 게시본 설치·업데이트 | WAITING-DEPENDENCY | 차기 게시와 실제 검사 별도 승인 후 수행; F00/F01과 독립 |
 | DT02 | 선택 파일의 native TS 실행 | DEFERRED | 실제 유지보수 이득과 검사/실행 경계 보존이 증명되면 재설계 |
 | F02–F05 | 후속 기능 | BACKLOG-BLOCKED | F00/F01 검증과 각 범위 승인 |

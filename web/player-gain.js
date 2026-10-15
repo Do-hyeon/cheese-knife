@@ -132,14 +132,20 @@
   }
   async function refresh(owner, compare, deadline = Date.now() + 5e3) {
     if (!owned(owner)) throw fault("gain-retired");
-    const before = owner.view, reply = await request(owner, "get-gain-view", deadline);
-    if (!owned(owner)) throw fault("gain-retired");
-    if (reply.ok !== true || !validView(reply.view)) throw fault(typeof reply.code === "string" ? reply.code : "gain-prepare-failed");
-    if (compare && before && !sameBasis(before, reply.view)) throw fault("gain-conflict");
-    owner.view = reply.view;
-    if (reply.view.value === null) throw fault("gain-legacy-unavailable");
-    if (owner.draft === null) preview(owner, reply.view.value);
-    render(owner);
+    const before = owner.view;
+    do {
+      owner.notified = false;
+      const reply = await request(owner, "get-gain-view", deadline);
+      if (!owned(owner)) throw fault("gain-retired");
+      if (reply.ok !== true || !validView(reply.view)) throw fault(typeof reply.code === "string" ? reply.code : "gain-prepare-failed");
+      if (owner.notified) continue;
+      if (compare && before && !sameBasis(before, reply.view)) throw fault("gain-conflict");
+      owner.view = reply.view;
+      if (reply.view.value === null) throw fault("gain-legacy-unavailable");
+      if (owner.draft === null) preview(owner, reply.view.value);
+      render(owner);
+      return;
+    } while (true);
   }
   function clearTimer(owner) {
     if (owner.timer !== null) clearTimeout(owner.timer);
@@ -333,8 +339,9 @@
       owner.intent = null;
       owner.dirtyGesture = false;
       owner.phase = "loading";
-      void refresh(owner, false).then(() => {
+      owner.preparing = refresh(owner, false).then(() => {
         if (owned(owner)) {
+          owner.preparing = null;
           owner.lastFinished = Date.now();
           owner.phase = "ready";
           render(owner);
@@ -352,14 +359,15 @@
         retire(previous, true);
         return;
       } else if (site.pzp !== previous.pzp || site.container !== previous.container) {
-        previous.phase = "hold";
+        const locked = ["failed", "unknown", "conflict"].includes(previous.phase);
+        if (!locked) previous.phase = "hold";
         clearTimer(previous);
         previous.pzp = site.pzp;
         previous.container = site.container;
         site.container.append(previous.host);
         previous.notified = true;
         render(previous);
-        if (previous.inflight || previous.preparing) return;
+        if (locked || previous.inflight || previous.preparing) return;
         previous.notified = false;
         previous.preparing = refresh(previous, true).then(() => {
           if (owned(previous)) {
