@@ -59,6 +59,9 @@ jobs:
       - name: Fetch pinned published settings baseline
         run: git fetch --no-tags --depth=1 origin fb15f9675f9ea910e98363635155bc4ff9eb1d2f
 
+      - name: Fetch pinned F00 transition baseline
+        run: git fetch --no-tags --depth=1 origin ae9f8e50a22dae9d549f1e476d302549ecc03b4a
+
       - name: Prepare pinned published payload
         run: node scripts/extension-e2e/published-payload.mjs --prepare
 

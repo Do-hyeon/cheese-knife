@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 전체 push·한글 PR 하나·공개 CI 확인 승인, 공개 준비 진행 중**. T1–T9와 Minor 보완을 함께 공개하며 F02를 PR 선행 의존성으로 묶지 않는다. [PR 사전검증](docs/superpowers/validation/2026-10-15-f01-pr-preflight.md), [Minor 후속 검증](docs/superpowers/validation/2026-10-15-f01-minor-ui-follow-up.md), [단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md)에 근거를 보존한다. **병합·릴리즈·스토어 배포는 이번 승인 범위가 아니다.** 버전2.13.3·root dist·시청 Chrome/P09·스토어는 불변이다.
+최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 전체 [한글 PR #45](https://github.com/Do-hyeon/cheese-knife/pull/45) 생성, 공개 CI 확인 중**. T1–T9와 Minor 보완을 함께 공개하며 F02를 PR 선행 의존성으로 묶지 않는다. [PR 사전검증](docs/superpowers/validation/2026-10-15-f01-pr-preflight.md), [Minor 후속 검증](docs/superpowers/validation/2026-10-15-f01-minor-ui-follow-up.md), [단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md)에 근거를 보존한다. **병합·릴리즈·스토어 배포는 이번 승인 범위가 아니다.** 버전2.13.3·root dist·시청 Chrome/P09·스토어는 불변이다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -52,7 +52,7 @@
 | ID | 작업 묶음 | 상태 | 다음 게이트 |
 | --- | --- | --- | --- |
 | F00 | 채널별 미디어 저장·프리셋 | DONE (통합) | PR #44 공개 CI 통과·병합·해당 브랜치 정리 완료; 릴리즈 없음 |
-| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | DOING (전체 공개 준비) | 전체 한글 PR 하나·공개 CI까지 승인; 병합 금지, 릴리즈는 F02·통합 후 |
+| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | DOING (공개 CI 확인) | 전체 PR #45 생성·공개 CI 확인; 병합 금지, 릴리즈는 F02·통합 후 |
 | AF05-B 실제 수용 / AF05 종료 | 차기 게시본 설치·업데이트 | WAITING-DEPENDENCY | 차기 게시와 실제 검사 별도 승인 후 수행; F00/F01과 독립 |
 | DT02 | 선택 파일의 native TS 실행 | DEFERRED | 실제 유지보수 이득과 검사/실행 경계 보존이 증명되면 재설계 |
 | F02–F05 | 후속 기능 | BACKLOG-BLOCKED | F00/F01 검증과 각 범위 승인 |
@@ -105,7 +105,8 @@
 - [x] 2026-10-15 사용자 상세 계획·권장 Native/자기 물리 후보·번들 Chromium 격리 실행 묶음 승인. F00 공개 승인과 구분하며 F01 push/PR은 하지 않는다.
 - [x] F01 T1–T9와 Minor 후속 구현·객관 출력 상한/전환/수명주기/저장·로컬 F00 연결 검증과 최종 검토 마감. 실제 플랫폼/통합 후행 범위는 별도이며 주관적 청취만의 완료가 아니다.
 - [x] 2026-10-15 F01 전체 범위 push·한글 PR 하나·공개 CI 확인 승인. 병합·릴리즈·스토어 배포는 하지 않는다.
-- [ ] F01 T1–T9·Minor2까지 포함한 전체 한글 PR 하나 생성·공개 CI 확인. F02 구현 완료를 F01 PR의 의존성으로 묶지 않는다. [PR 사전검증](docs/superpowers/validation/2026-10-15-f01-pr-preflight.md)의 현재 입력 검사와 과거 Native 근거를 구분한다.
+- [x] F01 T1–T9·Minor2까지 포함한 전체 [한글 PR #45](https://github.com/Do-hyeon/cheese-knife/pull/45) 생성. F02 구현 완료를 F01 PR의 의존성으로 묶지 않는다.
+- [ ] PR #45 최신 head의 공개 CI 확인. 최초 shallow checkout의 F00 고정 객체 누락 실패와 준비 보완을 [PR 사전검증](docs/superpowers/validation/2026-10-15-f01-pr-preflight.md)에 보존한다. 과거 Native 근거와 구분한다.
 - [ ] F02도 기능 전체 단위로 별도 공개 지시·한글 PR·공개 CI·병합을 확인한다. F00 PR #44 통합은 완료했고 Task/문서 PR로 더 쪼개지 않는다.
 - [ ] 최종 통합 commit의 전체 회귀·점검도구·패키지·설치/저장 전환·native baseline/제한 대조.
 - [ ] 최종 통합 후보에서 실제 도구 감사를 다시 실행하고 원본 경고·원장/입력 해시·기존 private 자료 부재 skip1과 대조한다. 과거 목업 단계의1402/1403·감사 해시 불일치는 [당시 기록](docs/superpowers/validation/2026-10-14-f01-mockup-layout-review.md)에 보존하며 현재 회귀 실패로 표시하지 않는다. 원장 해시만 바꿔 PASS를 만들지 않는다.
