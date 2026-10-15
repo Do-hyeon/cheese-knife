@@ -20,6 +20,8 @@ K(`7141c25`, koWRdR)도 모든 실제 이득/출력은 일치했지만10ms 요�
 
 추가 경계 회귀: analyser 생성 중 native 시각8ms 전진 시 취소가1.115 대신1.123에 이뤄지는 경로를 재현했다. 생성 전에 현재 이득을 고정·옛 예약을 취소하고 생성 실패 시10ms unity로 복귀하도록 같은 승인 범위에서 보완했다. 두 회귀RED→GREEN, 집중55/55·전체1606개 중1605통과/실패0/기존1skip(60.259초)·9개 기반/build/package 통과. audio 실행 pin만29140a9c로 변경했고 노드/소스/타이머/의존성/권한·기존 허용치는 추가/변경하지 않았다. L은 이전 코드의 결과이며 이 보완의 Native 증거가 아니다. 새 clean checkpoint 검증이 필요하다.
 
+최신 M(`718db57`, `F01audio20261015M-5nbQKt`) 결과:44.1kHz 자극0/3/6/10/25ms 모두 계산 이득·실제 이득·출력이 일치했으나, 실제 예약은hold3건/unity2건으로 reset 중간 구간이 없었다. 사전 gate `audio-processing-rapid-master`에서 전체 실패 처리했고 긴 행렬은 실행하지 않았다. source 전후5필드 동일·pageErrors0·invalidFrames0·source1·각 자극timer1·종료3증명true. 기준을 완화하거나 M을 통과로 바꾸지 않는다. 반복된 고정 타이밍 설계 문제는 추가 조정 없이 중지하고 [후속 설계](../specs/2026-10-15-f01-native-rapid-coverage-follow-up.md) 재승인을 요청한다. 현재 실행 중인 자기 Native/테스트 세션은 없고 T8·T9는 미완료다.
+
 | 단계 | 근거 | 결과 |
 | --- | --- | --- |
 | 준비 | 물리 후보 `output/f01-execution-20261015/source`, 기존 pinned ZIP 해시 확인 후 복사 | root dist58·제품2.13.3·Chrome/P09 보존 |
