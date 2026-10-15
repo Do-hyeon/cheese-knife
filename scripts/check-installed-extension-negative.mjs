@@ -121,7 +121,11 @@ export async function runInstalledExtensionNegative({ runId, headed = false, ret
   }
   const report = { ok: true, runId, observedFailure: observed.code,
     ...(retainEvidence?{evidence:{...prepared.evidence,...observed.evidence}}:{}) };
-  await deps.writeReport(report);
+  try { await deps.writeReport(report); }
+  catch (error) {
+    const secondaryErrors=[{code:String(error?.code||'negative-report-failed').slice(0,240),message:String(error?.message||error).slice(0,240)}];
+    throw Object.assign(negativeError('negative-control-unexpected-failure',observed),{report:{...report,ok:false,secondaryErrors},secondaryErrors});
+  }
   return report;
 }
 

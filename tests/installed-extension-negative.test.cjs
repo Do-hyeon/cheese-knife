@@ -71,6 +71,18 @@ test('negative retention validates before preparation and preserves cleanup erro
   await assert.rejects(runInstalledExtensionNegative({runId:'Cleanup',dependencies:{prepareCandidate:async()=>({candidate:{},cleanup:async()=>{throw Error('cleanup-failed');}}),runInstalled:async()=>{throw expected;},writeReport:async()=>{throw Error('must-not-pass');}}}),error=>error.code==='negative-control-unexpected-failure'&&error.cause===expected);
 });
 
+for(const retainEvidence of [false,true])test(`negative final writer preserves MAIN failure and evidence when retention=${retainEvidence}`,async()=>{
+  const {runInstalledExtensionNegative}=await negativeModule(),original=Object.assign(Error('main-runtime-missing'),{code:'main-runtime-missing',evidence:{candidatePath:'owned-candidate'}});
+  const writer=Object.assign(Error('writer-failed'),{code:'EIO'});
+  await assert.rejects(runInstalledExtensionNegative({runId:'WriterFailure',retainEvidence,dependencies:{
+    prepareCandidate:async()=>({candidate:{},cleanup:async()=>{}}),runInstalled:async()=>{throw original;},writeReport:async()=>{throw writer;}
+  }}),error=>{
+    assert.equal(error.cause,original);assert.equal(error.report.ok,false);assert.equal(error.report.observedFailure,'main-runtime-missing');
+    assert.equal(error.report.secondaryErrors[0].code,'EIO');
+    if(retainEvidence)assert.equal(error.report.evidence.candidatePath,'owned-candidate');return true;
+  });
+});
+
 for(const retainEvidence of [false,true])test(`negative preparation copy failure owns and retains only its new partials when retention=${retainEvidence}`,async t=>{
   const fs=require('node:fs/promises'),{runInstalledExtensionNegative}=await negativeModule(),runId='NegativeCopy'+String(retainEvidence);
   const candidate=path.resolve('output/tool-audit/p02-candidate-'+runId),negative=path.resolve('output/playwright/installed-negative-package-'+runId);

@@ -301,6 +301,34 @@ test('retention cannot claim a root which disappeared after normal closure',asyn
   });
 });
 
+test('F01 retention cannot claim disappeared candidates as retained',async()=>{
+  const {runInstalledTransition}=await subject(),fixture=parentFixture('phase'),open=fixture.dependencies.openRepository;
+  fixture.dependencies.openRepository=async()=>{const files=await open(),stat=files.lstat;files.lstat=async(name,options)=>
+    name.includes('p02-candidate')&&fixture.events.includes('fork')?null:stat(name,options);return files;};
+  await assert.rejects(runInstalledTransition({runId:'F01MissingCandidates',mediaSchema:'f01',retainEvidence:true,dependencies:fixture.dependencies}),error=>{
+    assert.equal(error.report.candidatesRetained,false);assert.deepEqual(error.report.retainedCandidates,[]);
+    assert.equal(error.report.cleanupErrors.filter(row=>row.code==='transition-evidence-missing').length,2);return true;
+  });
+});
+
+for(const retainEvidence of [false,true])test(`transition final writer preserves original phase and evidence when retention=${retainEvidence}`,async()=>{
+  const {runInstalledTransition}=await subject(),fixture=parentFixture('summary');
+  await assert.rejects(runInstalledTransition({runId:'TransitionWriter',retainEvidence,dependencies:fixture.dependencies}),error=>{
+    assert.equal(error.code,'test-phase');assert.equal(error.cause.code,'test-phase');assert.equal(error.report.ok,false);
+    assert.equal(error.report.failure.caseId,'valid-ui');assert.equal(error.report.secondaryErrors.at(-1).code,'test-summary');
+    if(retainEvidence)assert.ok(error.report.retainedRoots.length>0);return true;
+  });
+});
+
+test('transition writer failure remains visible at the secondary-error bound',async()=>{
+  const {runInstalledTransition}=await subject(),fixture=parentFixture('summary'),supervise=fixture.dependencies.supervise;
+  fixture.dependencies.supervise=async options=>({...await supervise(options),secondaryErrors:Array.from({length:32},(_,index)=>({code:'earlier-'+index}))});
+  await assert.rejects(runInstalledTransition({runId:'BoundedWriter',dependencies:fixture.dependencies}),error=>{
+    assert.equal(error.report.secondaryErrors.length,32);assert.equal(error.report.secondaryErrors[0].code,'earlier-0');
+    assert.equal(error.report.secondaryErrors.at(-1).code,'test-summary');assert.equal(error.cause.code,'test-phase');return true;
+  });
+});
+
 test('F01 parent assigns every fixed case and retains its own roots and candidates after failure',async()=>{
   const {runInstalledTransition}=await subject(),fixture=parentFixture('phase');
   await assert.rejects(runInstalledTransition({runId:'F01parent',mediaSchema:'f01',dependencies:fixture.dependencies}),error=>{

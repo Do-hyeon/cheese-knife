@@ -75,6 +75,16 @@ test('real numerical failure stays available without becoming transport success 
   record.closeConfirmed=false;assert.equal(assessObserverRunSet(f).transportComplete,false);
 });
 
+for(const mode of ['f','u','t'])for(const frame of [289,-1])test(`${mode} alignment measurement ${frame} is a complete numeric failure, not corrupt input`,async()=>{
+  const {assessObserverRunSet}=await subject(),fixture=await nine(),row=fixture.records.find(row=>row.mode===mode);
+  row.report.alignments[6].compressorFirst=frame;row.report.alignments[6].compressorLast=frame;
+  row.report.qualityFailures=['48000/delay-alignment'];row.exitCode=1;
+  if(row.diagnostic)row.diagnostic.error='Audio quality failed: 48000/delay-alignment';
+  assert.deepEqual(assessObserverRunSet(fixture),{transportComplete:true,qualityPass:false,failures:[row.label+'/48000/delay-alignment']});
+  row.report.alignments[6].compressorFirst=NaN;
+  assert.equal(assessObserverRunSet(fixture).transportComplete,false);
+});
+
 test('owned child streams exact separate logs and retains exit1 without replacing a written result',async t=>{
   const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path');
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'observer-child-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
@@ -138,4 +148,34 @@ test('browser attestation selects an installed pinned executable without launchi
   const fs=require('node:fs/promises'),{observerBrowserExecutable}=await subject();
   const executable=await observerBrowserExecutable(process.cwd());assert.ok((await fs.lstat(executable)).isFile());
   assert.match(executable,process.platform==='win32'?/chrome\.exe$/:/headless_shell/);
+});
+
+for(const expiry of ['prepare','last-attestation','evidence','publication'])test(`whole observer deadline rejects expiry during ${expiry}`,async()=>{
+  const fs=require('node:fs/promises'),path=require('node:path'),{isDeepStrictEqual}=require('node:util'),api=await subject();
+  const {validateQualityEvidence}=await import('../scripts/audio-quality-diagnostics.mjs'),fixture=await nine(),saved=new Map();
+  const repositoryRoot=path.resolve('memory-current'),frozenRoot=path.resolve('memory-frozen');let elapsed=0,count=0,advanced=false;
+  const expire=()=>{if(!advanced){elapsed=1201000;advanced=true;}};
+  const makeFiles=root=>({root,lstat:async name=>{if(expiry==='evidence'&&count===9&&name.endsWith('-report.json'))expire();return saved.has(name)?{isFile:()=>true}:null;},
+    resolve:async name=>path.join(root,name),ensureDirectory:async name=>path.join(root,name),
+    writeFile:async(name,data)=>{saved.set(name,data);if(expiry==='publication'&&name.endsWith('/result.json'))expire();},
+    readFile:async name=>saved.get(name)??Buffer.from('fixed tracked bytes')});
+  const files=makeFiles(repositoryRoot),frozen=makeFiles(frozenRoot);
+  const identities={current:{...fixture.manifest.tools.current,lockSha256:'1'.repeat(64)},frozen:{...fixture.manifest.tools.frozen,lockSha256:'1'.repeat(64)}};
+  const boundaries={path,isDeepStrictEqual,observerRunPlan:api.observerRunPlan,observerEvidencePaths:api.observerEvidencePaths,
+    executeObserverSequence:api.executeObserverSequence,assessObserverRunSet:api.assessObserverRunSet,validateQualityEvidence,
+    repositoryRoot,frozenCommit:'c5d45b8a7abf30450d3f1bbff45afbb8cd020cb5',process:{platform:'linux',version:'v24.19.0',execPath:path.resolve('memory-node'),env:{}},
+    Date:{now:()=>elapsed},need:(value,code)=>{if(!value)throw Error(code);},record:value=>value,fs:{mkdir:async()=>{}},
+    ownedRoot:async root=>root===repositoryRoot?files:frozen,sourceIdentity:async root=>{
+      if(expiry==='prepare'||expiry==='last-attestation'&&count===9)expire();return identities[root===files?'current':'frozen'];},
+    execFileSync:()=>Buffer.from('fixed tracked bytes'),sha:()=> '2'.repeat(64),hashFile:async()=> '3'.repeat(64),
+    browserExecutable:async()=>path.resolve('memory-browser'),productIdentity:async()=>fixture.manifest.product.files,profiles:async()=>[],
+    executeObserverChild:async()=>{elapsed+=119000;count++;return{exitCode:0,signal:null,timedOut:false,overflow:false,closeConfirmed:true,errors:[]};},
+    boundedJSON:async(_root,name)=>Buffer.from(JSON.stringify(name.includes('-diagnostic.json')?fixture.records[count-1].diagnostic:fixture.records[count-1].report))};
+  const source=await fs.readFile('scripts/audio-observer-isolation.mjs','utf8'),original=source.slice(source.indexOf('export async function runObserverIsolation')).replace(/^export /,'');
+  const io=source.match(/^async function readWithin.*$/m)?.[0]||'';
+  const run=new Function('boundaries',`with(boundaries){${io};return (${original});}`)(boundaries);
+  let result,error;try{result=await run({frozenRoot,prefix:'f01obs-test'});}catch(cause){error=cause;}
+  assert.ok(error||result?.transportComplete===false,'expired host must reject or report incomplete');
+  assert.notEqual(result?.qualityPass,true);assert.ok(elapsed>=1200000);
+  if(expiry==='prepare')assert.equal(count,0);else assert.equal(count,9);
 });

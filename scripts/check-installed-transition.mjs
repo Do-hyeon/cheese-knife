@@ -587,16 +587,22 @@ export async function runInstalledTransition({ runId, headed = false, scenario, 
   report = { ...(report || {}), ...(supervision?.result ? { result: supervision.result } : {}), ok: !primary && cleanupErrors.length === 0 && secondaryErrors.length === 0, runId, ...(control ? { control } : {}),
     ...(primary ? { failure: primary } : {}), cleanupErrors: cleanupErrors.slice(0, 32), secondaryErrors: secondaryErrors.slice(0, 32),
     retainedRoots,
-    ...(retainEvidence?{candidatesRetained:candidates.length>0&&retainedCandidates.length===candidates.length,retainedCandidates}:{}),
     ...(media?{...(scenario?{scenario}:{}),...(f01?{mediaSchema}:{}),candidatesRetained:true,shutdown:{normalExit:supervision?.normalExit===true,
       closes:(supervision?.launches||[]).map(value=>({caseId:value.caseId,phase:value.phase,launchOccurrence:value.launchOccurrence,...(f01?{payload:value.payload}:{}),closed:value.closed===true,
         browserCloseAcknowledged:value.shutdown?.browserCloseAcknowledged===true,browserDisconnected:value.shutdown?.browserDisconnected===true,
         ownedRootClosed:value.shutdown?.ownedRootClosed===true}))}}:{}),
+    ...(retainEvidence?{candidatesRetained:candidates.length>0&&retainedCandidates.length===candidates.length,retainedCandidates}:{}),
     limits: ['bundled-code-relaunch-not-native-update', 'no-platform-rollback', 'detached-browser-needs-close-ack'] };
   if (artifactCreated) {
-    const text = `${JSON.stringify(report, null, 2)}\n`;
-    if (Buffer.byteLength(text) > 1048576) throw fail('transition-artifact-limit');
-    await files.writeFile(`${artifact}/summary.json`, text, { flag: 'wx' });
+    try {
+      const text = `${JSON.stringify(report, null, 2)}\n`;
+      if (Buffer.byteLength(text) > 1048576) throw fail('transition-artifact-limit');
+      await files.writeFile(`${artifact}/summary.json`, text, { flag: 'wx' });
+    } catch (error) {
+      const original=report.failure||report.detected||error;
+      report.ok=false;report.secondaryErrors=[...report.secondaryErrors.slice(0,31),genericFailure(error)];
+      throw Object.assign(fail(primary?.code||error?.code||'transition-report-failed'),{cause:original,failure:report.failure,report,secondaryErrors:report.secondaryErrors});
+    }
   }
   if (!report.ok) { const error = fail(primary?.code || 'transition-cleanup-failed'); error.failure = report.failure; error.report = report; throw error; }
   return report;

@@ -72,8 +72,10 @@ function validateReport(report){
     for(const phase of ['before','change','after'])validateSummary(Reflect.get(row,phase));
   }
   for(const [index,item]of alignments.entries()){
-    const row=record(item),expected=alignmentInputs.at(index);need(expected&&row.sampleRate===expected[0]&&
-      ['expectedFrame','dryFirst','dryLast','compressorFirst','compressorLast'].every(key=>Reflect.get(row,key)===expected[1]),'observer-alignment-input');
+    const row=record(item),expected=alignmentInputs.at(index);need(expected&&row.sampleRate===expected[0]&&row.expectedFrame===expected[1]&&
+      ['dryFirst','dryLast','compressorFirst','compressorLast'].every(key=>{
+        const frame=Reflect.get(row,key);return typeof frame==='number'&&Number.isSafeInteger(frame)&&frame>=-1&&frame<2048;
+      }),'observer-alignment-input');
   }
   const stress=record(report.stress);need(stress.profile==='threshold0/knee0/ratio1/gain2','observer-stress');validateSummary(stress);
   return audioQualityFailures(/** @type {import('./audio-metrics.mjs').QualityReport} */(/** @type {unknown} */(report)));
@@ -123,7 +125,7 @@ export function assessObserverRunSet({manifest,records}){
   return {transportComplete,qualityPass:transportComplete&&failures.length===0,failures};
 }
 
-/** @typedef {{root:string,resolve:(name:string,options?:{type?:string,optional?:boolean})=>Promise<string>,lstat:(name:string,options?:{optional?:boolean})=>Promise<import('node:fs').Stats|null>,readFile:(name:string,encoding?:'utf8')=>Promise<string|Buffer>,writeFile:(name:string,data:string|Uint8Array,options:{flag:string})=>Promise<unknown>,ensureDirectory:(name:string)=>Promise<string>,readdir:(name:string)=>Promise<string[]>}} ObserverFiles */
+/** @typedef {{root:string,resolve:(name:string,options?:{type?:string,optional?:boolean})=>Promise<string>,lstat:(name:string,options?:{optional?:boolean})=>Promise<import('node:fs').Stats|null>,readFile:(name:string,options?:'utf8'|{signal:AbortSignal})=>Promise<string|Buffer>,writeFile:(name:string,data:string|Uint8Array,options:{flag:string,signal?:AbortSignal})=>Promise<unknown>,ensureDirectory:(name:string)=>Promise<string>,readdir:(name:string)=>Promise<string[]>}} ObserverFiles */
 /** @param {string} prefix */
 export function observerEvidencePaths(prefix){
   const directory='output/audio-observer/'+prefix;
@@ -189,8 +191,10 @@ export async function executeObserverChild({files,cwd,args,env,stdout,stderr,tim
 const require=createRequire(import.meta.url),repositoryRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 /** @param {Uint8Array|string} bytes */
 const sha=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
-/** @param {string} filename */
-async function hashFile(filename){const hash=crypto.createHash('sha256');for await(const chunk of createReadStream(filename))hash.update(chunk);return hash.digest('hex');} // eslint-disable-line security/detect-non-literal-fs-filename
+/** @param {string} filename @param {()=>number} remaining */
+async function hashFile(filename,remaining){const hash=crypto.createHash('sha256');for await(const chunk of createReadStream(filename,{signal:AbortSignal.timeout(Math.min(15000,remaining()))}))hash.update(chunk);remaining();return hash.digest('hex');} // eslint-disable-line security/detect-non-literal-fs-filename
+/** @param {ObserverFiles} files @param {string} name @param {()=>number} remaining */
+async function readWithin(files,name,remaining){const bytes=await files.readFile(name,{signal:AbortSignal.timeout(Math.min(15000,remaining()))});remaining();return bytes;}
 /** @param {string} root */
 async function ownedRoot(root){
   need(!(await fs.lstat(root)).isSymbolicLink(),'observer-root-link'); // eslint-disable-line security/detect-non-literal-fs-filename
@@ -199,19 +203,19 @@ async function ownedRoot(root){
   const value=record(await open(root));need(typeof value.root==='string'&&['resolve','lstat','readFile','writeFile','ensureDirectory','readdir'].every(key=>typeof Reflect.get(value,key)==='function'),'observer-files-provider');
   return /** @type {ObserverFiles} */(/** @type {unknown} */(value));
 }
-/** @param {ObserverFiles} files */
-async function sourceIdentity(files){
-  const git=/** @param {string[]} args */args=>execFileSync('git',args,{cwd:files.root,encoding:'utf8',timeout:15000,maxBuffer:2097152,windowsHide:true});
+/** @param {ObserverFiles} files @param {()=>number} remaining */
+async function sourceIdentity(files,remaining){
+  const git=/** @param {string[]} args */args=>execFileSync('git',args,{cwd:files.root,encoding:'utf8',timeout:Math.min(15000,remaining()),maxBuffer:2097152,windowsHide:true});
   need(!git(['status','--porcelain','--untracked-files=no']).trim(),'observer-source-dirty');
   const names=git(['ls-files','-z']).split('\0').filter(Boolean).sort(),entries=[];
   need(names.includes('scripts/check-audio-quality.mjs'),'observer-source-input');
-  for(const name of names)entries.push([name,sha(await files.readFile(name))]);
-  return {commit:git(['rev-parse','HEAD']).trim(),inputSha256:sha(JSON.stringify(entries)),lockSha256:sha(await files.readFile('package-lock.json'))};
+  for(const name of names)entries.push([name,sha(await readWithin(files,name,remaining))]);
+  return {commit:git(['rev-parse','HEAD']).trim(),inputSha256:sha(JSON.stringify(entries)),lockSha256:sha(await readWithin(files,'package-lock.json',remaining))};
 }
-/** @param {ObserverFiles} files */
-async function productIdentity(files){const result=[];for(const name of AUDIO_ARTIFACT_FILES)result.push({path:name,sha256:sha(await files.readFile(name))});return result;}
-/** @param {ObserverFiles} files @param {string} name */
-async function boundedJSON(files,name){const stat=await files.lstat(name);need(stat?.isFile()&&stat.size<=8*1024*1024,'observer-json-size');return await files.readFile(name);}
+/** @param {ObserverFiles} files @param {()=>number} remaining */
+async function productIdentity(files,remaining){const result=[];for(const name of AUDIO_ARTIFACT_FILES)result.push({path:name,sha256:sha(await readWithin(files,name,remaining))});return result;}
+/** @param {ObserverFiles} files @param {string} name @param {()=>number} remaining */
+async function boundedJSON(files,name,remaining){remaining();const stat=await files.lstat(name);need(stat?.isFile()&&stat.size<=8*1024*1024,'observer-json-size');return await readWithin(files,name,remaining);}
 /** @param {ObserverFiles} files */
 async function profiles(files){return await files.lstat('output/audio-quality',{optional:true})?(await files.readdir('output/audio-quality')).filter(name=>/^profile-[a-zA-Z0-9_-]+$/.test(name)):[];}
 /** @param {string} profilePath */
@@ -236,23 +240,24 @@ export {browserExecutable as observerBrowserExecutable};
 
 /** @param {{frozenRoot:string,prefix:string}} options */
 export async function runObserverIsolation({frozenRoot,prefix}){
-  const started=Date.now(),order=observerRunPlan(prefix),paths=observerEvidencePaths(prefix),files=await ownedRoot(repositoryRoot);
+  const deadline=Date.now()+20*60000,remaining=()=>{const value=deadline-Date.now();need(value>0,'observer-set-timeout');return value;};
+  const order=observerRunPlan(prefix),paths=observerEvidencePaths(prefix),files=await ownedRoot(repositoryRoot);remaining();
   need(typeof frozenRoot==='string'&&frozenRoot.length>0,'observer-frozen-root');
   const frozen=await ownedRoot(path.resolve(files.root,frozenRoot));
   const inside=/** @param {string} a @param {string} b */(a,b)=>{const r=path.relative(a,b);return r===''||r!=='..'&&!r.startsWith('..'+path.sep)&&!path.isAbsolute(r);};
   need(!inside(files.root,frozen.root)&&!inside(frozen.root,files.root),'observer-root-overlap');
-  const currentIdentity=await sourceIdentity(files),frozenIdentity=await sourceIdentity(frozen);
+  const currentIdentity=await sourceIdentity(files,remaining),frozenIdentity=await sourceIdentity(frozen,remaining);remaining();
   need(frozenIdentity.commit===frozenCommit&&currentIdentity.lockSha256===frozenIdentity.lockSha256,'observer-frozen-input');
-  const original=execFileSync('git',['show',frozenCommit+':scripts/check-audio-quality.mjs'],{cwd:frozen.root,maxBuffer:2097152});
-  const frozenBytes=await frozen.readFile('scripts/check-audio-quality.mjs');
+  const original=execFileSync('git',['show',frozenCommit+':scripts/check-audio-quality.mjs'],{cwd:frozen.root,maxBuffer:2097152,timeout:Math.min(15000,remaining()),windowsHide:true});
+  const frozenBytes=await readWithin(frozen,'scripts/check-audio-quality.mjs',remaining);
   need(typeof frozenBytes!=='string'&&original.equals(frozenBytes),'observer-frozen-runner-bytes');
   for(const name of ['scripts/audio-artifacts.mjs','scripts/audio-artifact-core.mjs','scripts/audio-metrics.mjs','scripts/audio-signal.mjs','scripts/audio-native-browser.mjs','scripts/owned-files.mjs','scripts/extension-e2e/visibility-browser.mjs','tests/helpers.cjs'])
-    need(sha(await files.readFile(name))===sha(await frozen.readFile(name)),'observer-shared-input-drift');
+    need(sha(await readWithin(files,name,remaining))===sha(await readWithin(frozen,name,remaining)),'observer-shared-input-drift');
   need(!process.env.PLAYWRIGHT_BROWSERS_PATH||path.isAbsolute(process.env.PLAYWRIGHT_BROWSERS_PATH),'observer-browser-relative-cache');
   const executable=await browserExecutable(files.root);need(executable===await browserExecutable(frozen.root),'observer-browser-drift');
-  const environment={platform:process.platform,nodeVersion:process.version,nodeExecutableSha256:await hashFile(process.execPath),playwrightVersion:'1.62.1',
-    browserExecutableSha256:await hashFile(executable),sampleRate:48000,lockSha256:currentIdentity.lockSha256};
-  const product=await productIdentity(files),ci={checkout:currentIdentity.commit,head:process.env.GITHUB_HEAD_SHA??null};
+  const environment={platform:process.platform,nodeVersion:process.version,nodeExecutableSha256:await hashFile(process.execPath,remaining),playwrightVersion:'1.62.1',
+    browserExecutableSha256:await hashFile(executable,remaining),sampleRate:48000,lockSha256:currentIdentity.lockSha256};
+  const product=await productIdentity(files,remaining),ci={checkout:currentIdentity.commit,head:process.env.GITHUB_HEAD_SHA??null};
   const manifest={schema:1,prefix,order,tools:{frozen:frozenIdentity,current:currentIdentity},product:{files:product},environment,ci};
   const directory='output/audio-observer/'+prefix;
   need(!await files.lstat(directory,{optional:true}),'observer-output-exists');
@@ -261,18 +266,17 @@ export async function runObserverIsolation({frozenRoot,prefix}){
   await files.ensureDirectory('output/audio-observer');
   // Exclusive run-directory claim before publishing the immutable plan.
   await fs.mkdir(await files.resolve(directory,{type:'missing-or-directory'})); // eslint-disable-line security/detect-non-literal-fs-filename
-  await files.writeFile(directory+'/manifest.json',JSON.stringify(manifest,null,2),{flag:'wx'});
+  await files.writeFile(directory+'/manifest.json',JSON.stringify(manifest,null,2),{flag:'wx',signal:AbortSignal.timeout(Math.min(15000,remaining()))});remaining();
   /** @type {Record<string,unknown>[]} */let records=[];/** @type {string[]} */const hostFailures=[];
   try{
     records=await executeObserverSequence(prefix,async run=>{
       const role=run.mode==='f'?frozen:files,before=await profiles(role),env={...process.env};delete env.KNIFE_AUDIO_QUALITY_TRACE;if(run.mode==='t')env.KNIFE_AUDIO_QUALITY_TRACE='1';
-      const remaining=20*60000-(Date.now()-started);need(remaining>0,'observer-set-timeout');
       const execution=await executeObserverChild({files,cwd:role.root,args:['scripts/check-audio-quality.mjs','--root',files.root,'--label',run.label],env,
-        stdout:directory+'/'+run.label+'-stdout.log',stderr:directory+'/'+run.label+'-stderr.log',timeoutMs:Math.min(120000,remaining)});
+        stdout:directory+'/'+run.label+'-stdout.log',stderr:directory+'/'+run.label+'-stderr.log',timeoutMs:Math.min(120000,remaining())});remaining();
       /** @type {unknown} */let report=null,diagnostic=null;
       for(const suffix of ['report',...run.mode==='f'?[]:['diagnostic']]){
         const raw='output/audio-quality/report-'+run.label+(suffix==='report'?'':'-diagnostic')+'.json';
-        try{const bytes=await boundedJSON(role,raw);await files.writeFile(directory+'/'+run.label+'-'+suffix+'.json',bytes,{flag:'wx'});
+        try{const bytes=await boundedJSON(role,raw,remaining);await files.writeFile(directory+'/'+run.label+'-'+suffix+'.json',bytes,{flag:'wx',signal:AbortSignal.timeout(Math.min(15000,remaining()))});remaining();
           const value=JSON.parse(bytes.toString());if(suffix==='report')report=value;else diagnostic=value;}
         catch{hostFailures.push(run.label+'/observer-evidence-read');}
       }
@@ -283,31 +287,37 @@ export async function runObserverIsolation({frozenRoot,prefix}){
         else{
           try{closeConfirmed=closeConfirmed&&(await profileProcesses(path.join(role.root,'output/audio-quality',/** @type {string} */(created[0])))).length===0;}catch{closeConfirmed=false;}
           const copied=await ownedRoot(path.join(role.root,'output/audio-quality',/** @type {string} */(created[0])));
-          try{need(await hashFile(await copied.resolve('bundled-chromium/chrome.exe',{type:'file'}))===environment.browserExecutableSha256,'observer-launched-binary-drift');}catch{closeConfirmed=false;}
+          try{need(await hashFile(await copied.resolve('bundled-chromium/chrome.exe',{type:'file'}),remaining)===environment.browserExecutableSha256,'observer-launched-binary-drift');}catch{closeConfirmed=false;}
         }
       }
       if(run.mode!=='f'){
         try{validateQualityEvidence(diagnostic);}catch{closeConfirmed=false;}
       }else if(execution.exitCode!==0){
         // Original F has no structured shutdown diagnostic; never infer a valid failure from exit1 alone.
-        try{const failures=validateReport(record(report)),stderr=(await files.readFile(directory+'/'+run.label+'-stderr.log','utf8')).toString();
+        try{const failures=validateReport(record(report)),stderr=(await readWithin(files,directory+'/'+run.label+'-stderr.log',remaining)).toString();
           closeConfirmed=closeConfirmed&&execution.exitCode===1&&failures.length>0&&stderr.includes('Error: Audio quality failed: '+failures.join(', '));}
         catch{closeConfirmed=false;}
       }
       let stopReason;
-      if(!isDeepStrictEqual(product,await productIdentity(files))||!isDeepStrictEqual(currentIdentity,await sourceIdentity(files))||!isDeepStrictEqual(frozenIdentity,await sourceIdentity(frozen))){
+      if(!isDeepStrictEqual(product,await productIdentity(files,remaining))||!isDeepStrictEqual(currentIdentity,await sourceIdentity(files,remaining))||!isDeepStrictEqual(frozenIdentity,await sourceIdentity(frozen,remaining))){
         stopReason='observer-input-changed';hostFailures.push(run.label+'/'+stopReason);
       }
+      remaining();
       return {...run,...execution,closeConfirmed,report,diagnostic,...stopReason?{stopReason}:{}};
     });
   }catch(error){hostFailures.push(error instanceof Error?error.message:'observer-host-failed');}
   const result=assessObserverRunSet({manifest,records});
-  try{need(isDeepStrictEqual(currentIdentity,await sourceIdentity(files))&&isDeepStrictEqual(frozenIdentity,await sourceIdentity(frozen))&&
-    isDeepStrictEqual(product,await productIdentity(files))&&environment.nodeExecutableSha256===await hashFile(process.execPath)&&environment.browserExecutableSha256===await hashFile(executable),'observer-input-changed');}
-  catch{hostFailures.push('observer-input-changed');}
+  try{remaining();need(isDeepStrictEqual(currentIdentity,await sourceIdentity(files,remaining))&&isDeepStrictEqual(frozenIdentity,await sourceIdentity(frozen,remaining))&&
+    isDeepStrictEqual(product,await productIdentity(files,remaining))&&environment.nodeExecutableSha256===await hashFile(process.execPath,remaining)&&environment.browserExecutableSha256===await hashFile(executable,remaining),'observer-input-changed');remaining();}
+  catch(error){hostFailures.push(error instanceof Error?error.message:'observer-input-changed');}
+  const evidence=[];
+  try{for(const name of paths.filter(name=>name!==directory+'/result.json')){remaining();const stat=await files.lstat(name,{optional:true});if(stat?.isFile())evidence.push({path:name,sha256:sha(await readWithin(files,name,remaining))});}remaining();}
+  catch(error){hostFailures.push(error instanceof Error?error.message:'observer-evidence-failed');}
   if(hostFailures.length){result.transportComplete=false;result.qualityPass=false;result.failures.push(...hostFailures);}
-  const evidence=[];for(const name of paths.filter(name=>name!==directory+'/result.json')){const stat=await files.lstat(name,{optional:true});if(stat?.isFile())evidence.push({path:name,sha256:sha(await files.readFile(name))});}
   const output={...result,records:records.map(({report:_report,diagnostic:_diagnostic,...rest})=>rest),evidence,limits:['fixed-nine-not-statistical-proof','frozen-has-no-raw-pcm','not-causal-closure']};
-  const json=JSON.stringify(output,null,2);need(Buffer.byteLength(json)<=8*1024*1024,'observer-result-size');await files.writeFile(directory+'/result.json',json,{flag:'wx'});
+  const json=JSON.stringify(output,null,2);need(Buffer.byteLength(json)<=8*1024*1024,'observer-result-size');
+  // A failed run may publish its failure during bounded teardown; success never survives deadline expiry.
+  await files.writeFile(directory+'/result.json',json,{flag:'wx',signal:AbortSignal.timeout(result.transportComplete?Math.min(15000,remaining()):15000)});
+  if(result.transportComplete)remaining();
   return {...result,paths};
 }
