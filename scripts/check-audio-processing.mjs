@@ -123,6 +123,22 @@ async function transitionProof(page,sampleRate){
 }
 /** @param {import('playwright').Page} page */
 async function controlProof(page){
+  const rapid=[];
+  for(const milliseconds of /** @type {const} */([5,15,25])){
+    await configure(page,{normalizerEnabled:false,eqEnabled:false,compressorEnabled:false},1,false);
+    await call(page,{kind:'signal',frequency:1000,inputDbfs:-36,pattern:'stereo'});
+    await configure(page,{normalizerEnabled:true});await page.waitForTimeout(6500);await call(page,{kind:'reset-events'});
+    const boundary=record(await call(page,{kind:'rapid-master',milliseconds}));await page.waitForTimeout(180);
+    const state=await facts(page),output=summarizeCapture(await capture(page,.05));
+    const reset=list(state,'events').map(record).find(row=>row.node===7),reentry=list(state,'steps').map(record).find(row=>row.node===7&&numeric(row,'observed')>=numeric(boundary,'on'));
+    if(!reset||!reentry)throw new Error('audio-processing-rapid-evidence');
+    const progress=Math.max(0,Math.min(1,(numeric(reentry,'start')-numeric(reset,'start'))/(numeric(reset,'end')-numeric(reset,'start'))));
+    const expected=20*Math.log10(numeric(reset,'from'))*(1-progress),actual=20*Math.log10(gainAt(state,7));
+    const timing=milliseconds===5?progress===0:milliseconds===15?progress>0&&progress<1:progress===1;
+    rapid.push({milliseconds,boundary,state,output,reset,reentry,expectedDb:expected,actualDb:actual,
+      passed:timing&&boundary.status==='on'&&state.sources===1&&state.active100msTimers===1&&Math.abs(actual-expected)<.001&&
+        output.channels.every(channel=>Math.abs(20*Math.log10(channel.rms)+36-expected)<.05&&channel.peak<=.9801&&channel.overFullScaleSamples===0)});
+  }
   await configure(page,{normalizerEnabled:false,eqEnabled:false,compressorEnabled:false},1,false);
   await call(page,{kind:'signal',frequency:1000,inputDbfs:0,pattern:'dc'});await configure(page,{},1,false);await page.waitForTimeout(1250);
   const unity=summarizeCapture(await capture(page));
@@ -166,14 +182,14 @@ async function controlProof(page){
   const fft=2**Math.ceil(Math.log2(numeric(stall,'sampleRate')*.25)),window=fft/numeric(stall,'sampleRate');
   const silentAfter=numeric(silenceReturn,'audioTime')-numeric(record(silenceReturn.video),'currentTime')+9.5;
   const returnEvents=list(silenceReturn,'events').map(record).filter(row=>row.node===7),silentEvents=returnEvents.filter(row=>numeric(row,'start')>=silentAfter);
-  return {dryUnity:unity.channels.every(row=>Math.abs(row.rms-1)<.00001),dry99:dry99.channels.every(row=>Math.abs(row.rms-.99)<.00001),
+  return {rapidMaster:rapid.length===3&&rapid.every(row=>row.passed),dryUnity:unity.channels.every(row=>Math.abs(row.rms-1)<.00001),dry99:dry99.channels.every(row=>Math.abs(row.rms-.99)<.00001),
     wetPeak:wet.channels.every(row=>row.peak<=.9801&&row.overFullScaleSamples===0),
     extreme48db:extreme.channels.every(row=>row.peak<=.9801&&row.overFullScaleSamples===0)&&Math.abs(20*Math.log10(gainAt(extremeFacts,3))+48)<.01&&Math.abs(20*Math.log10(gainAt(extremeFacts,7))-6)<.1&&gainAt(extremeFacts,2)===2,
     silenceNoBoost:silenceNoBoost(silence),noiseNoBoost:silenceNoBoost(lowNoise),burstFinite:bursts.length===3&&bursts.every(row=>row.result.failures.length===0),
     silenceReturnUnity:Math.abs(20*Math.log10(gainAt(silenceReturn,7)))<=1&&returnEvents.some(row=>20*Math.log10(numeric(row,'to'))>=5.9)&&silentEvents.length>10&&silentEvents.every(row=>numeric(row,'to')<=numeric(row,'from')+1e-8),
     stallHold:!!hold&&!!ramp&&numeric(ramp,'start')-numeric(hold,'start')>=window-.025,
     analysisErrorUnity:list(error,'events').some(value=>{const event=record(value);return event.node===7&&Math.abs(numeric(event,'end')-numeric(event,'start')-.01)<.001&&numeric(event,'to')===1;}),
-    evidence:{unity,dry99,wet,extreme,extremeFacts,silence,lowNoise,bursts,silenceReturn,silentAfter,stall,stallBoundary,error}};
+    evidence:{rapid,unity,dry99,wet,extreme,extremeFacts,silence,lowNoise,bursts,silenceReturn,silentAfter,stall,stallBoundary,error}};
 }
 /** @param {import('playwright').Page} page @param {Awaited<ReturnType<typeof openAudioMeasurementBrowser>>} measurement @param {number} sampleRate @param {MeasurementFiles} files @param {string} html */
 async function lifetimeProof(page,measurement,sampleRate,files,html){
@@ -241,11 +257,13 @@ export async function runAudioProcessing(options){
       page.on('pageerror',exception=>pageErrors.push(exception.message));
       try{
         await preparePage(page,sampleRate,files,html);row.nodes=await facts(page);
+        const controls=await controlProof(page);row.controls=controls;
+        if(!controls.rapidMaster)throw new Error('audio-processing-rapid-master');
         row.equalizer=await equalizerProof(page,sampleRate,files,relative+'/captures');
         const transitions=await transitionProof(page,sampleRate);row.transitions=transitions;
         if(transitions.some(row=>row.failures.length))throw new Error('audio-processing-transition-limits');
         const normalizer=/** @type {Record<string,unknown>[]} */([]);row.normalizer=normalizer;
-        await normalizerProof(page,sampleRate,normalizer);row.controls=await controlProof(page);
+        await normalizerProof(page,sampleRate,normalizer);
         row.lifetime=await lifetimeProof(page,measurement,sampleRate,files,html);
       }catch(cause){
         try{row.failureFacts=await facts(page);}catch(diagnostic){row.failureFactsError=diagnostic instanceof Error?diagnostic.message:'audio-processing-diagnostic-failed';}

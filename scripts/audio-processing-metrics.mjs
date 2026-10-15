@@ -232,7 +232,7 @@ export function processingReportFailures(raw,expectedSource){
     if(!Array.isArray(windows)||windows.length!==2||windows[0]===windows[1]||!windows.every(value=>Number.isSafeInteger(value)&&value>=0)||
       !Array.isArray(targets)||targets.length!==2||targets[0]===targets[1]||!targets.every(value=>typeof value==='string'&&/^[A-Fa-f0-9]{32}$/.test(value)))failures.push(`rate-${sampleRate}/native-window-identity`);
     const controls=record(rate.controls);
-    for(const key of ['dryUnity','dry99','wetPeak','extreme48db','silenceNoBoost','noiseNoBoost','silenceReturnUnity','burstFinite','stallHold','analysisErrorUnity'])if(controls?.[key]!==true)failures.push(`rate-${sampleRate}/control-${key}`);
+    for(const key of ['rapidMaster','dryUnity','dry99','wetPeak','extreme48db','silenceNoBoost','noiseNoBoost','silenceReturnUnity','burstFinite','stallHold','analysisErrorUnity'])if(controls?.[key]!==true)failures.push(`rate-${sampleRate}/control-${key}`);
   }
   return failures;
 }
