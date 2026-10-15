@@ -556,6 +556,7 @@ async function unrelatedStyleProof(input,settings,target){
 }
 /** @param {AudioSettingsScenario} input @param {import('playwright').Page} other */
 async function unknownAckProof(input,other){
+  await other.bringToFront();
   await readyUI(other);
   await other.evaluate(()=>{
     const state=/** @type {typeof globalThis & {__f01NativeAckFault?:{calls:number,dropped:boolean,restore:()=>void}}} */(globalThis);
@@ -703,6 +704,7 @@ async function targetAndLifecycleProof(input,first,settings,secondState){
 }
 /** @param {AudioSettingsScenario} input @param {import('playwright').Page} settings */
 async function quotaProof(input,settings){
+  await settings.bringToFront();
   await selectScope(settings,'global');const before=await stored(input.worker);
   const quota=await input.worker.evaluate(async()=>{
     const area=chrome.storage.local,key='__f01NativeQuotaPadding';

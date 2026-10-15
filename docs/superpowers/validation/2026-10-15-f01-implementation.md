@@ -255,3 +255,7 @@ transport 신규3개 및 복귀 관측 누락 거부를 RED→GREEN으로 확인
 사용자 추가 승인 뒤 lifecycle 한 곳에만 숨김100ms 단발 예약/표시 rAF·공유 취소 epoch를 구현했다. visibility/BFCache/final dispose에서 예약을 취소하고, 취소되거나 실행된 옛 callback은 새 예약을 소비하지 않는다. frozen visibility 이벤트도 재조정을 실행하지 않는다. 신규4개 RED→GREEN 및 관련 runtime/scoped/normalizer/Gain62개가 통과했다. 기존 MAIN 생성기로 web/runtime.js만 달라졌고 실행 pin은598655ca…로 갱신했다. 다른 DSP/권한/저장 계약은 변경하지 않았다. 9개 기반/build/package는 격리 후보에서 PASS; inventory를 포함한 별도 샌드박스 집중 실행의 symlink EPERM은 성공으로 계산하지 않으며 네이티브 전체 회귀로 확인한다. 새 actual Native 검증은 아직 남아 있다.
 
 빌드 완료 뒤 단독 실행한 격리 전체 회귀1578개 중1577통과/실패0/기존1skip(60.169초)을 확인했다. 앞선 동시 빌드 실행은 hls-verifier의 complete-pass 기대에 incomplete가 나온1건(1576통과/1실패/1skip)으로 실패했으며 별도 로그를 보존했다. HLS 코드·제한·기대 값은 바꾸지 않았고 같은 소스의 빌드 종료 후 전체가 통과했다. 다음 새 checkpoint 실제 설정 정상/4손실·Gain full·cold19/39를 모두 마쳐야 T7 완료다.
+
+7174c9a의 AV는 제품 교체 검사 전 unknownAckProof의 마지막 media-discard 클릭에서 대기 실패했다(42.215초/종료3증명true/source일치). 직전 스타일 TAB 닫기 뒤 다른 설정 TAB이 비활성 상태였고 해당 phase 시작에 활성화가 빠져 있었다. trace의 call@1149와 페이지 ID를 확인한 뒤 검사 시작 시 정확한 other TAB의 bringToFront만 추가했다. 제품 source/수치·ACK 유실1회/무재시도·원시 무쓰기·discard 재조회 조건은 그대로다. 후행 AW/AX/AY/AZ는 미실행이다.
+
+ACK phase 보완은 집중32·strict·격리 전체1577통과/실패0/기존1skip(60.707초)으로 확인했다. 나머지 phase 경계도 대조해 방송을 앞으로 가져온 채 끝나는 lifecycle 다음 quota 검사에서 해당 settings TAB을 먼저 활성화하도록 명시했다. 마지막 두 조작 전제에 대해 도구 집중18·strict를 다시 확인했다. 제품 소스는7174c9a와 같고 새 actual Native 및 Task7 최종 전체 게이트는 아직 남아 있다.
