@@ -314,6 +314,10 @@ root dist58·제품2.13.3·사용자 Chrome/P09·모든 실패 증거와 로컬 
 
 #### T8 사전계측 분리 도구 보완 — 2026-10-15
 
+첫 사전계측 N(c27a2df/69xRCl)은44100/48000 각12개가 모두 통과했다.96000도 실제 세 구간과12개를 수집했으나5/25의 reset 선택이 잘못되어 전체 실패로 종료했다. 일반 tick은84.3506667초의1.94655→1.96909/100ms, 실제 OFF는84.36초, 실제 unity reset은84.37..84.38초의1.94865→1이었다. ON 예약84.38667초·실제 gain1·양쪽 출력−35.999999dBFS·source1/timer1/invalid0을 그대로 보존했다. 모든 rate의 종료3증명true·pageErrors0·전후source5필드 동일이며 긴 행렬은0개다. N의 실패를 소급해 PASS로 바꾸지 않는다.
+
+호출 전 일반 tick이 OFF와 같은 audio 시각인 경우까지 포함하는 독립 회귀에서 잘못된 첫 이벤트 선택을 RED로 재현했다. OFF/ON 호출 전후 이벤트 인덱스를 기록·대조하도록 도구만 보완했고 집중50/50·strict·전체1609개 중1608통과/실패0/기존private1skip(61.144초)·9개 기반/build/package가 통과했다. 로그는 execution 후보의 output/f01-t8-preflight-ownership-{full,foundation}.log에 보존했다. 이는 자극 목록/지연/구간/수치 또는 제품 DSP 변경이 아니다. 상세 계획의 일반 실패 중지 조항은 확정된 계측기 결함의 승인 범위 내 수정까지 금지하려던 것이 아니므로 판정 근거를 원장에 남기고 새 checkpoint의 같은 유한 행렬을 한 번 재검증한다. 실제 자극 미성립/제품 출력 실패의 중지 경계는 그대로다.
+
 사용자가 Native 사전계측 분리의 상세 계획·보완·격리 재검증을 승인했다. [상세 실행 계획](../plans/2026-10-15-f01-native-stimulus-preflight.md)에 rate별 위상0/2/5ms × 지연0/10/15/25ms의 유한12개를 실행 전에 고정했다. 실제 native clock edge를 관측한 뒤 wall 지연을 분산하지만 제품 clock/10ms 곡선은 바꾸지 않는다. 모든 실제 gain/양쪽 출력 비교와 실제 hold/reset 중간/unity를 요구한다. 자료가 정확해도 구간이 없으면 stimulus-unformed이며 긴 행렬 전에 중지한다. 별도 사전계측 JSON과 전체 schema v2를 source5필드·browser/platform/arch/Node 환경으로 연결하고 옛 JSON을 입력받지 않는다.
 
 새3개 API의 부재로 RED를 먼저 확인한 뒤 집중49/49·strict audio/development가 통과했다. 기존 물리 execution 후보에서 전체1608개 중1607통과/실패0/기존private감사1skip(61.602초),9개 기반 검사/build/package를 순차 통과했다. 로그는 자기 후보의 output/f01-t8-preflight-{full,foundation}.log에 있다. 제품 DSP·생성 JS·기존 수치 fixture/실행 pin은 변경하지 않았으며 root dist58·제품2.13.3을 유지했다. 새 clean Native 사전계측/긴 행렬은 아직 미실행이며 T8/T9 완료가 아니다. 과거 모든 A..M 실패/프로필은 보존한다.

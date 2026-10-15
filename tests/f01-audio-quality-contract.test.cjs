@@ -160,9 +160,9 @@ test('native dry/wet automation must be complementary for the whole crossfade, n
 function rapidRows(){
   return [0,2,5].flatMap(startPhaseMs=>[0,10,15,25].map((milliseconds,index)=>{
     const start=[1.005,1.015,1.018,1.025][index]??1.025,db=20*Math.log10(2)*([1,.5,.2,0][index]??0),gain=10**(db/20);
-    return {startPhaseMs,milliseconds,boundary:{edge:{audio:.99,wall:990},off:{audio:1,wall:1000},offDone:{audio:1,wall:1000},on:{audio:start,wall:1000+milliseconds},onDone:{audio:start,wall:1001+milliseconds},status:'on'},
-      reset:{node:7,from:2,to:1,start:1.01,end:1.02,observed:1},reentry:{node:7,from:gain,to:gain,start,end:start,observed:start},
-      state:{sources:1,active100msTimers:1,invalidFrames:0,gains:[1,1,1,1,1,1,1,gain]},
+    const reset={node:7,from:2,to:1,start:1.01,end:1.02,observed:1},reentry={node:7,from:gain,to:gain,start,end:start,observed:start};
+    return {startPhaseMs,milliseconds,boundary:{edge:{audio:.99,wall:990},off:{audio:1,wall:1000},offDone:{audio:1,wall:1000},on:{audio:start,wall:1000+milliseconds},onDone:{audio:start,wall:1001+milliseconds},status:'on',offEventIndex:0,offEventEnd:1,onStepIndex:0,onStepEnd:1},reset,reentry,
+      state:{sources:1,active100msTimers:1,invalidFrames:0,gains:[1,1,1,1,1,1,1,gain],events:[reset],steps:[reentry]},
       output:{channels:[0,1].map(()=>({rms:10**((-36+db)/20),peak:.05,overFullScaleSamples:0}))}};
   }));
 }
@@ -171,8 +171,10 @@ test('Native preflight assesses all twelve outputs and real phases instead of tr
   const {rapidMasterAssessment}=await metrics(),rows=rapidRows();
   assert.equal(rapidMasterAssessment(rows).status,'passed');
   const early=rapidRows().map(row=>({...row,reentry:{...row.reentry,start:1.005,end:1.005,observed:1.005},boundary:{...row.boundary,on:{...row.boundary.on,audio:1.005},onDone:{...row.boundary.onDone,audio:1.005}},state:{...row.state,gains:[1,1,1,1,1,1,1,2]},output:{channels:[0,1].map(()=>({rms:10**((-36+20*Math.log10(2))/20),peak:.05,overFullScaleSamples:0}))}}));
+  for(const row of early)row.state.steps=[row.reentry];
   assert.equal(rapidMasterAssessment(early).status,'stimulus-unformed');
   const unity=early.map(row=>({...row,reentry:{...row.reentry,start:1.025,end:1.025,observed:1.025},boundary:{...row.boundary,on:{...row.boundary.on,audio:1.025},onDone:{...row.boundary.onDone,audio:1.025}},state:{...row.state,gains:[1,1,1,1,1,1,1,1]},output:{channels:[0,1].map(()=>({rms:10**(-36/20),peak:.05,overFullScaleSamples:0}))}}));
+  for(const row of unity)row.state.steps=[row.reentry];
   assert.equal(rapidMasterAssessment(unity).status,'stimulus-unformed');
   for(const bad of [rows.slice(1),[...rows,rows[0]],rows.map((row,index)=>index===2?{...row,startPhaseMs:0,milliseconds:0}:row),rows.map((row,index)=>index===2?{...row,reentry:{...row.reentry,start:NaN}}:row),rows.map((row,index)=>index===2?{...row,state:{...row.state,gains:[1,1,1,1,1,1,1,1]},passed:true}:row),rows.map((row,index)=>index===2?{...row,output:{channels:[{rms:NaN,peak:0,overFullScaleSamples:0}]}}:row),rows.map((row,index)=>index===2?{...row,error:'capture-incomplete'}:row)])assert.equal(rapidMasterAssessment(bad).status,'failed');
 });
@@ -198,6 +200,25 @@ test('rapid preflight retains the row that throws before a capture can complete'
   /** @type {Record<string,unknown>[]} */const rows=[];
   await assert.rejects(()=>rapidMasterProof(page,rows),/clock-stalled/);
   assert.equal(rows.length,1);assert.equal(rows[0]?.error,'clock-stalled');assert.equal(rows[0]?.output,undefined);
+});
+
+test('rapid preflight selects only automation emitted inside the actual OFF and ON calls, not a queued normalizer tick',async()=>{
+  const {rapidMasterProof}=await import('../scripts/check-audio-processing.mjs');
+  const tick={node:7,from:1.95,to:1.97,start:1,end:1.1,observed:1},reset={node:7,from:2,to:1,start:1.01,end:1.02,observed:1};
+  const hold={node:7,from:2,to:2,start:1.01,end:1.01,observed:1},reentry={node:7,from:1,to:1,start:1.025,end:1.025,observed:1.025};
+  const boundary={edge:{audio:.99,wall:990},off:{audio:1,wall:1000},offDone:{audio:1,wall:1000},on:{audio:1.025,wall:1025},onDone:{audio:1.025,wall:1026},status:'on',offEventIndex:1,offEventEnd:2,onStepIndex:1,onStepEnd:2};
+  const page=/** @type {import('playwright').Page} */(/** @type {unknown} */({
+    evaluate:/** @param {unknown} fn @param {import('../scripts/audio-processing-probe.mjs', {with:{'resolution-mode':'import'}}).ProcessingAction} input */async(fn,input)=>{
+      if(input.kind==='configure')return {status:input.enabled?'on':'off'};
+      if(input.kind==='rapid-master')return boundary;
+      if(input.kind==='facts')return {sources:1,active100msTimers:1,invalidFrames:0,gains:[1,1,1,1,1,1,1,1],events:[tick,reset],steps:[hold,reentry]};
+      if(input.kind==='capture')return {rate:44100,start:0,end:2205,channels:[Array(2205).fill(10**(-36/20)),Array(2205).fill(10**(-36/20))]};return null;
+    },waitForTimeout:async()=>{},
+  }));
+  /** @type {Record<string,unknown>[]} */const rows=[];
+  await rapidMasterProof(page,rows);
+  assert.equal(rows.length,12);
+  for(const row of rows){assert.equal(row.reset,reset);assert.equal(row.reentry,reentry);}
 });
 
 test('component transitions enforce wet ceiling while preserving master-only continuity diagnostics',async()=>{

@@ -27,7 +27,7 @@ M의 실제 이득/출력5건은 일치했으나 실제 reset 중간 구간이 �
 1. 실제 controller로 normalizer/EQ/comp/master OFF → stereo1kHz −36dBFS RMS20초 입력 → normalizer ON →6.5초 boost 형성 → 계측 초기화.
 2. 실제 `AudioContext.currentTime`의 다음 변경을 최대100ms 관측한다. 실제 audio/wall 시각을 기록하고 `performance.now()`로 위상0/2/5ms를 기다린 뒤 OFF를 호출한다. clock 값에 setter를 두지 않는다.
 3. OFF 호출 직전 wall 시각+요청 지연까지 기다린 뒤 실제 controller ON을 호출한다. 각 대기는 최대100ms이다. OFF 처리 자체가 늦으면 그 실제 시각을 그대로 기록한다.
-4. 180ms 뒤 실제 gain·마지막50ms 양쪽 출력·source/timer 수·automation을 기록한다. ON 호출 이후 관측된 첫 normalizer 예약을 재진입으로 판별해 OFF의 미래 hold 예약과 구분한다.
+4. 180ms 뒤 실제 gain·마지막50ms 양쪽 출력·source/timer 수·automation을 기록한다. OFF와 ON의 호출 전후 이벤트 인덱스를 각각 기록하고 그 구간에서만 reset/reentry를 선택한다. 호출 전 normalizer tick이 같은 audio 시각에 놓여도 포함하지 않는다.
 5. 실제 예약이 reset 시작 이하이면 hold, 시작 초과/끝 미만이면 reset 중간, 끝 이상이면 unity다. 요청 지연/시작 위상으로 구간을 추정하지 않는다.
 
 ## 3. 수용 판정과 증거
@@ -54,3 +54,5 @@ M의 실제 이득/출력5건은 일치했으나 실제 reset 중간 구간이 �
 wall 지연과 실제 결과 판정을 분리한다. 위상 분산은 성공 보장이 아니며12개를 모두 검사해 선택 편향을 막는다. 별도 새 프로필의 source/browser 환경 일치를 같은 AudioContext의 연속성 증거라고 주장하지 않는다. 그래프는 반드시 production controller를 통과한다. capture 누락을0으로 보충하거나 native 시각/전환 길이를 바꾸지 않는다.
 
 유한 목록에서도 실제 중간 구간이 없으면 여기서 중지한다. 새 제품 출력 문제·DSP 변경·허용치 변경·사용자 Chrome/P09/권한 변경도 별도 승인 대상이다. 모든 과거 A..M/로그/프로필과 새 실패를 보존하며 성공만으로 덮어쓰지 않는다.
+
+계획 보완 판정: 첫 N은36개와 실제 세 구간을 모두 수집했지만96kHz 마지막 row에서 호출 전 tick을 reset으로 잘못 선택했다. 이는 자극 미성립/제품 출력 실패가 아니라 기록 선택 오류임을 원자료와 독립 RED로 확인했다. 승인된 도구 보완 범위에서 호출 인덱스 경계를 고치고 전체/strict 후 새 checkpoint에서 한 번 다시 검증한다. 자극12개·순서·지연·수치와 제품은 변경하지 않으며 N을 소급해 PASS로 재분류하지 않는다. 단순 미성립/제품 실패를 같은 방식으로 반복하지 않는 중지 조건은 유지한다.

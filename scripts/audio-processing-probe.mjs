@@ -171,10 +171,10 @@ export async function installProcessingProbe(sampleRate){
         if(context.currentTime===initial)throw new Error('audio-probe-clock-stalled');
         const stamp=()=>({audio:context.currentTime,wall:performance.now()}),edge=stamp();
         while(performance.now()<edge.wall+input.startPhaseMs){}
-        const off=stamp();await state.audio.setEnabled(element,false);const offDone=stamp();
+        const offEventIndex=events.length,off=stamp();await state.audio.setEnabled(element,false);const offDone=stamp(),offEventEnd=events.length;
         while(performance.now()<off.wall+input.milliseconds){}
-        const on=stamp(),status=await state.audio.setEnabled(element,true),onDone=stamp();
-        return {edge,off,offDone,on,onDone,status};
+        const onStepIndex=steps.length,on=stamp(),status=await state.audio.setEnabled(element,true),onDone=stamp(),onStepEnd=steps.length;
+        return {edge,off,offDone,on,onDone,status,offEventIndex,offEventEnd,onStepIndex,onStepEnd};
       }
       case 'retired-ticks':for(const tick of ticks.values())if(!tick.active&&tick.timeout===100)tick.invoke();return null;
       case 'facts':return {sampleRate,audioTime:context.currentTime,contextState:context.state,hidden:document.hidden,sources,gainNodes:gains.length,filters:filters.length,compressors,delays,shapers,splitters,

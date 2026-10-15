@@ -131,8 +131,8 @@ export async function rapidMasterProof(page,rows){
       await configure(page,{normalizerEnabled:true,normalizerTargetDbfs:-20});await page.waitForTimeout(6500);await call(page,{kind:'reset-events'});
       const boundary=record(await call(page,{kind:'rapid-master',...spec}));row.boundary=boundary;await page.waitForTimeout(180);
       const state=await facts(page);row.state=state;
-      row.reset=list(state,'events').map(record).find(row=>row.node===7);
-      row.reentry=list(state,'steps').map(record).find(row=>row.node===7&&numeric(row,'observed')>=numeric(record(boundary.on),'audio'));
+      row.reset=list(state,'events').slice(numeric(boundary,'offEventIndex'),numeric(boundary,'offEventEnd')).map(record).find(row=>row.node===7);
+      row.reentry=list(state,'steps').slice(numeric(boundary,'onStepIndex'),numeric(boundary,'onStepEnd')).map(record).find(row=>row.node===7);
       row.output=summarizeCapture(await capture(page,.05));
       console.log(JSON.stringify({stage:'rapid-stimulus',...spec,reset:row.reset,reentry:row.reentry}));
     }catch(cause){row.error=cause instanceof Error?cause.message:'audio-processing-rapid-failed';throw cause;}

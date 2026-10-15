@@ -197,6 +197,13 @@ export function rapidMasterAssessment(raw){
       ![reset.from,reset.to,reset.start,reset.end,reset.observed,entry.start,entry.end,entry.observed].every(finite)){
       failures.push(id+'/evidence');continue;
     }
+    const events=state.events,steps=state.steps;
+    if(!Array.isArray(events)||!Array.isArray(steps)||!['offEventIndex','offEventEnd','onStepIndex','onStepEnd'].every(key=>Number.isSafeInteger(boundary[key])&&Number(boundary[key])>=0)||
+      Number(boundary.offEventIndex)>=Number(boundary.offEventEnd)||Number(boundary.offEventEnd)>events.length||Number(boundary.onStepIndex)>=Number(boundary.onStepEnd)||Number(boundary.onStepEnd)>steps.length||
+      JSON.stringify(events.slice(Number(boundary.offEventIndex),Number(boundary.offEventEnd)).map(record).find(row=>row?.node===7))!==JSON.stringify(reset)||
+      JSON.stringify(steps.slice(Number(boundary.onStepIndex),Number(boundary.onStepEnd)).map(record).find(row=>row?.node===7))!==JSON.stringify(entry)){
+      failures.push(id+'/call-ownership');continue;
+    }
     const edge=clocks[0],off=clocks[1],offDone=clocks[2],on=clocks[3],onDone=clocks[4];
     const ordered=clocks.every((clock,index)=>index===0||Number(clock?.audio)>=Number(clocks[index-1]?.audio)&&Number(clock?.wall)>=Number(clocks[index-1]?.wall));
     if(!ordered||Number(off?.wall)-Number(edge?.wall)<spec.startPhaseMs||Number(on?.wall)-Number(off?.wall)<spec.milliseconds||
