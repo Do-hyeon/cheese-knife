@@ -111,6 +111,9 @@
   "audio_ui_legacy_read": {
     "message": "Read site Gain"
   },
+  "audio_ui_legacy_limited": {
+    "message": "Reading/importing site Gain requires a verified live channel. For VOD, save Gain directly."
+  },
   "audio_ui_legacy_import": {
     "message": "Import as global Gain"
   },

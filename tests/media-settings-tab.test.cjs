@@ -34,6 +34,12 @@ test('VOD pair survives media tab to styles without inventing a channel',async t
     api.tabs.get=async()=>({id:7,windowId:9,url:'https://chzzk.naver.com/video/12345',incognito:false});});
   assert.equal(doc.getElementById('media-status').dataset.phase,'ready');
   assert.equal(doc.querySelector('#media-scope option[value="current"]').disabled,true);
+  assert.equal(doc.getElementById('media-legacy-read').disabled,true,'VOD has no verified channel legacy target');
+  assert.equal(doc.getElementById('media-legacy-import').disabled,true);
+  assert.match(doc.getElementById('media-legacy-status').textContent,/VOD/);
+  assert.equal(doc.getElementById('media-legacy-read').getAttribute('aria-describedby'),'media-legacy-status');
+  doc.getElementById('media-legacy-read').click();await h.settle();
+  assert.equal(h.messages.some(e=>e.message.action==='read-legacy-gain'),false);
   const link=new URL(doc.getElementById('stylesConfig').closest('a').href);
   assert.equal(link.searchParams.get('targetTabId'),'7');assert.equal(link.searchParams.get('targetWindowId'),'9');
   assert.equal(h.calls.some(c=>c.kind==='tab-query'),false);

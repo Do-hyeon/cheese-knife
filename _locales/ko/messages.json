@@ -111,6 +111,9 @@
   "audio_ui_legacy_read": {
     "message": "사이트 Gain 읽기"
   },
+  "audio_ui_legacy_limited": {
+    "message": "사이트 Gain 읽기·가져오기는 확인된 라이브 채널에서만 지원합니다. VOD에서는 Gain을 직접 저장해 주세요."
+  },
   "audio_ui_legacy_import": {
     "message": "전역 Gain으로 가져오기"
   },

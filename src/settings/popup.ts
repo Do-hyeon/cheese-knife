@@ -297,6 +297,7 @@ function showPanel(name: string, focus = false) {
     (document.getElementById(tab.getAttribute('aria-controls')!) as HTMLElement).hidden = !selected;
     if (selected && focus) tab.focus();
   }
+  if (name === 'presets') renderMedia();
 }
 for (const tab of panelTabs) {
   tab.addEventListener('click',() => {if (!retired) showPanel(tab.dataset.mediaPanel!);});
@@ -350,7 +351,7 @@ function confirmedPresetValues(domain: KnifeMediaDomain): ConfirmedPreset | null
   return validated.ok && validated.domain === 'video' ? {domain,values:validated.values} : null;
 }
 let creation: { basis: string; source: ConfirmedPreset } | null = null, creationExpired = false;
-let creationOpenedBySaveAs = false;
+let creationOpenedBySaveAs = false, managementOpened = false;
 const createDrafts = new Map<KnifeMediaDomain,string>([['audio',''],['video','']]);
 let createDomain: KnifeMediaDomain = 'audio', catalogueKey = '';
 function prepareCreation(domain: KnifeMediaDomain) {
@@ -362,6 +363,9 @@ const audioTransport = createSettingsRequestTransport(chrome);
 let audioState: KnifeAudioState | null = null, audioBusy = false, audioEpoch = 0;
 let audioRoutePath: string | null = null;
 let legacy: { value: KnifeLegacyGainRead; revision: number; basis: string } | null = null;
+let legacyBusy = false;
+const legacyStatus = document.getElementById('media-legacy-status') as HTMLElement;
+const legacyLimited = label('audio_ui_legacy_limited','사이트 Gain 읽기·가져오기는 확인된 라이브 채널에서만 지원합니다. VOD에서는 Gain을 직접 저장해 주세요.');
 let audioMessage = label('audio_ui_target_missing','방송 탭에서 설정을 다시 열어 주세요.');
 async function refreshAudio(wanted?: boolean): Promise<void> {
   if (retired || !mediaLocation.target || !audioRoutePath || audioBusy || wanted !== undefined && !audioState) return;
@@ -411,6 +415,14 @@ function renderMedia() {
   }
   if (!mediaView) return;
   const blocked = !ready(), snapshot = mediaView.snapshot, channel = snapshot?.channel, store = snapshot?.store;
+  button('media-legacy-read').disabled = !currentScope || legacyBusy;
+  button('media-legacy-import').disabled = !currentScope || blocked || !legacy || legacy.basis !== fingerprint();
+  if (!currentScope) legacyStatus.textContent = legacyLimited;
+  else if (legacyStatus.textContent === legacyLimited) legacyStatus.textContent = '';
+  if (!managementOpened && !(document.getElementById('media-presets') as HTMLElement).hidden && snapshot && mediaView.phase === 'ready') {
+    managementOpened = true;
+    if (!store?.presets.length) createDetails.open = true;
+  }
   scopeSelect.disabled = audioBusy || ['saving','unknown'].includes(mediaView.phase) || mediaView.pendingKeys.length > 0;
   const nextCatalogue = JSON.stringify([store?.channels.map(item => item.channelId),store?.presets.map(item => [item.id,item.name,item.domain]),currentScope?.channelId,scopeKey(mediaView.selection)]);
   if (nextCatalogue !== catalogueKey) {
@@ -490,7 +502,7 @@ for (const domain of ['audio','video'] as const) {
   });
   applySelect(domain).addEventListener('change',renderMedia);
   button('media-'+domain+'-save-preset').addEventListener('click',() => {
-    prepareCreation(domain);showPanel('presets');if (!createDetails.open) creationOpenedBySaveAs = true;createDetails.open = true;
+    prepareCreation(domain);if (!createDetails.open) creationOpenedBySaveAs = true;createDetails.open = true;showPanel('presets');createName.focus();
   });
   button('media-'+domain+'-preset-apply').addEventListener('click',() => {
     const view = mediaView, snapshot = view?.snapshot, choice = applySelect(domain).value;if (!view || !snapshot || !ready()) return;
@@ -546,15 +558,14 @@ button('media-preset-delete').addEventListener('click',() => {
 });
 presetSelect.addEventListener('change',renderMedia);
 button('media-legacy-read').addEventListener('click',() => {
-  if (!currentScope || retired) return;
-  const basis = fingerprint(), scope = {...currentScope};button('media-legacy-read').disabled = true;
+  if (!currentScope || retired || legacyBusy) return;
+  const basis = fingerprint(), scope = {...currentScope};legacyBusy = true;renderMedia();
   void audioTransport.send(3,{action:'read-legacy-gain',selection:scope}).promise.then(({reply}) => {
     if (retired || basis !== fingerprint() || !reply.ok || !reply.legacyGain) return;
     legacy = {value:reply.legacyGain,revision:reply.snapshot!.version.globalRevision!,basis};
-    (document.getElementById('media-legacy-status') as HTMLElement).textContent = (reply.legacyGain.value*100).toFixed(2)+'% · '+reply.legacyGain.state;
-    button('media-legacy-import').disabled = false;
+    legacyStatus.textContent = (reply.legacyGain.value*100).toFixed(2)+'% · '+reply.legacyGain.state;
     renderMedia();
-  }).catch(() => {legacy = null;}).finally(() => {button('media-legacy-read').disabled = retired;});
+  }).catch(() => {legacy = null;}).finally(() => {legacyBusy = false;renderMedia();});
 });
 button('media-legacy-import').addEventListener('click',() => {
   if (!legacy || !currentScope || legacy.basis !== fingerprint()) {button('media-legacy-import').disabled = true;return;}

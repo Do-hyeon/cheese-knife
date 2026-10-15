@@ -310,6 +310,7 @@
       document.getElementById(tab.getAttribute("aria-controls")).hidden = !selected;
       if (selected && focus) tab.focus();
     }
+    if (name === "presets") renderMedia();
   }
   for (const tab of panelTabs) {
     tab.addEventListener("click", () => {
@@ -377,7 +378,7 @@
     return validated.ok && validated.domain === "video" ? { domain, values: validated.values } : null;
   }
   let creation = null, creationExpired = false;
-  let creationOpenedBySaveAs = false;
+  let creationOpenedBySaveAs = false, managementOpened = false;
   const createDrafts = /* @__PURE__ */ new Map([["audio", ""], ["video", ""]]);
   let createDomain = "audio", catalogueKey = "";
   function prepareCreation(domain) {
@@ -394,6 +395,9 @@
   let audioState = null, audioBusy = false, audioEpoch = 0;
   let audioRoutePath = null;
   let legacy = null;
+  let legacyBusy = false;
+  const legacyStatus = document.getElementById("media-legacy-status");
+  const legacyLimited = label("audio_ui_legacy_limited", "\uC0AC\uC774\uD2B8 Gain \uC77D\uAE30\xB7\uAC00\uC838\uC624\uAE30\uB294 \uD655\uC778\uB41C \uB77C\uC774\uBE0C \uCC44\uB110\uC5D0\uC11C\uB9CC \uC9C0\uC6D0\uD569\uB2C8\uB2E4. VOD\uC5D0\uC11C\uB294 Gain\uC744 \uC9C1\uC811 \uC800\uC7A5\uD574 \uC8FC\uC138\uC694.");
   let audioMessage = label("audio_ui_target_missing", "\uBC29\uC1A1 \uD0ED\uC5D0\uC11C \uC124\uC815\uC744 \uB2E4\uC2DC \uC5F4\uC5B4 \uC8FC\uC138\uC694.");
   async function refreshAudio(wanted) {
     if (retired || !mediaLocation.target || !audioRoutePath || audioBusy || wanted !== void 0 && !audioState) return;
@@ -466,6 +470,14 @@
     }
     if (!mediaView) return;
     const blocked = !ready(), snapshot = mediaView.snapshot, channel = snapshot?.channel, store = snapshot?.store;
+    button("media-legacy-read").disabled = !currentScope || legacyBusy;
+    button("media-legacy-import").disabled = !currentScope || blocked || !legacy || legacy.basis !== fingerprint();
+    if (!currentScope) legacyStatus.textContent = legacyLimited;
+    else if (legacyStatus.textContent === legacyLimited) legacyStatus.textContent = "";
+    if (!managementOpened && !document.getElementById("media-presets").hidden && snapshot && mediaView.phase === "ready") {
+      managementOpened = true;
+      if (!store?.presets.length) createDetails.open = true;
+    }
     scopeSelect.disabled = audioBusy || ["saving", "unknown"].includes(mediaView.phase) || mediaView.pendingKeys.length > 0;
     const nextCatalogue = JSON.stringify([store?.channels.map((item) => item.channelId), store?.presets.map((item) => [item.id, item.name, item.domain]), currentScope?.channelId, scopeKey(mediaView.selection)]);
     if (nextCatalogue !== catalogueKey) {
@@ -602,9 +614,10 @@
     applySelect(domain).addEventListener("change", renderMedia);
     button("media-" + domain + "-save-preset").addEventListener("click", () => {
       prepareCreation(domain);
-      showPanel("presets");
       if (!createDetails.open) creationOpenedBySaveAs = true;
       createDetails.open = true;
+      showPanel("presets");
+      createName.focus();
     });
     button("media-" + domain + "-preset-apply").addEventListener("click", () => {
       const view = mediaView, snapshot = view?.snapshot, choice = applySelect(domain).value;
@@ -698,19 +711,20 @@
   });
   presetSelect.addEventListener("change", renderMedia);
   button("media-legacy-read").addEventListener("click", () => {
-    if (!currentScope || retired) return;
+    if (!currentScope || retired || legacyBusy) return;
     const basis = fingerprint(), scope = { ...currentScope };
-    button("media-legacy-read").disabled = true;
+    legacyBusy = true;
+    renderMedia();
     void audioTransport.send(3, { action: "read-legacy-gain", selection: scope }).promise.then(({ reply }) => {
       if (retired || basis !== fingerprint() || !reply.ok || !reply.legacyGain) return;
       legacy = { value: reply.legacyGain, revision: reply.snapshot.version.globalRevision, basis };
-      document.getElementById("media-legacy-status").textContent = (reply.legacyGain.value * 100).toFixed(2) + "% \xB7 " + reply.legacyGain.state;
-      button("media-legacy-import").disabled = false;
+      legacyStatus.textContent = (reply.legacyGain.value * 100).toFixed(2) + "% \xB7 " + reply.legacyGain.state;
       renderMedia();
     }).catch(() => {
       legacy = null;
     }).finally(() => {
-      button("media-legacy-read").disabled = retired;
+      legacyBusy = false;
+      renderMedia();
     });
   });
   button("media-legacy-import").addEventListener("click", () => {

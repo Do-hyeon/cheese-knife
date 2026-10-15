@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T1–T9 로컬 마감, Minor2 보류·미공개**. Astra max 전체 검토·연결된 Gain 경쟁 보완·동일 검토자 targeted·설치형 재검증·최종 task-done을 마쳤다. 잔여 Critical0/Important0이며 Minor2는 아래 체크리스트에 남긴다. 완료 이력은 [최종 검토](docs/superpowers/validation/2026-10-15-f01-final-review.md)와 [단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md)에 보존한다. F00 PR #44 통합 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
+최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 보류 Minor2 보완·회귀·Astra max 검토 진행**. T1–T9의 기존 완료·실패 기록은 보존하며 이번 두 UI 보완을 별도 검증한다. VOD는 기존 읽기 대상/권한을 넓히지 않고 버튼 잠금과 제한을 안내하고, 프리셋은 첫 빈 관리 화면 펼침·save-as 이름 focus를 복구한다. F01 전체 종료 후 한글 PR 하나가 필요하지만 이번에는 push/PR을 하지 않으며 공개 실행은 다음 명시 승인을 받는다. 근거는 [최종 검토](docs/superpowers/validation/2026-10-15-f01-final-review.md)와 [단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md)에 보존한다. 버전2.13.3·root dist·시청 Chrome/P09·릴리즈/스토어는 불변이다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -104,7 +104,8 @@
 - [x] F01 한글 상세9Task 계획·fresh Astra max 최초0/3/0·필수 보완·동일 reviewer targeted0/0/0. [검토 기록](docs/superpowers/validation/2026-10-14-f01-plan-review.md)과 실제 미실행을 구분한다.
 - [x] 2026-10-15 사용자 상세 계획·권장 Native/자기 물리 후보·번들 Chromium 격리 실행 묶음 승인. F00 공개 승인과 구분하며 F01 push/PR은 하지 않는다.
 - [x] F01 T1–T9 구현·객관 출력 상한/전환/수명주기/저장·로컬 F00 연결 검증과 최종 검토 마감. Minor2·실제 플랫폼/통합 후행 범위는 별도이며 주관적 청취만의 완료가 아니다.
-- [ ] F01/F02 기능 전체의 별도 공개 지시·한글 PR·공개 CI·병합 확인. F00 PR #44 통합은 완료했고 Task/문서 PR로 더 쪼개지 않는다.
+- [ ] F01 Minor2까지 전체 종료 후 **F01 전체 범위의 한글 PR 하나를 진행**한다. F02 구현 완료를 F01 PR의 의존성으로 묶지 않는다. 이번 push/PR 금지이며 다음 명시 공개 승인 뒤 push·PR·공개 CI를 진행한다. 병합은 별도 승인이다.
+- [ ] F02도 기능 전체 단위로 별도 공개 지시·한글 PR·공개 CI·병합을 확인한다. F00 PR #44 통합은 완료했고 Task/문서 PR로 더 쪼개지 않는다.
 - [ ] 최종 통합 commit의 전체 회귀·점검도구·패키지·설치/저장 전환·native baseline/제한 대조.
 - [ ] 최종 통합 후보에서 실제 도구 감사를 다시 실행하고 원본 경고·원장/입력 해시·기존 private 자료 부재 skip1과 대조한다. 과거 목업 단계의1402/1403·감사 해시 불일치는 [당시 기록](docs/superpowers/validation/2026-10-14-f01-mockup-layout-review.md)에 보존하며 현재 회귀 실패로 표시하지 않는다. 원장 해시만 바꿔 PASS를 만들지 않는다.
 - [ ] F02 상세 설계·검토·계획/실행 승인 및 구현·객관 검증.

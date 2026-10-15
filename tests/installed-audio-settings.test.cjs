@@ -5,6 +5,7 @@ const nativeInputs=()=>({pointer:1,key:1,input:1,synthetic:0,total:3,overflow:fa
 const report=()=>({ok:true,runId:'Settings1',qualification:'audio-settings',source:{...source},after:{...source},
   shutdown:{browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:true},profileRetained:true,candidateRetained:true,
   audioSettings:{passed:true,checks:['native-ui','two-windows','storage-authority','layout','original-target','preset-draft','input-focus','lifecycle'],lossControls:[],
+    presetEntry:{emptyFirstOpen:true,saveAsNameFocused:true,pairLegacyLimited:true,rawPreserved:true},
     nativeInputs:[nativeInputs(),nativeInputs()],nativeWindows:[1,2],nativeTabWindows:[3,4],
     sameScope:{nativeFullRequests:2,heldDispatches:1,committedRevisionDelta:1,lateCode:'conflict',lateStored:false},
     aba:{nativeFullRequests:1,nativePatchRequests:2,heldDispatches:1,committedRevisionDelta:2,valuesRestored:true,lateCode:'conflict',lateStored:false},
@@ -32,6 +33,13 @@ test('native evidence cannot be replaced by zero counts guessed zoom or missing 
     r=>{r.audioSettings.workerRestart.actualWorkerReplacement=false;},r=>{r.audioSettings.workerRestart.nativeStopped=false;},r=>{r.audioSettings.nativeWindows=[1,1];},r=>{r.audioSettings.layout.zoom.actual=1;},
     r=>{r.audioSettings.quota.actualQuotaFailure=false;}]){
     const r=report();corrupt(r);assert.throws(()=>assertAudioSettingsReport(r,{runId:'Settings1',headed:false,control:null}),/audio-settings-proof/);
+  }
+});
+test('minor UI evidence requires actual empty creation focus and limited target observations',async()=>{
+  const {assertAudioSettingsReport}=await load();
+  for(const key of ['emptyFirstOpen','saveAsNameFocused','pairLegacyLimited','rawPreserved']){
+    const r=report();r.audioSettings.presetEntry[key]=false;
+    assert.throws(()=>assertAudioSettingsReport(r,{runId:'Settings1',headed:false,control:null}),/audio-settings-proof/);
   }
 });
 test('worker restart proves a fresh native execution realm even when the browser reuses its wrapper and target',async()=>{

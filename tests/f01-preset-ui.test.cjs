@@ -50,6 +50,37 @@ test('approved audio video and management tabs expose one panel and save-as open
   doc.getElementById('media-video-save-preset').click();await h.settle();
   assert.equal(doc.getElementById('media-presets').hidden,false);assert.equal(doc.getElementById('media-preset-new').open,true);
   assert.equal(doc.getElementById('media-preset-domain').value,'video');assert.equal(h.calls.filter(c=>c.kind==='commit').length,0);
+  assert.equal(doc.activeElement,doc.getElementById('media-preset-create-name'));
+});
+test('first empty management entry opens creation once without reopening a manually collapsed section',async t=>{
+  const {h,doc}=await setup(t),details=doc.getElementById('media-preset-new');
+  doc.querySelector('[data-media-panel="presets"]').click();await h.settle();assert.equal(details.open,true);
+  const name=doc.getElementById('media-preset-create-name');name.value='Keep name';name.dispatchEvent(new doc.defaultView.Event('input'));
+  details.open=false;await h.settle();doc.querySelector('[data-media-panel="audio"]').click();
+  h.changes.emit({config:{}},'local');await h.settle();doc.querySelector('[data-media-panel="presets"]').click();await h.settle();
+  assert.equal(details.open,false);assert.equal(name.value,'Keep name');assert.equal(h.calls.filter(c=>c.kind==='commit').length,0);
+});
+test('populated management preserves compact layout and save-as retains its domain name draft and focus',async t=>{
+  const {h,dom,doc}=await setup(t);await prepare(h,dom,doc);doc.getElementById('media-preset-create').click();await h.settle();
+  const details=doc.getElementById('media-preset-new');details.open=false;await h.settle();
+  doc.querySelector('[data-media-panel="presets"]').click();await h.settle();assert.equal(details.open,false);
+  doc.querySelector('[data-media-panel="audio"]').click();doc.getElementById('media-audio-save-preset').click();await h.settle();
+  assert.equal(doc.activeElement,doc.getElementById('media-preset-create-name'));assert.equal(doc.getElementById('media-preset-create-name').value,'Saved');
+  assert.equal(h.saved.mediaProfiles.presets.length,1);
+});
+test('live legacy read remains single-flight and disabled across intermediate UI renders',async t=>{
+  const {h,doc}=await setup(t),read=doc.getElementById('media-legacy-read');assert.equal(read.disabled,false);
+  const gate=h.holdNext('callback:read-legacy-gain');read.click();await gate.reached;
+  doc.querySelector('[data-media-panel="presets"]').click();assert.equal(read.disabled,true);
+  read.click();assert.equal(h.messages.filter(e=>e.message.action==='read-legacy-gain').length,1);
+  gate.release();await h.settle();assert.equal(read.disabled,false);
+});
+test('empty first management entry during loading opens after its snapshot without writing',async t=>{
+  const h=settingsHarness(t,{config:{audioGain:1,gainInherited:false}}),gate=h.holdNext('callback:get-media-snapshot');
+  const {dom}=await h.openUi('popup',{surface:'tab',query:`?mediaSettings=1&targetTabId=7&targetWindowId=9&targetChannelId=${A}`});
+  await gate.reached;const doc=dom.window.document;doc.querySelector('[data-media-panel="presets"]').click();
+  gate.release();await h.settle();assert.equal(doc.getElementById('media-preset-new').open,true);
+  assert.equal(h.calls.filter(c=>c.kind==='commit').length,0);
 });
 test('delayed native details toggle cannot recapture a changed source after save-as entry',async t=>{
   const {h,dom,doc}=await setup(t),details=doc.getElementById('media-preset-new'),hold=event=>event.stopImmediatePropagation();
