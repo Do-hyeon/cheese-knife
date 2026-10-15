@@ -148,3 +148,23 @@ bc8b2f07cb159a6a2e51432cb5656f07d87cf638의 새 프로필O positive는26.165초/
 P는 Gain0·상속false·EQ125=1.25·실제 preset UUID의 누락을 각각 한 필드 차이/정확한code·phase로 검출하고 매회 원시 전체를 복원했다. timeout/추측 기대 값/다른 변경은 일치로 받지 않는다. private summary는 `installed-extension-F01SettingsRealmProof20261015O` 및 `installed-extension-F01SettingsLoss20261015P`에 보존한다.
 
 O의 실제 캡처 시각 대조에서 zoom 상태의 fullPage 캡처가 페이지 viewport를 조절하며 우측을 자르는 것을 발견했다. 기능/실측DPR 증거와 캡처 한계를 구분한다. 고배율 root overflow0·EQ580px/8개 한 줄을 추가로 측정하고 viewport 캡처3장(상단/조작부/EQ)으로 변경했다. 잘못된 고배율 배치를 거부하는 RED→GREEN·strict/관련27개 통과. 이 도구 보완의 새 Native 재검증과 F01 cold 전환/T8/T9는 미완료다.
+
+#### UI gate 최종 확인과 전환 검증 입력
+
+65774b2에서 전체1549개 중1548통과/실패0/기존 private 감사1skip(79.883초)·9기반/build/package를 확인했다. Q/R·S/T의 기능/geometry/4손실 gate도 통과했으나, 스크롤한 Playwright viewport 캡처가 여전히 잘못된 영역을 저장했다. 이 캡처들은 UI 표시 증거로 채택하지 않았다.
+
+1783812c1cbcaf4a1e7376a259531097cba49543에서 같은 own page의 CDP 원본 surface를 clip/metrics override 없이 캡처하고, 기존 owned 파일 capability를 통해 고정 PNG3종/24byte–8MiB/PNG서명/wx만 저장하게 했다. 경로 탈출·잘못된 형식/초과 크기·writer 누락 RED→GREEN, strict/관련62개 PASS. 실제U는24.947초/exit0/ok=true, 별도 프로필V의4손실 대조는24.967초/exit0/ok=true다. U의 sourceSha256=bcd8cb4257f395f29f8ab391fe846894520c080c156a1dc29189a4f0c6614e08, source/after 일치·종료3증명true·pageErrors=[]다. V 역시 runner의 정확한4손실/source/종료 gate를 통과했다.
+
+실제200% 상단·컴프레서·EQ 원본 viewport PNG를 눈으로 대조해 정상 표시를 확인했다. geometry는DPR1→2/viewport1280→640/수치80CSSpx/root overflow0/EQ580px·8대역 한 줄이다. 좁은 EQ 내부 가로 스크롤은 유지하며 물리 오디오·장기 메모리 증명은 아니다. 실패 캡처·프로필도 삭제하지 않는다.
+
+후속 cold 전환은 기존 published2.13.3의58자산과 별도로 F00 ae9f8e50a22dae9d549f1e476d302549ecc03b4a의59개 Git 객체/765607byte를 고정했다. inventorySha256=9715087af1aa2b36fc54b330e5a879ce384f4c9a4f56faf1c6fd8847436580df이며 현재 root dist나 F01을 옛 입력으로 재사용하지 않는다. helper/metadata 누락·변조·경로·개수 대조 RED→GREEN 및 실제 strict 소비자의 root/binary 오용 음성 대조와 정적 검사를 포함한39개가 통과했다. parser와 literal v1/upgrade/edited 기대 값은 구현 중이며, 아직 F01 전환 CLI 연결/Native 성공은 없다.
+
+#### Cold 전환 runner 구현·사전 검증
+
+기존 `check-installed-transition.mjs`의 감독·child·빌드·보존 경로를 확장해 `--media-schema=f01`을 연결했다. 기존5사례의 함수/seed/손실 판별은 유지하고 F01의6사례를 추가했다. positive37launch, negative19launch를 고정하며 각 launch의 case/occurrence/payload role/정확한 종료3증명을 모두 검사한다. 별도 프로세스 프레임워크·의존성·확장 권한은 추가하지 않았다.
+
+고정 v1 기대 입력과 독립 schema2 기대 값을 사용해 읽기 무쓰기→명시upgrade→실제 TAB의 전역/채널 EQ·Gain0·preset 생성/적용→F00 제한·raw보존→F01 재개→게시본 전역 alias 왕복을 검사한다. 미생성·최대 revision·손상·미래 형식은 별도 새 프로필이다. 손실 대조4종은 실제 저장 뒤 채널 Gain0/상속false/EQ125=1.25/새 preset UUID 중 정확히 하나만 제거하며, 원래 baseline config손실도 그대로 검사한다. 정확한 startup code/role/occurrence/native extension/version/broker와 전체 raw 한 필드 차이가 일치해야 한다.
+
+schedule·손실 판별·Native phase·보고서 누락의 RED→GREEN, occurrence/role/종료 증명의 감독 회귀 및 실제 strict checkJs 소비자를 포함한 집중102개가 통과했다. 후속 최종 보고서에서 숨겨진 별도 failure를 거부하는 RED→GREEN8개도 추가했다. 이 직전 전체는1561/1560통과/0실패/기존1skip(70.831초)였으며 최신 전체 재실행 중이다. 9기반·후보 build/package는 최신 입력에서 모두 exit0. 이 기록 시점의 새 cold Native 실행은 아직 없으며, UI U/V·Gain M 성공을 전환 성공으로 전용하지 않는다.
+
+최신 전체1562/1561통과/0실패/기존1skip(69.777초) 및9기반/build/package exit0를 확인했다. root dist는58파일·version2.13.3 그대로다. 이제 이 소스와 모든 fixture를 로컬 checkpoint로 고정한 뒤 새 owned 프로필에서 Native positive/negative를 실행한다.

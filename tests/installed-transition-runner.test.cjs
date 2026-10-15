@@ -19,6 +19,26 @@ const close = () => ({ ...intent(), type: 'close-success' });
 const roots = [{ caseId: 'valid-ui', root }];
 function exit(child, code = 0) { child.exitCode = code; child.emit('exit', code, null); }
 
+test('F01 supervisor checks occurrence plus assigned payload role and all three shutdown facts',async()=>{
+  const {superviseTransitionChild}=await subject();const child=childFixture(),assigned=[{caseId:'valid-v1',kind:'f01',mediaCase:'valid-v1',root}];
+  const pending=superviseTransitionChild({child,nonce,roots:assigned,mediaSchema:'f01',deadlineMs:500});
+  for(const [launchOccurrence,[phase,payload]]of [['seed','published'],['old','f00'],['new','f01'],['rollback','f00'],['new','f01'],['rollback','published'],['new','f01']].entries()){
+    const request={type:'launch-intent',nonce,caseId:'valid-v1',phase,payload,launchOccurrence,launchId:`valid-v1:${launchOccurrence}:${phase}`,root};
+    child.emit('message',request);assert.deepEqual(child.sent.at(-1),{...request,type:'launch-ack'});
+    child.emit('message',{...request,type:'close-success',shutdown:{browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:true}});
+  }
+  child.emit('message',{type:'result',nonce,result:{mediaSchema:'f01'}});exit(child);const result=await pending;
+  assert.equal(result.failure,null);assert.equal(result.launches.length,7);assert.equal(result.launches[5].payload,'published');
+});
+for(const fault of ['payload','occurrence','close-payload','close-proof'])test('F01 supervisor rejects wrong '+fault,async()=>{
+  const {superviseTransitionChild}=await subject(),child=childFixture(),assigned=[{caseId:'absent',kind:'f01',mediaCase:'absent',root}];
+  const pending=superviseTransitionChild({child,nonce,roots:assigned,mediaSchema:'f01',deadlineMs:500});
+  const request={...intent(),caseId:'absent',payload:'published',launchOccurrence:0,launchId:'absent:0:seed'};
+  child.emit('message',fault==='payload'?{...request,payload:'f01'}:fault==='occurrence'?{...request,launchOccurrence:1,launchId:'absent:1:seed'}:request);
+  if(fault.startsWith('close'))child.emit('message',{...request,type:'close-success',...(fault==='close-payload'?{payload:'f00'}:{}),shutdown:{browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:fault!=='close-proof'}});
+  exit(child);assert.ok((await pending).failure);
+});
+
 test('media supervisor accepts exact seed plus four occurrences and requires three close facts',async()=>{
   const {superviseTransitionChild}=await subject(),child=childFixture();
   const pending=superviseTransitionChild({child,nonce,roots,scenario:'media-preservation',deadlineMs:500});
@@ -257,6 +277,17 @@ function parentFixture(fault) {
   };
   return { events, dependencies };
 }
+
+test('F01 parent assigns every fixed case and retains its own roots and candidates after failure',async()=>{
+  const {runInstalledTransition}=await subject(),fixture=parentFixture('phase');
+  await assert.rejects(runInstalledTransition({runId:'F01parent',mediaSchema:'f01',dependencies:fixture.dependencies}),error=>{
+    assert.equal(error.report.retainedRoots.length,11);assert.equal(error.report.mediaSchema,'f01');assert.equal(error.report.candidatesRetained,true);return true;
+  });
+  assert.equal(fixture.events.some(value=>value.startsWith('candidate-remove:')||value.startsWith('remove:output/playwright/installed-transition-work-')),false);
+  for(const options of [{mediaSchema:'unknown'},{mediaSchema:'f01',scenario:'media-preservation'},{mediaSchema:'f01',control:'media-profile-loss'}]){
+    await assert.rejects(runInstalledTransition({runId:'F01bad',...options,dependencies:fixture.dependencies}),/transition-(scenario|control)-invalid/);
+  }
+});
 
 test('parent storage-loss PASS is vetoed by a later protocol or inventory fault', async () => {
   const { runInstalledTransition } = await subject();

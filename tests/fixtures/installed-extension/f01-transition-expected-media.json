@@ -1,0 +1,38 @@
+{
+  "upgraded": {
+    "schema":2,"revision":8,
+    "channels":[
+      {"channelId":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","createdRevision":1,"revision":2,"audio":{"createdRevision":1,"values":{
+        "audioDefault":true,"compressorEnabled":true,"compressorThreshold":-35,"compressorKnee":40,"compressorRatio":12,"compressorAttack":0,"compressorRelease":0.25,
+        "audioGain":1,"gainInherited":true,"eqEnabled":false,"eq63":0,"eq125":0,"eq250":0,"eq500":0,"eq1000":0,"eq2000":0,"eq4000":0,"eq8000":0,
+        "normalizerEnabled":false,"normalizerTargetDbfs":-20}}},
+      {"channelId":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","createdRevision":4,"revision":1,
+        "video":{"createdRevision":4,"values":{"brightness":1.75,"contrast":1,"saturation":1,"gamma":1,"sharpness":0}}}
+    ],
+    "presets":[{"id":"11111111-1111-4111-8111-111111111111","createdRevision":6,"revision":1,"name":"F00 retained","domain":"audio","values":{
+      "audioDefault":false,"compressorEnabled":true,"compressorThreshold":-20,"compressorKnee":40,"compressorRatio":12,"compressorAttack":0,"compressorRelease":0.25,
+      "audioGain":1,"gainInherited":true,"eqEnabled":false,"eq63":0,"eq125":0,"eq250":0,"eq500":0,"eq1000":0,"eq2000":0,"eq4000":0,"eq8000":0,
+      "normalizerEnabled":false,"normalizerTargetDbfs":-20}}]
+  },
+  "edited": {
+    "schema":2,"revision":12,
+    "channels":[
+      {"channelId":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","createdRevision":1,"revision":5,"audio":{"createdRevision":1,"values":{
+        "audioDefault":true,"compressorEnabled":true,"compressorThreshold":-35,"compressorKnee":40,"compressorRatio":12,"compressorAttack":0,"compressorRelease":0.25,
+        "audioGain":0,"gainInherited":false,"eqEnabled":true,"eq63":0,"eq125":1.25,"eq250":0,"eq500":0,"eq1000":0,"eq2000":0,"eq4000":0,"eq8000":0,
+        "normalizerEnabled":false,"normalizerTargetDbfs":-20}}},
+      {"channelId":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","createdRevision":4,"revision":1,
+        "video":{"createdRevision":4,"values":{"brightness":1.75,"contrast":1,"saturation":1,"gamma":1,"sharpness":0}}}
+    ],
+    "presets":[
+      {"id":"11111111-1111-4111-8111-111111111111","createdRevision":6,"revision":1,"name":"F00 retained","domain":"audio","values":{
+        "audioDefault":false,"compressorEnabled":true,"compressorThreshold":-20,"compressorKnee":40,"compressorRatio":12,"compressorAttack":0,"compressorRelease":0.25,
+        "audioGain":1,"gainInherited":true,"eqEnabled":false,"eq63":0,"eq125":0,"eq250":0,"eq500":0,"eq1000":0,"eq2000":0,"eq4000":0,"eq8000":0,
+        "normalizerEnabled":false,"normalizerTargetDbfs":-20}},
+      {"id":"__NATIVE_PRESET_ID__","createdRevision":11,"revision":1,"name":"F01 transition owned","domain":"audio","values":{
+        "audioDefault":true,"compressorEnabled":true,"compressorThreshold":-35,"compressorKnee":40,"compressorRatio":12,"compressorAttack":0,"compressorRelease":0.25,
+        "audioGain":0,"gainInherited":false,"eqEnabled":true,"eq63":0,"eq125":1.25,"eq250":0,"eq500":0,"eq1000":0,"eq2000":0,"eq4000":0,"eq8000":0,
+        "normalizerEnabled":false,"normalizerTargetDbfs":-20}}
+    ]
+  }
+}

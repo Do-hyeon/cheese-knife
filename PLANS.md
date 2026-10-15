@@ -45,7 +45,7 @@
 | ID | 작업 묶음 | 상태 | 다음 게이트 |
 | --- | --- | --- | --- |
 | F00 | 채널별 미디어 저장·프리셋 | DONE (통합) | PR #44 공개 CI 통과·병합·해당 브랜치 정리 완료; 릴리즈 없음 |
-| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | WAITING-USER | 상세 계획/동일 Astra 재확인 완료; 계획·Native/자기 격리 실행 묶음 승인 |
+| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | DOING (T7) | 승인된 격리 실제 전환 검증 → T8 객관 계측 → T9 Astra max 전체 검토; push/PR 금지 |
 | AF05-B 실제 수용 / AF05 종료 | 차기 게시본 설치·업데이트 | WAITING-DEPENDENCY | 차기 게시와 실제 검사 별도 승인 후 수행; F00/F01과 독립 |
 | DT02 | 선택 파일의 native TS 실행 | DEFERRED | 실제 유지보수 이득과 검사/실행 경계 보존이 증명되면 재설계 |
 | F02–F05 | 후속 기능 | BACKLOG-BLOCKED | F00/F01 검증과 각 범위 승인 |
@@ -116,9 +116,12 @@
 - [x] T6 승인 TAB UI·확정 preset snapshot/confirm·legacy/upgrade·공통 수동 master 연결·최종dist62/runtime20. 실제 후행 검증은 아래 단계로 분리한다.
 - [ ] T7 clean checkpoint·실제 설치/다중 창/전환·정확한 저장 손실 대조·document/종료 증명.
   - [x] 실제 실행에서 발견한 locale 이름·Native context 키 순서·72px 다이얼·저장 receipt 누적 원인/RED→GREEN 보완. 최신 전체1542통과/실패0/기존private감사1skip·9기반/build/package PASS.
-  - [ ] 실제 UI 검사/4가지 저장 손실 대조의 최종 고배율 캡처·배치 재확인. bc8b2f0의O/P는 전체 gate·정확한4손실·worker 실행 문맥 교체·종료3증명/source 일치 PASS. 시각 대조에서 발견한 zoom fullPage 캡처 한계를 보완했고 viewport 캡처/고배율 root overflow·EQ 한 줄 검사를 강화해 새 checkpoint 재검증한다.
+  - [x] 실제 UI 검사·4가지 저장 손실 대조·고배율 배치/캡처. 1783812의U/V는 전체 gate·정확한4손실·worker 실행 문맥 교체·종료3증명/source 일치 PASS. 실제200% geometry와 원본 viewport 캡처에서 다이얼/EQ 표시를 확인했다. 확장 권한·제품 UI를 바꾸지 않고 제어 도구의 확대 캡처 좌표 문제만 우회했다.
   - [x] Gain full 재배치 fixture 보완 후 실제 재검증. a3403d2의M 실행70.784초 PASS·source일치/종료3증명true·page error0. 자연 worker suspension·물리 출력 증명은 아니다.
-  - [ ] F01 저장 형식 전환 CLI/독립 frozen 입력/정확한 손실 대조 구현·실행.
+  - [x] F01 저장 형식 전환 CLI·독립 기대 fixture·고정 payload/occurrence 감독·정확한 손실 대조 구현/집중·타입 검증.
+  - [ ] 새 clean checkpoint의 실제 cold 전환37회·손실 대조19회 및 source/종료/전체 게이트 확인.
+    - [x] 별도 F00 ae9f8e5의59자산/765607byte/고정 해시 입력·strict helper/오용 검출. 게시본58·현재F01 62와 구분한다.
+    - [ ] 독립 v1/명시 전환/edited 기대 값·6개 데이터 상태·기존 baseline을 보존하는 supervised 실행/손실 대조/실제 cold 검증. CLI 연결·Native 실행은 아직 미완료다.
 - [ ] T8 clean checkpoint·기존14/12/18/stress와 새 EQ/normalizer/전환/수명 객관 출력 검증.
 - [ ] T9 종합 타입/생성·전체/패키지/도구·보호/고지·whole-F01 Astra max 최종 검토/보완·로컬 마감. 완료 후에만 별도 공개 지시를 요청한다.
 
