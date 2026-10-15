@@ -428,7 +428,10 @@ async function captureNativeTarget(page,tab,routePath){
   /** @type {unknown} */const reply=await page.evaluate(target=>chrome.runtime.sendMessage({namespace:'cheese-knife-settings',protocol:3,
     action:'get-audio-state',requestId:'native-target-read',target}),target);
   const value=record(reply),binding=record(value?.audioState);
-  if(value?.ok!==true||value.stored!==false||!binding||typeof binding.documentId!=='string'||!binding.documentId)throw fail('audio-settings-target-read');
+  if(value?.ok!==true||value.stored!==false||!binding||typeof binding.documentId!=='string'||!binding.documentId){
+    const code=typeof value?.code==='string'&&/^[a-z-]{1,80}$/.test(value.code)?value.code:'invalid-reply';
+    throw fail('audio-settings-target-read-'+code);
+  }
   return {target,binding};
 }
 /** @param {import('playwright').Page} page @param {Awaited<ReturnType<typeof captureNativeTarget>>} captured @param {boolean} wanted @param {string} expected */
@@ -586,6 +589,7 @@ async function scenario(input,options){
   const initial=await stored(worker);
   const opened=await openInstalledMediaSettings({context,worker,fixturePage:first,extensionId,browserSession,mediaProtocol:3});
   const settings=opened.settingsPage;settings.setDefaultTimeout(15000);await readyUI(settings);await observeNativeInputs(settings);
+  await captureNativeTarget(settings,await exactTab(worker,firstURL),new URL(firstURL).pathname);
   if(!isDeepStrictEqual(initial,await stored(worker)))throw fail('audio-settings-bootstrap-write');
   const globalGain=await gainFromHome(settings,0);
   if(globalGain!==0)throw fail('audio-settings-native-zero');
