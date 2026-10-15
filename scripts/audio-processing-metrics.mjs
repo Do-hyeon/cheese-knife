@@ -177,16 +177,41 @@ export function complementaryAudioRamps(raw){
   return true;
 }
 
-/** @param {unknown} raw */
-export function rapidMasterCoverage(raw){
-  if(!Array.isArray(raw)||raw.length!==5)return false;
+export function rapidMasterStimuli(){
+  return /** @type {const} */([0,2,5]).flatMap(startPhaseMs=>/** @type {const} */([0,10,15,25]).map(milliseconds=>({startPhaseMs,milliseconds})));
+}
+
+/** Assess every raw comparison before coverage; a missing stimulus is not a product PASS.
+ * @param {unknown} raw
+ */
+export function rapidMasterAssessment(raw){
   /** @type {Set<string>} */const phases=new Set();
-  for(const milliseconds of [0,3,6,10,25]){
-    const rows=raw.filter(value=>record(value)?.milliseconds===milliseconds),row=record(rows[0]),reset=record(row?.reset),entry=record(row?.reentry);
-    if(rows.length!==1||row?.passed!==true||!reset||!entry||![reset.start,reset.end,entry.start].every(finite)||Number(reset.end)<=Number(reset.start))return false;
+  /** @type {string[]} */const failures=[];
+  if(!Array.isArray(raw)||raw.length!==12)return {status:'failed',phases:[],failures:['rapid-input-count']};
+  for(const spec of rapidMasterStimuli()){
+    const matches=raw.filter(value=>{const row=record(value);return row?.milliseconds===spec.milliseconds&&row.startPhaseMs===spec.startPhaseMs;}),row=record(matches[0]);
+    const id=`${spec.startPhaseMs}/${spec.milliseconds}`,reset=record(row?.reset),entry=record(row?.reentry),boundary=record(row?.boundary),state=record(row?.state),output=record(row?.output);
+    const clocks=['edge','off','offDone','on','onDone'].map(key=>record(boundary?.[key]));
+    if(matches.length!==1||!row||row.error!==undefined||!reset||!entry||!state||!output||boundary?.status!=='on'||
+      clocks.some(clock=>!clock||![clock.audio,clock.wall].every(finite))||
+      ![reset.from,reset.to,reset.start,reset.end,reset.observed,entry.start,entry.end,entry.observed].every(finite)){
+      failures.push(id+'/evidence');continue;
+    }
+    const edge=clocks[0],off=clocks[1],offDone=clocks[2],on=clocks[3],onDone=clocks[4];
+    const ordered=clocks.every((clock,index)=>index===0||Number(clock?.audio)>=Number(clocks[index-1]?.audio)&&Number(clock?.wall)>=Number(clocks[index-1]?.wall));
+    if(!ordered||Number(off?.wall)-Number(edge?.wall)<spec.startPhaseMs||Number(on?.wall)-Number(off?.wall)<spec.milliseconds||
+      reset.node!==7||entry.node!==7||Number(reset.from)<=1||reset.to!==1||Math.abs(Number(reset.end)-Number(reset.start)-.01)>1e-6||
+      Number(reset.observed)<Number(off?.audio)||Number(reset.observed)>Number(offDone?.audio)||Number(reset.start)<Number(reset.observed)||
+      Number(entry.start)<Number(on?.audio)||Number(entry.observed)<Number(on?.audio)||Number(entry.observed)>Number(onDone?.audio)||entry.end!==entry.start){
+      failures.push(id+'/clock-or-curve');continue;
+    }
+    const progress=Math.max(0,Math.min(1,(Number(entry.start)-Number(reset.start))/(Number(reset.end)-Number(reset.start))));
+    const expectedDb=20*Math.log10(Number(reset.from))*(1-progress),gain=Array.isArray(state.gains)?state.gains[7]:undefined;
+    if(state.sources!==1||state.active100msTimers!==1||state.invalidFrames!==0||!finite(gain)||gain<=0||Math.abs(20*Math.log10(gain)-expectedDb)>=.001||
+      !Array.isArray(output.channels)||output.channels.length!==2||output.channels.some(value=>{const channel=record(value);return !channel||!finite(channel.rms)||channel.rms<=0||!finite(channel.peak)||channel.peak<0||channel.peak>.9801||channel.overFullScaleSamples!==0||Math.abs(20*Math.log10(channel.rms)+36-expectedDb)>=.05;}))failures.push(id+'/output');
     phases.add(Number(entry.start)<=Number(reset.start)?'hold':Number(entry.start)>=Number(reset.end)?'unity':'reset');
   }
-  return phases.size===3;
+  return {status:failures.length?'failed':phases.size===3?'passed':'stimulus-unformed',phases:[...phases],failures};
 }
 
 /** @param {unknown} value */
@@ -195,18 +220,42 @@ function validSource(value){
   return source!==null&&Object.keys(source).length===5&&typeof source.sourceCommit==='string'&&/^[a-f0-9]{40}$/.test(source.sourceCommit)&&
     ['sourceSha256','lockSha256','manifestSha256','toolchainSha256'].every(key=>typeof source[key]==='string'&&/^[a-f0-9]{64}$/.test(source[key]));
 }
+/** @param {unknown} value */
+function validEnvironment(value){
+  const row=record(value);
+  return !!row&&typeof row.browserVersion==='string'&&/^\d+\.\d+\.\d+\.\d+$/.test(row.browserVersion)&&row.platform==='win32'&&
+    ['x64','arm64'].includes(String(row.arch))&&typeof row.nodeVersion==='string'&&/^v\d+\.\d+\.\d+$/.test(row.nodeVersion);
+}
+/** @param {unknown} raw @param {unknown} expectedSource */
+export function processingPreflightFailures(raw,expectedSource){
+  const report=record(raw),failures=[];
+  if(!report||report.schema!=='f01-audio-preflight-v1'||!validSource(expectedSource)||!validSource(report.source)||!validSource(report.after)||
+    JSON.stringify(report.source)!==JSON.stringify(expectedSource)||JSON.stringify(report.after)!==JSON.stringify(expectedSource))return ['audio-preflight-source'];
+  if(report.error!==null||!Array.isArray(report.pageErrors)||report.pageErrors.length)failures.push('audio-preflight-exception');
+  if(!Array.isArray(report.rates)||report.rates.length!==3)return [...failures,'audio-preflight-rates'];
+  for(const sampleRate of [44100,48000,96000]){
+    const rows=report.rates.filter(value=>record(value)?.sampleRate===sampleRate),row=record(rows[0]),shutdown=record(row?.shutdown);
+    if(rows.length!==1||!row||!validEnvironment(row.environment)||!shutdown||!['browserCloseAcknowledged','browserDisconnected','ownedRootClosed'].every(key=>shutdown[key]===true))failures.push(`preflight-${sampleRate}/environment-or-close`);
+    const assessment=rapidMasterAssessment(row?.rapid);
+    if(assessment.status!=='passed')failures.push(`preflight-${sampleRate}/${assessment.status}`);
+  }
+  return failures;
+}
 /** Only complete, same-source Native results can clear the gate.
  * @param {unknown} raw @param {unknown} expectedSource
  */
 export function processingReportFailures(raw,expectedSource){
   const report=record(raw),failures=[];
-  if(!report||report.schema!=='f01-audio-processing-v1'||!validSource(expectedSource)||!validSource(report.source)||!validSource(report.after)||
+  if(!report||report.schema!=='f01-audio-processing-v2'||!validSource(expectedSource)||!validSource(report.source)||!validSource(report.after)||
     JSON.stringify(report.source)!==JSON.stringify(expectedSource)||JSON.stringify(report.after)!==JSON.stringify(expectedSource))return ['audio-processing-source'];
   if(report.error!==null||!Array.isArray(report.pageErrors)||report.pageErrors.length)failures.push('audio-processing-exception');
+  failures.push(...processingPreflightFailures(report.preflight,expectedSource));
   if(!Array.isArray(report.rates)||report.rates.length!==3)return [...failures,'audio-processing-rates'];
   for(const sampleRate of [44100,48000,96000]){
     const rows=report.rates.filter(row=>record(row)?.sampleRate===sampleRate),rate=record(rows[0]);
     if(rows.length!==1||!rate){failures.push(`rate-${sampleRate}/missing`);continue;}
+    const preflightRates=record(report.preflight)?.rates,preflight=Array.isArray(preflightRates)?record(preflightRates.find(value=>record(value)?.sampleRate===sampleRate)):null;
+    if(!validEnvironment(rate.environment)||JSON.stringify(rate.environment)!==JSON.stringify(preflight?.environment))failures.push(`rate-${sampleRate}/preflight-environment`);
     const shutdown=record(rate.shutdown),nodes=record(rate.nodes);
     if(!shutdown||!['browserCloseAcknowledged','browserDisconnected','ownedRootClosed'].every(key=>shutdown[key]===true))failures.push(`rate-${sampleRate}/shutdown`);
     const expectedNodes={sources:1,gainNodes:8,filters:8,compressors:1,delays:2,shapers:1};
@@ -244,8 +293,7 @@ export function processingReportFailures(raw,expectedSource){
     if(!Array.isArray(windows)||windows.length!==2||windows[0]===windows[1]||!windows.every(value=>Number.isSafeInteger(value)&&value>=0)||
       !Array.isArray(targets)||targets.length!==2||targets[0]===targets[1]||!targets.every(value=>typeof value==='string'&&/^[A-Fa-f0-9]{32}$/.test(value)))failures.push(`rate-${sampleRate}/native-window-identity`);
     const controls=record(rate.controls);
-    if(!rapidMasterCoverage(record(controls?.evidence)?.rapid))failures.push(`rate-${sampleRate}/control-rapid-coverage`);
-    for(const key of ['rapidMaster','dryUnity','dry99','wetPeak','extreme48db','silenceNoBoost','noiseNoBoost','silenceReturnUnity','burstFinite','stallHold','analysisErrorUnity'])if(controls?.[key]!==true)failures.push(`rate-${sampleRate}/control-${key}`);
+    for(const key of ['dryUnity','dry99','wetPeak','extreme48db','silenceNoBoost','noiseNoBoost','silenceReturnUnity','burstFinite','stallHold','analysisErrorUnity'])if(controls?.[key]!==true)failures.push(`rate-${sampleRate}/control-${key}`);
   }
   return failures;
 }

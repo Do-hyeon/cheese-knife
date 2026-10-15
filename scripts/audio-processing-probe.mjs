@@ -1,5 +1,5 @@
 /** @typedef {'stereo'|'mono'|'antiphase'|'left'|'right'|'silence'|'noise'|'bursts'|'dc'|'tone-silence'} SignalPattern */
-/** @typedef {{kind:'bootstrap'}|{kind:'signal',frequency:number,inputDbfs:number,pattern:SignalPattern,phase?:number}|{kind:'configure',config:Record<string,unknown>,gain:number,enabled:boolean}|{kind:'capture',seconds:number,endFrame?:number}|{kind:'facts'}|{kind:'response',frequency:number}|{kind:'reset-events'}|{kind:'analysis-error',enabled:boolean}|{kind:'stall',milliseconds:number}|{kind:'rapid-master',milliseconds:0|3|6|10|25}|{kind:'retired-ticks'}|{kind:'video',muted:boolean,volume:number}} ProcessingAction */
+/** @typedef {{kind:'bootstrap'}|{kind:'signal',frequency:number,inputDbfs:number,pattern:SignalPattern,phase?:number}|{kind:'configure',config:Record<string,unknown>,gain:number,enabled:boolean}|{kind:'capture',seconds:number,endFrame?:number}|{kind:'facts'}|{kind:'response',frequency:number}|{kind:'reset-events'}|{kind:'analysis-error',enabled:boolean}|{kind:'stall',milliseconds:number}|{kind:'rapid-master',milliseconds:0|10|15|25,startPhaseMs:0|2|5}|{kind:'retired-ticks'}|{kind:'video',muted:boolean,volume:number}} ProcessingAction */
 /** @typedef {{action:(input:ProcessingAction)=>Promise<unknown>}} ProcessingProbe */
 /** @typedef {{config:Record<string,unknown>,mediaRequestId:string,media:{context:Record<string,unknown>},audio:{configure:()=>void,setEnabled:(video:HTMLVideoElement,value:boolean)=>Promise<string>,getState:(video:HTMLVideoElement)=>string,setGain:(video:HTMLVideoElement,value:number)=>number,getReadback:(video:HTMLVideoElement)=>unknown}}} ProbeRuntime */
 
@@ -165,12 +165,16 @@ export async function installProcessingProbe(sampleRate){
       case 'analysis-error':analysisError=input.enabled;return null;
       case 'stall':{if(input.milliseconds<210||input.milliseconds>1000)throw new Error('audio-probe-stall');const start=context.currentTime,end=performance.now()+input.milliseconds;while(performance.now()<end){}return {start,end:context.currentTime};}
       case 'rapid-master':{
-        if(![0,3,6,10,25].includes(input.milliseconds))throw new Error('audio-probe-rapid-master');
-        const state=runtime(),element=video(),off=context.currentTime;await state.audio.setEnabled(element,false);
-        const deadline=performance.now()+100;
-        while(context.currentTime<off+input.milliseconds/1000&&performance.now()<deadline){}
-        const on=context.currentTime;if(on<off+input.milliseconds/1000)throw new Error('audio-probe-clock-stalled');
-        return {off,on,status:await state.audio.setEnabled(element,true)};
+        if(![0,10,15,25].includes(input.milliseconds)||![0,2,5].includes(input.startPhaseMs))throw new Error('audio-probe-rapid-master');
+        const state=runtime(),element=video(),initial=context.currentTime,deadline=performance.now()+100;
+        while(context.currentTime===initial&&performance.now()<deadline){}
+        if(context.currentTime===initial)throw new Error('audio-probe-clock-stalled');
+        const stamp=()=>({audio:context.currentTime,wall:performance.now()}),edge=stamp();
+        while(performance.now()<edge.wall+input.startPhaseMs){}
+        const off=stamp();await state.audio.setEnabled(element,false);const offDone=stamp();
+        while(performance.now()<off.wall+input.milliseconds){}
+        const on=stamp(),status=await state.audio.setEnabled(element,true),onDone=stamp();
+        return {edge,off,offDone,on,onDone,status};
       }
       case 'retired-ticks':for(const tick of ticks.values())if(!tick.active&&tick.timeout===100)tick.invoke();return null;
       case 'facts':return {sampleRate,audioTime:context.currentTime,contextState:context.state,hidden:document.hidden,sources,gainNodes:gains.length,filters:filters.length,compressors,delays,shapers,splitters,

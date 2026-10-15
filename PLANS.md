@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T8 국소 DSP 보완 로컬 게이트 완료·Native 빠른 전환 자극 커버리지 재설계 승인 대기**. T1–T7 로컬 게이트를 마쳤으며 T8·T9는 미완료다. T7 완료 이력은 [완료 단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md), 상세 결과는 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)에 유지한다. F00 PR #44 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
+최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T8 Native 사전계측 분리 승인·상세 계획/도구 보완/재검증 진행**. T1–T7 로컬 게이트를 마쳤으며 T8·T9는 미완료다. T7 완료 이력은 [완료 단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md), 상세 결과는 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)에 유지한다. F00 PR #44 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -12,8 +12,9 @@ T8 진행: 기존14 steady·12 alignment·18 transition 및 수치 허용치는 
 - [x] T8 객관 측정 도구·엄격 타입·로컬 전체1590통과/실패0/기존1skip·새 프로필 동일 현상 재현.
 - [x] **사용자 승인:** master OFF의 기존10ms dry 복귀 동안 normalizer gain을 유지하고, wet가0이 된 뒤 unity로 복귀하는 국소 전환 보완. 분석/timer/옛 callback은 즉시 정리하고 빠른 OFF/ON은 현재 계산 곡선에서 예약 취소·재연결한다. 단독 normalizer OFF/측정 오류의 기존10ms 예외는 유지한다. 기존 수치 허용치는 변경하지 않으며 구현/검증 완료 표시는 아니다.
 - [x] 명세147절에 맞춰 기존 dip/연속성은 master 전환에 유지하고 개별 EQ/comp/normalizer 조작은 출력 상한을 강제한다. 이들의 추가 step 관측은 진단값으로 남기며 master 실패를 이 구분으로 숨기지 않는다.
-- [ ] **사용자 재승인 필요:** [Native 빠른 전환 후속 설계](docs/superpowers/specs/2026-10-15-f01-native-rapid-coverage-follow-up.md). 최신 M은 모든 빠른 전환의 이득/출력이 일치했으나 실제 reset 중간 구간이 없어서 실패했다. 반복적인 타이밍 조정은 중지하고, 자극 성립을 별도 유한 사전계측으로 분리하는 설계·계획·도구 보완·Native 재검증을 승인받는다. 기존 수치·실제 세 구간 확보·모든 측정 보존 기준은 유지한다.
-- [ ] 보완 RED→GREEN·전체/기반 검사·새 clean checkpoint의44.1/48/96kHz 전체 출력/수명과 기존 객관 runner 재검증.
+- [x] **사용자 승인:** [Native 빠른 전환 후속 설계](docs/superpowers/specs/2026-10-15-f01-native-rapid-coverage-follow-up.md)의 사전계측 분리·상세 계획·도구 보완·Native 재검증. [실행 계획](docs/superpowers/plans/2026-10-15-f01-native-stimulus-preflight.md)에 실행 전12개 고정 자극/rate와 중지 기준을 명시한다. 기존 수치·실제 세 구간 확보·모든 측정 보존을 유지하며 통과 보장은 아니다.
+- [x] 사전계측 분리 도구 RED→GREEN·집중49/49·전체1607통과/실패0/기존1skip·9개 기반/build/package. 제품 DSP·기존 fixture/pin·root dist58 불변.
+- [ ] 새 clean checkpoint의44.1/48/96kHz 사전계측 → 전체 출력/수명과 기존 객관 runner 재검증. 사전계측 미성립/실패 시 긴 행렬 전에 중지하고 전부 보존한다.
 - [ ] T8 마감 뒤 T9 전체 회귀·도구 점검·fresh Astra max 최종 전체 검토. 공개 작업 금지는 유지.
 
 - 채널별 저장은 **오디오·영상 필터만**, 나머지는 전역. 계정별 분리/계정·쿠키 수집은 하지 않는다.

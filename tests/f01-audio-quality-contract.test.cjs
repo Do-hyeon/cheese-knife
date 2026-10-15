@@ -22,7 +22,7 @@ test('queued empty startup packets do not poison later output, but empty packets
   const target={AudioContext:Native,Symbol,setInterval:()=>1,clearInterval(){},addEventListener(){}};
   Object.defineProperty(target,Symbol.for('cheese-knife.runtime.v1'),{value:{audio:{getReadback:()=>({sources:1})}}});
   await vm.runInNewContext(`(${installProcessingProbe.toString()})(44100)`,{window:target,AudioContext:Native,
-    AudioWorkletNode:class{constructor(){return sink;}},Float32Array,Blob,URL:{createObjectURL:()=> 'blob:test',revokeObjectURL(){}},
+    AudioWorkletNode:class{constructor(){return sink;}},Float32Array,Blob,performance,URL:{createObjectURL:()=> 'blob:test',revokeObjectURL(){}},
     document:{hidden:false,querySelector:()=>({muted:false,volume:1,paused:false,currentTime:0})}});
   const context=contexts[0],receive=sink.port.onmessage;assert.ok(context);assert.ok(receive);
   context.currentTime=12800/44100;context.createMediaElementSource();
@@ -38,6 +38,7 @@ test('queued empty startup packets do not poison later output, but empty packets
   receive({data:{frame:13184,samples:[]}});receive({data:{frame:NaN,samples:[]}});
   const after=/** @type {Record<string,unknown>} */(await probe.action({kind:'facts'}));assert.equal(after.invalidFrames,2);
   await assert.rejects(()=>probe.action({kind:'capture',seconds:256/44100,endFrame:13184}),/audio-probe-capture-invalid/);
+  await assert.rejects(()=>probe.action({kind:'rapid-master',milliseconds:10,startPhaseMs:2}),/audio-probe-clock-stalled/);
 });
 
 test('independent peaking response is neutral and reaches literal +/-6dB at each centre',async()=>{
@@ -111,9 +112,9 @@ test('normalizer trace gate checks real output target stereo polarity and automa
 test('report gate cannot label missing partial failed native exception or wrong-source evidence as PASS',async()=>{
   const {processingReportFailures}=await metrics();
   const source={sourceCommit:'1'.repeat(40),sourceSha256:'2'.repeat(64),lockSha256:'3'.repeat(64),manifestSha256:'4'.repeat(64),toolchainSha256:'5'.repeat(64)};
-  for(const value of [undefined,null,{}, {schema:'f01-audio-processing-v1',source,after:source,rates:[]},
-    {schema:'f01-audio-processing-v1',source,after:{...source,sourceSha256:'6'.repeat(64)},rates:[],pageErrors:[]},
-    {schema:'f01-audio-processing-v1',source,after:source,rates:[],pageErrors:['native exception']}])assert.notDeepEqual(processingReportFailures(value,source),[]);
+  for(const value of [undefined,null,{}, {schema:'f01-audio-processing-v2',source,after:source,rates:[]},
+    {schema:'f01-audio-processing-v2',source,after:{...source,sourceSha256:'6'.repeat(64)},rates:[],pageErrors:[]},
+    {schema:'f01-audio-processing-v2',source,after:source,rates:[],pageErrors:['native exception']}])assert.notDeepEqual(processingReportFailures(value,source),[]);
   assert.notDeepEqual(processingReportFailures({schema:'f01-audio-processing-v1',source:null,after:null,rates:[],pageErrors:[]},null),[]);
 });
 
@@ -155,15 +156,48 @@ test('native dry/wet automation must be complementary for the whole crossfade, n
   assert.equal(complementaryAudioRamps([{...ramps[0],to:NaN},ramps[1]]),false);
 });
 
-test('rapid Native coverage requires measured hold reset-middle and unity phases, never a nominal delay label',async()=>{
-  const {rapidMasterCoverage}=await metrics();
-  const rows=[0,3,6,10,25].map((milliseconds,index)=>({milliseconds,passed:true,reset:{start:1.01,end:1.02},reentry:{start:[1.002,1.008,1.014,1.019,1.03][index]}}));
-  assert.equal(rapidMasterCoverage(rows),true);
-  assert.equal(rapidMasterCoverage(rows.map(row=>({...row,reentry:{start:1.03}}))),false);
-  assert.equal(rapidMasterCoverage(rows.map(row=>({...row,reentry:{start:1.002}}))),false);
-  assert.equal(rapidMasterCoverage(rows.map((row,index)=>index===2?{...row,passed:false}:row)),false);
-  assert.equal(rapidMasterCoverage(rows.slice(1)),false);
-  assert.equal(rapidMasterCoverage(rows.map((row,index)=>index===2?{...row,reentry:{start:NaN}}:row)),false);
+/** Literal clock/curve/output fixtures, independent of the assessment implementation. */
+function rapidRows(){
+  return [0,2,5].flatMap(startPhaseMs=>[0,10,15,25].map((milliseconds,index)=>{
+    const start=[1.005,1.015,1.018,1.025][index]??1.025,db=20*Math.log10(2)*([1,.5,.2,0][index]??0),gain=10**(db/20);
+    return {startPhaseMs,milliseconds,boundary:{edge:{audio:.99,wall:990},off:{audio:1,wall:1000},offDone:{audio:1,wall:1000},on:{audio:start,wall:1000+milliseconds},onDone:{audio:start,wall:1001+milliseconds},status:'on'},
+      reset:{node:7,from:2,to:1,start:1.01,end:1.02,observed:1},reentry:{node:7,from:gain,to:gain,start,end:start,observed:start},
+      state:{sources:1,active100msTimers:1,invalidFrames:0,gains:[1,1,1,1,1,1,1,gain]},
+      output:{channels:[0,1].map(()=>({rms:10**((-36+db)/20),peak:.05,overFullScaleSamples:0}))}};
+  }));
+}
+
+test('Native preflight assesses all twelve outputs and real phases instead of trusting a nominal delay or passed flag',async()=>{
+  const {rapidMasterAssessment}=await metrics(),rows=rapidRows();
+  assert.equal(rapidMasterAssessment(rows).status,'passed');
+  const early=rapidRows().map(row=>({...row,reentry:{...row.reentry,start:1.005,end:1.005,observed:1.005},boundary:{...row.boundary,on:{...row.boundary.on,audio:1.005},onDone:{...row.boundary.onDone,audio:1.005}},state:{...row.state,gains:[1,1,1,1,1,1,1,2]},output:{channels:[0,1].map(()=>({rms:10**((-36+20*Math.log10(2))/20),peak:.05,overFullScaleSamples:0}))}}));
+  assert.equal(rapidMasterAssessment(early).status,'stimulus-unformed');
+  const unity=early.map(row=>({...row,reentry:{...row.reentry,start:1.025,end:1.025,observed:1.025},boundary:{...row.boundary,on:{...row.boundary.on,audio:1.025},onDone:{...row.boundary.onDone,audio:1.025}},state:{...row.state,gains:[1,1,1,1,1,1,1,1]},output:{channels:[0,1].map(()=>({rms:10**(-36/20),peak:.05,overFullScaleSamples:0}))}}));
+  assert.equal(rapidMasterAssessment(unity).status,'stimulus-unformed');
+  for(const bad of [rows.slice(1),[...rows,rows[0]],rows.map((row,index)=>index===2?{...row,startPhaseMs:0,milliseconds:0}:row),rows.map((row,index)=>index===2?{...row,reentry:{...row.reentry,start:NaN}}:row),rows.map((row,index)=>index===2?{...row,state:{...row.state,gains:[1,1,1,1,1,1,1,1]},passed:true}:row),rows.map((row,index)=>index===2?{...row,output:{channels:[{rms:NaN,peak:0,overFullScaleSamples:0}]}}:row),rows.map((row,index)=>index===2?{...row,error:'capture-incomplete'}:row)])assert.equal(rapidMasterAssessment(bad).status,'failed');
+});
+
+test('standalone preflight rejects partial rates stale source failed output shutdown and incomplete clock evidence',async()=>{
+  const {processingPreflightFailures,processingReportFailures}=await metrics();
+  const source={sourceCommit:'1'.repeat(40),sourceSha256:'2'.repeat(64),lockSha256:'3'.repeat(64),manifestSha256:'4'.repeat(64),toolchainSha256:'5'.repeat(64)};
+  const environment={browserVersion:'155.0.1.2',platform:'win32',arch:'x64',nodeVersion:'v24.19.0'};
+  const report={schema:'f01-audio-preflight-v1',source,after:source,error:null,pageErrors:[],rates:[44100,48000,96000].map(sampleRate=>({sampleRate,environment,rapid:rapidRows(),shutdown:{browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:true}}))};
+  assert.deepEqual(processingPreflightFailures(report,source),[]);
+  const full={schema:'f01-audio-processing-v2',source,after:source,error:null,pageErrors:[],preflight:report,rates:report.rates.map(({sampleRate,environment})=>({sampleRate,environment}))};
+  assert.equal(processingReportFailures(full,source).some(value=>value.includes('preflight-environment')),false);
+  assert.ok(processingReportFailures({...full,rates:full.rates.map(row=>({...row,environment:{...row.environment,browserVersion:'155.0.1.3'}}))},source).includes('rate-44100/preflight-environment'));
+  assert.ok(processingReportFailures({...full,preflight:undefined},source).includes('audio-preflight-source'));
+  for(const bad of [{...report,rates:report.rates.slice(1)},{...report,after:{...source,sourceSha256:'6'.repeat(64)}},{...report,pageErrors:['exception']},{...report,rates:report.rates.map((row,index)=>index?row:{...row,shutdown:{}})},{...report,rates:report.rates.map((row,index)=>index?row:{...row,rapid:row.rapid.map((item,n)=>n?item:{...item,boundary:{}})})},{...report,rates:report.rates.map((row,index)=>index?row:{...row,environment:{...environment,browserVersion:''}})}])assert.notDeepEqual(processingPreflightFailures(bad,source),[]);
+});
+
+test('rapid preflight retains the row that throws before a capture can complete',async()=>{
+  const {rapidMasterProof}=await import('../scripts/check-audio-processing.mjs');
+  const page=/** @type {import('playwright').Page} */(/** @type {unknown} */({
+    evaluate:/** @param {unknown} fn @param {import('../scripts/audio-processing-probe.mjs', {with:{'resolution-mode':'import'}}).ProcessingAction} input */async(fn,input)=>{if(input.kind==='configure')return {status:input.enabled?'on':'off'};if(input.kind==='rapid-master')throw new Error('clock-stalled');return null;},waitForTimeout:async()=>{},
+  }));
+  /** @type {Record<string,unknown>[]} */const rows=[];
+  await assert.rejects(()=>rapidMasterProof(page,rows),/clock-stalled/);
+  assert.equal(rows.length,1);assert.equal(rows[0]?.error,'clock-stalled');assert.equal(rows[0]?.output,undefined);
 });
 
 test('component transitions enforce wet ceiling while preserving master-only continuity diagnostics',async()=>{

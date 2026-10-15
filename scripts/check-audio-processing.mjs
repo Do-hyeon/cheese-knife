@@ -6,7 +6,7 @@ import {openAudioMeasurementBrowser,openAudioMeasurementWindow} from './audio-na
 import {installProcessingProbe,callProcessingProbe} from './audio-processing-probe.mjs';
 import {AUDIO_ARTIFACT_FILES} from './audio-artifact-core.mjs';
 import {summarizeCapture} from './audio-signal.mjs';
-import {equalizerMeasurementCases,evaluateEqualizerCapture,normalizerMeasurementCases,evaluateNormalizerTrace,validateProcessingCapture,evaluateProcessingTransition,complementaryAudioRamps,rapidMasterCoverage,processingReportFailures} from './audio-processing-metrics.mjs';
+import {equalizerMeasurementCases,evaluateEqualizerCapture,normalizerMeasurementCases,evaluateNormalizerTrace,validateProcessingCapture,evaluateProcessingTransition,complementaryAudioRamps,rapidMasterStimuli,rapidMasterAssessment,processingPreflightFailures,processingReportFailures} from './audio-processing-metrics.mjs';
 
 /** @typedef {{root:string,readFile:(relative:string,encoding:'utf8')=>Promise<string>,ensureDirectory:(relative:string)=>Promise<string>,makeTempDirectory:(prefix:string)=>Promise<string>,writeFile:(relative:string,data:string|Uint8Array,options?:{flag:string})=>Promise<unknown>}} MeasurementFiles */
 /** @param {unknown} value @returns {Record<string,unknown>} */
@@ -121,23 +121,26 @@ async function transitionProof(page,sampleRate){
   }
   return rows;
 }
+/** @param {import('playwright').Page} page @param {Record<string,unknown>[]} rows */
+export async function rapidMasterProof(page,rows){
+  for(const spec of rapidMasterStimuli()){
+    const row=/** @type {Record<string,unknown>} */({...spec});rows.push(row);
+    try{
+      await configure(page,{normalizerEnabled:false,eqEnabled:false,compressorEnabled:false},1,false);
+      await call(page,{kind:'signal',frequency:1000,inputDbfs:-36,pattern:'stereo'});
+      await configure(page,{normalizerEnabled:true,normalizerTargetDbfs:-20});await page.waitForTimeout(6500);await call(page,{kind:'reset-events'});
+      const boundary=record(await call(page,{kind:'rapid-master',...spec}));row.boundary=boundary;await page.waitForTimeout(180);
+      const state=await facts(page);row.state=state;
+      row.reset=list(state,'events').map(record).find(row=>row.node===7);
+      row.reentry=list(state,'steps').map(record).find(row=>row.node===7&&numeric(row,'observed')>=numeric(record(boundary.on),'audio'));
+      row.output=summarizeCapture(await capture(page,.05));
+      console.log(JSON.stringify({stage:'rapid-stimulus',...spec,reset:row.reset,reentry:row.reentry}));
+    }catch(cause){row.error=cause instanceof Error?cause.message:'audio-processing-rapid-failed';throw cause;}
+  }
+  return rapidMasterAssessment(rows);
+}
 /** @param {import('playwright').Page} page */
 async function controlProof(page){
-  const rapid=[];
-  for(const milliseconds of /** @type {const} */([0,3,6,10,25])){
-    await configure(page,{normalizerEnabled:false,eqEnabled:false,compressorEnabled:false},1,false);
-    await call(page,{kind:'signal',frequency:1000,inputDbfs:-36,pattern:'stereo'});
-    await configure(page,{normalizerEnabled:true});await page.waitForTimeout(6500);await call(page,{kind:'reset-events'});
-    const boundary=record(await call(page,{kind:'rapid-master',milliseconds}));await page.waitForTimeout(180);
-    const state=await facts(page),output=summarizeCapture(await capture(page,.05));
-    const reset=list(state,'events').map(record).find(row=>row.node===7),reentry=list(state,'steps').map(record).find(row=>row.node===7&&numeric(row,'observed')>=numeric(boundary,'on'));
-    if(!reset||!reentry)throw new Error('audio-processing-rapid-evidence');
-    const progress=Math.max(0,Math.min(1,(numeric(reentry,'start')-numeric(reset,'start'))/(numeric(reset,'end')-numeric(reset,'start'))));
-    const expected=20*Math.log10(numeric(reset,'from'))*(1-progress),actual=20*Math.log10(gainAt(state,7));
-    rapid.push({milliseconds,boundary,state,output,reset,reentry,expectedDb:expected,actualDb:actual,
-      passed:boundary.status==='on'&&state.sources===1&&state.active100msTimers===1&&Math.abs(actual-expected)<.001&&
-        output.channels.every(channel=>Math.abs(20*Math.log10(channel.rms)+36-expected)<.05&&channel.peak<=.9801&&channel.overFullScaleSamples===0)});
-  }
   await configure(page,{normalizerEnabled:false,eqEnabled:false,compressorEnabled:false},1,false);
   await call(page,{kind:'signal',frequency:1000,inputDbfs:0,pattern:'dc'});await configure(page,{},1,false);await page.waitForTimeout(1250);
   const unity=summarizeCapture(await capture(page));
@@ -181,14 +184,14 @@ async function controlProof(page){
   const fft=2**Math.ceil(Math.log2(numeric(stall,'sampleRate')*.25)),window=fft/numeric(stall,'sampleRate');
   const silentAfter=numeric(silenceReturn,'audioTime')-numeric(record(silenceReturn.video),'currentTime')+9.5;
   const returnEvents=list(silenceReturn,'events').map(record).filter(row=>row.node===7),silentEvents=returnEvents.filter(row=>numeric(row,'start')>=silentAfter);
-  return {rapidMaster:rapidMasterCoverage(rapid),dryUnity:unity.channels.every(row=>Math.abs(row.rms-1)<.00001),dry99:dry99.channels.every(row=>Math.abs(row.rms-.99)<.00001),
+  return {dryUnity:unity.channels.every(row=>Math.abs(row.rms-1)<.00001),dry99:dry99.channels.every(row=>Math.abs(row.rms-.99)<.00001),
     wetPeak:wet.channels.every(row=>row.peak<=.9801&&row.overFullScaleSamples===0),
     extreme48db:extreme.channels.every(row=>row.peak<=.9801&&row.overFullScaleSamples===0)&&Math.abs(20*Math.log10(gainAt(extremeFacts,3))+48)<.01&&Math.abs(20*Math.log10(gainAt(extremeFacts,7))-6)<.1&&gainAt(extremeFacts,2)===2,
     silenceNoBoost:silenceNoBoost(silence),noiseNoBoost:silenceNoBoost(lowNoise),burstFinite:bursts.length===3&&bursts.every(row=>row.result.failures.length===0),
     silenceReturnUnity:Math.abs(20*Math.log10(gainAt(silenceReturn,7)))<=1&&returnEvents.some(row=>20*Math.log10(numeric(row,'to'))>=5.9)&&silentEvents.length>10&&silentEvents.every(row=>numeric(row,'to')<=numeric(row,'from')+1e-8),
     stallHold:!!hold&&!!ramp&&numeric(ramp,'start')-numeric(hold,'start')>=window-.025,
     analysisErrorUnity:list(error,'events').some(value=>{const event=record(value);return event.node===7&&Math.abs(numeric(event,'end')-numeric(event,'start')-.01)<.001&&numeric(event,'to')===1;}),
-    evidence:{rapid,unity,dry99,wet,extreme,extremeFacts,silence,lowNoise,bursts,silenceReturn,silentAfter,stall,stallBoundary,error}};
+    evidence:{unity,dry99,wet,extreme,extremeFacts,silence,lowNoise,bursts,silenceReturn,silentAfter,stall,stallBoundary,error}};
 }
 /** @param {import('playwright').Page} page @param {Awaited<ReturnType<typeof openAudioMeasurementBrowser>>} measurement @param {number} sampleRate @param {MeasurementFiles} files @param {string} html */
 async function lifetimeProof(page,measurement,sampleRate,files,html){
@@ -247,17 +250,43 @@ export async function runAudioProcessing(options){
   /** @type {unknown} */const helper=require(helperSpecifier);const html=record(helper).playerHTML;
   if(typeof html!=='string')throw new Error('audio-processing-fixture');
   /** @type {Record<string,unknown>[]} */const rates=[];
+  /** @type {Record<string,unknown>[]} */const preflightRates=[];
   /** @type {string[]} */const pageErrors=[];
   /** @type {string|null} */let error=null;
+  /** @type {Record<string,unknown>|null} */let preflight=null;
+  /** @param {Awaited<ReturnType<typeof openAudioMeasurementBrowser>>} measurement */
+  const environment=measurement=>({browserVersion:measurement.browser.version(),platform:process.platform,arch:process.arch,nodeVersion:process.version});
   try{
     for(const sampleRate of [44100,48000,96000]){
       const measurement=await openAudioMeasurementBrowser(chromium,files),page=await measurement.context.newPage();
-      const row=/** @type {Record<string,unknown>} */({sampleRate,profilePath:measurement.profilePath});rates.push(row);
+      const rapid=/** @type {Record<string,unknown>[]} */([]),row=/** @type {Record<string,unknown>} */({sampleRate,profilePath:measurement.profilePath,environment:environment(measurement),rapid});preflightRates.push(row);
       page.on('pageerror',exception=>pageErrors.push(exception.message));
       try{
         await preparePage(page,sampleRate,files,html);row.nodes=await facts(page);
+        const assessment=await rapidMasterProof(page,rapid);row.assessment=assessment;
+        if(assessment.status!=='passed')throw new Error('audio-preflight-'+assessment.status);
+      }catch(cause){
+        try{row.failureFacts=await facts(page);}catch(diagnostic){row.failureFactsError=diagnostic instanceof Error?diagnostic.message:'audio-processing-diagnostic-failed';}
+        throw cause;
+      }finally{row.shutdown=await measurement.close();}
+      console.log(JSON.stringify({stage:'preflight-rate-complete',sampleRate}));
+    }
+  }catch(cause){error=cause instanceof Error?cause.message:'audio-preflight-failed';}
+  /** @type {unknown} */const preflightAfter=await Reflect.apply(attest,undefined,[files,required]);
+  preflight={schema:'f01-audio-preflight-v1',runId:options.runId,source,after:preflightAfter,rates:preflightRates,pageErrors:[...pageErrors],error};
+  const preflightFailures=processingPreflightFailures(preflight,source);
+  await files.writeFile(relative+'/preflight.json',JSON.stringify({...preflight,passed:preflightFailures.length===0,failures:preflightFailures},null,2),{flag:'wx'});
+  console.log(JSON.stringify({stage:'preflight-complete',report:relative+'/preflight.json',failures:preflightFailures}));
+  try{
+    if(preflightFailures.length)throw new Error(error??'audio-preflight-incomplete');
+    for(const sampleRate of [44100,48000,96000]){
+      const measurement=await openAudioMeasurementBrowser(chromium,files),page=await measurement.context.newPage();
+      const row=/** @type {Record<string,unknown>} */({sampleRate,profilePath:measurement.profilePath,environment:environment(measurement)});rates.push(row);
+      page.on('pageerror',exception=>pageErrors.push(exception.message));
+      try{
+        if(JSON.stringify(row.environment)!==JSON.stringify(preflightRates.find(row=>row.sampleRate===sampleRate)?.environment))throw new Error('audio-processing-preflight-environment');
+        await preparePage(page,sampleRate,files,html);row.nodes=await facts(page);
         const controls=await controlProof(page);row.controls=controls;
-        if(!controls.rapidMaster)throw new Error('audio-processing-rapid-master');
         row.equalizer=await equalizerProof(page,sampleRate,files,relative+'/captures');
         const transitions=await transitionProof(page,sampleRate);row.transitions=transitions;
         if(transitions.some(row=>row.failures.length))throw new Error('audio-processing-transition-limits');
@@ -274,7 +303,7 @@ export async function runAudioProcessing(options){
     }
   }catch(cause){error=cause instanceof Error?cause.message:'audio-processing-failed';}
   /** @type {unknown} */const after=await Reflect.apply(attest,undefined,[files,required]);
-  const report={schema:'f01-audio-processing-v1',runId:options.runId,source,after,rates,pageErrors,error,
+  const report={schema:'f01-audio-processing-v2',runId:options.runId,source,after,preflight,rates,pageErrors,error,
     limits:'Synthetic floating output before a silent sink. Not physical speakers, protected streams, or durable Gain actor/storage authority. Retained profiles and raw EQ captures. Finite allocations are not a leak-free proof.'};
   const failures=processingReportFailures(report,source);
   await files.writeFile(relative+'/report.json',JSON.stringify({...report,passed:failures.length===0,failures},null,2),{flag:'wx'});

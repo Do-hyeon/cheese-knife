@@ -312,6 +312,12 @@ root dist58·제품2.13.3·사용자 Chrome/P09·모든 실패 증거와 로컬 
 
 후속 도구 입력은 격리 전체1591개 중1590통과/실패0/기존private감사1skip(60.961초)·집중11/11·9개 기반/build/package를 확인했다. 실제로 평가하는6개 산출물과 HTML helper도 source attestation의 필수 tracked 입력에 포함했다. 다음 새 Native는 전환 수치 위반을 발견하면 장시간 RMS의 진행 전에 실패로 보존하며, 허용치를 넓히지 않는다. T8/T9는 계속 미완료다.
 
+#### T8 사전계측 분리 도구 보완 — 2026-10-15
+
+사용자가 Native 사전계측 분리의 상세 계획·보완·격리 재검증을 승인했다. [상세 실행 계획](../plans/2026-10-15-f01-native-stimulus-preflight.md)에 rate별 위상0/2/5ms × 지연0/10/15/25ms의 유한12개를 실행 전에 고정했다. 실제 native clock edge를 관측한 뒤 wall 지연을 분산하지만 제품 clock/10ms 곡선은 바꾸지 않는다. 모든 실제 gain/양쪽 출력 비교와 실제 hold/reset 중간/unity를 요구한다. 자료가 정확해도 구간이 없으면 stimulus-unformed이며 긴 행렬 전에 중지한다. 별도 사전계측 JSON과 전체 schema v2를 source5필드·browser/platform/arch/Node 환경으로 연결하고 옛 JSON을 입력받지 않는다.
+
+새3개 API의 부재로 RED를 먼저 확인한 뒤 집중49/49·strict audio/development가 통과했다. 기존 물리 execution 후보에서 전체1608개 중1607통과/실패0/기존private감사1skip(61.602초),9개 기반 검사/build/package를 순차 통과했다. 로그는 자기 후보의 output/f01-t8-preflight-{full,foundation}.log에 있다. 제품 DSP·생성 JS·기존 수치 fixture/실행 pin은 변경하지 않았으며 root dist58·제품2.13.3을 유지했다. 새 clean Native 사전계측/긴 행렬은 아직 미실행이며 T8/T9 완료가 아니다. 과거 모든 A..M 실패/프로필은 보존한다.
+
 #### T8 측정 도구 구현·Native 실행 전 게이트 — 2026-10-15
 
 기존 CLI의 parser/정규화된 전체 calibration 본문 hash와14 steady·12 alignment·18 transition·stress 수치/허용치를 유지했다. 변경 허용 부분은 protocol3 완전 기본값 주입, 같은 기존 Windows bundled 준비/익명 pipe/noDefaults/정확한 자기 프로필 종료 경로 재사용뿐이다. `--chrome`의 기존 의미는 유지한다. synthetic MAIN Gain 호출은 영속 저장 권위 검사나 실제 사용자 동작 증명이 아니다.
