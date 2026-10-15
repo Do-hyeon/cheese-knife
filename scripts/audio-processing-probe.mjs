@@ -20,6 +20,8 @@ export async function installProcessingProbe(sampleRate){
   /** @type {{node:number,from:number,to:number,start:number,end:number,observed:number}[]} */let steps=[];
   /** @type {{start:number,end:number,count:number[],squares:number[],peaks:number[],over:number[]}[]} */let bins=[];
   /** @type {{index:number,time:number,power:number,size:number}[]} */let powerReads=[];
+  /** @type {{frame:number,observedFrame:number,sourceFrame:number|null,reason:string,lengths:number[]}[]} */const invalidChunks=[];
+  /** @type {number|null} */let sourceFrame=null;
   const buffers=new Set(),ticks=new Map();
   let sources=0,compressors=0,delays=0,shapers=0,splitters=0,reads=0,invalidFrames=0,analysisError=false,url='',sequence=100;
   /** @type {Record<string,unknown>|null} */let configured=null;
@@ -36,7 +38,7 @@ export async function installProcessingProbe(sampleRate){
   sink.port.onmessage=({data})=>{
     /** @type {{frame:number,samples:Float32Array[]}} */const chunk=data;
     if(chunk.samples.length!==2||chunk.samples.some(channel=>!(channel instanceof Float32Array)||channel.length!==128)){
-      if(sources)invalidFrames++;return;
+      if(sources){invalidFrames++;invalidChunks.push({frame:chunk.frame,observedFrame:Math.round(context.currentTime*sampleRate),sourceFrame,reason:'channel-shape',lengths:chunk.samples.map(channel=>channel.length)});if(invalidChunks.length>64)invalidChunks.shift();}return;
     }
     chunks.push(chunk);while(chunks.length>2000)chunks.shift();
     const width=sampleRate/10;
@@ -46,7 +48,7 @@ export async function installProcessingProbe(sampleRate){
       if(!bin||bin.start!==start){bin={start,end:start+width,count:[0,0],squares:[0,0],peaks:[0,0],over:[0,0]};bins.push(bin);while(bins.length>600)bins.shift();}
       for(let channel=0;channel<2;channel++){
         const value=chunk.samples[channel]?.[n];
-        if(value===undefined||!Number.isFinite(value)){invalidFrames++;continue;}
+        if(value===undefined||!Number.isFinite(value)){invalidFrames++;invalidChunks.push({frame,observedFrame:Math.round(context.currentTime*sampleRate),sourceFrame,reason:'nonfinite',lengths:chunk.samples.map(channel=>channel.length)});if(invalidChunks.length>64)invalidChunks.shift();continue;}
         bin.count[channel]=/** @type {number} */(bin.count[channel])+1;
         bin.squares[channel]=/** @type {number} */(bin.squares[channel])+value*value;
         bin.peaks[channel]=Math.max(/** @type {number} */(bin.peaks[channel]),Math.abs(value));
@@ -55,7 +57,7 @@ export async function installProcessingProbe(sampleRate){
     }
   };
   const source=context.createMediaElementSource.bind(context);
-  context.createMediaElementSource=video=>{sources++;return source(video);};
+  context.createMediaElementSource=video=>{sources++;sourceFrame=Math.round(context.currentTime*sampleRate);return source(video);};
   const gain=context.createGain.bind(context);
   context.createGain=()=>{
     const node=gain(),index=gains.length;gains.push(node);
@@ -158,7 +160,7 @@ export async function installProcessingProbe(sampleRate){
       case 'stall':{if(input.milliseconds<210||input.milliseconds>1000)throw new Error('audio-probe-stall');const start=context.currentTime,end=performance.now()+input.milliseconds;while(performance.now()<end){}return {start,end:context.currentTime};}
       case 'retired-ticks':for(const tick of ticks.values())if(!tick.active&&tick.timeout===100)tick.invoke();return null;
       case 'facts':return {sampleRate,audioTime:context.currentTime,contextState:context.state,hidden:document.hidden,sources,gainNodes:gains.length,filters:filters.length,compressors,delays,shapers,splitters,
-        analysers:analysers.length,fftSizes:analysers.map(node=>node.fftSize),buffers:buffers.size,reads,invalidFrames,events,linearEvents,steps,bins,powerReads,
+        analysers:analysers.length,fftSizes:analysers.map(node=>node.fftSize),buffers:buffers.size,reads,invalidFrames,invalidChunks,events,linearEvents,steps,bins,powerReads,
         gains:gains.map(node=>node.gain.value),active100msTimers:[...ticks.values()].filter(tick=>tick.active&&tick.timeout===100).length,
         readback:runtime().audio.getReadback(video()),video:{muted:video().muted,volume:video().volume,paused:video().paused,currentTime:video().currentTime}};
     }

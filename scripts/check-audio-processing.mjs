@@ -246,6 +246,9 @@ export async function runAudioProcessing(options){
         const normalizer=/** @type {Record<string,unknown>[]} */([]);row.normalizer=normalizer;
         await normalizerProof(page,sampleRate,normalizer);row.controls=await controlProof(page);
         row.lifetime=await lifetimeProof(page,measurement,sampleRate,files,html);
+      }catch(cause){
+        try{row.failureFacts=await facts(page);}catch(diagnostic){row.failureFactsError=diagnostic instanceof Error?diagnostic.message:'audio-processing-diagnostic-failed';}
+        throw cause;
       }finally{row.shutdown=await measurement.close();}
       console.log(JSON.stringify({stage:'rate-complete',sampleRate}));
     }
