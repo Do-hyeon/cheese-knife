@@ -180,3 +180,9 @@ trace상 toolbar openPopup은 정상 반환했지만, 앞서 연 자기 전역 �
 Y trace/소스에서 snapshot.code와 일반 mediaView.code가 별개임을 확인했다. 형식 전환 가능 코드는 전환 버튼의 표시/활성 조건이며, 일반 상태 문구에는 반복 표시되지 않는다. 실제와 같은 일반 문구로 회귀를 RED 재현한 뒤, 준비 상태+표시·활성 전환 버튼+기존 writable 필드 disabled로 검사한다. 버튼을 결정하는 제품의 정확한 snapshot-code guard는 그대로다. 또한 예상 손실 대조가 이후 예상 밖 실패용 trace 슬롯을 먼저 차지하지 않도록 검사 도구만 보완했다. Native 재검증은 새 checkpoint에서 수행한다.
 
 이 보완의 집중102개·strict·전체1564/1563통과/0실패/기존1skip(73.596초)을 확인했다. 새로운 Native checkpoint를 고정해 정상/손실 대조를 다시 실행하며, 이전 W/Y/Z 실패 기록은 그대로 보존한다.
+
+3d612c1의 AA는 두 번째 기존 사례의 Chrome 시작에서 browser-unavailable로 실패했다. 그 launch는 종료 증명이 없어 결과를 수용하지 않았고 프로필·후보를 보존했다. 해당 자기 root에 한정한 읽기 전용 프로세스 조회에서는 일치 프로세스가 없었으나 이를 종료3증명 PASS로 승격하지 않는다. 시작 실패 원인은 아직 특정하지 않았으며 다음 실행은 순차로 제한한다.
+
+AB는 실제 형식 전환을 성공시킨 뒤 독립 기대 값 대조에서 멈췄다. 승인 설계§67–68과 기존 T1 회귀는 모든 기존 channel/preset revision도1 증가하도록 정했으나, 새 전환 fixture가 이를 빠뜨렸다. 제품을 바꾸지 않고 literal 기대 값을 A전환3/최종6·B2·기존preset2로 바로잡았다. IDs/이름/createdRevision/영상 값·store8/12·global4/9/10/11은 그대로다. 잘못된 literal2≠3의 RED와 관련17개 GREEN을 확인했다. AB6launch 종료3증명true/source9635bb380b8c625bfc039e47a624d9208d1d185e1ab83e33f9cfe5f9bdbc45ba 전후 일치/cleanup·secondary0이며, 원래 config-loss1개만 일치했다. 아직 전체 전환 성공은 아니다.
+
+literal 보완 후 최신 전체1564/1563통과/0실패/기존1skip(71.325초)이 통과했다. 다음 새 checkpoint는 음성 대조를 먼저 실행하고 성공 시 정상 전환을 순차 실행한다. 제품 동작·숫자 gate와 독립 literal 방식은 유지한다.

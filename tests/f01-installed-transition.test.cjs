@@ -44,10 +44,12 @@ test('independent F01 cold expectations preserve legacy identities and distingui
   const initial=f01TransitionSeed('valid-v1',nonce,seed);assert.equal(initial.mediaProfiles.schema,1);assert.equal(initial.futureTop.runNonce,nonce);
   assert.equal(seed.futureTop.runNonce,'__RUN_NONCE__');
   const upgraded=expectedF01TransitionRaw({...input,caseId:'valid-v1',occurrence:2,step:'upgraded'});
-  assert.equal(upgraded.mediaProfiles.revision,8);assert.equal(upgraded.mediaProfiles.channels[0].revision,2);assert.equal(upgraded.mediaProfiles.presets[0].id,'11111111-1111-4111-8111-111111111111');
+  assert.equal(upgraded.mediaProfiles.revision,8);assert.equal(upgraded.mediaProfiles.channels[0].revision,3);assert.equal(upgraded.mediaProfiles.channels[1].revision,2);
+  assert.equal(upgraded.mediaProfiles.presets[0].revision,2);assert.equal(upgraded.mediaProfiles.presets[0].id,'11111111-1111-4111-8111-111111111111');
   const edited=expectedF01TransitionRaw({...input,caseId:'valid-v1',occurrence:2,step:'final',presetId});
   assert.equal(edited.settingsRevision,9);assert.equal(edited.config.compressorDefault,true);assert.equal(edited.config.audioGain,0);assert.equal(Object.hasOwn(edited.config,'audioDefault'),false);
   assert.equal(edited.mediaProfiles.revision,12);assert.equal(edited.mediaProfiles.channels[0].audio.values.audioGain,0);assert.equal(edited.mediaProfiles.channels[0].audio.values.gainInherited,false);
+  assert.equal(edited.mediaProfiles.channels[0].revision,6);assert.equal(edited.mediaProfiles.channels[1].revision,2);assert.equal(edited.mediaProfiles.presets[0].revision,2);
   assert.equal(edited.mediaProfiles.presets[1].id,presetId);assert.equal(edited.mediaProfiles.presets[1].createdRevision,11);assert.equal(edited.mediaProfiles.channels[1].video.values.brightness,1.75);
   const off=expectedF01TransitionRaw({...input,caseId:'valid-v1',occurrence:3,step:'final',presetId});
   const resumed=expectedF01TransitionRaw({...input,caseId:'valid-v1',occurrence:4,step:'final',presetId});assert.deepEqual(off,resumed);assert.equal(off.settingsRevision,10);assert.equal(off.config.compressorDefault,false);
