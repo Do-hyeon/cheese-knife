@@ -259,3 +259,11 @@ transport 신규3개 및 복귀 관측 누락 거부를 RED→GREEN으로 확인
 7174c9a의 AV는 제품 교체 검사 전 unknownAckProof의 마지막 media-discard 클릭에서 대기 실패했다(42.215초/종료3증명true/source일치). 직전 스타일 TAB 닫기 뒤 다른 설정 TAB이 비활성 상태였고 해당 phase 시작에 활성화가 빠져 있었다. trace의 call@1149와 페이지 ID를 확인한 뒤 검사 시작 시 정확한 other TAB의 bringToFront만 추가했다. 제품 source/수치·ACK 유실1회/무재시도·원시 무쓰기·discard 재조회 조건은 그대로다. 후행 AW/AX/AY/AZ는 미실행이다.
 
 ACK phase 보완은 집중32·strict·격리 전체1577통과/실패0/기존1skip(60.707초)으로 확인했다. 나머지 phase 경계도 대조해 방송을 앞으로 가져온 채 끝나는 lifecycle 다음 quota 검사에서 해당 settings TAB을 먼저 활성화하도록 명시했다. 마지막 두 조작 전제에 대해 도구 집중18·strict를 다시 확인했다. 제품 소스는7174c9a와 같고 새 actual Native 및 Task7 최종 전체 게이트는 아직 남아 있다.
+
+#### T7 로컬 마감 — 2026-10-15
+
+090452a/전체소스65a43c7c… 입력에서 BA설정 정상26.150초·BB정확한4손실26.746초·BCGain full71.443초·BDcold19회/정확한5손실·BFcold39회 정상 모두 통과했다. 각 source/after5필드 일치·성공 실행의 종료3증명true·cold cleanup/secondary0을 확인했다. BA는 실제 숨김/표시 복귀·PZP/새 video·수동 OFF/자동 기본값·ABA revision2/conflict·스타일/전역 EQ 원시 병합·살아 있는 UI의 원래 대상 종료 거부를 포함한다. 모든 성공을 새 단일 checkpoint에 묶었으며 세부 실행 ID/범위는 [완료 단계 아카이브](../archive/2026-10-15-f01-completed-stages.md)에 분리했다.
+
+BE의9번째 launch(legacy-null seed)는 browser-unavailable로 실패했다.8회 종료와1회 미확인/IPC 등 후속 오류는 그대로 보존했고 정확한 실패 프로필의 현재 프로세스0만 따로 확인했다. Windows 내부 원인은 미확정이며, BF는 같은 입력의 새 전체39회 재실행 성공이다. 실패를 소급해 성공으로 고치지 않았다.
+
+마지막 task-done은 격리 후보의 전체1578개 중1577통과/실패0/기존private감사1skip(60.919초)을 실행하고 T7 완료를 원장에 기록했다. T8 정밀 출력/수명 및 T9 종합/독립 최종 검토는 미완료다. root dist58·제품2.13.3·기존 Chrome/P09·ZIP/CRX·모든 실패 증거를 보존하며 공개 작업은 하지 않았다.

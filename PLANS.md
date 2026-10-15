@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T7 승인된 비활성 플레이어 스케줄러 보완·격리 재검증**. T1–T6 로컬 구현·해당 단계 게이트를 마쳤으며 실제 후행 검증 T7–T9는 미완료다. 완료/실패 이력과 검증 범위는 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)에 유지한다. F00 PR #44 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
+최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T8 객관 오디오 출력·수명 계측**. T1–T7 로컬 게이트를 마쳤으며 T8·T9는 미완료다. T7 완료 이력은 [완료 단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md), 상세 결과는 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)에 유지한다. F00 PR #44 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -45,7 +45,7 @@
 | ID | 작업 묶음 | 상태 | 다음 게이트 |
 | --- | --- | --- | --- |
 | F00 | 채널별 미디어 저장·프리셋 | DONE (통합) | PR #44 공개 CI 통과·병합·해당 브랜치 정리 완료; 릴리즈 없음 |
-| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | DOING (T7) | 승인된 격리 실제 전환 검증 → T8 객관 계측 → T9 Astra max 전체 검토; push/PR 금지 |
+| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | DOING (T8) | T7 마감 → T8 객관 계측 → T9 Astra max 전체 검토; push/PR 금지 |
 | AF05-B 실제 수용 / AF05 종료 | 차기 게시본 설치·업데이트 | WAITING-DEPENDENCY | 차기 게시와 실제 검사 별도 승인 후 수행; F00/F01과 독립 |
 | DT02 | 선택 파일의 native TS 실행 | DEFERRED | 실제 유지보수 이득과 검사/실행 경계 보존이 증명되면 재설계 |
 | F02–F05 | 후속 기능 | BACKLOG-BLOCKED | F00/F01 검증과 각 범위 승인 |
@@ -114,22 +114,7 @@
 - [x] T4 source1·전체/하위 상태·고정8EQ·headroom·기존 delay/limiter/ramp 보호. 집중141/141·전체1465통과/실패0/기존private증거1skip·9개 기반/build/package PASS. 실제 EQ 응답/출력은 T8에 남는다.
 - [x] T5 순수 RMS 제어·좌우 meter·실제 dB automation·window/hold/error·수명 정리. 집중22/22·전체1482통과/실패0/기존private증거1skip·9개 기반/build/package PASS. Native 속도/출력은 T8에 남는다.
 - [x] T6 승인 TAB UI·확정 preset snapshot/confirm·legacy/upgrade·공통 수동 master 연결·최종dist62/runtime20. 실제 후행 검증은 아래 단계로 분리한다.
-- [ ] T7 clean checkpoint·실제 설치/다중 창/전환·정확한 저장 손실 대조·document/종료 증명.
-  - [x] 실제 실행에서 발견한 locale 이름·Native context 키 순서·72px 다이얼·저장 receipt 누적 원인/RED→GREEN 보완. 최신 전체1542통과/실패0/기존private감사1skip·9기반/build/package PASS.
-  - [x] 실제 UI 검사·4가지 저장 손실 대조·고배율 배치/캡처. 1783812의U/V는 전체 gate·정확한4손실·worker 실행 문맥 교체·종료3증명/source 일치 PASS. 실제200% geometry와 원본 viewport 캡처에서 다이얼/EQ 표시를 확인했다. 확장 권한·제품 UI를 바꾸지 않고 제어 도구의 확대 캡처 좌표 문제만 우회했다.
-  - [x] Gain full 재배치 fixture 보완 후 실제 재검증. a3403d2의M 실행70.784초 PASS·source일치/종료3증명true·page error0. 자연 worker suspension·물리 출력 증명은 아니다.
-  - [x] F01 저장 형식 전환 CLI·독립 기대 fixture·고정 payload/occurrence 감독·정확한 손실 대조 구현/집중·타입 검증.
-  - [x] eb9cfd5의 실제 cold 전환39회·손실 대조19회, source 전후 전체 일치·모든 종료3증명·cleanup/secondary0. F00 전역/채널 제한·재개와 게시본의 전역 OFF/ON 왕복을 별도 검사했다.
-  - [x] 공통 helper 분리 후 같은 eb9cfd5의 Gain full(AK)·설정 UI positive(AL)/정확한4손실(AM) 재확인. 모든 source 전후 일치·종료3증명true.
-  - [ ] 체크리스트 대조에서 분리한 실제 ABA·전역 EQ/스타일 동시 merge·설정 UI를 남긴 원래 대상 종료·hidden 관측의 새 checkpoint 검증 후 T7 마감. 정밀 hidden timer/출력 계측은 T8에서도 별도 완료해야 한다.
-    - [x] e280e0d의 AN은 재부팅 전 `audio-settings-hidden-unobserved`로 실패/종료3증명true, AO 미실행임을 확인했다. Playwright 기본 focus emulation의 관측 간섭을 최소 재현했고, 공식 `noDefaults`·익명 pipe 경로에서 실제 hidden→visible/자식 exit0을 확인했다. 제품/권한/기존 Chrome/원격 port 변경 없음.
-    - [ ] F01 설정 검사에만 적용한 native-visibility launcher의 strict/전체 회귀·새 clean checkpoint 정상/정확한4손실을 확인한다. 기본 검사 launcher/과거 증거는 유지하고 hidden 및 visible 복귀의 실제 관측을 모두 요구한다.
-      - [x] 익명 pipe/내장 확장 제외/실제 대상 활성화 순서 보완. 301c2e9 직전 전체1574개 중1573통과/실패0/기존1skip·strict/집중32 통과. AR/AT 모두 종료3증명true지만 정상 PASS는 아니다.
-      - [x] AT에서 실제 hidden 상태의 새 video가 decoded/blob임에도 wanted=false/source0으로15초간 남았다. 별도 회귀에서 rAF가 실행되지 않으면 runtime이 제거된 옛 video를 계속 참조함을 RED 재현했다. AU는 미실행이다.
-      - [x] [제품 스케줄러 보완안](docs/superpowers/plans/2026-10-14-f01-audio-processing.md#t7-비활성-플레이어-재연결-보완안--승인-완료재검증-중) 사용자 승인/최소 구현: 표시 중 rAF 유지/숨김 중 관련 DOM 변경에만100ms 단발 coalescing·예약1개·visibility/BFCache/최종 종료 취소·옛 callback0. 실패4개→GREEN·관련62개·MAIN 재생성/독립 실행 pin·9기반/build/package 확인.
-      - [ ] 새 전체 회귀·clean checkpoint의 Gain full/설정 정상·4손실/cold39·19 및 종료/source 재검증을 거쳐 T7 마감, 이어 T8/T9. 단위 GREEN을 실제 숨김 탭 성공으로 간주하지 않는다.
-    - [x] 별도 F00 ae9f8e5의59자산/765607byte/고정 해시 입력·strict helper/오용 검출. 게시본58·현재F01 62와 구분한다.
-    - [x] 독립 v1/명시 전환/edited 기대 값·6개 데이터 상태·기존 baseline을 보존하는 supervised 실행/손실 대조/실제 cold 검증. eb9cfd5의 AI19/AJ39 결과에 포함되며 새 visibility launcher의 성공으로 전용하지 않는다.
+- [x] T7 실제 설치·다중 창·숨김 재연결·ABA·스타일 병합·대상 종료·설정4손실·Gain full·cold19/39. 090452a의 source/after 일치·성공 실행의 종료3증명/cleanup0; 최종 전체1577통과/실패0/기존1skip. 상세 완료/실패 이력은 [아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md)에 분리했다. 정밀 timer/출력·누수 판정은 T8에 남는다.
 - [ ] T8 clean checkpoint·기존14/12/18/stress와 새 EQ/normalizer/전환/수명 객관 출력 검증.
 - [ ] T9 종합 타입/생성·전체/패키지/도구·보호/고지·whole-F01 Astra max 최종 검토/보완·로컬 마감. 완료 후에만 별도 공개 지시를 요청한다.
 

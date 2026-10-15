@@ -148,14 +148,14 @@ runtime은 기존 settings transform(런타임 import/export 금지)와 MAIN bun
 
 **파일:** 기존 `scripts/check-installed-{extension,transition}.mjs`·harness/fixture/transition scenario와 tests 확장; 신규 `scripts/check-installed-audio-settings.mjs`, `tests/installed-audio-settings.test.cjs`, F01 transition fixture·독립 기대 값. T3 runner 재사용.
 
-- [ ] RED: runner option/owned path/run ID/timeout/close proof/source attestation/pin 실패 테스트를 작성한다. 신규 scripts와 JSDoc/helper imports는 기존 strict checkJs/개발 도구 검사 범위에 실제로 포함한다. 입력이나 기대 snapshot을 같은 구현 helper로 만들어 순환 증명하지 않는다.
-- [ ] 모든 T7 Native 실행 직전 runner/fixture/생성물/독립 기대 값을 포함해 로컬 checkpoint 커밋하고 clean SHA·후보 입력을 고정한다. 전후 attestation 일치 및 새 파일 HEAD 포함을 요구한다. 실패/보완 때 옛 증거를 보존하고 새 checkpoint로 재검증하며 완료/push/PR로 자동 이어가지 않는다.
-- [ ] 구현/qualification 후 native 실행: published2.13.3(기존 frozen payload) / old F00 main ae9f8e5 / F01 자기 dist를 각 독립 hash/형식으로 고정한다. v1 raw initial→new읽기 무쓰기→명시upgrade→채널/프리셋/Gain저장→old F00제한/raw보존→new재개 및 published 전역 왕복을 구분한다. global 초기ON new→old OFF→new와 역방향, absent첫저장, 동일URL문서교체·workerrestart·quota실패·임계revision·손상/미래·원래tab이동/닫힘·확인도중scope/ABA·ACKloss/failure도 포함한다.
-- [ ] 두 실제 page/창의 전역/상속전파·owned채널 독립, 같은scope경쟁첫commit만성공·unrelated EQ/스타일 최신merge·PZP-only 재배치와 genuine video/route reset을 검사한다. UI draft/unknown과 확정 저장값·재진입·원래 대상만 control을 각각 확인한다. hidden/two-window 메모리·timer/source 수명도 관측한다.
-- [ ] 실제 layout/입력은 자기 fixture에서 1280/800/360px 및200% zoom·키보드/focus·슬라이더수치가변폭·끝점다이얼을 검사한다. native screenshot/측정은 private output에만 두고 정적 목업 차단을 우회하는 렌더 수단으로 사용하지 않는다.
-- [ ] `node scripts/check-installed-player-gain.mjs --run-id=F01gain --mode=full`; `node scripts/check-installed-audio-settings.mjs --run-id=F01settings`; `node scripts/check-installed-transition.mjs --run-id=F01preservation --media-schema=f01`를 **계획된 CLI**로 구현해 positive 검사한다. 마지막 옵션은 기존 명령에 추가할 고정 enum이며 지금 존재한다고 주장하지 않는다.
-- [ ] 각각 정확한 loss control: 예컨대 F01 owned Gain=0/상속bit/한 EQ대역·preset ID를 한 가지씩 제거/변경하는 bounded fixture대조를 `--control=storage-loss`에서 선택하고 case별 기대실패 code/phase/rawdiff를 pin한다. unrelated 에러/실행 안됨/timeout은 성공대조가 아니다. 실제 user gesture 저장을 seed 주입으로 대체하지 않는다. old baseline의 fixture/손실대조는 그대로 실행한다.
-- [ ] 매 launch profile종료·브라우저/session/프로세스 retirement의 기존3증명/cleanup0, snapshot source hash 입력 일치·정확한관측수가 모두 필요하다. 실제 user Chrome/store 업데이트·플랫폼rollback·자연 BFCache/worker suspension은 여전히 미검증으로 기록한다. 로컬 커밋만.
+- [x] runner option/owned path/run ID/timeout/close proof/source attestation/pin 실패 RED→GREEN. 신규 JSDoc/helper는 strict checkJs에 포함하고 독립 literal 기대 값을 사용했다.
+- [x] Native 실행마다 tracked 입력을 local clean checkpoint로 고정하고 전후 attestation을 대조했다. 실패 증거는 보존했다.
+- [x] published58/F00 ae9f8e5의59/F01 62를 독립 pin해 v1 명시 전환/재개·게시본 전역 OFF/ON·최대revision/손상/미래/absent·대상/문서/worker/quota를 검증했다.
+- [x] 두 실제 창의 전역/상속/채널 독립·CAS/ABA·EQ/스타일 병합·draft/unknown·PZP/새 video·대상 이동/종료를 검증했다. hidden/two-window 유한 heap/source1은 관측했으며 정밀 timer/old-callback/누수 판단은 기록된 역할 분리에 따라 T8에서 마감한다.
+- [x] 자기 fixture의1280/800/360px·실제200% zoom·키보드/focus·고정 수치폭·다이얼·private native 캡처를 확인했다.
+- [x] 계획된 Gain full/설정 UI/`--media-schema=f01` CLI를 구현하고090452a의 BA/BC/BF로 실제 positive 검증했다.
+- [x] 실제 저장 뒤 정확한 한 필드 손실만 검출하는 UI4손실/cold5손실 대조를 BB/BD로 확인했다. unrelated 오류/미실행/timeout은 성공으로 계산하지 않았다.
+- [x] 성공 실행 모두의 종료3증명/전후source5필드일치/cold cleanup0·secondary0을 확인했다. 실제 store/플랫폼rollback/자연 BFCache·suspension은 미검증이다. 로컬 커밋만 했으며 실행별 근거는 [아카이브](../archive/2026-10-15-f01-completed-stages.md)에 남겼다.
 
 ### T7 비활성 탭 관측 보완 — 2026-10-15
 
@@ -163,7 +163,7 @@ runtime은 기존 settings transform(런타임 import/export 금지)와 MAIN bun
 
 익명 pipe의 NUL 구분 JSON은 UTF8 분할/여러 frame·32MiB 상한·잘못된 입력/EOF/error/close를 회귀 검증하고 새 helper도 strict checkJs·필수 tracked source 입력에 포함한다. Native 실제 탭 전환 뒤 document.hidden=true와 복귀 false를 조건부 대기해 확인하며 property override/합성 visibility 이벤트는 금지한다. 종료3증명·전후 source 일치·기존 UI/저장 gate는 완화하지 않는다. 새 clean checkpoint 정상/정확한4손실이 끝나기 전 T7 완료가 아니며 T8의 정밀 timer/출력 검증을 대체하지 않는다.
 
-### T7 비활성 플레이어 재연결 보완안 — 승인 완료·재검증 중
+### T7 비활성 플레이어 재연결 보완안 — 승인·실제 검증 완료
 
 2026-10-15 사용자가 위 구현·종합 재검증과 후속 T8/T9 진행을 승인했다. 새 권한/의존성/전송·수용 기준 변경·push/PR은 여전히 제외한다.
 
@@ -176,10 +176,12 @@ runtime은 기존 settings transform(런타임 import/export 금지)와 MAIN bun
 **구현·검증 묶음(승인 대상):**
 
 - [x] rAF가 전혀 실행되지 않는 숨김 상태의 실제 runtime/video 교체 회귀 RED. 이 단위 모사는 Native 성공 증거가 아니다.
-- [ ] 단발 예약 coalescing/표시 복귀 시 중복0/관련 없는 DOM0/BFCache·dispose·늦은 callback0 회귀를 먼저 추가하고 최소 스케줄러 변경으로 GREEN.
-- [ ] 기존 MAIN 생성 경로로 재생성하고 필요한 독립 실행 pin을 변경 이유와 함께 갱신. 기존 수치/quality 기준은 유지한다.
-- [ ] 격리 후보 전체·9기반/build/package·기존 lifecycle/Gain/오디오 회귀. 새 clean checkpoint에서 Gain full·설정 정상/정확한4손실·cold39/19를 다시 실행하며 각 source와 종료3증명을 요구한다.
-- [ ] 실제 비활성 상태를 유지한 video/PZP 교체와 표시 복귀를 모두 통과한 뒤 T7 마감. 이어 이미 승인된 T8 객관 출력/수명 계측 및 T9 최종 검토를 진행한다. 새 권한/의존성/전송·수용 기준/알고리즘 변경이 필요하면 다시 중지한다. push/PR은 하지 않는다.
+- [x] 단발 예약 coalescing/표시 복귀 시 중복0/관련 없는 DOM0/BFCache·dispose·늦은 callback0 회귀 RED→GREEN.
+- [x] 기존 MAIN 생성 경로로 재생성하고 web/runtime.js 실행 pin만 변경 이유와 함께 갱신. 기존 수치/quality 기준 유지.
+- [x] 격리 전체·9기반/build/package·관련62회귀와090452a의 Gain full·설정 정상/4손실·cold39/19·전후source/종료3증명 확인.
+- [x] 실제 숨김 흐름의 video/PZP 교체·표시 복귀 및 최종 전체1577통과/실패0/기존1skip 뒤 T7 마감.
+
+이어서 이미 승인된 T8 객관 출력/수명 계측 및 T9 최종 검토를 진행한다. 새 권한/의존성/전송·수용 기준/알고리즘 변경 필요 시 중지하며 push/PR은 하지 않는다.
 
 ## Task 8 — 객관 EQ/노멀라이저/출력·수명 검증
 
