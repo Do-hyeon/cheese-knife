@@ -2,11 +2,18 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T8 객관 오디오 출력·수명 계측**. T1–T7 로컬 게이트를 마쳤으며 T8·T9는 미완료다. T7 완료 이력은 [완료 단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md), 상세 결과는 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)에 유지한다. F00 PR #44 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
+최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T8 복합 master OFF 전환 dip — 국소 DSP 보완 승인 대기**. T1–T7 로컬 게이트를 마쳤으며 T8·T9는 미완료다. T7 완료 이력은 [완료 단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md), 상세 결과는 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)에 유지한다. F00 PR #44 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
 
 ## 1. 고정 결정과 공개 경계
 
-T8 진행: 기존 14 steady·12 alignment·18 transition 및 수치 허용치는 동결한다. 별도 F01 측정 행렬은 EQ108개·노멀라이저60개·전환72개와 출력/숨김/두 창/정리 대조군을 포함한다. 중간 Native 관측은 EQ36·RMS20 통과이나 후속 합성 드라이버 오류로 전체 실패이며 T8 완료가 아니다. 표시 복귀 설정 응답·측정 신호 길이·실제 새 창의 대상 ID를 보완했고, 새 clean checkpoint의 전체 캡처·전후 소스 동일성·세 가지 종료 증거를 확인한 뒤에만 결과를 승격한다.
+T8 진행: 기존 14 steady·12 alignment·18 transition 및 수치 허용치는 동결한다. 별도 F01 측정 행렬은 EQ108개·노멀라이저60개·전환72개와 출력/숨김/두 창/정리 대조군을 포함한다. 중간 Native36 EQ·20 RMS는 해당 입력의 관측만 보존한다. 최신53103ab의 새 프로필 C/D 모두44.1kHz EQ36 통과 후750Hz 복합 master OFF에서 최소8ms RMS 비율0.943722/0.943875(기준0.95)를 재현했고 이후 rate/RMS/수명은 미실행이다. source/after5필드 동일·각 종료3증명true·pageErrors0/full-scale 초과0이며 전체 PASS가 아니다.
+
+- [x] T7 실제 숨김 player 재발견·저장/다중 창/전환 검증 마감.
+- [x] T8 객관 측정 도구·엄격 타입·로컬 전체1590통과/실패0/기존1skip·새 프로필 동일 현상 재현.
+- [ ] **승인 필요:** master OFF의 기존10ms dry 복귀 동안 normalizer gain을 유지하고, wet가0이 된 뒤 unity로 복귀하는 국소 전환 보완. 분석/timer/옛 callback은 즉시 정리하고 빠른 OFF/ON은 현재 계산 곡선에서 예약 취소·재연결한다. 단독 normalizer OFF/측정 오류의 기존10ms 예외는 유지한다. 알고리즘 보완 전에는 제품 DSP를 수정하지 않는다.
+- [ ] 명세147절에 맞춰 기존 dip/연속성은 master 전환에 유지하고 개별 EQ/comp/normalizer 조작은 출력 상한을 강제한다. 이들의 추가 step 관측은 진단값으로 남기며 master 실패를 이 구분으로 숨기지 않는다.
+- [ ] 보완 RED→GREEN·전체/기반 검사·새 clean checkpoint의44.1/48/96kHz 전체 출력/수명과 기존 객관 runner 재검증.
+- [ ] T8 마감 뒤 T9 전체 회귀·도구 점검·fresh Astra max 최종 전체 검토. 공개 작업 금지는 유지.
 
 - 채널별 저장은 **오디오·영상 필터만**, 나머지는 전역. 계정별 분리/계정·쿠키 수집은 하지 않는다.
 - F00은 기존 compressor6필드·video5필드와 저장/프리셋 기반, Gain/EQ/노멀라이저는 F01. F00만으로 전체 오디오 채널 저장 완료를 주장하지 않는다.

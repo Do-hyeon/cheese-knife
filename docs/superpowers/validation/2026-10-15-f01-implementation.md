@@ -268,6 +268,20 @@ BE의9번째 launch(legacy-null seed)는 browser-unavailable로 실패했다.8�
 
 마지막 task-done은 격리 후보의 전체1578개 중1577통과/실패0/기존private감사1skip(60.919초)을 실행하고 T7 완료를 원장에 기록했다. T8 정밀 출력/수명 및 T9 종합/독립 최종 검토는 미완료다. root dist58·제품2.13.3·기존 Chrome/P09·ZIP/CRX·모든 실패 증거를 보존하며 공개 작업은 하지 않았다.
 
+#### T8 전환 dip 재현·알고리즘 보완 승인 게이트 — 2026-10-15
+
+입력53103ab1b63b9dfa29fee551dd1a4c45414097d3/전체소스f1891b531293ea70cb4a57f626b26efc5098c65444a1a795088fe99881547477에서 F01audio20261015C(lLASMk)와 동일 입력의 새 프로필 D(KsSoFf)가 각각44.1kHz EQ36 통과 후24개 전환을 수집하고 실패로 종료했다. 두 실행의 source/after5필드 동일·pageErrors0·Browser.close/disconnect/own-root 종료 모두true다. 이어지는48/96kHz·전체 RMS·수명은 실행하지 않았고 기존 객관 runner의 새 입력 재실행도 하지 않았다. 모든 보고서·프로필·raw EQ 캡처를 유지한다.
+
+두 번 모두 복합 EQ/comp/normalizer ON 상태에서750Hz master OFF만 기존 master gate를 위반했다. 최소8ms RMS를 작은 정상 endpoint로 나눈 비율은 C0.9437224358/D0.9438747006으로0.95 기준 미달이다. maxAdjacentStep의 baseline 초과분은 C1.2516975e-6/D1.7881393e-6으로 기존1e-6보다 크다. 수집한 전환의 change-channel peak 최대는 약0.2397, full-scale 초과 sample은0이며 클리핑이나 실제 하드웨어 잡음을 확정한 결과는 아니다.
+
+코드 경로는 setEnabled(false)→bypassEntry의10ms dry/wet 복귀와 announce(off)→syncMeter→stopMeter의 normalizer boost→unity10ms가 동시에 적용된다. wet 비중을 낮추면서 같은 branch gain도 낮추는 두 전환이 중첩되는 경로를 원인 후보로 좁혔다. 독립 EQ 전달함수의750Hz 위상은 약11.28도이며, 단순 정상 endpoint의 선형 합만으로는 관측 dip을 설명하지 못했다. 원인을 EQ 위상 하나로 단정하지 않으며 native normalizer automation/현재값·빠른 재진입 대조를 보완 RED/GREEN에 포함한다.
+
+권장 국소 보완은 분석/timer/buffer·old epoch는 즉시 정리하되 master의 기존10ms dry 복귀 동안 normalizer 현재 gain을 유지하고 wet가0인 뒤 unity를 복귀시키는 것이다. JS timeout 대신 audio clock의 예약과 현재 계산 곡선을 사용하고, 빠른 OFF/ON·다시 설정·source/route 교체 시 옛 예약을 취소/재연결한다. 단독 normalizer OFF/측정 오류의 기존10ms 예외와+1/-12dB/s·warmup·출력 상한·source1·저장/권한 경계는 그대로다. 제품 DSP는 아직 수정하지 않았고 승인 전 여기서 대기한다.
+
+추가 측정기의 개별 EQ/comp/normalizer step 초과도 삭제하지 않고 진단으로 보존한다. 명세147절의 기존 dip/연속성은 master 전환에 대한 기준이고 개별 효과 전환은 출력 상한 검사다. 초기 도구가 개별 효과에도 같은 stationary step 기준을 일괄 적용한 것은 명세보다 과한 분류였다. 후속 보완에서는 이 범위를 바로잡되 실제 master750 실패를 제외하거나 어떤 기존 허용치도 넓혀 성공시키지 않는다. EQ1000Hz 전환의 약5.2% step 증가는 별도 관측이며 그것만으로 클릭/불량을 확정하지 않는다.
+
+root dist58·제품2.13.3·사용자 Chrome/P09·모든 실패 증거와 로컬 checkpoint를 보존했다. push/PR/릴리즈·스토어 변경은 없다. 전체1590통과/실패0/기존1skip은 도구 단위/회귀 증거이지 T8 Native 전체 성공이 아니다.
+
 #### T8 중간 실제 관측과 측정 도구 보완 — 2026-10-15
 
 로컬9e77f03에서 기존 객관 검사의14 steady/12 alignment/18 transition/stress가 실제 bundled151.0.7922.34·source1·qualityFailures0으로 통과했다. 별도 F01audio20261015A는 mt.exe 준비 실패로 브라우저 측정에 진입하지 못했다. Windows 내부 원인은 미확정이며 원본 실패 보고서/복사본을 보존했다. 같은 입력의 새 F01audio20261015B는44.1kHz에서 EQ36·RMS20/역상/한쪽 채널이 모두 통과했으나 후속 수명 검사에서 graph-not-ready로 전체 실패했다. B의 source/after5필드 동일·pageErrors0·종료3증명true를 확인했다. B의 보조 wet/extreme48/silence/noise/burst/stall/error는 통과지만 dry RMS와 전체 수명/나머지 두 rate는 미완료이며 새 입력의 증거로 재사용하지 않는다.
