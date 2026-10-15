@@ -606,6 +606,11 @@ async function quotaProof(input,settings){
 /** @param {AudioSettingsScenario} input @param {import('playwright').Page} settings */
 async function restartWorkerProof(input,settings){
   const before=await stored(input.worker),url=input.worker.url();
+  const beforeRealm=await input.worker.evaluate(()=>{
+    const state=/** @type {typeof globalThis & {__f01NativeWorkerMarker?:string}} */(globalThis);
+    if(state.__f01NativeWorkerMarker)throw new Error('audio-settings-worker-marker-exists');
+    state.__f01NativeWorkerMarker=crypto.randomUUID();return {marker:state.__f01NativeWorkerMarker,timeOrigin:performance.timeOrigin};
+  });
   const targets=(await input.browserSession.send('Target.getTargets')).targetInfos.filter(target=>target.type==='service_worker'&&target.url===url);
   const old=targets.at(0);if(targets.length!==1||!old)throw fail('audio-settings-worker-target');
   const inspector=await input.context.newCDPSession(settings);
@@ -625,7 +630,19 @@ async function restartWorkerProof(input,settings){
     await waitNative(async()=>versions.get(version.versionId)?.runningStatus,value=>!overflow&&value==='stopped','audio-settings-worker-not-stopped');
     await settings.locator('#media-refresh').click();
     const previous=input.worker;
-    const workers=await waitNative(async()=>input.context.serviceWorkers().filter(worker=>worker!==previous&&worker.url()===url),values=>values.length===1,'audio-settings-worker-not-replaced');
+    let workers;
+    try{workers=await waitNative(async()=>input.context.serviceWorkers().filter(worker=>worker!==previous&&worker.url()===url),values=>values.length===1,'audio-settings-worker-not-replaced');}
+    catch(error){
+      const current=input.context.serviceWorkers().filter(worker=>worker.url()===url),realms=[];
+      for(const worker of current){
+        const realm=await boundedAudioScenario(()=>worker.evaluate(()=>{
+          const state=/** @type {typeof globalThis & {__f01NativeWorkerMarker?:string}} */(globalThis);
+          return {marker:state.__f01NativeWorkerMarker??null,timeOrigin:performance.timeOrigin,id:chrome.runtime.id};
+        }),1000).catch(()=>null);realms.push({wrapperReused:worker===previous,realm});
+      }
+      const targets=(await input.browserSession.send('Target.getTargets')).targetInfos.filter(target=>target.type==='service_worker'&&target.url===url).map(target=>({targetId:target.targetId,reused:target.targetId===old.targetId}));
+      console.error('F01_WORKER_REALM_DIAGNOSTIC '+JSON.stringify({nativeStopped:true,beforeRealm,realms,targets}));throw error;
+    }
     const worker=workers[0];if(!worker||await worker.evaluate(()=>chrome.runtime.id)!==input.extensionId)throw fail('audio-settings-worker-not-replaced');
     await waitNative(()=>stored(worker),raw=>isDeepStrictEqual(raw,before),'audio-settings-worker-storage-loss');await readyUI(settings);
     const current=(await input.browserSession.send('Target.getTargets')).targetInfos.filter(target=>target.type==='service_worker'&&target.url===url);
