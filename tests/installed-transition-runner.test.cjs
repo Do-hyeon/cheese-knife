@@ -22,13 +22,13 @@ function exit(child, code = 0) { child.exitCode = code; child.emit('exit', code,
 test('F01 supervisor checks occurrence plus assigned payload role and all three shutdown facts',async()=>{
   const {superviseTransitionChild}=await subject();const child=childFixture(),assigned=[{caseId:'valid-v1',kind:'f01',mediaCase:'valid-v1',root}];
   const pending=superviseTransitionChild({child,nonce,roots:assigned,mediaSchema:'f01',deadlineMs:500});
-  for(const [launchOccurrence,[phase,payload]]of [['seed','published'],['old','f00'],['new','f01'],['rollback','f00'],['new','f01'],['rollback','published'],['new','f01']].entries()){
+  for(const [launchOccurrence,[phase,payload]]of [['seed','published'],['old','f00'],['new','f01'],['rollback','f00'],['new','f01'],['rollback','published'],['new','f01'],['rollback','published'],['new','f01']].entries()){
     const request={type:'launch-intent',nonce,caseId:'valid-v1',phase,payload,launchOccurrence,launchId:`valid-v1:${launchOccurrence}:${phase}`,root};
     child.emit('message',request);assert.deepEqual(child.sent.at(-1),{...request,type:'launch-ack'});
     child.emit('message',{...request,type:'close-success',shutdown:{browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:true}});
   }
   child.emit('message',{type:'result',nonce,result:{mediaSchema:'f01'}});exit(child);const result=await pending;
-  assert.equal(result.failure,null);assert.equal(result.launches.length,7);assert.equal(result.launches[5].payload,'published');
+  assert.equal(result.failure,null);assert.equal(result.launches.length,9);assert.equal(result.launches[5].payload,'published');
 });
 for(const fault of ['payload','occurrence','close-payload','close-proof'])test('F01 supervisor rejects wrong '+fault,async()=>{
   const {superviseTransitionChild}=await subject(),child=childFixture(),assigned=[{caseId:'absent',kind:'f01',mediaCase:'absent',root}];

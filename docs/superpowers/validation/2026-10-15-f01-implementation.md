@@ -186,3 +186,11 @@ Y trace/소스에서 snapshot.code와 일반 mediaView.code가 별개임을 확�
 AB는 실제 형식 전환을 성공시킨 뒤 독립 기대 값 대조에서 멈췄다. 승인 설계§67–68과 기존 T1 회귀는 모든 기존 channel/preset revision도1 증가하도록 정했으나, 새 전환 fixture가 이를 빠뜨렸다. 제품을 바꾸지 않고 literal 기대 값을 A전환3/최종6·B2·기존preset2로 바로잡았다. IDs/이름/createdRevision/영상 값·store8/12·global4/9/10/11은 그대로다. 잘못된 literal2≠3의 RED와 관련17개 GREEN을 확인했다. AB6launch 종료3증명true/source9635bb380b8c625bfc039e47a624d9208d1d185e1ab83e33f9cfe5f9bdbc45ba 전후 일치/cleanup·secondary0이며, 원래 config-loss1개만 일치했다. 아직 전체 전환 성공은 아니다.
 
 literal 보완 후 최신 전체1564/1563통과/0실패/기존1skip(71.325초)이 통과했다. 다음 새 checkpoint는 음성 대조를 먼저 실행하고 성공 시 정상 전환을 순차 실행한다. 제품 동작·숫자 gate와 독립 literal 방식은 유지한다.
+
+32a8c5d의 AC 음성 대조는 exit0/ok=true로 통과했다. 기존 config 손실+F01 4손실 모두5개가 정확히 일치했고 실제 성공 phase9/launch19 종료3증명 전부true/cleanup·secondary0이다. sourceSha256=422f9346286bee84735fed2928b912d404a78e413b837855ddd7092f65d3ac74가 전후 일치한다. 실제 UI 저장 후 각 한 필드만 제거한 것이며 timeout은 성공으로 계산하지 않았다.
+
+이어진 AD 정상 전환은 F00 복귀3에서 숨겨진 compressorDefault 입력의 native uncheck가 timeout으로 실패했다. raw는 올바른 schema2/revision12·global9를 유지했고24launch 종료3증명true/같은source 전후일치/cleanup·secondary0이다. F00은 plain popup의 모든 오디오 필드를 숨기고 schema2 TAB도 읽기 전용으로 취급하므로, 그 UI로 전역 OFF를 저장하도록 한 도구 단계가 잘못됐다. 숨긴 입력을 드러내거나 프로토콜/직접 저장으로 우회하지 않는다.
+
+필수 동작을 분리해 정상 valid-v1 순서를9단계로 보완했다: 게시본seed→F00읽기→F01전환/저장→F00제한·raw동일→F01재개ON→게시본OFF→F01재개OFF→게시본ON→F01재개ON. 정상 전체39launch이며 음성19launch/정확한 기존 witness는 변경 없다. 게시본에서는 실제 details summary를 먼저 클릭한 후 해당 checkbox를 조작한다. 이는 관측2개 추가이지 권한·수치 gate 완화가 아니다. schedule/기대 raw/감독의 RED→GREEN80개, 기존 전체1564/1563/0/skip1(72.580초)이 통과했고, summary 클릭까지 포함한 최종 집중45개/strict 통과 후 전체 재실행 중이다. 새 checkpoint의 정상39/손실19 재검증은 아직 남아 있다.
+
+summary 실제 클릭을 포함한 최종 전체1564/1563통과/0실패/기존1skip(72.618초)도 통과했다. 확장 순서와 모든 fixture를 새 로컬 checkpoint에 포함해 순차 Native 재검증한다.

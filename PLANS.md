@@ -119,7 +119,7 @@
   - [x] 실제 UI 검사·4가지 저장 손실 대조·고배율 배치/캡처. 1783812의U/V는 전체 gate·정확한4손실·worker 실행 문맥 교체·종료3증명/source 일치 PASS. 실제200% geometry와 원본 viewport 캡처에서 다이얼/EQ 표시를 확인했다. 확장 권한·제품 UI를 바꾸지 않고 제어 도구의 확대 캡처 좌표 문제만 우회했다.
   - [x] Gain full 재배치 fixture 보완 후 실제 재검증. a3403d2의M 실행70.784초 PASS·source일치/종료3증명true·page error0. 자연 worker suspension·물리 출력 증명은 아니다.
   - [x] F01 저장 형식 전환 CLI·독립 기대 fixture·고정 payload/occurrence 감독·정확한 손실 대조 구현/집중·타입 검증.
-  - [ ] 새 clean checkpoint의 실제 cold 전환37회·손실 대조19회 및 source/종료/전체 게이트 확인.
+  - [ ] 새 clean checkpoint의 실제 cold 전환39회·손실 대조19회 및 source/종료/전체 게이트 확인. F00 제한/재개와 게시본의 전역 OFF/ON 왕복을 별도 단계로 검사한다.
     - [x] 별도 F00 ae9f8e5의59자산/765607byte/고정 해시 입력·strict helper/오용 검출. 게시본58·현재F01 62와 구분한다.
     - [ ] 독립 v1/명시 전환/edited 기대 값·6개 데이터 상태·기존 baseline을 보존하는 supervised 실행/손실 대조/실제 cold 검증. CLI 연결·Native 실행은 아직 미완료다.
 - [ ] T8 clean checkpoint·기존14/12/18/stress와 새 EQ/normalizer/전환/수명 객관 출력 검증.

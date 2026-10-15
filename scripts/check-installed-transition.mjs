@@ -234,7 +234,7 @@ export function superviseTransitionChild({ child, nonce, roots, scenario, mediaS
         const launchId = media ? `${message.caseId}:${message.launchOccurrence}:${message.phase}` : `${message.caseId}:${message.phase}`;
         const stages=f01&&assigned?f01TransitionStages(Object.fromEntries(Object.entries(assigned).filter(([key])=>key!=='root')),control):null;
         if (!assigned || !['seed', 'old', 'new', 'rollback'].includes(message.phase) || message.launchId !== launchId ||
-          media && (!Number.isInteger(message.launchOccurrence) || message.launchOccurrence < 0 || message.launchOccurrence > (f01?6:4))||
+          media && (!Number.isInteger(message.launchOccurrence) || message.launchOccurrence < 0 || message.launchOccurrence > (f01?8:4))||
           f01&&(stages.at(message.launchOccurrence)?.phase!==message.phase||stages.at(message.launchOccurrence)?.payload!==message.payload)) throw fail('transition-ipc');
         if (message.type === 'launch-intent') {
           if (failure || receivedResult || launches.has(message.launchId) || [...launches.values()].some(value => !value.closed)) throw fail('transition-ipc');

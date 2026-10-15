@@ -51,9 +51,11 @@ test('independent F01 cold expectations preserve legacy identities and distingui
   assert.equal(edited.mediaProfiles.revision,12);assert.equal(edited.mediaProfiles.channels[0].audio.values.audioGain,0);assert.equal(edited.mediaProfiles.channels[0].audio.values.gainInherited,false);
   assert.equal(edited.mediaProfiles.channels[0].revision,6);assert.equal(edited.mediaProfiles.channels[1].revision,2);assert.equal(edited.mediaProfiles.presets[0].revision,2);
   assert.equal(edited.mediaProfiles.presets[1].id,presetId);assert.equal(edited.mediaProfiles.presets[1].createdRevision,11);assert.equal(edited.mediaProfiles.channels[1].video.values.brightness,1.75);
-  const off=expectedF01TransitionRaw({...input,caseId:'valid-v1',occurrence:3,step:'final',presetId});
-  const resumed=expectedF01TransitionRaw({...input,caseId:'valid-v1',occurrence:4,step:'final',presetId});assert.deepEqual(off,resumed);assert.equal(off.settingsRevision,10);assert.equal(off.config.compressorDefault,false);
-  const final=expectedF01TransitionRaw({...input,caseId:'valid-v1',occurrence:6,step:'final',presetId});assert.equal(final.settingsRevision,11);assert.equal(final.config.compressorDefault,true);
+  assert.deepEqual(expectedF01TransitionRaw({...input,caseId:'valid-v1',occurrence:3,step:'final',presetId}),edited);
+  assert.deepEqual(expectedF01TransitionRaw({...input,caseId:'valid-v1',occurrence:4,step:'final',presetId}),edited);
+  const off=expectedF01TransitionRaw({...input,caseId:'valid-v1',occurrence:5,step:'final',presetId});
+  const resumed=expectedF01TransitionRaw({...input,caseId:'valid-v1',occurrence:6,step:'final',presetId});assert.deepEqual(off,resumed);assert.equal(off.settingsRevision,10);assert.equal(off.config.compressorDefault,false);
+  const final=expectedF01TransitionRaw({...input,caseId:'valid-v1',occurrence:8,step:'final',presetId});assert.equal(final.settingsRevision,11);assert.equal(final.config.compressorDefault,true);
   assert.deepEqual(final.mediaProfiles,edited.mediaProfiles);assert.deepEqual(final.futureTop,{runNonce:nonce,untouched:true});assert.deepEqual(final.styles,['future-style']);
   const absent=expectedF01TransitionRaw({...input,caseId:'absent',occurrence:1,step:'final'});assert.equal(Object.hasOwn(absent,'mediaProfiles'),false);assert.equal(absent.config.audioGain,0);assert.equal(absent.settingsRevision,5);
   for(const caseId of ['global-max','media-max','corrupt','future'])assert.deepEqual(expectedF01TransitionRaw({...input,caseId,occurrence:1,step:'final'}),f01TransitionSeed(caseId,nonce,seed));
@@ -65,9 +67,9 @@ test('cold schedule retains all original cases, assigns exact payload roles and 
   const {f01TransitionAssignments,f01TransitionStages}=await subject();assert.equal(typeof f01TransitionAssignments,'function');
   const positive=f01TransitionAssignments(),negative=f01TransitionAssignments('storage-loss');
   assert.deepEqual(positive.map(value=>value.caseId),['valid-ui','legacy-valid','legacy-null','legacy-invalid','damaged-revision','valid-v1','absent','global-max','media-max','corrupt','future']);
-  assert.equal(positive.reduce((n,value)=>n+f01TransitionStages(value).length,0),37);
+  assert.equal(positive.reduce((n,value)=>n+f01TransitionStages(value).length,0),39);
   assert.deepEqual(f01TransitionStages(positive[0]).map(value=>value.payload),['published','published','f00','published']);
-  assert.deepEqual(f01TransitionStages(positive[5]).map(value=>value.payload),['published','f00','f01','f00','f01','published','f01']);
+  assert.deepEqual(f01TransitionStages(positive[5]).map(value=>value.payload),['published','f00','f01','f00','f01','published','f01','published','f01']);
   assert.deepEqual(f01TransitionStages(positive[6]).map(value=>value.phase),['seed','new']);
   assert.deepEqual(negative.map(value=>value.caseId),['valid-ui','loss-owned-gain','loss-inherit-bit','loss-eq-band','loss-preset-id']);
   assert.equal(negative.reduce((n,value)=>n+f01TransitionStages(value,'storage-loss').length,0),19);

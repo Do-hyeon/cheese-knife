@@ -64,6 +64,7 @@ export const F01_TRANSITION_CASES=Object.freeze(['valid-v1','absent','global-max
 export const F01_TRANSITION_STAGES=Object.freeze([
   {phase:'seed',payload:'published'},{phase:'old',payload:'f00'},{phase:'new',payload:'f01'},
   {phase:'rollback',payload:'f00'},{phase:'new',payload:'f01'},{phase:'rollback',payload:'published'},{phase:'new',payload:'f01'},
+  {phase:'rollback',payload:'published'},{phase:'new',payload:'f01'},
 ]);
 /** @typedef {'owned-gain'|'inherit-bit'|'eq-band'|'preset-id'} F01TransitionLoss */
 /** @typedef {{caseId:string,kind:'legacy'|'f01',mediaCase?:F01TransitionCase,loss?:F01TransitionLoss}} F01Assignment */
@@ -82,7 +83,7 @@ export function f01TransitionStages(assignment,control){
   if(assignment.kind==='legacy')return [F01_TRANSITION_STAGES[0],{phase:/** @type {const} */('old'),payload:/** @type {const} */('published')},
     {phase:/** @type {const} */('new'),payload:/** @type {const} */('f00')},...(control?[]:[{phase:/** @type {const} */('rollback'),payload:/** @type {const} */('published')}])];
   if(assignment.mediaCase!=='valid-v1')return [F01_TRANSITION_STAGES[0],F01_TRANSITION_STAGES[2]];
-  return F01_TRANSITION_STAGES.slice(0,assignment.loss?4:7);
+  return F01_TRANSITION_STAGES.slice(0,assignment.loss?4:9);
 }
 
 /** @param {unknown} failure @param {unknown} expected @param {F01TransitionLoss} loss @param {string} extensionId */
@@ -127,7 +128,7 @@ export function f01TransitionSeed(caseId,runNonce,fixture){
 /** @param {F01Expectation} input @returns {Record<string,unknown>} */
 export function expectedF01TransitionRaw(input){
   const {caseId,runNonce,seed,expected,occurrence,step,presetId}=input;
-  if(!Number.isSafeInteger(occurrence)||occurrence<0||occurrence>(caseId==='valid-v1'?6:1)||!['startup','upgraded','final'].includes(step)||
+  if(!Number.isSafeInteger(occurrence)||occurrence<0||occurrence>(caseId==='valid-v1'?8:1)||!['startup','upgraded','final'].includes(step)||
     step==='upgraded'&&(caseId!=='valid-v1'||occurrence!==2))throw fail('f01-transition-expectation');
   const raw=f01TransitionSeed(caseId,runNonce,seed),config=record(raw.config);if(!config)throw fail('f01-transition-expectation');
   if(caseId!=='valid-v1'){
@@ -143,8 +144,8 @@ export function expectedF01TransitionRaw(input){
   if(!preset||preset.id!=='__NATIVE_PRESET_ID__'||typeof presetId!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(presetId)||
     presetId==='11111111-1111-4111-8111-111111111111')throw fail('f01-transition-expectation-preset');
   preset.id=presetId;
-  const off=occurrence===3&&step==='final'||occurrence===4||occurrence===5&&step==='startup';
-  raw.settingsRevision=off?10:occurrence>=5?11:9;
+  const off=occurrence===5&&step==='final'||occurrence===6||occurrence===7&&step==='startup';
+  raw.settingsRevision=off?10:occurrence>=7?11:9;
   Object.assign(config,{compressorDefault:!off,audioGain:0,gainInherited:false,eqEnabled:true,eq125:1.25});
   return raw;
 }
@@ -200,9 +201,10 @@ export async function runF01TransitionPhase(input){
     if(payload!=='f01'){
       const popup=await context.newPage();await popup.goto(`chrome-extension://${extensionId}/popup.html`,{waitUntil:'domcontentloaded'});
       await popup.locator('#settings-status[data-phase="ready"]').waitFor({timeout:15000});
-      if(occurrence===3||occurrence===5){
-        await popup.locator('#compressorDefault').setChecked(occurrence===5);
-        await waitCold(snapshot,raw=>raw.settingsRevision===(occurrence===3?10:11),'f01-transition-alias-save');
+      if(payload==='published'&&(occurrence===5||occurrence===7)){
+        await popup.locator('details:has(#compressorDefault) > summary').click();
+        await popup.locator('#compressorDefault').setChecked(occurrence===7);
+        await waitCold(snapshot,raw=>raw.settingsRevision===(occurrence===5?10:11),'f01-transition-alias-save');
       }
       if(payload==='f00'){
         await popup.close();
@@ -254,7 +256,7 @@ export async function runF01TransitionPhase(input){
         if(Number(await settings.locator('#audioGain').inputValue())!==0||await settings.locator('#gainInherited').isChecked()||!await settings.locator('#eqEnabled').isChecked()||
           Number(await settings.locator('#eq125-value').inputValue())!==1.25)throw fail('f01-transition-resume-ui');
         await settings.locator('#media-scope').selectOption('global');await readyCold(settings);
-        if(await settings.locator('#audioDefault').isChecked()!==(occurrence!==4))throw fail('f01-transition-alias-ui');
+        if(await settings.locator('#audioDefault').isChecked()!==(occurrence!==6))throw fail('f01-transition-alias-ui');
         await page.waitForFunction(()=>{const runtime=/** @type {import('../../src/main/runtime/contracts.js').KnifeRuntime|undefined} */(Reflect.get(window,Symbol.for('cheese-knife.runtime.v1')));
           return runtime?.config.compressorThreshold===-35&&runtime.config.audioGain===0&&runtime.config.eqEnabled===true&&runtime.config.eq125===1.25;},null,{timeout:15000});
       }
