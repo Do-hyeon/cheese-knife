@@ -112,6 +112,8 @@ compDry와 compressor의 native pre-delay를 기존 compressorDelay(sampleRate)�
 
 normalizer OFF·측정 오류의 unity 복귀는 위 느린 제어속도 제한의 예외이며 기존10ms 연속 전환으로 처리하고 오류는 limited 상태로 표시한다. master OFF는 기존10ms dry 복귀다. 명시 source replacement·route/genuine video 진입은 old meter/EMA/late callback을 폐기한다. 같은 video/PZP-only/hidden 복귀에서는 master 수동 wanted를 보존하되 분석 epoch를 재확인한다. NaN/무한 값을 AudioParam에 전달하거나 반복 오류를 숨기고 boost를 계속 올리지 않는다. OFF/retired/current player 아님이면 timer·meter 연결·buffer 참조를 정리하거나 정지한다.
 
+2026-10-15 국소 보완 승인: master OFF에서는 분석 자원을 즉시 퇴역시키되 normalizer의 현재 이득을 기존 wet fade 종료까지 유지하고 이후10ms에 unity로 복귀한다. 별도 JS timer 없이 native AudioParam 시각으로 예약한다. 같은 source/route/document의 빠른 ON은 퇴역 예약을 즉시 취소하고 계산된 현재 이득에서 새 warm-up을 시작한다. old EMA/buffer는 재사용하지 않으며 source/route/document 교체는0dB의 새 창이다. 단독 normalizer OFF/측정 오류와 기존 출력/dip/연속성 허용치는 변경하지 않는다.
+
 ## 9. 프리셋·저장·다중 창
 
 관리 화면 배치의 후속 승인: 내 프리셋 목록·선택 이름 변경을 위에 두고 삭제는 별도 행동으로 구분한다. 새 프리셋 생성은 그 아래 native details로 접어 둔다. 이름 변경 입력과 새 이름 입력은 분리하며 목록 전환이 생성 초안을 덮지 않는다. 오디오/영상 ‘프리셋으로 저장’으로 들어오면 해당 도메인의 생성 영역을 펼치고 새 이름에 초점을 둔다. 빈 목록에서는 생성 영역을 펼치고 이름 변경/삭제는 비활성화한다. 관리 화면 적용 버튼은 추가하지 않는다. 이는 목업 배치/조작 승인이지 실제 catalogue CRUD나 저장 성공 검증이 아니다.

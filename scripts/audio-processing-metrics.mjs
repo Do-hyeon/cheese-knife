@@ -144,8 +144,8 @@ export function normalizerMeasurementCases(){
   }))));
 }
 
-/** @param {unknown} before @param {unknown} change @param {unknown} after */
-export function evaluateProcessingTransition(before,change,after){
+/** @param {unknown} before @param {unknown} change @param {unknown} after @param {'master'|'component'} [kind] */
+export function evaluateProcessingTransition(before,change,after,kind='master'){
   const summaries=[before,change,after].map(record);
   if(summaries.some(row=>!row||!Array.isArray(row.channels)||row.channels.length!==2))throw new Error('audio-transition-invalid');
   const failures=[];
@@ -154,8 +154,10 @@ export function evaluateProcessingTransition(before,change,after){
     for(const row of channels)if(!row||![row.rms,row.peak,row.maxAdjacentStep,record(row.envelope8ms)?.min].every(value=>finite(value)&&value>=0)||!Number.isSafeInteger(row.overFullScaleSamples))throw new Error('audio-transition-invalid');
     const [first,middle,last]=/** @type {[Record<string,unknown>,Record<string,unknown>,Record<string,unknown>]} */(channels);
     const minimum=Math.min(Number(record(first.envelope8ms)?.min),Number(record(last.envelope8ms)?.min));
-    if(minimum<1e-4||Number(record(middle.envelope8ms)?.min)<minimum*.95)failures.push(`transition-channel-${index}/dip`);
-    if(Number(middle.maxAdjacentStep)>Math.max(Number(first.maxAdjacentStep),Number(last.maxAdjacentStep))+1e-6)failures.push(`transition-channel-${index}/step`);
+    if(kind==='master'){
+      if(minimum<1e-4||Number(record(middle.envelope8ms)?.min)<minimum*.95)failures.push(`transition-channel-${index}/dip`);
+      if(Number(middle.maxAdjacentStep)>Math.max(Number(first.maxAdjacentStep),Number(last.maxAdjacentStep))+1e-6)failures.push(`transition-channel-${index}/step`);
+    }else if(channels.some(row=>Number(row?.peak)>.9801))failures.push(`transition-channel-${index}/wet-ceiling`);
     if(channels.some(row=>row?.overFullScaleSamples!==0||Number(row?.peak)>1))failures.push(`transition-channel-${index}/fullscale`);
   }
   return failures;
@@ -215,7 +217,7 @@ export function processingReportFailures(raw,expectedSource){
     if(!Array.isArray(transitions)||transitions.length!==24)failures.push(`rate-${sampleRate}/transitions-missing`);
     else for(const frequency of [250,750,1000])for(const name of ['eq-on','eq-off','compressor-on','compressor-off','normalizer-on','normalizer-off','master-off','master-on']){
       const id=`${sampleRate}/${frequency}/${name}`,matches=transitions.filter(value=>record(value)?.id===id),row=record(matches[0]);
-      try{if(matches.length!==1||!row||evaluateProcessingTransition(row.before,row.change,row.after).length||name.startsWith('master-')&&!complementaryAudioRamps(row.linearEvents))failures.push(id+'/transition');}
+      try{if(matches.length!==1||!row||evaluateProcessingTransition(row.before,row.change,row.after,name.startsWith('master-')?'master':'component').length||name.startsWith('master-')&&!complementaryAudioRamps(row.linearEvents))failures.push(id+'/transition');}
       catch{failures.push(id+'/incomplete');}
     }
     if(!Array.isArray(rate.normalizer)||rate.normalizer.length!==expectedNorm.length)failures.push(`rate-${sampleRate}/normalizer-missing`);

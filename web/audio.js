@@ -266,10 +266,17 @@
       }
     };
     const automateNormalizer = (entry, curve) => {
-      const parameter = entry.normalizer.gain;
-      parameter.cancelScheduledValues(curve.start);
-      parameter.setValueAtTime(10 ** (curve.fromDb / 20), curve.start);
+      const parameter = entry.normalizer.gain, now = context.currentTime;
+      parameter.cancelScheduledValues(now);
+      parameter.setValueAtTime(10 ** (curve.fromDb / 20), now);
+      if (curve.start > now) parameter.setValueAtTime(10 ** (curve.fromDb / 20), curve.start);
       if (curve.end > curve.start) parameter.exponentialRampToValueAtTime(10 ** (curve.toDb / 20), curve.end);
+      entry.normalizerCurve = {
+        ...curve,
+        source: entry.video.currentSrc,
+        path: runtime.media.context.routePath,
+        document: runtime.media.context.documentGeneration
+      };
     };
     const stopMeter = (entry) => {
       const data = entry.meter;
@@ -285,7 +292,10 @@
       data.left.disconnect();
       data.right.disconnect();
       const time = context.currentTime;
-      automateNormalizer(entry, { fromDb: normalizerDbAt(data.control, time), toDb: 0, start: time, end: time + 0.01 });
+      const wet = entry.wet && transitions.get(entry.wet.gain);
+      const start = !entry.wanted && wet?.to === 0 ? Math.max(time, wet.end) : time;
+      automateNormalizer(entry, { fromDb: normalizerDbAt(data.control, time), toDb: 0, start, end: start + 0.01 });
+      Object.assign(entry.normalizerCurve, { source: data.source, path: data.path, document: data.document });
     };
     const tickMeter = (entry) => {
       const data = entry.meter;
@@ -341,6 +351,10 @@
       if (!control) {
         entry.normalizerStatus = { state: "limited", reason: "normalizer-sample-rate-unsupported" };
         return;
+      }
+      const previous = entry.normalizerCurve;
+      if (previous && previous.source === entry.video.currentSrc && previous.path === runtime.media.context.routePath && previous.document === runtime.media.context.documentGeneration) {
+        control.fromDb = control.toDb = normalizerDbAt(previous, context.currentTime);
       }
       try {
         const splitter = context.createChannelSplitter(2), left = context.createAnalyser(), right = context.createAnalyser();

@@ -2,6 +2,85 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { runtime, flush, deliverScoped } = require('./helpers.cjs');
 const { setup } = require('./audio-fixture.cjs');
+
+async function boosted(t, failures = {}) {
+  const fixture = setup(t, false, true, { normalizerEnabled: true }, failures);
+  Object.defineProperty(fixture.video, 'paused', { value: false, configurable: true });
+  await fixture.audio.setEnabled(fixture.video, true);
+  for (let i = 1; i <= 10; i++) { fixture.context().currentTime = i / 10; fixture.tick(); }
+  fixture.context().currentTime = 1.1;
+  return { ...fixture, gain: fixture.nodes.filter(node => node.type === 'gain')[7].gain };
+}
+
+test('master OFF holds normalization through the wet fade while retiring analysis immediately', async t => {
+  const { audio, video, nodes, context, tick, gain } = await boosted(t);
+  const meters = nodes.filter(node => node.type === 'analyser'), reads = meters.map(node => node.reads);
+  gain.events.length = 0; await audio.setEnabled(video, false);
+  assert.deepEqual(gain.events.map(event => event[0]), ['cancel','set','set','exp']);
+  assert.ok(Math.abs(gain.events[1][1] - 10 ** (.7 / 20)) < 1e-10);
+  assert.equal(gain.events[2][1], gain.events[1][1]);
+  assert.ok(Math.abs(gain.events[2][2] - 1.11) < 1e-10);
+  assert.deepEqual(gain.events.at(-1).slice(0,2), ['exp',1]);
+  assert.ok(Math.abs(gain.events.at(-1)[2] - 1.12) < 1e-10);
+  assert.equal(meters.every(node => node.outputs.size === 0), true);
+  const count = gain.events.length; context().currentTime = 1.105; tick();
+  assert.deepEqual(meters.map(node => node.reads), reads); assert.equal(gain.events.length, count);
+});
+
+for (const [time,db] of [[1.105,.7],[1.115,.35],[1.125,0]]) test('quick master reentry rebases and cancels retired unity at '+time, async t => {
+  const { audio, video, context, gain, tick, nodes } = await boosted(t);
+  await audio.setEnabled(video, false); context().currentTime = time; gain.events.length = 0;
+  await audio.setEnabled(video, true);
+  assert.deepEqual(gain.events[0], ['cancel',time]);
+  assert.ok(Math.abs(gain.events[1][1] - 10 ** (db / 20)) < 1e-10);
+  assert.equal(gain.events.some(event => event[0] === 'exp'), false, 'retired reset must not survive new warmup');
+  const start = gain.events.length;
+  context().currentTime = time + .1; tick();
+  assert.ok(Math.abs(gain.events[start+1][1] - 10 ** (db / 20)) < 1e-10);
+  assert.equal(nodes.filter(node => node.type === 'splitter' && node.outputs.size > 0).length, 1);
+  assert.equal(nodes.filter(node => node.type === 'source').length, 1);
+});
+
+test('standalone normalizer OFF keeps the immediate ten millisecond unity reset', async t => {
+  const { audio, dom, gain } = await boosted(t);
+  gain.events.length = 0; runtime(dom).config.normalizerEnabled = false; audio.configure();
+  assert.deepEqual(gain.events.map(event => event[0]), ['cancel','set','exp']);
+  assert.ok(Math.abs(gain.events.at(-1)[2] - 1.11) < 1e-10);
+});
+
+test('analysis failure after rapid reentry still resets boosted gain to unity in ten milliseconds', async t => {
+  const failures = {}, { audio, video, gain, context, tick, dom } = await boosted(t, failures);
+  await audio.setEnabled(video, false); context().currentTime = 1.105; await audio.setEnabled(video, true);
+  failures.sample = NaN; gain.events.length = 0; context().currentTime = 1.205; tick();
+  assert.deepEqual(gain.events.map(event => event[0]), ['cancel','set','exp']);
+  assert.ok(Math.abs(gain.events[1][1] - 10 ** (.7 / 20)) < 1e-10);
+  assert.deepEqual(gain.events.at(-1).slice(0,2), ['exp',1]);
+  assert.ok(Math.abs(gain.events.at(-1)[2] - 1.215) < 1e-10);
+  assert.equal(runtime(dom).statuses.normalizer.reason, 'normalizer-samples-invalid');
+});
+
+test('source replacement never inherits a retired meter gain or unity reservation', async t => {
+  const { audio, video, gain, context } = await boosted(t);
+  Object.defineProperty(video, 'currentSrc', { value: 'blob:https://chzzk.naver.com/replaced', configurable: true });
+  audio.configure(); gain.events.length = 0; context().currentTime = 1.105;
+  audio.configure();
+  const sets = gain.events.filter(event => event[0] === 'set');
+  assert.ok(sets.every(event => event[1] === 1), 'a replacement source starts a fresh unity window');
+  assert.equal(gain.value, 1);
+});
+
+test('repeated master OFF/ON cancels each old reset without accumulating sources or meters', async t => {
+  const { audio, video, gain, context, nodes } = await boosted(t);
+  for (let i = 0; i < 4; i++) {
+    await audio.setEnabled(video, false); context().currentTime += .005;
+    gain.events.length = 0; await audio.setEnabled(video, true);
+    assert.ok(Math.abs(gain.events[1][1] - 10 ** (.7 / 20)) < 1e-10);
+    assert.equal(gain.events.some(event => event[0] === 'exp'), false);
+    context().currentTime += .005;
+  }
+  assert.equal(nodes.filter(node => node.type === 'source').length, 1);
+  assert.equal(nodes.filter(node => node.type === 'splitter' && node.outputs.size > 0).length, 1);
+});
 test('normalizer has separate stereo meters and a bounded exponential schedule before master Gain', async t => {
   const { audio, video, dom, nodes, context, tick } = setup(t, false, true, { normalizerEnabled: true });
   Object.defineProperty(video, 'paused', { value: false, configurable: true });

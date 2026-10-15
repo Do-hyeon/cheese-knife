@@ -11,7 +11,7 @@ export function createNormalizer(sampleRate: number): NormalizerControl | null {
   return fftSize === null ? null : { fftSize, windowSeconds: fftSize / sampleRate, lastTime: null, warmSince: null,
     power: null, silentSeconds: 0, fromDb: 0, toDb: 0, start: 0, end: 0 };
 }
-export function normalizerDbAt(state: NormalizerControl, time: number): number {
+export function normalizerDbAt(state: Pick<NormalizerControl, 'fromDb' | 'toDb' | 'start' | 'end'>, time: number): number {
   const progress = state.end > state.start ? Math.max(0, Math.min(1, (time - state.start) / (state.end - state.start))) : 1;
   return state.fromDb + (state.toDb - state.fromDb) * progress;
 }

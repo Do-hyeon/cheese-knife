@@ -109,10 +109,12 @@ async function transitionProof(page,sampleRate){
       const start=record(await call(page,{kind:'configure',config:step.config,gain:1,enabled:step.enabled})),frame=numeric(start,'frame');
       await page.waitForTimeout(300);
       /** @param {number} seconds @param {number} end */const window=async(seconds,end)=>summarizeCapture(validateProcessingCapture(await call(page,{kind:'capture',seconds,endFrame:frame+Math.round(sampleRate*end)})));
-      const before=await window(.04,-.04),change=await window(.06,.04),after=await window(.04,.14),failures=evaluateProcessingTransition(before,change,after);
-      const linearEvents=list(await facts(page),'linearEvents');
+      const before=await window(.04,-.04),change=await window(.06,.04),after=await window(.04,.14);
+      const continuityDiagnostics=evaluateProcessingTransition(before,change,after);
+      const failures=evaluateProcessingTransition(before,change,after,step.name.startsWith('master-')?'master':'component');
+      const observed=await facts(page),linearEvents=list(observed,'linearEvents'),normalizerEvents=list(observed,'events').filter(value=>record(value).node===7);
       if(step.name.startsWith('master-')&&!complementaryAudioRamps(linearEvents))failures.push('transition-complementary-weights');
-      rows.push({id:`${sampleRate}/${frequency}/${step.name}`,before,change,after,linearEvents,failures});
+      rows.push({id:`${sampleRate}/${frequency}/${step.name}`,before,change,after,linearEvents,normalizerEvents,continuityDiagnostics,failures});
       console.log(JSON.stringify({stage:'transition',id:rows.at(-1)?.id,failures}));
       await page.waitForTimeout(1500);
     }

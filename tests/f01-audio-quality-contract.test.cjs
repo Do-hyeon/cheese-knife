@@ -116,3 +116,13 @@ test('native dry/wet automation must be complementary for the whole crossfade, n
   assert.equal(complementaryAudioRamps([ramps[0]]),false);
   assert.equal(complementaryAudioRamps([{...ramps[0],to:NaN},ramps[1]]),false);
 });
+
+test('component transitions enforce wet ceiling while preserving master-only continuity diagnostics',async()=>{
+  const {evaluateProcessingTransition}=await metrics();
+  const channel={rms:.2,peak:.3,overFullScaleSamples:0,maxAdjacentStep:.03,envelope8ms:{min:.2}},summary={channels:[channel,channel]};
+  const change={channels:[{...channel,maxAdjacentStep:.04,envelope8ms:{min:.18}},channel]};
+  assert.deepEqual(evaluateProcessingTransition(summary,change,summary,'component'),[]);
+  assert.ok(evaluateProcessingTransition(summary,change,summary).includes('transition-channel-0/dip'));
+  assert.ok(evaluateProcessingTransition(summary,{channels:[{...channel,peak:.981},channel]},summary,'component').includes('transition-channel-0/wet-ceiling'));
+  assert.throws(()=>evaluateProcessingTransition(summary,{channels:[{...channel,peak:NaN},channel]},summary,'component'),/audio-transition-invalid/);
+});
