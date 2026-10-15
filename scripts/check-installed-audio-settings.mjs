@@ -80,6 +80,8 @@ export function assertAudioSettingsReport(raw,options){
   const controls=result.lossControls;
   const inputs=result.nativeInputs,windows=result.nativeWindows,tabWindows=result.nativeTabWindows;
   const lifecycle=record(result.lifecycle),quota=record(result.quota),restart=record(result.workerRestart),layout=record(result.layout),zoom=record(layout?.zoom);
+  const race=record(result.sameScope);
+  if(race?.nativeFullRequests!==2||race.heldDispatches!==1||race.committedRevisionDelta!==1||race.lateCode!=='conflict'||race.lateStored!==false)throw fail('audio-settings-proof');
   if(!Array.isArray(inputs)||inputs.length!==2||!Array.isArray(windows)||windows.length!==2||windows[0]===windows[1]||
     !windows.every(value=>Number.isSafeInteger(value))||!Array.isArray(tabWindows)||tabWindows.length!==2||tabWindows[0]===tabWindows[1]||
     !tabWindows.every(value=>Number.isSafeInteger(value)&&value>=0)||lifecycle?.oneWindowClosed!==true||lifecycle.remainingNativeSource!==1||
@@ -380,30 +382,80 @@ async function sameScopeProof(input,settings,other){
   await settings.locator('#media-audio-preset').selectOption('recipe:voice');await other.locator('#media-audio-preset').selectOption('recipe:voice');
   const before=await stored(input.worker),revision=record(before.mediaProfiles)?.revision;
   if(typeof revision!=='number')throw fail('audio-settings-race-revision');
-  /** @type {import('playwright').Dialog|undefined} */let firstDialog,secondDialog;
-  /** @type {Promise<void>|undefined} */let firstClick,secondClick;
-  /** @type {unknown} */let clickError;
-  let acceptedFirst=false,acceptedSecond=false;
+  await input.worker.evaluate(()=>{
+    const entries=/** @type {{tabId:number|undefined,frameId:number|undefined,documentId:string|undefined}[]} */([]);
+    const observe=(/** @type {unknown} */message,/** @type {chrome.runtime.MessageSender} */sender)=>{
+      if(message&&typeof message==='object'&&Reflect.get(message,'namespace')==='cheese-knife-settings'&&Reflect.get(message,'protocol')===3&&
+        Reflect.get(message,'action')==='replace-channel-domain'&&entries.length<4)entries.push({tabId:sender.tab?.id,frameId:sender.frameId,documentId:sender.documentId});return false;
+    };
+    const state=/** @type {typeof globalThis & {__f01NativeFullRequests?:typeof entries,__f01NativeFullRestore?:()=>void}} */(globalThis);
+    if(state.__f01NativeFullRequests)throw new Error('audio-settings-cas-observer-exists');
+    state.__f01NativeFullRequests=entries;state.__f01NativeFullRestore=()=>chrome.runtime.onMessage.removeListener(observe);chrome.runtime.onMessage.addListener(observe);
+  });
+  await settings.evaluate(()=>{
+    const state=/** @type {typeof globalThis & {__f01NativeFullHold?:NativeFullHold}} */(globalThis);
+    if(state.__f01NativeFullHold)throw new Error('audio-settings-cas-hold-exists');
+    const original=chrome.runtime.sendMessage,descriptor=Object.getOwnPropertyDescriptor(chrome.runtime,'sendMessage');
+    /** @type {unknown[]|null} */let held=null;
+    /** @type {NativeFullHold} */const fault={calls:0,dispatches:0,code:null,stored:null,release(){
+      if(!held||fault.calls!==1||fault.dispatches!==0)throw new Error('audio-settings-cas-dispatch');
+      const message=held[0],callback=held[1];if(typeof callback!=='function')throw new Error('audio-settings-cas-callback');
+      fault.dispatches++;held=null;
+      Reflect.apply(original,chrome.runtime,[message,(/** @type {unknown} */reply)=>{
+        if(reply&&typeof reply==='object'){
+          const code=Reflect.get(reply,'code'),stored=Reflect.get(reply,'stored');fault.code=typeof code==='string'?code:null;fault.stored=typeof stored==='boolean'?stored:null;
+        }
+        Reflect.apply(callback,undefined,[reply]);
+      }]);
+    },restore(){if(descriptor)Object.defineProperty(chrome.runtime,'sendMessage',descriptor);else Reflect.deleteProperty(chrome.runtime,'sendMessage');}};
+    state.__f01NativeFullHold=fault;
+    Object.defineProperty(chrome.runtime,'sendMessage',{configurable:true,writable:true,
+      /** @param {...unknown} args @returns {unknown} */value(...args){
+        const message=args[0];
+        if(message&&typeof message==='object'&&Reflect.get(message,'namespace')==='cheese-knife-settings'&&Reflect.get(message,'protocol')===3&&Reflect.get(message,'action')==='replace-channel-domain'){
+          fault.calls++;if(held||fault.calls!==1||args.length!==2||typeof args[1]!=='function')throw new Error('audio-settings-cas-hold-duplicate');held=args;return;
+        }
+        return Reflect.apply(original,chrome.runtime,args);
+      }});
+  });
   try{
-    const openingFirst=settings.waitForEvent('dialog',{timeout:15000});
-    firstClick=settings.locator('#media-audio-preset-apply').click().catch(error=>{clickError??=error;});firstDialog=await openingFirst;
-    const openingSecond=other.waitForEvent('dialog',{timeout:15000});
-    secondClick=other.locator('#media-audio-preset-apply').click().catch(error=>{clickError??=error;});secondDialog=await openingSecond;
-    await firstDialog.accept();acceptedFirst=true;await firstClick;
+    await confirmClick(settings,'#media-audio-preset-apply',true);
+    await settings.waitForFunction(()=>{
+      const state=/** @type {typeof globalThis & {__f01NativeFullHold?:NativeFullHold}} */(globalThis);return state.__f01NativeFullHold?.calls===1;
+    });
+    if(!isDeepStrictEqual(before,await stored(input.worker)))throw fail('audio-settings-race-held-write');
+    await confirmClick(other,'#media-audio-preset-apply',true);
     await waitNative(()=>stored(input.worker),raw=>record(raw.mediaProfiles)?.revision===revision+1,'audio-settings-race-first');
-    await secondDialog.accept();acceptedSecond=true;await secondClick;
-    if(clickError)throw clickError;
-    await other.waitForFunction(()=>['ready','conflict'].includes(document.getElementById('media-status')?.dataset.phase??''),null,{timeout:15000});
+    await settings.evaluate(()=>{
+      const state=/** @type {typeof globalThis & {__f01NativeFullHold?:NativeFullHold}} */(globalThis);state.__f01NativeFullHold?.release();
+    });
+    await settings.waitForFunction(()=>document.getElementById('media-status')?.dataset.phase==='conflict',null,{timeout:15000});
+    const fault=await settings.evaluate(()=>{
+      const state=/** @type {typeof globalThis & {__f01NativeFullHold?:NativeFullHold}} */(globalThis),held=state.__f01NativeFullHold;
+      return held?{calls:held.calls,dispatches:held.dispatches,code:held.code,stored:held.stored}:null;
+    });
+    const senders=await input.worker.evaluate(()=>{
+      const state=/** @type {typeof globalThis & {__f01NativeFullRequests?:{tabId:number|undefined,frameId:number|undefined,documentId:string|undefined}[]}} */(globalThis);return state.__f01NativeFullRequests??[];
+    });
+    const a=await settings.evaluate(()=>chrome.tabs.getCurrent()),b=await other.evaluate(()=>chrome.tabs.getCurrent());
+    if(fault?.calls!==1||fault.dispatches!==1||fault.code!=='conflict'||fault.stored!==false||senders.length!==2||
+      senders[0]?.tabId!==b?.id||senders[1]?.tabId!==a?.id||a?.id===b?.id||!senders.every(sender=>sender.frameId===0&&typeof sender.documentId==='string'&&sender.documentId.length>0)||
+      senders[0]?.documentId===senders[1]?.documentId)throw fail('audio-settings-race-native-requests');
     const after=await stored(input.worker),audio=channelAudio(after,channelId);
     if(record(after.mediaProfiles)?.revision!==revision+1||audio?.audioGain!==.5||audio.gainInherited!==false||audio.eqEnabled!==true||audio.eq63!==-2||audio.eq2000!==2)throw fail('audio-settings-race-loss');
-    if(await other.locator('#media-discard').isVisible()){await other.locator('#media-discard').click();await readyUI(other);}
-    await selectScope(other,'current');
+    await settings.locator('#media-discard').click();await readyUI(settings);await readyUI(other);await selectScope(other,'current');
+    return {nativeFullRequests:senders.length,heldDispatches:fault.dispatches,committedRevisionDelta:Number(record(after.mediaProfiles)?.revision)-revision,lateCode:fault.code,lateStored:fault.stored};
   }finally{
-    if(firstDialog&&!acceptedFirst)await firstDialog.dismiss().catch(()=>{});
-    if(secondDialog&&!acceptedSecond)await secondDialog.dismiss().catch(()=>{});
-    await Promise.all([firstClick,secondClick]);
+    await settings.evaluate(()=>{
+      const state=/** @type {typeof globalThis & {__f01NativeFullHold?:NativeFullHold}} */(globalThis);state.__f01NativeFullHold?.restore();delete state.__f01NativeFullHold;
+    });
+    await input.worker.evaluate(()=>{
+      const state=/** @type {typeof globalThis & {__f01NativeFullRequests?:unknown,__f01NativeFullRestore?:()=>void}} */(globalThis);
+      state.__f01NativeFullRestore?.();delete state.__f01NativeFullRequests;delete state.__f01NativeFullRestore;
+    });
   }
 }
+/** @typedef {{calls:number,dispatches:number,code:string|null,stored:boolean|null,release:()=>void,restore:()=>void}} NativeFullHold */
 /** @param {AudioSettingsScenario} input @param {import('playwright').Page} other */
 async function unknownAckProof(input,other){
   await readyUI(other);
@@ -628,13 +680,13 @@ async function scenario(input,options){
   const expected=await stored(worker);
   if(record(expected.config)?.eqEnabled!==true||Object.hasOwn(expected,'mediaProfiles'))throw fail('audio-settings-global-field-merge');
   const layout=await layoutProof(settings,input);await presetAndMasterProof(input,settings,first);await dialProof(input,settings);
-  const secondState=await secondWindowProof(input,first,settings);await sameScopeProof(input,settings,secondState.other);await unknownAckProof(input,secondState.other);
+  const secondState=await secondWindowProof(input,first,settings),sameScope=await sameScopeProof(input,settings,secondState.other);await unknownAckProof(input,secondState.other);
   const lifecycle=await targetAndLifecycleProof(input,first,settings,secondState),quota=await quotaProof(input,settings);
   const workerRestart=await restartWorkerProof(input,settings);
   const controls=options.control?await lossControls(input):[],firstInputs=await nativeInputProof(settings);
   context.off('page',observe);
   if(errors.length)throw fail('audio-settings-page-error');
-  return {audioSettings:{passed:options.control===null,checks:[...checks],lossControls:controls,layout,lifecycle,quota,workerRestart,
+  return {audioSettings:{passed:options.control===null,checks:[...checks],lossControls:controls,layout,lifecycle,quota,workerRestart,sameScope,
     nativeWindows:secondState.cdpWindows,nativeTabWindows:[secondState.firstTab.windowId,secondState.secondTab.windowId],nativeInputs:[firstInputs,lifecycle.secondInputs],physicalAudioNotEvaluated:true},pageErrors:errors};
 }
 

@@ -6,6 +6,7 @@ const report=()=>({ok:true,runId:'Settings1',qualification:'audio-settings',sour
   shutdown:{browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:true},profileRetained:true,candidateRetained:true,
   audioSettings:{passed:true,checks:['native-ui','two-windows','storage-authority','layout','original-target','preset-draft','input-focus','lifecycle'],lossControls:[],
     nativeInputs:[nativeInputs(),nativeInputs()],nativeWindows:[1,2],nativeTabWindows:[3,4],
+    sameScope:{nativeFullRequests:2,heldDispatches:1,committedRevisionDelta:1,lateCode:'conflict',lateStored:false},
     lifecycle:{oneWindowClosed:true,remainingNativeSource:1,beforeHeap:100,afterHeap:90},quota:{actualQuotaFailure:true,bytesAtLimit:10485760},workerRestart:{actualWorkerReplacement:true},
     layout:{viewports:[1280,800,360].map(width=>({width,output:80,shell:580,bands:Array(8).fill(100),scrollable:width===360,overflow:false})),
       zoom:{actual:2,output:80,beforeDpr:1,afterDpr:2,beforeWidth:1280,afterWidth:640}}},pageErrors:[]});
@@ -29,6 +30,14 @@ test('native evidence cannot be replaced by zero counts guessed zoom or missing 
     const r=report();corrupt(r);assert.throws(()=>assertAudioSettingsReport(r,{runId:'Settings1',headed:false,control:null}),/audio-settings-proof/);
   }
 });
+test('same-scope full request race requires two real senders one delayed dispatch and an exact late conflict',async()=>{
+  const {assertAudioSettingsReport}=await load();
+  for(const mutate of [r=>{r.audioSettings.sameScope.nativeFullRequests=1;},r=>{r.audioSettings.sameScope.heldDispatches=2;},
+    r=>{r.audioSettings.sameScope.lateCode='timeout';},r=>{r.audioSettings.sameScope.committedRevisionDelta=2;},r=>{r.audioSettings.sameScope.lateStored=true;}]){
+    const r=report();mutate(r);assert.throws(()=>assertAudioSettingsReport(r,{runId:'Settings1',headed:false,control:null}),/audio-settings-proof/);
+  }
+});
+
 test('reported zoom without actual browser pixel-ratio and layout scaling is not a 200 percent proof',async()=>{
   const {assertAudioSettingsReport}=await load();
   for(const mutate of [r=>{r.audioSettings.layout.zoom.afterDpr=1;},r=>{r.audioSettings.layout.zoom.afterWidth=1280;},
