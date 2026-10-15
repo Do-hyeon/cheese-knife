@@ -345,6 +345,7 @@ export async function executeTransitionChild(options, dependencies = {}) {
     await deps.send({ type: 'failure', nonce: options.nonce, failure });
   };
   try {
+    if (options.retainEvidence !== undefined && typeof options.retainEvidence !== 'boolean') throw fail('transition-retention-invalid');
     if (options.scenario !== undefined && options.scenario !== 'media-preservation') throw fail('transition-scenario-invalid');
     if(options.mediaSchema!==undefined&&(options.mediaSchema!=='f01'||options.scenario!==undefined))throw fail('transition-scenario-invalid');
     const f01=options.mediaSchema==='f01',media=options.scenario==='media-preservation'||f01;
@@ -355,9 +356,9 @@ export async function executeTransitionChild(options, dependencies = {}) {
     const published = await deps.readPublishedPayload();
     const metadata=validatePayloadMetadata(JSON.parse(await (await openOwnedRoot(repositoryRoot)).readFile('tests/fixtures/installed-extension/published-payload.json','utf8')));
     const currentNames=[...metadata.map(entry=>entry.name),'media-profiles.js','gain-authority.js','web/player-gain.js','audio-settings-ui.js'].sort();
-    const first = await deps.verifyCandidate(options.candidateIds[0], files.root);
+    const first = await deps.verifyCandidate(options.candidateIds[0], files.root,{retainEvidence:options.retainEvidence ?? false});
     const current = await payloadFromDirectory(first.dist,currentNames);
-    const second = await deps.verifyCandidate(options.candidateIds[1], files.root);
+    const second = await deps.verifyCandidate(options.candidateIds[1], files.root,{retainEvidence:options.retainEvidence ?? false});
     if (current.inventorySha256 !== (await payloadFromDirectory(second.dist,currentNames)).inventorySha256) throw fail('transition-build-reproducibility');
     candidateInventory = current.inventorySha256;
     const responses = await deps.loadFixtureResponses(files);
@@ -488,7 +489,8 @@ const dependenciesDefault = {
   removeCandidate,
 };
 
-export async function runInstalledTransition({ runId, headed = false, scenario, mediaSchema, control, dependencies = {} } = {}) {
+export async function runInstalledTransition({ runId, headed = false, scenario, mediaSchema, control, retainEvidence = false, dependencies = {} } = {}) {
+  if (typeof retainEvidence !== 'boolean') throw fail('transition-retention-invalid');
   if (!/^[A-Za-z0-9]{1,64}$/.test(runId || '') || typeof headed !== 'boolean') throw fail('installed-e2e-args-invalid');
   if (scenario !== undefined && scenario !== 'media-preservation') throw fail('transition-scenario-invalid');
   if(mediaSchema!==undefined&&(mediaSchema!=='f01'||scenario!==undefined))throw fail('transition-scenario-invalid');
@@ -514,7 +516,7 @@ export async function runInstalledTransition({ runId, headed = false, scenario, 
     }
     child = deps.forkChild();
     const pending = deps.supervise({ child, nonce, roots,...(scenario?{scenario}:{}),...(f01?{mediaSchema,control}:{}) });
-    child.send({ nonce, roots, candidateIds, artifact, runId, headed, control,...(scenario?{scenario}:{}),...(f01?{mediaSchema}:{}) }, error => { if (error) child.emit('error', error); });
+    child.send({ nonce, roots, candidateIds, artifact, runId, headed, control,retainEvidence,...(scenario?{scenario}:{}),...(f01?{mediaSchema}:{}) }, error => { if (error) child.emit('error', error); });
     supervision = await pending;
     primary = supervision.failure;
     const result = supervision.result;
@@ -545,7 +547,7 @@ export async function runInstalledTransition({ runId, headed = false, scenario, 
   finally {
     const uncertain = new Set(supervision?.unconfirmedRoots || (child && !supervision ? roots.map(value => value.root) : []));
     for (const assigned of roots) {
-      if(media)continue;
+      if(media||retainEvidence)continue;
       if (uncertain.has(assigned.root) || (child && !supervision?.normalExit)) {
         cleanupErrors.push({ code: 'cleanup-unconfirmed', caseId: assigned.caseId, phase: null }); continue;
       }
@@ -553,7 +555,7 @@ export async function runInstalledTransition({ runId, headed = false, scenario, 
       catch (error) { cleanupErrors.push({ code: error?.code || 'transition-root-cleanup', caseId: assigned.caseId, phase: null }); }
     }
     for (const id of candidates) {
-      if(media)continue;
+      if(media||retainEvidence)continue;
       if (child && !supervision?.normalExit) { cleanupErrors.push({ code: 'cleanup-unconfirmed', caseId: null, phase: null }); continue; }
       try { await deps.removeCandidate(id); }
       catch (error) { cleanupErrors.push({ code: error?.code || 'transition-candidate-cleanup', caseId: null, phase: null }); }
@@ -563,9 +565,29 @@ export async function runInstalledTransition({ runId, headed = false, scenario, 
       catch (error) { cleanupErrors.push({ code: error?.code || 'transition-claim-cleanup', caseId: null, phase: null }); }
     }
   }
+  let retainedRoots = roots.filter(value => media || retainEvidence || supervision?.unconfirmedRoots.includes(value.root) || (child && !supervision?.normalExit));
+  const retainedCandidates = [];
+  if (retainEvidence) {
+    const confirmed = [];
+    for (const assigned of retainedRoots) {
+      try {
+        if (!(await files.lstat(assigned.root,{optional:true}))?.isDirectory()) throw fail('transition-evidence-missing');
+        confirmed.push(assigned);
+      } catch (error) { cleanupErrors.push({code:error?.code || 'transition-evidence-missing',caseId:assigned.caseId,phase:null}); }
+    }
+    retainedRoots = confirmed;
+    for (const id of candidates) {
+      const directory = `output/tool-audit/p02-candidate-${id}`;
+      try {
+        if (!(await files.lstat(directory,{optional:true}))?.isDirectory()) throw fail('transition-evidence-missing');
+        retainedCandidates.push(directory);
+      } catch (error) { cleanupErrors.push({code:error?.code || 'transition-evidence-missing',caseId:null,phase:null}); }
+    }
+  }
   report = { ...(report || {}), ...(supervision?.result ? { result: supervision.result } : {}), ok: !primary && cleanupErrors.length === 0 && secondaryErrors.length === 0, runId, ...(control ? { control } : {}),
     ...(primary ? { failure: primary } : {}), cleanupErrors: cleanupErrors.slice(0, 32), secondaryErrors: secondaryErrors.slice(0, 32),
-    retainedRoots: roots.filter(value => media || supervision?.unconfirmedRoots.includes(value.root) || (child && !supervision?.normalExit)),
+    retainedRoots,
+    ...(retainEvidence?{candidatesRetained:candidates.length>0&&retainedCandidates.length===candidates.length,retainedCandidates}:{}),
     ...(media?{...(scenario?{scenario}:{}),...(f01?{mediaSchema}:{}),candidatesRetained:true,shutdown:{normalExit:supervision?.normalExit===true,
       closes:(supervision?.launches||[]).map(value=>({caseId:value.caseId,phase:value.phase,launchOccurrence:value.launchOccurrence,...(f01?{payload:value.payload}:{}),closed:value.closed===true,
         browserCloseAcknowledged:value.shutdown?.browserCloseAcknowledged===true,browserDisconnected:value.shutdown?.browserDisconnected===true,

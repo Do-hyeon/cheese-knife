@@ -21,7 +21,8 @@ export async function removeCandidate(id) {
   return repository.removeTree(`output/tool-audit/p02-candidate-${candidateId}`);
 }
 
-export async function verifyCandidate(id, directory = repositoryRoot) {
+export async function verifyCandidate(id, directory = repositoryRoot, {retainEvidence = false} = {}) {
+  if (typeof retainEvidence !== 'boolean') throw Object.assign(new Error('candidate-retention-invalid'), {code:'candidate-retention-invalid'});
   const candidateId = validateCandidateId(id);
   const repository = await openOwnedRoot(directory);
   const candidateRelative = `output/tool-audit/p02-candidate-${candidateId}/chrome-candidate`;
@@ -65,7 +66,12 @@ export async function verifyCandidate(id, directory = repositoryRoot) {
     await inventory('dist');
     return { root, dist, files: files.sort().map(slash), resources: checked.resources };
   } catch (error) {
-    await repository.removeTree(candidateRelative);
+    if (retainEvidence) {
+      if (error && typeof error === 'object' && Object.isExtensible(error)) error.retainedCandidatePath = path.join(repository.root,...candidateRelative.split('/'));
+    } else {
+      try { await repository.removeTree(candidateRelative); }
+      catch (secondary) { throw Object.assign(new Error('candidate-preparation-incomplete',{cause:error}),{code:'candidate-preparation-incomplete',secondaryErrors:[String(secondary?.message||secondary).slice(0,240)]}); }
+    }
     throw error;
   }
 }

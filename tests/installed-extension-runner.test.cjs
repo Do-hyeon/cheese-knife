@@ -60,6 +60,50 @@ function runnerFixture({ failAt, artifactExists = false } = {}) {
   return { events, dependencies, context };
 }
 
+for(const failAt of [undefined,'scenario','tracing','trace-stop','json'])test(`base retention preserves created evidence after ${failAt||'success'} and still closes`,async()=>{
+  const {runInstalledExtensionE2E}=await runnerModule(),f=runnerFixture({failAt}),files=await f.dependencies.openRepository();
+  const candidateRoot=path.resolve('output/tool-audit/p02-candidate-Run1/chrome-candidate');
+  f.dependencies.verifyCandidate=async(_id,_directory,options)=>{assert.equal(options.retainEvidence,true);return {root:candidateRoot,dist:path.join(candidateRoot,'dist')};};
+  files.lstat=async name=>name.includes('installed-profile-')||name.includes('p02-candidate-')?{isDirectory:()=>true}:null;
+  let report;const write=files.writeFile;files.writeFile=async(name,data,...args)=>{if(name.endsWith('summary.json'))report=JSON.parse(data);return write(name,data,...args);};
+  const pending=runInstalledExtensionE2E({runId:'Run1',retainEvidence:true,dependencies:f.dependencies});
+  if(failAt)await assert.rejects(pending);else await pending;
+  assert.ok(f.events.includes('context-close'));assert.equal(f.events.includes('profile-remove'),false);assert.equal(f.events.includes('candidate-remove'),false);
+  assert.equal(report.evidence.retained,true);assert.equal(report.evidence.candidatePath,candidateRoot);
+});
+
+test('invalid base retention fails before repository or candidate access',async()=>{
+  const {runInstalledExtensionE2E}=await runnerModule();
+  await assert.rejects(runInstalledExtensionE2E({runId:'Run1',retainEvidence:'yes',dependencies:{openRepository:async()=>{throw Error('must-not-open');}}}),{code:'installed-e2e-retention-invalid'});
+});
+
+test('a first retention failure never writes an ok report',async()=>{
+  const {runInstalledExtensionE2E}=await runnerModule(),f=runnerFixture(),files=await f.dependencies.openRepository();let summary;
+  files.lstat=async name=>name.startsWith('candidate/')?{isDirectory:()=>true}:null;
+  const write=files.writeFile;files.writeFile=async(name,bytes,...args)=>{summary=JSON.parse(bytes);return write(name,bytes,...args);};
+  await assert.rejects(runInstalledExtensionE2E({runId:'Run1',retainEvidence:true,dependencies:f.dependencies}),{code:'installed-e2e-evidence-missing'});
+  assert.equal(summary.ok,false);assert.equal(summary.error.code,'installed-e2e-evidence-missing');
+});
+
+for(const retainEvidence of [false,true])for(const fault of ['close','json','evidence'])test(`negative admission rejects MAIN missing plus ${fault} with retention=${retainEvidence}`,async()=>{
+  const {runInstalledExtensionE2E}=await runnerModule(),{runInstalledExtensionNegative}=await import('../scripts/check-installed-extension-negative.mjs'),f=runnerFixture(),files=await f.dependencies.openRepository();
+  const primary=Object.assign(Error('main-runtime-missing'),{code:'main-runtime-missing'}),secondary=Error(fault+'-sentinel');
+  f.dependencies.scenario=async()=>{throw primary;};
+  if(fault==='close')f.context.close=async()=>{throw secondary;};
+  if(fault==='json')files.writeFile=async()=>{throw secondary;};
+  files.lstat=async name=>{
+    if(fault==='evidence'&&retainEvidence&&name.includes('installed-profile-'))throw secondary;
+    return name.includes('installed-profile-')||name.includes('p02-candidate-')?{isDirectory:()=>true}:null;
+  };
+  if(fault==='evidence'&&!retainEvidence)files.removeTree=async()=>{throw secondary;};
+  const candidateRoot=path.resolve('output/tool-audit/p02-candidate-Run1/chrome-candidate');
+  await assert.rejects(runInstalledExtensionNegative({runId:'Run1',retainEvidence,dependencies:{
+    prepareCandidate:async(_id,options)=>{assert.equal(options.retainEvidence,retainEvidence);return {candidate:{root:candidateRoot,dist:path.join(candidateRoot,'dist')},cleanup:async()=>{}};},
+    runInstalled:options=>runInstalledExtensionE2E({...options,dependencies:{...f.dependencies,...options.dependencies,scenario:f.dependencies.scenario}}),
+    writeReport:async()=>{throw Error('must-not-report-success');},
+  }}),error=>{assert.equal(error.code,'negative-control-unexpected-failure');assert.equal(error.cause.code,'installed-e2e-incomplete');assert.equal(error.cause.cause,primary);assert.ok(error.cause.secondaryErrors.length>0);return true;});
+});
+
 test('installed E2E runner orders isolated candidate, browser and cleanup lifecycle', async () => {
   const { runInstalledExtensionE2E } = await runnerModule();
   const fixture = runnerFixture();
@@ -77,7 +121,9 @@ test('installed E2E runner cleans profile and candidate after scenario, tracing 
   for (const failAt of ['scenario', 'tracing', 'trace-stop', 'json']) {
     const fixture = runnerFixture({ failAt });
     await assert.rejects(runInstalledExtensionE2E({ runId: 'Run1', headed: false, dependencies: fixture.dependencies }), error => {
-      assert.equal(error.code, failAt === 'scenario' ? 'scenario-failed' : failAt === 'tracing' ? 'trace-start-failed' : failAt === 'trace-stop' ? 'trace-stop-failed' : 'json-write-failed');
+      if (failAt === 'trace-stop') {
+        assert.equal(error.code,'installed-e2e-incomplete');assert.equal(error.cause.code,'trace-stop-failed');assert.equal(error.secondaryErrors[0].code,'trace-stop-failed');
+      } else assert.equal(error.code, failAt === 'scenario' ? 'scenario-failed' : failAt === 'tracing' ? 'trace-start-failed' : 'json-write-failed');
       return true;
     });
     assert.equal(fixture.events.filter(event => event === 'context-close').length, 1, failAt);

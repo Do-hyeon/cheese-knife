@@ -106,6 +106,20 @@ test('child workflow seeds once, preserves path identity and closes before each 
   assert.deepEqual(result.phases.map(value => value.preparation.version), ['2.13.3', '2.13.4', '2.13.5']);
 });
 
+for(const mediaSchema of [undefined,'f01'])for(const control of [undefined,'storage-loss'])test(`retention reaches both candidate preparations for ${mediaSchema||'general'}/${control||'normal'}`,async t=>{
+  const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t),calls=[];
+  f.options={...f.options,retainEvidence:true,...(mediaSchema?{mediaSchema}:{}),...(control?{control}:{})};
+  const verify=f.deps.verifyCandidate;f.deps.verifyCandidate=async(...args)=>{calls.push(args[2]);return verify(...args);};
+  await executeTransitionChild(f.options,f.deps);
+  assert.equal(calls.length,2);assert.deepEqual(calls,[{retainEvidence:true},{retainEvidence:true}]);
+});
+
+for(const invalid of ['yes',null,0])test(`child rejects invalid retention ${JSON.stringify(invalid)} before preparing a candidate`,async t=>{
+  const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t);f.options.retainEvidence=invalid;
+  f.deps.sourceAttestation=async()=>{throw Error('must-not-attest');};await executeTransitionChild(f.options,f.deps);
+  assert.equal(f.messages.at(-1).result.failure.code,'transition-retention-invalid');
+});
+
 for (const [fault, code] of [['prepare', 'test-prepare'], ['second-build', 'test-second-build'], ['partial-install', 'test-partial-install'],
   ['launch', 'test-launch'], ['trace', 'test-trace'], ['close', 'cleanup-unconfirmed'], ['identity', 'transition-execution'], ['source-change', 'transition-source-changed']]) {
   test(`child ${fault} fails without continuing or replacing an unclosed extension`, async t => {

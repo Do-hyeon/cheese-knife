@@ -585,7 +585,8 @@ const relativeOwnedPath = (root, absolute) => {
   return slash(relative);
 };
 
-export async function runInstalledExtensionE2E({ headed = false, runId, qualification, dependencies = {} } = {}) {
+export async function runInstalledExtensionE2E({ headed = false, runId, qualification, retainEvidence = false, dependencies = {} } = {}) {
+  if (typeof retainEvidence !== 'boolean') throw runnerError('installed-e2e-retention-invalid');
   if (!/^[A-Za-z0-9]{1,64}$/.test(runId || '')) throw runnerError('installed-e2e-run-id-invalid');
   if (qualification !== undefined && !['media-tab', 'player-gain', 'audio-settings'].includes(qualification)) throw runnerError('installed-e2e-qualification-invalid');
   if (qualification === 'player-gain' && (typeof dependencies.mediaScenario !== 'function' || typeof dependencies.expectedMediaFiles !== 'function')) throw runnerError('player-gain-scenario-required');
@@ -606,22 +607,31 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
   let traceStopped = false;
   let report;
   let primaryError;
+  let candidatePath;
+  const secondaryErrors = [];
   let browserSession, shutdownProof, source, after;
 
-  const remember = error => { if (!primaryError) primaryError = error; };
+  const remember = error => {
+    if (!primaryError) primaryError = error;
+    else if (error !== primaryError && secondaryErrors.length < 32) secondaryErrors.push({code:String(error?.code || 'installed-e2e-secondary').slice(0,80),message:String(error?.message || error).slice(0,240)});
+  };
+  const claimArtifact = async () => {
+    await files.ensureDirectory('output/playwright');
+    if (await files.lstat(artifactRelative, {optional:true})) throw runnerError('installed-artifact-exists');
+    await files.ensureDirectory(artifactRelative); artifactCreated = true;
+  };
   try {
     if (nativeQualification) {
       if (deps.platform !== 'win32') throw runnerError('media-qualification-platform-unsupported');
       source = await deps.sourceAttestation(files, requiredInputs);
     }
-    const candidate = await deps.verifyCandidate(runId);
+    if (retainEvidence) await claimArtifact();
+    const candidate = await deps.verifyCandidate(runId,files.root,{retainEvidence});
     candidateBuilt = true;
+    candidatePath = candidate.root || path.dirname(candidate.dist);
     if (nativeQualification && !isDeepStrictEqual(candidate.files, await deps.expectedMediaFiles(files))) throw runnerError('media-candidate-assets-invalid');
     await deps.checkPackage(candidate.dist);
-    await files.ensureDirectory('output/playwright');
-    if (await files.lstat(artifactRelative, { optional: true })) throw runnerError('installed-artifact-exists');
-    await files.ensureDirectory(artifactRelative);
-    artifactCreated = true;
+    if (!artifactCreated) await claimArtifact();
     const artifactPath = await files.resolve(artifactRelative, { type: 'directory' });
     profilePath = await files.makeTempDirectory('output/playwright/installed-profile-');
     const responses = await deps.loadFixtureResponses(files);
@@ -667,6 +677,8 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
     traceStopped = true;
     report = { ok: true, runId, ...sections };
   } catch (error) {
+    const partial = path.join(files.root,'output','tool-audit',`p02-candidate-${runId}`,'chrome-candidate');
+    if (retainEvidence && error?.retainedCandidatePath === partial) candidatePath = partial;
     remember(error);
     report = { ok: false, runId, error: { code: error?.code || 'installed-e2e-failed',native:nativeFailureDetails(error),
       ...(typeof error?.startupDiagnostic === 'string' ? {startupDiagnostic:error.startupDiagnostic.slice(0,4096)} : {}) } };
@@ -679,7 +691,7 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
         try {
           await context.tracing.stop({ path: path.join(files.root, ...artifactRelative.split('/'), 'trace.zip') });
           traceStopped = true;
-        } catch {}
+        } catch (error) { remember(error); }
       }
     }
   } finally {
@@ -692,10 +704,10 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
     if (context && (!nativeQualification || shutdownProof?.browserCloseAcknowledged && shutdownProof?.browserDisconnected && shutdownProof?.ownedRootClosed)) {
       try { await context.close(); } catch (error) { remember(error); }
     }
-    if (profilePath && !nativeQualification) {
+    if (profilePath && !nativeQualification && !retainEvidence) {
       try { await files.removeTree(relativeOwnedPath(files.root, profilePath)); } catch (error) { remember(error); }
     }
-    if (candidateBuilt && !nativeQualification) {
+    if (candidateBuilt && !nativeQualification && !retainEvidence) {
       try { await deps.removeCandidate(runId); } catch (error) { remember(error); }
     }
   }
@@ -704,9 +716,21 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
     try { after = await deps.sourceAttestation(files, requiredInputs);if (!isDeepStrictEqual(source, after)) throw runnerError('media-source-changed'); }
     catch (error) { remember(error); }
   }
-  if (primaryError && report?.ok) report = { ok: false, runId, error: { code: primaryError?.code || 'installed-e2e-cleanup-failed',native:nativeFailureDetails(primaryError) } };
   if (nativeQualification && report) report = { ...report, qualification, shutdown: shutdownProof ?? null,
     profileRetained: !!profilePath, candidateRetained: candidateBuilt, source, after };
+  if (retainEvidence && report) {
+    const evidence = {profilePath:null,candidatePath:null,retained:false};
+    for (const [key,value] of [['profilePath',profilePath],['candidatePath',candidatePath]]) if (value) {
+      try {
+        const relative = relativeOwnedPath(files.root,value),stat = await files.lstat(relative,{optional:true});
+        if (!stat?.isDirectory()) throw runnerError('installed-e2e-evidence-missing');
+        Reflect.set(evidence,key,value);
+      } catch (error) { remember(error); }
+    }
+    evidence.retained = !!(evidence.profilePath || evidence.candidatePath); report.evidence = evidence;
+  }
+  if (primaryError && report?.ok) report = {...report,ok:false,error:{code:primaryError?.code || 'installed-e2e-cleanup-failed',native:nativeFailureDetails(primaryError)}};
+  if (secondaryErrors.length && report) report = {...report,ok:false,secondaryErrors};
   if (report) report.durationMs = Date.now() - startedAt;
   if (artifactCreated) {
     try {
@@ -715,7 +739,11 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
       remember(error);
     }
   }
-  if (primaryError) throw primaryError;
+  if (primaryError) {
+    if (secondaryErrors.length) throw Object.assign(runnerError('installed-e2e-incomplete',primaryError),{secondaryErrors,...retainEvidence?{evidence:report?.evidence}:{}});
+    if (retainEvidence && Object.isExtensible(primaryError)) primaryError.evidence = report?.evidence;
+    throw primaryError;
+  }
   return report;
 }
 

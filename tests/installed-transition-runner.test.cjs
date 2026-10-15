@@ -254,15 +254,16 @@ test('parent revalidates every action observation identity hash and no-reseed se
 
 function parentFixture(fault) {
   const events = [], child = childFixture(); let serial = 0;
+  const directories = new Set();
   const files = {
     root: path.resolve('.'),
-    async ensureDirectory(name) { events.push(`ensure:${name}`); return path.join(this.root, name); },
+    async ensureDirectory(name) { events.push(`ensure:${name}`); directories.add(name);return path.join(this.root, name); },
     async lstat(name) { return (fault === 'artifact-exists' && name.includes('installed-extension-transition')) ||
-      (fault === 'candidate-exists' && name.includes('p02-candidate')) ? {} : null; },
+      (fault === 'candidate-exists' && name.includes('p02-candidate')) ? {} : fault==='retention-missing'&&name.includes('installed-transition-work-')?null:directories.has(name)?{isDirectory:()=>true}:null; },
     async writeFile(name) { events.push(`write:${name}`); if ((fault === 'summary' && name.endsWith('summary.json')) ||
       (fault === 'claim' && name.endsWith('.lock'))) throw Object.assign(Error(fault), { code: `test-${fault}` }); },
     async makeTempDirectory() { events.push('root-create'); if (fault === 'root') throw Object.assign(Error('root'), { code: 'test-root' });
-      return path.join(this.root, `output/playwright/installed-transition-work-fixture${serial++}`); },
+      const relative=`output/playwright/installed-transition-work-fixture${serial++}`;directories.add(relative);return path.join(this.root, relative); },
     async removeTree(name) { events.push(`remove:${name}`); if (fault === 'cleanup' && name.includes('installed-transition-work')) throw Object.assign(Error('cleanup'), { code: 'test-cleanup' }); },
   };
   const dependencies = {
@@ -277,6 +278,28 @@ function parentFixture(fault) {
   };
   return { events, dependencies };
 }
+
+test('general transition retention reaches child and preserves confirmed roots and candidates on failure',async()=>{
+  const {runInstalledTransition}=await subject(),f=parentFixture('phase');let sent;
+  const fork=f.dependencies.forkChild;f.dependencies.forkChild=()=>{const child=fork(),send=child.send;child.send=(message,callback)=>{sent=message;send(message,callback);};return child;};
+  await assert.rejects(runInstalledTransition({runId:'Retained',retainEvidence:true,dependencies:f.dependencies}),error=>{
+    assert.equal(sent.retainEvidence,true);assert.ok(error.report.retainedRoots.length>0);assert.equal(error.report.candidatesRetained,true);return true;
+  });
+  assert.equal(f.events.some(x=>x.startsWith('candidate-remove:')||x.startsWith('remove:output/playwright/installed-transition-work-')),false);
+  assert.ok(f.events.some(x=>x.endsWith('.lock')&&x.startsWith('remove:')));
+});
+
+test('transition rejects invalid retention before opening a repository',async()=>{
+  const {runInstalledTransition}=await subject();
+  await assert.rejects(runInstalledTransition({runId:'Retained',retainEvidence:'yes',dependencies:{openRepository:async()=>{throw Error('must-not-open');}}}),{code:'transition-retention-invalid'});
+});
+
+test('retention cannot claim a root which disappeared after normal closure',async()=>{
+  const {runInstalledTransition}=await subject(),f=parentFixture('retention-missing');
+  await assert.rejects(runInstalledTransition({runId:'RetainedMissing',retainEvidence:true,dependencies:f.dependencies}),error=>{
+    assert.equal(error.report.retainedRoots.length,0);assert.ok(error.report.cleanupErrors.some(x=>x.code==='transition-evidence-missing'));return true;
+  });
+});
 
 test('F01 parent assigns every fixed case and retains its own roots and candidates after failure',async()=>{
   const {runInstalledTransition}=await subject(),fixture=parentFixture('phase');
