@@ -6,7 +6,7 @@ import {openAudioMeasurementBrowser,openAudioMeasurementWindow} from './audio-na
 import {installProcessingProbe,callProcessingProbe} from './audio-processing-probe.mjs';
 import {AUDIO_ARTIFACT_FILES} from './audio-artifact-core.mjs';
 import {summarizeCapture} from './audio-signal.mjs';
-import {equalizerMeasurementCases,evaluateEqualizerCapture,normalizerMeasurementCases,evaluateNormalizerTrace,validateProcessingCapture,evaluateProcessingTransition,complementaryAudioRamps,processingReportFailures} from './audio-processing-metrics.mjs';
+import {equalizerMeasurementCases,evaluateEqualizerCapture,normalizerMeasurementCases,evaluateNormalizerTrace,validateProcessingCapture,evaluateProcessingTransition,complementaryAudioRamps,rapidMasterCoverage,processingReportFailures} from './audio-processing-metrics.mjs';
 
 /** @typedef {{root:string,readFile:(relative:string,encoding:'utf8')=>Promise<string>,ensureDirectory:(relative:string)=>Promise<string>,makeTempDirectory:(prefix:string)=>Promise<string>,writeFile:(relative:string,data:string|Uint8Array,options?:{flag:string})=>Promise<unknown>}} MeasurementFiles */
 /** @param {unknown} value @returns {Record<string,unknown>} */
@@ -124,7 +124,7 @@ async function transitionProof(page,sampleRate){
 /** @param {import('playwright').Page} page */
 async function controlProof(page){
   const rapid=[];
-  for(const milliseconds of /** @type {const} */([5,10,25])){
+  for(const milliseconds of /** @type {const} */([0,3,6,10,25])){
     await configure(page,{normalizerEnabled:false,eqEnabled:false,compressorEnabled:false},1,false);
     await call(page,{kind:'signal',frequency:1000,inputDbfs:-36,pattern:'stereo'});
     await configure(page,{normalizerEnabled:true});await page.waitForTimeout(6500);await call(page,{kind:'reset-events'});
@@ -134,9 +134,8 @@ async function controlProof(page){
     if(!reset||!reentry)throw new Error('audio-processing-rapid-evidence');
     const progress=Math.max(0,Math.min(1,(numeric(reentry,'start')-numeric(reset,'start'))/(numeric(reset,'end')-numeric(reset,'start'))));
     const expected=20*Math.log10(numeric(reset,'from'))*(1-progress),actual=20*Math.log10(gainAt(state,7));
-    const timing=milliseconds===5?progress===0:milliseconds===10?progress>0&&progress<1:progress===1;
     rapid.push({milliseconds,boundary,state,output,reset,reentry,expectedDb:expected,actualDb:actual,
-      passed:timing&&boundary.status==='on'&&state.sources===1&&state.active100msTimers===1&&Math.abs(actual-expected)<.001&&
+      passed:boundary.status==='on'&&state.sources===1&&state.active100msTimers===1&&Math.abs(actual-expected)<.001&&
         output.channels.every(channel=>Math.abs(20*Math.log10(channel.rms)+36-expected)<.05&&channel.peak<=.9801&&channel.overFullScaleSamples===0)});
   }
   await configure(page,{normalizerEnabled:false,eqEnabled:false,compressorEnabled:false},1,false);
@@ -182,7 +181,7 @@ async function controlProof(page){
   const fft=2**Math.ceil(Math.log2(numeric(stall,'sampleRate')*.25)),window=fft/numeric(stall,'sampleRate');
   const silentAfter=numeric(silenceReturn,'audioTime')-numeric(record(silenceReturn.video),'currentTime')+9.5;
   const returnEvents=list(silenceReturn,'events').map(record).filter(row=>row.node===7),silentEvents=returnEvents.filter(row=>numeric(row,'start')>=silentAfter);
-  return {rapidMaster:rapid.length===3&&rapid.every(row=>row.passed),dryUnity:unity.channels.every(row=>Math.abs(row.rms-1)<.00001),dry99:dry99.channels.every(row=>Math.abs(row.rms-.99)<.00001),
+  return {rapidMaster:rapidMasterCoverage(rapid),dryUnity:unity.channels.every(row=>Math.abs(row.rms-1)<.00001),dry99:dry99.channels.every(row=>Math.abs(row.rms-.99)<.00001),
     wetPeak:wet.channels.every(row=>row.peak<=.9801&&row.overFullScaleSamples===0),
     extreme48db:extreme.channels.every(row=>row.peak<=.9801&&row.overFullScaleSamples===0)&&Math.abs(20*Math.log10(gainAt(extremeFacts,3))+48)<.01&&Math.abs(20*Math.log10(gainAt(extremeFacts,7))-6)<.1&&gainAt(extremeFacts,2)===2,
     silenceNoBoost:silenceNoBoost(silence),noiseNoBoost:silenceNoBoost(lowNoise),burstFinite:bursts.length===3&&bursts.every(row=>row.result.failures.length===0),

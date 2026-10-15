@@ -177,6 +177,18 @@ export function complementaryAudioRamps(raw){
   return true;
 }
 
+/** @param {unknown} raw */
+export function rapidMasterCoverage(raw){
+  if(!Array.isArray(raw)||raw.length!==5)return false;
+  /** @type {Set<string>} */const phases=new Set();
+  for(const milliseconds of [0,3,6,10,25]){
+    const rows=raw.filter(value=>record(value)?.milliseconds===milliseconds),row=record(rows[0]),reset=record(row?.reset),entry=record(row?.reentry);
+    if(rows.length!==1||row?.passed!==true||!reset||!entry||![reset.start,reset.end,entry.start].every(finite)||Number(reset.end)<=Number(reset.start))return false;
+    phases.add(Number(entry.start)<=Number(reset.start)?'hold':Number(entry.start)>=Number(reset.end)?'unity':'reset');
+  }
+  return phases.size===3;
+}
+
 /** @param {unknown} value */
 function validSource(value){
   const source=record(value);
@@ -232,6 +244,7 @@ export function processingReportFailures(raw,expectedSource){
     if(!Array.isArray(windows)||windows.length!==2||windows[0]===windows[1]||!windows.every(value=>Number.isSafeInteger(value)&&value>=0)||
       !Array.isArray(targets)||targets.length!==2||targets[0]===targets[1]||!targets.every(value=>typeof value==='string'&&/^[A-Fa-f0-9]{32}$/.test(value)))failures.push(`rate-${sampleRate}/native-window-identity`);
     const controls=record(rate.controls);
+    if(!rapidMasterCoverage(record(controls?.evidence)?.rapid))failures.push(`rate-${sampleRate}/control-rapid-coverage`);
     for(const key of ['rapidMaster','dryUnity','dry99','wetPeak','extreme48db','silenceNoBoost','noiseNoBoost','silenceReturnUnity','burstFinite','stallHold','analysisErrorUnity'])if(controls?.[key]!==true)failures.push(`rate-${sampleRate}/control-${key}`);
   }
   return failures;

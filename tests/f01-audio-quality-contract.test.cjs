@@ -155,6 +155,17 @@ test('native dry/wet automation must be complementary for the whole crossfade, n
   assert.equal(complementaryAudioRamps([{...ramps[0],to:NaN},ramps[1]]),false);
 });
 
+test('rapid Native coverage requires measured hold reset-middle and unity phases, never a nominal delay label',async()=>{
+  const {rapidMasterCoverage}=await metrics();
+  const rows=[0,3,6,10,25].map((milliseconds,index)=>({milliseconds,passed:true,reset:{start:1.01,end:1.02},reentry:{start:[1.002,1.008,1.014,1.019,1.03][index]}}));
+  assert.equal(rapidMasterCoverage(rows),true);
+  assert.equal(rapidMasterCoverage(rows.map(row=>({...row,reentry:{start:1.03}}))),false);
+  assert.equal(rapidMasterCoverage(rows.map(row=>({...row,reentry:{start:1.002}}))),false);
+  assert.equal(rapidMasterCoverage(rows.map((row,index)=>index===2?{...row,passed:false}:row)),false);
+  assert.equal(rapidMasterCoverage(rows.slice(1)),false);
+  assert.equal(rapidMasterCoverage(rows.map((row,index)=>index===2?{...row,reentry:{start:NaN}}:row)),false);
+});
+
 test('component transitions enforce wet ceiling while preserving master-only continuity diagnostics',async()=>{
   const {evaluateProcessingTransition}=await metrics();
   const channel={rms:.2,peak:.3,overFullScaleSamples:0,maxAdjacentStep:.03,envelope8ms:{min:.2}},summary={channels:[channel,channel]};
