@@ -3,7 +3,7 @@ import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import {isDeepStrictEqual} from 'node:util';
-import {openInstalledMediaSettings} from './popup-cdp.mjs';
+import {openQualifiedMediaSettings} from './popup-cdp.mjs';
 
 const F00_COMMIT='ae9f8e50a22dae9d549f1e476d302549ecc03b4a';
 const F00_INVENTORY='9715087af1aa2b36fc54b330e5a879ce384f4c9a4f56faf1c6fd8847436580df';
@@ -224,11 +224,13 @@ export async function runF01TransitionPhase(input){
         const page=await context.newPage();await page.goto('https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',{waitUntil:'domcontentloaded'});
         await page.waitForFunction(()=>{const runtime=/** @type {{configReady?:boolean,ownerProtocol?:number,media?:{phase?:string}}|undefined} */(Reflect.get(window,Symbol.for('cheese-knife.runtime.v1')));
           return runtime?.configReady&&runtime.ownerProtocol===2&&runtime.media?.phase!=='pending';},null,{timeout:15000});
-        const limited=(await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession:input.browserSession,mediaProtocol:2,
-          uiState:occurrence===3?'repair-required':'ready'})).settingsPage;
+        const limited=(await openQualifiedMediaSettings({context,worker,fixturePage:page,extensionId,browserSession:input.browserSession,mediaProtocol:2})).settingsPage;
+        await limited.locator('#settings-status[data-phase="ready"]').waitFor({timeout:15000});
         if(occurrence===3){
           await limited.locator('#media-status[data-phase="repair-required"]').waitFor({timeout:15000});
-          if(!await limited.locator('#media-audio-enable').isDisabled()||!await limited.locator('#compressorThreshold').isDisabled())throw fail('f01-transition-f00-writable');
+          if(!await limited.locator('#brightness').isEnabled()||!await limited.locator('#media-audio-enable').isDisabled())throw fail('f01-transition-f00-global-ui');
+          await limited.locator('#media-scope').selectOption('current');await limited.locator('#media-status[data-phase="repair-required"]').waitFor({timeout:15000});
+          if(!await limited.locator('#media-audio-enable').isDisabled()||!await limited.locator('#compressorThreshold').isDisabled()||!await limited.locator('#brightness').isDisabled())throw fail('f01-transition-f00-writable');
         }else{await readyCold(limited);await limited.locator('#media-scope').selectOption('current');await readyCold(limited);
           if(Number(await limited.locator('#compressorThreshold').inputValue())!==-35)throw fail('f01-transition-f00-projection');}
       }
@@ -240,10 +242,13 @@ export async function runF01TransitionPhase(input){
       const page=await context.newPage();await page.goto('https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',{waitUntil:'domcontentloaded'});
       await page.waitForFunction(()=>{const runtime=/** @type {import('../../src/main/runtime/contracts.js').KnifeRuntime|undefined} */(Reflect.get(window,Symbol.for('cheese-knife.runtime.v1')));
         return runtime?.configReady&&runtime.ownerProtocol===3&&runtime.media.phase!=='pending';},null,{timeout:15000});
-      const settings=(await openInstalledMediaSettings({context,worker,fixturePage:page,extensionId,browserSession:input.browserSession,mediaProtocol:3,
-        uiState:caseId==='valid-v1'&&occurrence===2?'upgrade-required':'ready'})).settingsPage;
+      const settings=(await openQualifiedMediaSettings({context,worker,fixturePage:page,extensionId,browserSession:input.browserSession,mediaProtocol:3})).settingsPage;
+      await settings.locator('#settings-status[data-phase="ready"]').waitFor({timeout:15000});
       await readyCold(settings);
+      if(!(caseId==='valid-v1'&&occurrence===2)&&!await settings.locator('#brightness').isEnabled())throw fail('f01-transition-ready-ui');
       if(caseId==='valid-v1'&&occurrence===2){
+        if(!await settings.locator('#media-upgrade').isVisible()||!await settings.locator('#media-upgrade').isEnabled()||
+          !await settings.locator('#audioGain').isDisabled()||!await settings.locator('#brightness').isDisabled())throw fail('f01-transition-upgrade-ui');
         await confirmCold(settings,'#media-upgrade');await waitCold(snapshot,raw=>record(raw.mediaProfiles)?.revision===8,'f01-transition-upgrade');await readyCold(settings);step='upgraded';await check();
         for(const enabled of [false,true]){await settings.locator('#audioDefault').setChecked(enabled);await waitCold(snapshot,raw=>record(raw.config)?.compressorDefault===enabled,'f01-transition-default');await readyCold(settings);}
         await settings.locator('#audioGain').focus();await settings.keyboard.press('Home');await waitCold(snapshot,raw=>record(raw.config)?.audioGain===0,'f01-transition-global-gain');await readyCold(settings);

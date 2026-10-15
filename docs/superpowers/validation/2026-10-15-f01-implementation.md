@@ -198,3 +198,13 @@ summary 실제 클릭을 포함한 최종 전체1564/1563통과/0실패/기존1s
 b96b002의 AE는 새 UUID가 기존111…보다 앞에 정렬된 경우를 만나, 도구의 ‘새 preset은 두 번째’ 가정이 깨졌다. trace에서 기존111…을 선택했음을 확인했고 독립 기대 값의 기존 ID 거부가 이를 검출했다. 제품의 정렬/저장은 정상이며, AE6launch 종료3증명true/sourcebc17e724d70723b93b02feadac6424abf29b0b982fc52bc5c348e0c67e6d0cb4 전후 일치/cleanup·secondary0이다. 음성 전체가 실패했으므로 뒤의 AF 정상 실행은 시작하지 않았다.
 
 새 Native preset은 생성 revision11/항목revision1/domain/name으로 유일하게 식별하고 UUID를 확인한다. 독립 literal 기대 값은 Native UUID를 대입한 뒤 별도로 ID순 정렬하며, 선택·손실 주입·손실 판별도 위치가 아닌 동일 신원을 사용한다. 낮은 UUID 정렬 RED→GREEN과 높은/낮은 UUID·기존 ID 오삭제·중복 신원 대조를 포함한 집중81개/strict/최신 전체1565/1564통과/0실패/기존1skip(71.806초)이 통과했다. 제품·권한·숫자 gate 변경 없이 새 checkpoint에서 정상39/음성19를 순차 재검증한다.
+
+ae83176의 AG는 음성19/정확한5손실/성공phase9/종료3증명 전부true/source412a0cb34cf569174bdb0c914767602c711d927bc527f9cce57af69094c742eb 전후 일치/cleanup·secondary0로 통과했다. 이 Native run의 UUID는 모두 기존 ID 뒤였으므로 낮은 UUID에 대한 Native 성공이라고 부르지 않는다. 낮은/높은 정렬과 식별 대조는 독립 회귀로 검증했다.
+
+AH는 F00 복귀3의 UI 검사에서 실패했다. F00은 새 catalogue를 제한하지만 전역 설정은 독립적으로 사용하게 하므로, global brightness는 활성화돼 있는 것이 정상이다. frozen renderFields의 selected 조건과 trace에서 이를 확인했다. AH24launch 종료3증명true/같은source 전후일치/성공phase17/cleanup·secondary0이며 raw schema2/media12/global9는 보존됐다.
+
+반복된 준비 상태 가정을 해결하기 위해 승인된 T7 도구 내부에서 Native sender qualification과 UI readiness를 분리했다. 기존 `openInstalledMediaSettings`는 ready/brightness-enabled/`tabWriterQualified` 계약을 유지한다. cold 전용 `openQualifiedMediaSettings`는 같은 비공개 qualification/15초/정확한 native context·sender/frame/document/window/프로토콜/소유 popup cleanup을 공유하고 `tabSenderQualified`만 반환한다. 새 권한·전송·의존성·제품 변경이나 공개 UI bypass 옵션은 없다.
+
+cold caller는 F00 global 사용 가능/채널·preset 작업 잠금→실제 current 선택 후 필드 잠금, F01 schema1 전환 버튼 활성/미디어 입력 잠금, F01 schema2 쓰기 가능 ready를 각각 검사한다. 연결만 됐는데 UI도 준비됐다고 간주하지 않는다. 새 core 누락 RED→GREEN, 기존 writable helper·core 권한 음성 대조·실제 소비자의 sender/writer 혼동 및 UI bypass 속성 오용 compiler 대조를 포함한129개와 strict가 통과했다. 최종 전체 검사 후 새 checkpoint의 정상39/손실19 재검증으로 이어간다.
+
+분리 후 최신 전체1568/1567통과/0실패/기존1skip(71.870초)을 확인했다. 이를 새 로컬 checkpoint로 고정해 동일 권한 경계의 순차 Native 재검증을 수행한다.

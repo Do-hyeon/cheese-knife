@@ -61,14 +61,16 @@ test('media helper qualifies explicit protocol3 without accepting it as legacy r
   const legacy=fixture('protocol3');await assert.rejects(openInstalledMediaSettings(legacy.args),/media-tab-timeout/);
   assert.equal(modern.listeners.size,0);assert.equal(legacy.listeners.size,0);
 });
-test('media helper distinguishes explicit read-only upgrade and repair presentations from writable readiness',async()=>{
-  const {openInstalledMediaSettings}=await import('../scripts/extension-e2e/popup-cdp.mjs');
-  for(const [mode,uiState]of [['upgrade','upgrade-required'],['repair','repair-required']]){
-    const f=fixture(mode);assert.equal((await openInstalledMediaSettings({...f.args,uiState})).tabWriterQualified,true);assert.equal(f.listeners.size,0);
+test('native TAB qualification is independent from version-specific writable UI readiness',async()=>{
+  const {openInstalledMediaSettings,openQualifiedMediaSettings}=await import('../scripts/extension-e2e/popup-cdp.mjs');
+  assert.equal(typeof openQualifiedMediaSettings,'function');
+  for(const mode of ['upgrade','repair']){
+    const f=fixture(mode);const result=await openQualifiedMediaSettings(f.args);assert.equal(result.tabSenderQualified,true);assert.equal(result.settingsPage,f.settingsPage);assert.equal(f.listeners.size,0);
     await assert.rejects(openInstalledMediaSettings(fixture(mode).args));
-    await assert.rejects(openInstalledMediaSettings({...fixture().args,uiState}));
   }
-  const unknown=fixture();await assert.rejects(openInstalledMediaSettings({...unknown.args,uiState:'anything'}),/media-tab-ui-state-invalid/);assert.equal(unknown.events.length,0);
+  for(const mode of ['missing-document','wrong-tab','wrong-context-url','incognito','frame','overflow','foreign-popup','popup-close-error','popup-close-stuck']){
+    const f=fixture(mode);await assert.rejects(openQualifiedMediaSettings(f.args));assert.equal(f.listeners.size,0);assert.equal(f.context.listenerCount('page'),0);
+  }
 });
 for(const mode of ['missing-document','hidden','disabled','unlabelled','unfocused','duplicate','wrong-tab','wrong-context-url','incognito','frame','overflow','cleanup-error','no-page','foreign-popup','popup-close-error','popup-close-stuck'])test('media helper refuses '+mode+' and clears only owned listeners',async()=>{
   const {openInstalledMediaSettings}=await import('../scripts/extension-e2e/popup-cdp.mjs');assert.equal(typeof openInstalledMediaSettings,'function');

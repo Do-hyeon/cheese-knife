@@ -92,11 +92,14 @@ for (const proof of [
   {name:'media protocol boundary',code:'openInstalledMediaSettings({...valid,mediaProtocol:1});',diagnostic:'TS2322'},
   {name:'media result',code:'const result=await openInstalledMediaSettings(valid);result.settingsPage.nonexistentField;',diagnostic:'TS2339'},
   {name:'media valid consumer',code:'const result=await openInstalledMediaSettings(valid);const qualified:true=result.tabWriterQualified;result.settingsPage.locator("#brightness");',diagnostic:''},
+  {name:'qualified sender consumer',code:'const result=await openQualifiedMediaSettings(valid);const qualified:true=result.tabSenderQualified;result.settingsPage.locator("#media-status");',diagnostic:''},
+  {name:'qualified sender is not writable UI',code:'const result=await openQualifiedMediaSettings(valid);result.tabWriterQualified;',diagnostic:'TS2339'},
+  {name:'qualified sender has no public UI bypass mode',code:'openQualifiedMediaSettings({...valid,uiState:"repair-required"});',diagnostic:'TS2353'},
 ]) test('installed media helper compiler proof: '+proof.name,async t=>{
   await fs.mkdir('output',{recursive:true});const root=await fs.mkdtemp(path.resolve('output/development-media-types-'));
   t.after(()=>fs.rm(root,{recursive:true,force:true}));const file=path.join(root,'proof.mts');
   const entry=path.relative(root,path.resolve('scripts/extension-e2e/popup-cdp.mjs')).split(path.sep).join('/');
-  await fs.writeFile(file,`import {openInstalledMediaSettings} from ${JSON.stringify(entry)};\ndeclare const valid:Parameters<typeof openInstalledMediaSettings>[0];\n${proof.code}\n`);
+  await fs.writeFile(file,`import {openInstalledMediaSettings,openQualifiedMediaSettings} from ${JSON.stringify(entry)};\ndeclare const valid:Parameters<typeof openInstalledMediaSettings>[0];\n${proof.code}\n`);
   const config=path.join(root,'tsconfig.json');await fs.writeFile(config,JSON.stringify({extends:path.resolve('tsconfig.development.json'),files:[file],include:[]}));
   const result=compile(config);assert.ifError(result.error);const diagnostics=result.stdout+result.stderr;
   if(!proof.diagnostic)assert.equal(result.status,0,diagnostics);
