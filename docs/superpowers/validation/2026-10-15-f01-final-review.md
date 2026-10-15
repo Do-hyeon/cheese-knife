@@ -1,6 +1,6 @@
 # F01 전체 구현 최종 검토·보완 기록
 
-2026-10-15 / Asia-Seoul. **상태: Important 두 건 보완 후 종합 회귀·설치본 재검증 진행 중. T9/F01 미완료.** push·PR·병합·배포 승인으로 사용하지 않는다.
+2026-10-15 / Asia-Seoul. **상태: 원 Important 두 건 보완 후 targeted의 연결된 복구 진입1건 추가 보완·재검증 중. T9/F01 미완료.** push·PR·병합·배포 승인으로 사용하지 않는다.
 
 ## 1. 검토 범위
 
@@ -20,10 +20,29 @@
 
 추가로 명시 ‘폐기/재조회’의 read도 같은 `owner.preparing` promise로 추적해 재배치가 병렬 read를 시작하지 않게 했다. 실제 pending2vs1 RED→GREEN 및5초 deadline 비연장 검사를 포함해 집중21/21이 통과했다. 최초 전체 sandbox run은 링크 EPERM/fixture 정리와 미갱신 pin으로1594통과/27실패/기존1skip, 첫 Native 전체는1620통과/생성 Gain pin1실패/기존1skip이었다. 모두 보존하며 테스트·판정은 완화하지 않는다. 별도 executable pin 중 player Gain만 `0cc8d4e3651d7240a9680e9141a0a88c6c101627df26551ae47033a806fe26fb`로 갱신했고 DSP pin은 불변이다. 전체 회귀/9기반/빌드·패키지를 다시 실행한다.
 
+**1fe0dcf targeted:** 원 Important1과 원 storage 알림 경로는 해결됐지만, 복구 버튼의 빠른 중복 클릭은 아직 병렬 read로 invalidation을 소모할 수 있어 `With fixes`였다. 이를 완료로 세지 않고 실제2vs1 RED를 확인했다. 복구는 failed/unknown/conflict이면서 preparing/inflight가 없을 때만 허용하고 loading 직후 즉시 render한다. 중복·늦은 클릭0, 이전 응답 preview0, 최종값만 반영, 초안 재전송0 회귀가 GREEN이다. 집중22/22, 새 player Gain executable pin `f92863ab9cb8107238525e8c9ccc9278d813789c8bd7c9a746273ac6292eb9ec`. 이 마지막 진입 보완의 전체/설치본/targeted 결과는 아직 미완료다.
+
+최종 진입 보완의 전체 검사는 **1625중1624통과/실패0/기존1skip(68.363초)**, 9기반/build/package62/22 통과다. 실제 감사 `run-2026-10-15T13-15-19-579Z-f4EiyQ`는 npm/Gitleaks0, ESLint55/rawexit1/catalog 동일·전후입력 일치다. 로그는 격리 실행 폴더의 `f01-final-recovery-fix-full.log`/`f01-final-recovery-fix-foundation.log`와 root `output/f01-final-recovery-fix-audit.log`에 보존한다. 마지막 clean checkpoint의 설치 Gain과 targeted 확인은 계속 미완료다.
+
 ## 3. 보류 Minor
 
 - **VOD legacy Gain 가져오기:** ‘사이트 Gain 읽기’ 버튼은 활성 상태지만 채널 scope가 없어 동작하지 않는다. VOD 플레이어 Gain 전역 저장의 실패나 데이터 손실은 아니다. 후속 UI 제한 안내 또는 채널 scope/native 읽기 대상 분리 설계가 필요하며 기존 sender 검증은 완화하지 않는다.
 - **프리셋 생성 진입:** save-as 이름 입력 자동 focus 및 빈 목록 최초 생성 영역 펼침이 승인 UX와 다르다. 수동 생성과 값/snapshot 보존은 가능하지만 키보드 탐색이 불편하다. 이번 Important 보완 pass에서 이 두 항목은 미해결로 남긴다.
+
+### 설치형 U 결과 — source `1fe0dcf`
+
+마지막 중복 복구 진입 guard를 추가하기 **전** source다. 결과를 새 checkpoint로 재표기하지 않는다. 실제 bundled Chromium151.0.7922.34, 자기 신규 프로필·고정 fixture만 사용했다.
+
+| 실행 | 결과 |
+| --- | --- |
+| F01Gain20261015U | full PASS, 실제 pointer/keyboard·0/reset·ACK/재진입·61초 idle·같은 video 재배치·채널 소유값과전역 보존·합성/iframe/old document 거부; 71.780초 |
+| F01Settings20261015U | 8개 검사 범주 PASS, 페이지 오류0; 27.701초 |
+| F01SettingsLoss20261015U | wrapper ok=true, 의도한 내부 passed=false와 정확한 owned-gain/inherit-bit/eq-band/preset-id4누락 감지; 28.744초 |
+| F01Negative20261015U | 정확한 main-runtime-missing 거부 감지 |
+| F01Cold20261015U | seed11/phase28, 정상 종료39회, 손실0, source/after 일치, cleanup/secondary와 내부 오류 모두0 |
+| F01ColdLoss20261015U | seed5/phase9, 정상 종료19회, 정확한5손실 감지(valid-ui와4개 미디어 누락), source/after 일치, 모든 cleanup/secondary0 |
+
+Gain/설정/설정손실 모두 source/after5개 항목 일치, 페이지 오류0, 정상 종료3증명 true다. cold의58개 종료도 모두3증명 true다. 마지막 source에 대한 직접 Gain 재검증은 별도로 남긴다. Native U 종료 후 자기 F01 프로필 Chrome process0을 실제 CIM으로 확인했다. 과거 실패는 모두 보존한다.
 
 ## 4. 판정 범위와 잔여 제한
 

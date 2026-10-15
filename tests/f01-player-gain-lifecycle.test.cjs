@@ -176,6 +176,32 @@ test('explicit Gain recovery stays single-flight across same-video reparent and 
   assert.equal(host.dataset.phase, 'ready'); assert.equal(input.value, '0.75'); assert.equal(input.disabled, false);
   assert.equal(messages.filter(item => item.action === 'set-gain').length, 1, 'recovery discards rather than retries the failed draft');
 });
+test('repeated recovery clicks cannot start parallel reads or erase a pending storage invalidation', async t => {
+  const { dom, roots, server, gesture, messages, replies, listeners } = setup(t); await flush();
+  const input = roots[0].querySelector('input'), recover = roots[0].querySelector('button'), host = dom.window.document.querySelector('.knife-gain-owner');
+  server.writeCode = 'gain-busy'; gesture(input, 'pointerdown'); input.value = '1.5'; gesture(input, 'input');
+  await flush(); await new Promise(resolve => setTimeout(resolve, 300)); await flush();
+  assert.equal(host.dataset.phase, 'failed');
+  const previews = [];
+  dom.window.postMessage = message => { if (message.type === 'gain-preview') previews.push(message.value); };
+  dom.window.dispatchEvent(new dom.window.MessageEvent('message', { source: dom.window, origin: dom.window.location.origin,
+    data: { namespace: 'cheese-knife', protocol: 3, type: 'config', requestId: 'unit-recovery', audioBindingGeneration: 1,
+      context: { routePath: dom.window.location.pathname, documentGeneration: 1, playerGeneration: 1, channelId: null } } }));
+  previews.length = 0;
+  server.delayed = true; gesture(recover, 'click');
+  server.value = 1.25; server.epoch++;
+  for (const fn of listeners) fn({ config: {} }, 'local');
+  gesture(recover, 'click');
+  assert.equal(replies.length, 1, 'a second recovery click must not start another request');
+  assert.equal(recover.hidden, true, 'recovery control locks immediately, not after the reply');
+  replies.shift()(); await flush();
+  assert.deepEqual(previews, []); assert.equal(host.dataset.phase, 'loading'); assert.equal(replies.length, 1);
+  replies.shift()(); await flush();
+  assert.deepEqual(previews, [1.25]); assert.equal(input.value, '1.25'); assert.equal(host.dataset.phase, 'ready');
+  const count = messages.length; gesture(recover, 'click');
+  assert.equal(messages.length, count, 'recovery is accepted only from a failed/unknown/conflict phase');
+  assert.equal(messages.filter(item => item.action === 'set-gain').length, 1);
+});
 test('genuine route change and final pagehide invalidate private owner and detach extension subscriptions', async t => {
   const { dom, probe, listeners } = setup(t); await flush(); assert.equal(probe()?.owned, true);
   const initial = probe().bindingId;

@@ -333,12 +333,13 @@
     });
     recover.addEventListener("click", (event) => {
       event.stopPropagation();
-      if (!event.isTrusted || !owned(owner) || owner.inflight) return;
+      if (!event.isTrusted || !owned(owner) || owner.inflight || owner.preparing || !["failed", "unknown", "conflict"].includes(owner.phase)) return;
       clearTimer(owner);
       owner.draft = null;
       owner.intent = null;
       owner.dirtyGesture = false;
       owner.phase = "loading";
+      render(owner);
       owner.preparing = refresh(owner, false).then(() => {
         if (owned(owner)) {
           owner.preparing = null;
