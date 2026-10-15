@@ -2,25 +2,17 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T8 공통 Native launcher 준비/종료 계측 승인·구현 및 단기 진단 진행**. T1–T7 로컬 게이트를 마쳤으며 T8·T9는 미완료다. T7 완료 이력은 [완료 단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md), 상세 결과는 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)에 유지한다. F00 PR #44 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
+최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T8 검증 마감, T9 고지·종합 감사·Astra max 최종 검토**. T1–T8 로컬 게이트를 마쳤으며 T9는 미완료다. 완료 근거는 [단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md), 상세 결과는 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)에 유지한다. F00 PR #44 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
 
 ## 1. 고정 결정과 공개 경계
 
-T8 진행: 기존14 steady·12 alignment·18 transition과 모든 수치 허용치는 동결한다. 승인된 master OFF 이득 유지·빠른 재진입 취소·단일 시각 예약의 제품 DSP는718db57 그대로다. Native 사전계측은 rate별 고정12개 전체의 이득/출력 정확성 및 실제 hold/reset 중간/unity를 요구한다. N은36개와 실제 세 구간을 모두 수집했으나96kHz 마지막 row의 호출 전 일반 tick을 reset으로 선택해 전체 실패했다. 원자료/실패는 보존하고 도구에만 호출 전후 인덱스 경계를 추가했다. 실제 구간 미성립/출력 불일치를 반복해 통과시키지 않는다. 초기 빈 패킷은 최초2채널 출력 이전임이 확인된 것만 구분하며 이후 빈 패킷·비유한 값·요청창 누락은 계속 실패다. 숨김/복귀의 실제 document.hidden 조건과100ms polling은 유지한다. 옛 G/L 부분 성공과 입력별 영상/미리보기/설치 결과를 새 후보의 전체 성공으로 전용하지 않으며 T8·T9는 미완료다.
+T8의 고정 수치·전체 입력·실패 이력은 아카이브/검증 기록에 유지한다. 최신 Native 입력은f0fb3a5이며 제품 DSP는718db57 그대로다. 준비/종료의 과거 간헐 실패 원인은 미확정이다. 새 계측과4회 준비 게이트·전체 오디오/설치 검증이 통과했다고 과거 실패까지 해결된 것으로 표시하지 않는다.
 
-- [x] T7 실제 숨김 player 재발견·저장/다중 창/전환 검증 마감.
-- [x] T8 객관 측정 도구·엄격 타입·로컬 전체1590통과/실패0/기존1skip·새 프로필 동일 현상 재현.
-- [x] **사용자 승인:** master OFF의 기존10ms dry 복귀 동안 normalizer gain을 유지하고, wet가0이 된 뒤 unity로 복귀하는 국소 전환 보완. 분석/timer/옛 callback은 즉시 정리하고 빠른 OFF/ON은 현재 계산 곡선에서 예약 취소·재연결한다. 단독 normalizer OFF/측정 오류의 기존10ms 예외는 유지한다. 기존 수치 허용치는 변경하지 않으며 구현/검증 완료 표시는 아니다.
-- [x] 명세147절에 맞춰 기존 dip/연속성은 master 전환에 유지하고 개별 EQ/comp/normalizer 조작은 출력 상한을 강제한다. 이들의 추가 step 관측은 진단값으로 남기며 master 실패를 이 구분으로 숨기지 않는다.
-- [x] **사용자 승인:** [Native 빠른 전환 후속 설계](docs/superpowers/specs/2026-10-15-f01-native-rapid-coverage-follow-up.md)의 사전계측 분리·상세 계획·도구 보완·Native 재검증. [실행 계획](docs/superpowers/plans/2026-10-15-f01-native-stimulus-preflight.md)에 실행 전12개 고정 자극/rate와 중지 기준을 명시한다. 기존 수치·실제 세 구간 확보·모든 측정 보존을 유지하며 통과 보장은 아니다.
-- [x] 사전계측 분리 도구 RED→GREEN·집중49/49·전체1607통과/실패0/기존1skip·9개 기반/build/package. 제품 DSP·기존 fixture/pin·root dist58 불변.
-- [x] 2f494f3의44.1/48/96kHz 사전계측36개·각 실제 세 구간·모든 gain/양쪽 출력 PASS. source/after5필드 일치·종료3증명·pageErrors0, N 실패와 O 원자료 모두 보존.
-- [x] **사용자 승인:** O의 중단 뒤 수명 조작별 timeout·중간 증거 즉시 저장·닫힘/실패 경로의 제한된 보완. O의 exit13·최종 report 부재·긴 전환/RMS raw 미기록은 그대로 보존한다. 원인을 제품/도구로 단정하거나 옛 로그를 전체 PASS로 승격하지 않는다.
-- [x] 보완 집중51/strict·전체1612통과/실패0/기존1skip·9기반/build/package. P에서 이름 있는15초 실패·120중간기록·최종 report·정상 종료를 확인했고 Q에서3rate 실제 수명/같은창 ID·전환36개/세 구간·270중간기록·source5일치·각 종료3증명 PASS. 제품 DSP·기존 수치·고정12자극/rate 불변.
-- [x] **사용자 승인:** 공통 준비/종료 단계의 원래 exit code·signal·stderr와 close ACK/disconnect/root 조회 상태를 보존하는 계측·회귀·단기 준비/종료 진단. Q/R와 신호 없는 진단 실패는 유지한다. SDK/브라우저 교체·새 설치는 별도 승인 대상이다.
-- [ ] 계측 도구의 엄격 타입·전체 회귀 후 새 clean checkpoint에서 최대4회/첫 실패 중지의 신호 없는 준비·종료 진단을 수행한다. 원인 확인 전 긴 행렬을 재시도하지 않으며 강제 정리를 정상 종료 증명으로 계산하지 않는다.
-- [ ] 수명 관측 보완 뒤 전체 출력/수명과 기존 객관 runner를 새 입력으로 재검증한다. T8·T9는 계속 미완료다.
-- [ ] T8 마감 뒤 T9 전체 회귀·도구 점검·fresh Astra max 최종 전체 검토. 공개 작업 금지는 유지.
+- [x] T8 전체 오디오·기존 컴프레서·영상24pixel·미리보기3·설치 UI/정확한4손실·MAIN 누락 거부 검증 마감. [완료 근거](docs/superpowers/archive/2026-10-15-f01-completed-stages.md).
+- [ ] T9 로컬 오디오 처리·저장/삭제·legacy·downmix·RMS/gesture 한계를 README/PRIVACY에 간결히 동기화한다. 현재 스토어/정책 URL은 변경하지 않는다.
+- [ ] T9 전체 회귀·9기반/build/package exact62·npm/Gitleaks/ESLint와 기존 경고8/새 경고를 구분하고 보호 파일을 확인한다. 기존 private 감사 skip1은 전체 보안 인증이 아니다.
+- [ ] fresh Astra max whole-F01 최종 검토와 필요한 보완·회귀를 마친다. 도구/모델 차단 시 대체 모델을 임의 사용하지 않는다.
+- [ ] 전체 마감 기록을 아카이브로 옮기고 F02/통합·실제 배포 후행 게이트만 남긴다. push/PR·배포 금지는 유지한다.
 
 - 채널별 저장은 **오디오·영상 필터만**, 나머지는 전역. 계정별 분리/계정·쿠키 수집은 하지 않는다.
 - F00은 기존 compressor6필드·video5필드와 저장/프리셋 기반, Gain/EQ/노멀라이저는 F01. F00만으로 전체 오디오 채널 저장 완료를 주장하지 않는다.

@@ -1,5 +1,27 @@
 # F01 완료 단계 이력
 
+## T8 — 객관 오디오·출력·수명 및 설치 회귀
+
+2026-10-15 로컬 마감. 최신 Native 입력은 `f0fb3a518630a935256e59055f4017b34014a0cd`, 제품 DSP는718db57에서 바뀌지 않았다. 모든 기준과 과거 실패 자료를 유지했으며 SDK/브라우저를 교체하지 않았다.
+
+| 검증 | 실행·기록 | 결과 |
+| --- | --- | --- |
+| 신호 없는 새 프로필 준비·종료 | launcher-readiness-wZSA25 | 고정4회 전부 정상, 전후source5일치·각종료3증명 |
+| 44.1/48/96kHz 사전계측·전체 출력 | F01audio20261015S-WuDbH4 | rapid36/실제세구간·EQ108·RMS60·전환72·모든대조/수명PASS, 중간JSON789개 |
+| 기존 컴프레서 동결 회귀 | report-f01-t8-f0fb3a5.json | 14steady/12alignment/18transition/stress PASS |
+| 영상·미리보기 정책 | f01-t8-pixels/preview-f0fb3a5.log | 24pixel/3정책 PASS, 별도 Chrome155.0.8059.40 |
+| 설치 UI·포커스·저장·두 창·수명 | F01Settings20261015S | PASS, 28.164초 |
+| 정확한4저장 손실 대조 | F01SettingsLoss20261015S | owned-gain/inherit-bit/eq-band/preset-id 모두 해당 경로로 감지, 26.868초 |
+| MAIN 제거 대조 | F01Negative20261015S | main-runtime-missing 정확 감지 |
+
+오디오 Native는 bundled Chromium151.0.7922.34다. S의 전후source5필드 일치·pageErrors0·정상종료3증명은 사전/긴행렬의6개 프로필 모두 확인했다. UI 정상/손실도 같은 입력과 각각 종료3증명을 확인했다. 기존 컴프레서 runner는 반환/종료코드0과qualityFailures0으로 검증했으며 보고서 자체에3종료필드가 있는 것으로 주장하지 않는다. 모든 원자료/로그는 기존 Native 물리 후보의output 아래에 보존했다.
+
+새 launcher 계측의 신규3회귀 RED→GREEN, 집중45/strict·전체1615통과/실패0/기존private1skip·9기반/build/package PASS. root dist58·제품2.13.3·기존 수치 fixture/실행 pin·사용자 Chrome/P09·ZIP/CRX는 불변이며 push/PR은 없다.
+
+한계와 판단: Q/R의mt 준비 실패·종료 단기 진단 실패는 새4회와S에서 재현되지 않았으며 내부 원인은 미확정이다. 추측성SDK교체/제품수정을 하지 않고, 승인된 준비 게이트4회 성공 뒤 원래T8을 같은clean SHA에서 한 번 재개했다. 이는 과거 실패의 소급PASS/무제한재시도가 아니며 재발 가능성은 남는다. O의 exit13/최종보고서 부재/전환·RMS raw 미기록도 그대로 보존한다. 자세한 승인/도구 보완/실패 이력은 [사전계측 계획](../plans/2026-10-15-f01-native-stimulus-preflight.md)과 [검증 기록](../validation/2026-10-15-f01-implementation.md)에 남긴다.
+
+유한 합성 결과는 보호소스·실제스피커·장기누수·자연worker suspension/실제플랫폼rollback 인증이 아니다. T9 전체감사/공개고지/Astra max 최종검토는 별도 잔여 단계다.
+
 이 문서는 완료된 단계의 근거를 보존한다. 후속 구현·공개 권한은 현재 PLANS.md와 사용자 승인으로 판단한다. F01 전체 완료나 배포 완료 기록이 아니다.
 
 ## T7 — 실제 설치·다중 창·저장 전환/손실 검증

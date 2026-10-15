@@ -46,8 +46,9 @@ M의 실제 이득/출력5건은 일치했으나 실제 reset 중간 구간이 �
 - [x] 기존 물리 execution 후보의 전체1608개 중1607통과/실패0/기존private1skip(61.602초),9개 기반/build/package 순차 통과. root dist58·제품2.13.3·DSP/기존 fixture pin 불변.
 - [x] 로컬 checkpoint → 기존 Native 물리 후보의 정확한 새 SHA/clean detached 준비. 최신2f494f39644fa3901c75930c1305d9b6286f8158.
 - [x] O/KOUZd1의 자기 새 프로필/번들 Chromium/익명 pipe 사전계측36개 전체 PASS. 모든 raw row·실제 세 구간/rate·source/after5필드 일치·종료3증명·pageErrors0을 preflight.json에 보존했다. N의 계측기 실패도 그대로 유지한다.
-- [ ] 통과 시 동일 입력/환경의 EQ108/RMS60/전환72·controls/숨김/두 창 수명 실행. dip0.95·연속성1e−6·peak0.9801·full-scale0·동결14/12/18/stress 유지.
-- [ ] 새 후보의 기존 객관/영상24pixel/미리보기/설치 positive-negative 및 원래 T8 마감 뒤 T9 최종 Astra max whole-F01 검토로 이어간다.
+- [x] 동일 입력/환경의 EQ108/RMS60/전환72·controls/숨김/두 창 수명 실행. S/f0fb3a5에서 dip0.95·연속성1e−6·peak0.9801·full-scale0을 유지해 전체 PASS했다. 동결14/12/18/stress도 별도 통과했다.
+- [x] 새 후보의 영상24pixel/미리보기3/설치 positive·정확한4손실 negative·MAIN 누락 대조를 통과해 원래T8을 마감한다. 완료 근거는 [아카이브](../archive/2026-10-15-f01-completed-stages.md)에 보존한다.
+- [ ] T9 종합 감사/고지와 Astra max whole-F01 최종 검토를 마친다.
 
 ## 5. 계획 자체 검토·중지 조건
 

@@ -322,6 +322,8 @@ root dist58·제품2.13.3·사용자 Chrome/P09·모든 실패 증거와 로컬 
 
 #### 공통 launcher 준비·종료 계측 — 2026-10-15
 
+최종 후속: f0fb3a5의 신호 없는4회 준비/정상종료 게이트가 모두 통과해 원래 승인T8을 같은clean 입력으로 한 번 재개했다. S/WuDbH4는3rate 사전36개/실제세구간·EQ108·RMS60·전환72·모든출력/수명PASS, source/after5일치·pageErrors0·6회각종료3true·중간JSON789개를 남겼다. 과거 간헐 준비/종료 오류는 재현되지 않았으나 내부 원인은 미확정이며 해결됐다고 선언하지 않는다. 기존14/12/18/stress·24pixel·미리보기3·설치UI/정확한4손실·MAIN누락 대조도같은입력으로 통과했다. [T8 완료 아카이브](../archive/2026-10-15-f01-completed-stages.md)에 실행ID/브라우저/제한을 정리했으며 T9는 별도 미완료다.
+
 사용자 승인으로 기존 harness의 준비 단계/source-copy-manifest-tool-ready-marker·원래 SDK 종료 정보, close ACK/disconnect/자기 root 조회 단계별 상태를 실패에 부착했다. SDK는 기존 실행파일/인자를 유지하고15초·64KiB 상한만 적용했다. close의 기존15초 및 정상3증명은 그대로이며 오류 객체/code/cause를 유지한다. audio 실패 JSON은 허용된 진단 필드만 저장하며 문자열4096자·cause 깊이2로 제한하고 환경/임의 오류 payload를 제외한다. browser 생성 이전 실패도 시작/실패 checkpoint에 기록한다.
 
 신규3건은 진단 부재로 RED를 확인한 뒤 GREEN이었다. 집중45/45와 strict audio/development 통과. 최초 전체 실행은 새 테스트의 unknown 문자열 타입 좁히기1건으로1614통과/1실패/기존private1skip이었다. assert 기반 좁히기를 바로잡고 동일 실행 후보를 갱신한 전체 최종 실행은1616개 중1615통과/실패0/기존private1skip(60.585초)이다. 이전 실패 로그는 지우지 않았다. 로그는 execution 후보의 output/f01-launcher-{full,full-final,foundation}.log 및 root output/f01-launcher-{red,green,focused-final}.log에 보존한다. 기반/build/package와 실제 준비·종료 단기 진단은 이어서 수행하며 아직 성공으로 표기하지 않는다.
