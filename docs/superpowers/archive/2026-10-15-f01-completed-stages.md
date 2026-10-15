@@ -1,5 +1,22 @@
 # F01 완료 단계 이력
 
+## T9 — 종합 게이트·고지·전체 검토와 보완
+
+2026-10-15. **최종 task-done 완료: 전체1625중1624통과/실패0/기존private1skip(64.674초)**. 원래 T9 BASE17754dd..제품021a15b 범위로 기록했다. 단계별 사전 마감 근거는 아래에 보존한다.
+
+- README/README-en/PRIVACY의 미공개 F00/F01 저장·분석·일시 buffer/삭제·downmix·RMS/gesture·혼재 schema 한계를 동기화했다. 정책 URL/dashboard/실제 스토어 항목은 변경하지 않았다.
+- 전체 branch `ae9f8e5..0b8fbe7`를 fresh `gpt-6-astra/max`가 읽기 전용 검토했다. 최초 Critical0/Important2/Minor2. Gain의 실패 후 재배치 자동 재전송과 clean read 중 알림 유실을 직접 RED→GREEN으로 보완했다.
+- 같은 검토자의 `1fe0dcf` targeted에서 복구 중복 클릭의 연결된 Important1이 남아 완료하지 않았다. pending2vs1 RED→single-flight guard/즉시 render GREEN 뒤 `021a15b` targeted가 해소·새 Important0을 확인했다. 최종 잔여 Critical0/Important0/**Minor2 보류**다.
+- 최종 보완의 집중22/22, 전체1625중1624통과/실패0/기존private1skip(68.363초), 9기반/build/package62/22. 실행자는 Native U source1fe의 Gain/설정/손실/MAIN누락/cold와 Native V source021의 최종 Gain full을 각각 대조했다. 서로 다른 source를 합쳐 같은 checkpoint의 전체 성공으로 쓰지 않는다.
+- U cold seed11/phase28/정상 종료39회와 손실 seed5/phase9/정확한5손실/정상 종료19회 모두 source/after 일치·normalExittrue·cleanup/secondary/내부 오류0. V Gain full72.138초/source5전후 일치/pageErrors0/정상종료3증명 true다.
+- 실제 최신 감사 `run-2026-10-15T13-15-19-579Z-f4EiyQ`: npm/Gitleaks dir/git0, ESLint55severity1/rawexit1·분류 catalog 이전과 같음/입력 전후 일치. 55개 정적 분류와 기존 skip1은 전체 보안 인증이 아니다.
+- root dist58/공개 해시 `a7a23d74b79132479b53d80b3cac2d71ab89a3cdb15b68cdda81732e6064ddd2`, 제품2.13.3, 사용자 시청 Chrome/P09·원본 ZIP/CRX를 보존한다. 변경은 로컬 checkpoint뿐이며 push/PR/버전/병합/릴리즈/스토어 제출은 없다.
+- sandbox 전체 실패27·생성 pin 누락1·중복 read RED 및 이전 A..R/Windows 준비·종료 실패를 모두 보존했다. Windows 간헐 원인은 여전히 미확정이며 이후 PASS로 소급 해결 처리하지 않는다. O의 미기록 raw 제한도 유지한다.
+
+보류 Minor: VOD의 ‘사이트 Gain 읽기’ 무동작/미안내와 프리셋 생성의 자동 focus·빈 목록 첫 펼침 누락. VOD Gain 저장 자체·값 보존 실패는 아니지만 승인 UX와 차이가 있으며 F01 공개/통합 준비 전 별도로 판단한다. 모든 검토/실행 결과와 판단 제외 근거는 [최종 검토 기록](../validation/2026-10-15-f01-final-review.md)에 있다. F02·최종 통합·실제 게시/업데이트 수용은 별도 게이트다.
+
+최종 물리 후보 byte 대조는 비Markdown 추적 입력308개 전부 일치다. 그 대조에서 발견한 라이선스의 기존 CRLF/LF 차이는 내용 동일을 확인한 뒤 root 원본 그대로 후보에 기계적으로 복사했다. 실제 라이선스/제품 원본은 변경하지 않았고9기반·빌드/패키지 및 마지막 전체 회귀를 다시 통과했다. 개인 검토 작업공간·실패 프로필·모든 원자료는 보존하며 브랜치는 로컬 `codex/f01-audio-processing`에 유지한다.
+
 ## T8 — 객관 오디오·출력·수명 및 설치 회귀
 
 2026-10-15 로컬 마감. 최신 Native 입력은 `f0fb3a518630a935256e59055f4017b34014a0cd`, 제품 DSP는718db57에서 바뀌지 않았다. 모든 기준과 과거 실패 자료를 유지했으며 SDK/브라우저를 교체하지 않았다.
@@ -20,9 +37,9 @@
 
 한계와 판단: Q/R의mt 준비 실패·종료 단기 진단 실패는 새4회와S에서 재현되지 않았으며 내부 원인은 미확정이다. 추측성SDK교체/제품수정을 하지 않고, 승인된 준비 게이트4회 성공 뒤 원래T8을 같은clean SHA에서 한 번 재개했다. 이는 과거 실패의 소급PASS/무제한재시도가 아니며 재발 가능성은 남는다. O의 exit13/최종보고서 부재/전환·RMS raw 미기록도 그대로 보존한다. 자세한 승인/도구 보완/실패 이력은 [사전계측 계획](../plans/2026-10-15-f01-native-stimulus-preflight.md)과 [검증 기록](../validation/2026-10-15-f01-implementation.md)에 남긴다.
 
-유한 합성 결과는 보호소스·실제스피커·장기누수·자연worker suspension/실제플랫폼rollback 인증이 아니다. T9 전체감사/공개고지/Astra max 최종검토는 별도 잔여 단계다.
+유한 합성 결과는 보호소스·실제스피커·장기누수·자연worker suspension/실제플랫폼rollback 인증이 아니다. T8 당시 남았던 T9 전체감사/공개고지/Astra max 최종검토는 위 T9 기록으로 이어진다.
 
-이 문서는 완료된 단계의 근거를 보존한다. 후속 구현·공개 권한은 현재 PLANS.md와 사용자 승인으로 판단한다. F01 전체 완료나 배포 완료 기록이 아니다.
+이 문서는 단계별 근거를 보존한다. 후속 구현·공개 권한은 현재 PLANS.md와 사용자 승인으로 판단한다. 로컬 마감은 배포 완료나 보류 Minor의 해결이 아니다.
 
 ## T1–T6 — 구현 기반 단계별 마감 이력
 

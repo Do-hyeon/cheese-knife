@@ -1,6 +1,6 @@
 # F01 전체 구현 최종 검토·보완 기록
 
-2026-10-15 / Asia-Seoul. **상태: 원 Important 두 건 보완 후 targeted의 연결된 복구 진입1건 추가 보완·재검증 중. T9/F01 미완료.** push·PR·병합·배포 승인으로 사용하지 않는다.
+2026-10-15 / Asia-Seoul. **상태: T9 로컬 마감. Critical0/Important0/Minor2 보류.** push·PR·병합·배포 승인으로 사용하지 않는다.
 
 ## 1. 검토 범위
 
@@ -20,9 +20,13 @@
 
 추가로 명시 ‘폐기/재조회’의 read도 같은 `owner.preparing` promise로 추적해 재배치가 병렬 read를 시작하지 않게 했다. 실제 pending2vs1 RED→GREEN 및5초 deadline 비연장 검사를 포함해 집중21/21이 통과했다. 최초 전체 sandbox run은 링크 EPERM/fixture 정리와 미갱신 pin으로1594통과/27실패/기존1skip, 첫 Native 전체는1620통과/생성 Gain pin1실패/기존1skip이었다. 모두 보존하며 테스트·판정은 완화하지 않는다. 별도 executable pin 중 player Gain만 `0cc8d4e3651d7240a9680e9141a0a88c6c101627df26551ae47033a806fe26fb`로 갱신했고 DSP pin은 불변이다. 전체 회귀/9기반/빌드·패키지를 다시 실행한다.
 
-**1fe0dcf targeted:** 원 Important1과 원 storage 알림 경로는 해결됐지만, 복구 버튼의 빠른 중복 클릭은 아직 병렬 read로 invalidation을 소모할 수 있어 `With fixes`였다. 이를 완료로 세지 않고 실제2vs1 RED를 확인했다. 복구는 failed/unknown/conflict이면서 preparing/inflight가 없을 때만 허용하고 loading 직후 즉시 render한다. 중복·늦은 클릭0, 이전 응답 preview0, 최종값만 반영, 초안 재전송0 회귀가 GREEN이다. 집중22/22, 새 player Gain executable pin `f92863ab9cb8107238525e8c9ccc9278d813789c8bd7c9a746273ac6292eb9ec`. 이 마지막 진입 보완의 전체/설치본/targeted 결과는 아직 미완료다.
+**1fe0dcf targeted 당시:** 원 Important1과 원 storage 알림 경로는 해결됐지만, 복구 버튼의 빠른 중복 클릭은 아직 병렬 read로 invalidation을 소모할 수 있어 `With fixes`였다. 이를 완료로 세지 않고 실제2vs1 RED를 확인했다. 복구는 failed/unknown/conflict이면서 preparing/inflight가 없을 때만 허용하고 loading 직후 즉시 render한다. 중복·늦은 클릭0, 이전 응답 preview0, 최종값만 반영, 초안 재전송0 회귀가 GREEN이다. 집중22/22, 새 player Gain executable pin `f92863ab9cb8107238525e8c9ccc9278d813789c8bd7c9a746273ac6292eb9ec`.
 
-최종 진입 보완의 전체 검사는 **1625중1624통과/실패0/기존1skip(68.363초)**, 9기반/build/package62/22 통과다. 실제 감사 `run-2026-10-15T13-15-19-579Z-f4EiyQ`는 npm/Gitleaks0, ESLint55/rawexit1/catalog 동일·전후입력 일치다. 로그는 격리 실행 폴더의 `f01-final-recovery-fix-full.log`/`f01-final-recovery-fix-foundation.log`와 root `output/f01-final-recovery-fix-audit.log`에 보존한다. 마지막 clean checkpoint의 설치 Gain과 targeted 확인은 계속 미완료다.
+최종 진입 보완의 전체 검사는 **1625중1624통과/실패0/기존1skip(68.363초)**, 9기반/build/package62/22 통과다. 실제 감사 `run-2026-10-15T13-15-19-579Z-f4EiyQ`는 npm/Gitleaks0, ESLint55/rawexit1/catalog 동일·전후입력 일치다. 로그는 격리 실행 폴더의 `f01-final-recovery-fix-full.log`/`f01-final-recovery-fix-foundation.log`와 root `output/f01-final-recovery-fix-audit.log`에 보존한다.
+
+**021a15b 최종 targeted:** 같은 Astra max 검토자가 복구 진입 Important의 해소·새 Important0을 확인했다. 전체 정적 검토/targeted의 잔여는 Critical0/Important0/Minor2다. 검토자는 새 Native/DSP/보안 인증/배포를 판정하지 않았고, 실행자도 그 제한을 유지한다.
+
+**F01Gain20261015V:** source `021a15bf7e04a2e79fce37583a33a9c4e6a3c7cc`, 실제 full Gain PASS/72.138초·source/after5일치·pageErrors0·정상종료3증명 true. trusted 입력·전역/채널소유Gain0·더블클릭·재진입·61초idle·동일video재배치·focus·원래mute/volume·synthetic/iframe/old document/missing probe 거부를 재확인했다. 로그 `output/f01-final-021a15b-gain.log`는 Native 물리 후보에 보존한다. 경쟁 순서의 직접 fault 회귀는 unit-only 경계이며 이 Native 검사에서 강제로 재현했다고 주장하지 않는다.
 
 ## 3. 보류 Minor
 
@@ -57,8 +61,10 @@ Gain/설정/설정손실 모두 source/after5개 항목 일치, 페이지 오류
 
 - [x] 보완 source의 전체1624중1623통과/실패0/기존private1skip(64.865초), 9기반·빌드/패키지62자산/22entry 통과. 격리 실행 폴더의 `f01-final-fix-full.log`와 `f01-final-fix-foundation.log`에 보존.
 - [x] 실제 npm/Gitleaks dir/git0, ESLint55/rawexit1(기존 분류 catalog와 완전 일치)/입력 전후 snapshot 일치. `output/tool-audit/run-2026-10-15T13-04-40-583Z-9cTjK5/summary.json`. rootdist58공개해시 `a7a23d74b79132479b53d80b3cac2d71ab89a3cdb15b68cdda81732e6064ddd2`와 버전2.13.3 유지, 현재 변경 문서 local33링크·한글/영문 검사 통과.
-- [ ] 새 clean checkpoint의 실제 설치 Gain·설정/손실·거부 회귀, source/after/정상 종료 대조.
-- [ ] 같은 Astra max 검토자의 두 수정 경로 targeted 확인과 판정 제외 항목 원장 기록.
-- [ ] T9 최종 검사/완료·아카이브·PLANS 정리. Minor·배포 후행 제한 유지.
+- [x] U source1fe의 설정/손실/거부/cold와 V source021의 실제 Gain 재검증·source/after/종료 대조. DSP sourcef0와 구별한다.
+- [x] 같은 Astra max targeted1fe→021, 잔여 Critical0/Important0/Minor2 및 판단 제외 원장 기록.
+- [x] T9 task-done 최종 전체1625중1624통과/실패0/기존private1skip(64.674초)·아카이브·PLANS 정리. 원래BASE17754dd..제품021a15b로 완료 marker를 기록했다. Minor·배포 후행 제한은 미해결로 유지한다.
+
+후보의 기존 vendor 라이선스 줄바꿈만 root 원본과 기계적으로 정렬한 뒤 추적 비Markdown308입력 byte 일치·9기반/build/package·위 최종 전체 회귀를 다시 확인했다. root 라이선스/제품/DSP는 불변이며 과거 후보 inventory를 새 값으로 재표기하지 않았다. 모든 raw/실패/검토 원문과 판단 원장은 로컬 private 작업공간에 보존한다. root branch는 그대로 유지하며 push/PR/병합/배포/사용자 프로필 변경은 하지 않았다.
 
 T8 DSP 근거는 [구현 검증](2026-10-15-f01-implementation.md)과 [완료 단계](../archive/2026-10-15-f01-completed-stages.md)의 기존 source에 귀속한다. Gain 소유 UI 변경을 DSP 재측정 성공으로 표시하지 않는다.

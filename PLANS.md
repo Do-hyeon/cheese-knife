@@ -2,18 +2,16 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T9 Astra max 최종 검토 Important2 보완·재검증 중**. T1–T8와 최초 T9 게이트를 마쳤고, 전체 검토 Critical0/Important2/Minor2를 받아 두 Gain 경쟁 조건을 보완했다. 새 source의 종합·설치형 검증과 같은 검토자의 targeted 확인 전에는 T9/F01 완료가 아니다. [최종 검토](docs/superpowers/validation/2026-10-15-f01-final-review.md), [단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md), [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)에 근거를 유지한다. F00 PR #44 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
+최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T1–T9 로컬 마감, Minor2 보류·미공개**. Astra max 전체 검토·연결된 Gain 경쟁 보완·동일 검토자 targeted·설치형 재검증·최종 task-done을 마쳤다. 잔여 Critical0/Important0이며 Minor2는 아래 체크리스트에 남긴다. 완료 이력은 [최종 검토](docs/superpowers/validation/2026-10-15-f01-final-review.md)와 [단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md)에 보존한다. F00 PR #44 통합 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
 
 ## 1. 고정 결정과 공개 경계
 
-T8의 고정 수치·전체 입력·실패 이력은 아카이브/검증 기록에 유지한다. 최신 Native 입력은f0fb3a5이며 제품 DSP는718db57 그대로다. 준비/종료의 과거 간헐 실패 원인은 미확정이다. 새 계측과4회 준비 게이트·전체 오디오/설치 검증이 통과했다고 과거 실패까지 해결된 것으로 표시하지 않는다.
+완료한 구현·수치·source별 검증·실패 이력은 아카이브/검증 기록이 소유한다. DSP는718db57, 객관 오디오 Native는f0fb3a5, 설치 설정/cold는1fe0dcf, 최종 Gain은021a15b의 각 입력으로 구분한다. Windows 준비·종료의 과거 간헐 원인 미확정·정적 경고55/rawexit1·기존private1skip을 숨기거나 전체 인증으로 쓰지 않는다.
 
-- [x] T8 전체 오디오·기존 컴프레서·영상24pixel·미리보기3·설치 UI/정확한4손실·MAIN 누락 거부 검증 마감. [완료 근거](docs/superpowers/archive/2026-10-15-f01-completed-stages.md).
-- [x] T9 로컬 오디오 처리·저장/삭제·legacy·downmix·RMS/gesture 한계를 README/PRIVACY에 미공개 F00·F01로 구분해 동기화했다. 로컬 링크51개/한글·영문 확인, 현재 스토어/정책 URL은 불변이다.
-- [x] T9 전체1617통과/실패0/기존private1skip·9기반/build/package62·npm/Gitleaks0·ESLint55개별분류/원본exit1 보존·rootdist58공개해시일치. 도구 경고와 기존 private skip은 전체 보안 인증이 아니다.
-- [x] 오류 전달 회귀2건을 보완한1e20b0b에서 정상cold seed11/phase28/39회정상종료·source/after일치·cleanup/secondary0을 확인했다. 앞선f0의cold손실19회·정확한5손실 및 정상cold실패는 함께 보존한다. SDK/브라우저 내부 간헐 원인이 해결됐다고 주장하지 않으며 교체·설치는 별도 승인이다.
-- [ ] fresh Astra max whole-F01 최종 검토와 필요한 보완·회귀를 마친다. 도구/모델 차단 시 대체 모델을 임의 사용하지 않는다.
-- [ ] 전체 마감 기록을 아카이브로 옮기고 F02/통합·실제 배포 후행 게이트만 남긴다. push/PR·배포 금지는 유지한다.
+- [x] T1–T8와 T9 사전 마감·Astra max 최종/targeted·필수 보완·설치형 재검증. [완료 근거](docs/superpowers/archive/2026-10-15-f01-completed-stages.md).
+- [x] T9 최종 task-done 전체1625중1624통과/실패0/기존private1skip, 로컬 마감 확인. push/PR·배포 금지 유지.
+- [ ] 보류 Minor: VOD legacy Gain 읽기 버튼 무동작/제한 안내를 해결하거나 명시 수용한다. VOD 플레이어 Gain 전역 저장과 구별하고 native sender 계약을 완화하지 않는다.
+- [ ] 보류 Minor: 프리셋 save-as의 이름 focus와 빈 목록 최초 생성 영역 펼침을 승인 UX에 맞추거나 명시 수용한다. 기존 snapshot/초안 보존을 유지한다.
 
 - 채널별 저장은 **오디오·영상 필터만**, 나머지는 전역. 계정별 분리/계정·쿠키 수집은 하지 않는다.
 - F00은 기존 compressor6필드·video5필드와 저장/프리셋 기반, Gain/EQ/노멀라이저는 F01. F00만으로 전체 오디오 채널 저장 완료를 주장하지 않는다.
@@ -54,7 +52,7 @@ T8의 고정 수치·전체 입력·실패 이력은 아카이브/검증 기록�
 | ID | 작업 묶음 | 상태 | 다음 게이트 |
 | --- | --- | --- | --- |
 | F00 | 채널별 미디어 저장·프리셋 | DONE (통합) | PR #44 공개 CI 통과·병합·해당 브랜치 정리 완료; 릴리즈 없음 |
-| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | DOING (T9) | Astra max Important2 보완·재검증·targeted 확인; Minor2 보류, push/PR 금지 |
+| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | DONE (로컬·Minor2 보류) | 보류2건 처리/수용 및 공개 지시 별도; 릴리즈는 F02·통합 후 |
 | AF05-B 실제 수용 / AF05 종료 | 차기 게시본 설치·업데이트 | WAITING-DEPENDENCY | 차기 게시와 실제 검사 별도 승인 후 수행; F00/F01과 독립 |
 | DT02 | 선택 파일의 native TS 실행 | DEFERRED | 실제 유지보수 이득과 검사/실행 경계 보존이 증명되면 재설계 |
 | F02–F05 | 후속 기능 | BACKLOG-BLOCKED | F00/F01 검증과 각 범위 승인 |
@@ -92,8 +90,8 @@ T8의 고정 수치·전체 입력·실패 이력은 아카이브/검증 기록�
 
 | ID | 기능 단위 | 재개 조건 |
 | --- | --- | --- |
-| F00 | 전역·프리셋·채널 저장 계약 | 위 승인 범위의 순차 구현/검증 |
-| F01 | Gain·EQ·노멀라이저·오디오 프리셋 | F00 연결·객관 오디오 기준·별도 승인 |
+| F00 | 전역·프리셋·채널 저장 계약 | 통합 완료, 배포는 후행 게이트 |
+| F01 | Gain·EQ·노멀라이저·오디오 프리셋 | 로컬 마감, Minor2와 공개/통합 준비는 잔여 |
 | F02 | 영상 필터·프리셋 보강 | F01 뒤 GPU·성능 경계 포함 |
 | F03 | 가려진 채팅 보강 | 제공 원문·삭제 종류·행 재사용 계약 |
 | F04 | 2–4채널 멀티뷰 | 독립 재생·음량·화질·채팅·부분 교체 |
@@ -105,10 +103,10 @@ T8의 고정 수치·전체 입력·실패 이력은 아카이브/검증 기록�
 - [x] 최신 UI의 preset 생성 진입/적용 확정 snapshot·scope 변경 처리 및 Gain trusted 더블클릭 의도를 상세 계획/Astra max 검토에 포함. 과거 검토/목업 성공으로 native 권한 검증을 대체하지 않는다.
 - [x] F01 한글 상세9Task 계획·fresh Astra max 최초0/3/0·필수 보완·동일 reviewer targeted0/0/0. [검토 기록](docs/superpowers/validation/2026-10-14-f01-plan-review.md)과 실제 미실행을 구분한다.
 - [x] 2026-10-15 사용자 상세 계획·권장 Native/자기 물리 후보·번들 Chromium 격리 실행 묶음 승인. F00 공개 승인과 구분하며 F01 push/PR은 하지 않는다.
-- [ ] F01 구현·객관 출력 상한/전환/수명주기/저장·F00 통합 검증. 주관적 청취만으로 완료하지 않는다.
+- [x] F01 T1–T9 구현·객관 출력 상한/전환/수명주기/저장·로컬 F00 연결 검증과 최종 검토 마감. Minor2·실제 플랫폼/통합 후행 범위는 별도이며 주관적 청취만의 완료가 아니다.
 - [ ] F01/F02 기능 전체의 별도 공개 지시·한글 PR·공개 CI·병합 확인. F00 PR #44 통합은 완료했고 Task/문서 PR로 더 쪼개지 않는다.
 - [ ] 최종 통합 commit의 전체 회귀·점검도구·패키지·설치/저장 전환·native baseline/제한 대조.
-- [ ] 최신 후보의 private P02 감사 보고서/원장 소스 해시 재대조. 이번 목업 보완 중 기존 단위 테스트는1402/1403 PASS이며background.js의HEAD와 같은 현재 해시가 과거 감사 보고서와 달라1건 FAIL이다. 실제 감사 재실행 없이 기록 해시만 수정하지 않는다. 세부 원인/환경 제한은 [목업 구성 점검](docs/superpowers/validation/2026-10-14-f01-mockup-layout-review.md)에 유지한다.
+- [ ] 최종 통합 후보에서 실제 도구 감사를 다시 실행하고 원본 경고·원장/입력 해시·기존 private 자료 부재 skip1과 대조한다. 과거 목업 단계의1402/1403·감사 해시 불일치는 [당시 기록](docs/superpowers/validation/2026-10-14-f01-mockup-layout-review.md)에 보존하며 현재 회귀 실패로 표시하지 않는다. 원장 해시만 바꿔 PASS를 만들지 않는다.
 - [ ] F02 상세 설계·검토·계획/실행 승인 및 구현·객관 검증.
 - [ ] 최소 F00/F01/F02 및 통합 게이트 후 세 자리 형식의 공개 번호·릴리즈·제출/게시 각각 별도 승인.
 - [ ] 게시 후 실제 수용은6절에서 관리. 이 후행 게이트를 준비 PR의 선행 조건으로 바꾸지 않는다.
@@ -118,7 +116,7 @@ T8의 고정 수치·전체 입력·실패 이력은 아카이브/검증 기록�
 세부 파일/ABI·RED/GREEN·실패 대조·명령은 [상세 계획](docs/superpowers/plans/2026-10-14-f01-audio-processing.md)이 소유한다. 아래 순서는 병렬 구현이나 개별 PR 승인으로 바꾸지 않는다.
 
 - [x] T1–T8 구현·저장/전환·실제 설치·객관 출력 검증 마감. 단계별 수치와 실패/한계는 [완료 단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md)에 보존한다.
-- [ ] T9 종합 타입/생성·전체/패키지/도구·보호/고지·whole-F01 Astra max 최종 검토/보완·로컬 마감. 완료 후에만 별도 공개 지시를 요청한다.
+- [x] T9 종합 타입/생성·전체/패키지/도구·보호/고지·whole-F01 Astra max 최종 검토/보완·로컬 마감. 보류 Minor2·검증 한계는 위 원장과 아카이브에 유지하며 공개 지시는 별도다.
 
 ## 9. 검증 진입점
 
@@ -128,6 +126,6 @@ T8의 고정 수치·전체 입력·실패 이력은 아카이브/검증 기록�
 
 ## 10. 현재 사용자 개입 지점
 
-현재 T9의 승인된 종합 검증·고지·Astra max 최종 검토는 개입 없이 진행한다. 실패한 checkpoint와 private 증거는 삭제하거나 성공으로 재해석하지 않는다. 사용자 Chrome/P09·새 권한/의존성/외부 전송 확대·버전·릴리즈·스토어·push/PR은 제외한다. 목업/문서·정적 성공을 실제 음질·저장·Chrome 성공으로 전용하지 않으며 file URL 보안 차단을 우회하지 않는다. 과거 T3의 자격 검사 중지·해결 이력은 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)으로 구분한다.
+승인된 F01 T1–T9 실행 범위는 로컬 마감했다. 다음 권장 순서는 보류 Minor2의 보완/수용 판단→F02 한글 상세 설계·공격적 검토·계획/실행 승인이다. 아직 F02 구현이나 F01 공개를 시작하지 않는다. 실패 checkpoint와 private 증거는 삭제하거나 성공으로 재해석하지 않는다. 사용자 Chrome/P09·새 권한/의존성/외부 전송 확대·버전·릴리즈·스토어·push/PR은 제외한다. 목업/문서·정적 성공을 실제 음질·저장·Chrome 성공으로 전용하지 않으며 file URL 보안 차단을 우회하지 않는다. 과거 T3의 자격 검사 중지·해결 이력은 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)으로 구분한다.
 
 실제 설치/새로고침·P09 변경·새 의존성/권한/외부 전송·버전·공개는 별도 STOP 게이트다. 이전 MCP 연결/종료 승인이나 다른 작업의 공개 승인을 재사용하지 않는다.

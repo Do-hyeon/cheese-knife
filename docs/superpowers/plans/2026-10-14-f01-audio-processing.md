@@ -199,10 +199,12 @@ runtime은 기존 settings transform(런타임 import/export 금지)와 MAIN bun
 
 **파일:** 실제 변경 원본·생성·관련 독립 pin·README/README-en/PRIVACY·F01 validation/archive/PLANS. HLS/preview/영상의 무관한 리팩토링 없음.
 
-- [ ] 전체 source cursor/hash 고정→9foundation→전체node:test→빌드/패키지exact62→기존audio/pixels/설치negative→T7/T8→실제 npm/Gitleaks/ESLint. 원본/root보호자료 해시·snapshot/diff·status 확인. 과거private P02원장은 이력으로 보존하고 최신후보 실제감사/경고분류를 별도대조; 원장해시만덮거나 부재skip1을완전인증으로 쓰지 않는다. 경고8/rawexit1과 새 경고/오류를 구분한다.
-- [ ] README/PRIVACY는 로컬 오디오 처리·일시 buffer/수명·새 값저장·외부전송0·삭제·stereo downmix/legacy/혼재schema·gesture/정밀RMS한계를 간결히 고지한다. dashboard/정책URL 실제 변경과 스토어 제출은 나중의 배포 승인 gate이며 문서동기화를 실제게시완료로 세지 않는다.
-- [ ] fresh 전체 입력에 Astra max 독립 최종 검토를 요청하고 Critical/Important 보완·동일 reviewer targeted 확인 후 필요한 게이트를 재실행한다. Minor/판단제외·native 미검증은 executor가 명시 판단한다. 차단되면 대체 모델/정식보안스캔/외부모델을 몰래 사용하지 않고 기록/보고한다.
-- [ ] F01 전체 로컬 구현/검증 완료 이력은 archive로 옮기고 PLANS에 잔여제한/F02/통합/실제AF05후행게이트를 남긴다. push/PR은 다시 명시 승인받으며 중간 Task·문서 PR은 만들지 않는다. 릴리즈는 F00/F01/F02 모두 완료 후 별도 승인.
+- [x] 전체 source cursor/hash 고정→9foundation→전체node:test→빌드/패키지exact62→기존audio/pixels/설치negative→T7/T8→실제 npm/Gitleaks/ESLint. 원본/root보호자료 해시·snapshot/diff·status 확인. 과거private P02원장은 이력으로 보존하고 최신후보 실제감사/경고분류를 별도대조; 원장해시만덮거나 부재skip1을완전인증으로 쓰지 않는다. 경고8/rawexit1과 새 경고/오류를 구분한다.
+- [x] README/PRIVACY는 로컬 오디오 처리·일시 buffer/수명·새 값저장·외부전송0·삭제·stereo downmix/legacy/혼재schema·gesture/정밀RMS한계를 간결히 고지한다. dashboard/정책URL 실제 변경과 스토어 제출은 나중의 배포 승인 gate이며 문서동기화를 실제게시완료로 세지 않는다.
+- [x] fresh 전체 입력에 Astra max 독립 최종 검토를 요청하고 Critical/Important 보완·동일 reviewer targeted 확인 후 필요한 게이트를 재실행한다. Minor/판단제외·native 미검증은 executor가 명시 판단한다. 차단되면 대체 모델/정식보안스캔/외부모델을 몰래 사용하지 않고 기록/보고한다.
+- [x] F01 전체 로컬 구현/검증 완료 이력은 archive로 옮기고 PLANS에 잔여제한/F02/통합/실제AF05후행게이트를 남긴다. push/PR은 다시 명시 승인받으며 중간 Task·문서 PR은 만들지 않는다. 릴리즈는 F00/F01/F02 모두 완료 후 별도 승인.
+
+2026-10-15 로컬 마감: 전체1624통과/실패0/기존private1skip, final task-done64.674초. 최종 Astra max Critical/Important0, Minor2 보류. [최종 검토·보완](../validation/2026-10-15-f01-final-review.md)과 [완료 이력](../archive/2026-10-15-f01-completed-stages.md)이 source별 검증·실패와 보류를 소유한다. 위 체크 완료는 Minor 해결/무취약 인증/공개 승인이 아니다.
 
 ## 4. 실행 명령·결과와 실행 방식
 
