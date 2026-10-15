@@ -12,6 +12,8 @@ Native E(`1a2f819`, `audio-processing-F01audio20261015E-khbg9w`): 44.1kHz EQ36·
 
 같은 G 제품의 고정 객관 검사 `report-f01-t8-2f80e75.json`은14 steady/12 alignment/18 transition/stress·source1·qualityFailures0으로 통과했다. 영상/미리보기 기존 도구는 각각 owner2 대기·protocol1 주입으로 실패했고, 제품 변경 없이 owner3·완전한 protocol3 합성 config/현재 재요청 응답으로 연결부를 보완했다. 사용자 활성화·픽셀/오디오 허용치·요청 차단은 유지하며 관련45개 검사 통과 후 Native 재검증한다.
 
+`23ac967`의 실제 재검증: Chrome155.0.8059.40 영상24/24·미리보기3/3 통과, 비활성 ko/en은 muted/안내·실제 우클릭 해제, 활성 대조는즉시 해제·volume0.05 유지. 설치 UI는26.682초·source5필드 동일·종료3증명true, MAIN 누락 negative도 예상 `main-runtime-missing`으로 통과했다. 이후 H(`1e8427e`, J1a1Wf)의 첫 빠른 전환 출력은 초기 패킷 집계로 거부됐고, 진단에서 sourceFrame12800보다 이른 빈 패킷12416/12544/12672가12800에 늦게 도착한 원인을 확인했다. 해당 패킷만 원자료에 보존하되 제품 출력 오류 집계와 구분한다. 소스 생성 이후·시각 비정상·비유한 값·출력 누락 거부는 유지하며, 같은 collector의256프레임 성공/현재 오류 실패 회귀 RED→GREEN·엄격31통과, 전체1603개 중1602통과/실패0/기존1skip(61.689초)·9개 기반/build/package 통과다. 새 Native 재검증 전에는 H를 성공으로 바꾸지 않는다.
+
 | 단계 | 근거 | 결과 |
 | --- | --- | --- |
 | 준비 | 물리 후보 `output/f01-execution-20261015/source`, 기존 pinned ZIP 해시 확인 후 복사 | root dist58·제품2.13.3·Chrome/P09 보존 |

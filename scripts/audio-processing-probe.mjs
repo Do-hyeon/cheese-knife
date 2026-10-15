@@ -38,7 +38,10 @@ export async function installProcessingProbe(sampleRate){
   sink.port.onmessage=({data})=>{
     /** @type {{frame:number,samples:Float32Array[]}} */const chunk=data;
     if(chunk.samples.length!==2||chunk.samples.some(channel=>!(channel instanceof Float32Array)||channel.length!==128)){
-      if(sources){invalidFrames++;invalidChunks.push({frame:chunk.frame,observedFrame:Math.round(context.currentTime*sampleRate),sourceFrame,reason:'channel-shape',lengths:chunk.samples.map(channel=>channel.length)});if(invalidChunks.length>64)invalidChunks.shift();}return;
+      if(sources){
+        if(!(Number.isSafeInteger(chunk.frame)&&sourceFrame!==null&&chunk.frame<sourceFrame))invalidFrames++;
+        invalidChunks.push({frame:chunk.frame,observedFrame:Math.round(context.currentTime*sampleRate),sourceFrame,reason:'channel-shape',lengths:chunk.samples.map(channel=>channel.length)});if(invalidChunks.length>64)invalidChunks.shift();
+      }return;
     }
     chunks.push(chunk);while(chunks.length>2000)chunks.shift();
     const width=sampleRate/10;
