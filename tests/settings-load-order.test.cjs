@@ -16,7 +16,7 @@ test('classic Chrome worker imports dependencies and installs callback listener 
 for (const name of ['popup', 'styles']) test(name + ' HTML loads its shared client dependencies in order', () => {
   const html = fs.readFileSync(`${name}.html`, 'utf8');
   const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]);
-  assert.deepEqual(scripts, [...dependencies.slice(0, 4), 'settings-client.js', `${name}.js`]);
+  assert.deepEqual(scripts, [...dependencies.slice(0, 4), 'settings-client.js', ...name === 'popup' ? ['audio-settings-ui.js'] : [], `${name}.js`]);
 });
 test('permission HTML loads the host policy before its grant UI', () => {
   const html = fs.readFileSync('permission.html', 'utf8');

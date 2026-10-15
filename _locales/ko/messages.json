@@ -1,4 +1,140 @@
 {
+  "audio_ui_audio": {"message":"오디오"},
+  "audio_ui_video": {"message":"영상"},
+  "audio_ui_off_note": {"message":"전체 OFF: 설정을 편집·저장할 수 있지만 소리에는 적용되지 않습니다."},
+  "audio_ui_inherit_site": {"message":"기존 사이트 Gain 사용"},
+  "audio_ui_inherit_global": {"message":"전역 Gain 사용"},
+  "audio_ui_source_site-read": {"message":"사이트 Gain 읽기 확인값"},
+  "audio_ui_source_global-inherited": {"message":"전역 Gain 상속"},
+  "audio_ui_master": {
+    "message": "오디오 보정"
+  },
+  "audio_ui_comp_graph": {
+    "message": "컴프레서 참고 특성"
+  },
+  "audio_ui_comp_reference": {
+    "message": "정적 압축 · 입력/출력 dB · 실측 음량이 아닙니다"
+  },
+  "audio_ui_eq_graph": {
+    "message": "EQ 주파수 응답"
+  },
+  "audio_ui_eq_reference": {
+    "message": "48 kHz · Q=1 · Gain/안전 감쇠를 제외한 참고값"
+  },
+  "audio_ui_inherit": {
+    "message": "전역/사이트 Gain 상속"
+  },
+  "audio_ui_default": {
+    "message": "새 영상에서 오디오 보정 자동 켜기"
+  },
+  "audio_ui_compressor": {
+    "message": "컴프레서"
+  },
+  "audio_ui_use": {
+    "message": "사용"
+  },
+  "audio_ui_reset": {
+    "message": "기본값"
+  },
+  "audio_ui_dial_hint": {
+    "message": "위아래 드래그 · 더블클릭 기본값 · 숫자/방향키 입력"
+  },
+  "audio_ui_eq": {
+    "message": "이퀄라이저 · 8대역"
+  },
+  "audio_ui_normalizer": {
+    "message": "자동 음량 보정"
+  },
+  "audio_ui_target": {
+    "message": "목표 음량 (dBFS)"
+  },
+  "audio_ui_source_site-legacy": {
+    "message": "사이트 Gain 미확인"
+  },
+  "audio_ui_source_global-owned": {
+    "message": "전역 저장값"
+  },
+  "audio_ui_source_channel-owned": {
+    "message": "채널 저장값"
+  },
+  "audio_ui_on": {
+    "message": "오디오 보정 ON"
+  },
+  "audio_ui_off": {
+    "message": "오디오 보정 OFF"
+  },
+  "audio_ui_target_missing": {
+    "message": "방송 탭에서 설정을 다시 열어 주세요."
+  },
+  "audio_ui_resume_hint": {
+    "message": "방송에서 보정 버튼을 직접 눌러 주세요. 설정 탭은 재생 권한을 전달하지 않습니다."
+  },
+  "audio_ui_advisory": {
+    "message": "현재 방송의 적용 상태입니다. 실제 출력 음량 측정값은 아닙니다."
+  },
+  "audio_ui_target_changed": {
+    "message": "원래 방송 문서가 바뀌었거나 연결할 수 없습니다. 새로 조회해 주세요. 자동 재시도하지 않습니다."
+  },
+  "audio_ui_create_expired": {
+    "message": "원래 설정이 변경되었습니다. 이름은 보존했습니다. 생성 영역을 다시 열어 준비해 주세요."
+  },
+  "audio_ui_create_ready": {
+    "message": "진입 시 확정 저장값으로 생성합니다."
+  },
+  "audio_ui_gain_unconfirmed": {
+    "message": "사이트 Gain은 미확인입니다. Gain을 직접 저장하거나 읽어 가져온 뒤 다시 준비해 주세요."
+  },
+  "audio_ui_recipe_compressor": {
+    "message": "기존 컴프레서"
+  },
+  "audio_ui_recipe_voice": {
+    "message": "음성 EQ"
+  },
+  "audio_ui_upgrade_note": {
+    "message": "저장 형식만 전환하며 현재 방송의 보정을 자동으로 켜지 않습니다."
+  },
+  "audio_ui_upgrade": {
+    "message": "저장 형식 전환"
+  },
+  "audio_ui_audio_presets": {
+    "message": "오디오 프리셋"
+  },
+  "audio_ui_video_presets": {
+    "message": "영상 프리셋"
+  },
+  "audio_ui_apply": {
+    "message": "적용"
+  },
+  "audio_ui_save_preset": {
+    "message": "프리셋으로 저장"
+  },
+  "audio_ui_legacy_read": {
+    "message": "사이트 Gain 읽기"
+  },
+  "audio_ui_legacy_import": {
+    "message": "전역 Gain으로 가져오기"
+  },
+  "audio_ui_manage": {
+    "message": "프리셋 관리"
+  },
+  "audio_ui_create": {
+    "message": "새 프리셋 만들기"
+  },
+  "audio_ui_name": {
+    "message": "이름"
+  },
+  "media_confirm_apply": {
+    "message": "선택한 프리셋을 적용하시겠습니까? 현재 저장값을 교체합니다."
+  },
+  "media_confirm_upgrade": {
+    "message": "기존 채널·프리셋 데이터를 새 형식으로 전환하시겠습니까?"
+  },
+  "media_confirm_gain_inherit": {
+    "message": "저장한 Gain 대신 전역/사이트 Gain을 상속하시겠습니까?"
+  },
+  "media_confirm_gain_import": {
+    "message": "읽은 사이트 Gain을 전역 확정값으로 저장하시겠습니까? 이 값을 상속하는 채널에도 적용됩니다."
+  },
   "media_open": { "message": "채널 설정·프리셋 열기 ↗" },
   "media_entry_guide": { "message": "별도 설정 탭에서 오디오·영상만 채널별로 편집합니다. 나머지는 전역 설정입니다." },
   "media_global_guide": { "message": "채널별 범위는 오디오 컴프레서·영상 필터뿐입니다. 다른 항목은 전역으로 적용됩니다." },

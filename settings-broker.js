@@ -309,12 +309,15 @@ var createSettingsBroker = (chromeApi) => {
     const audio = channel?.audio ? store.schema === 1 ? KnifeMediaProfiles.projectAudioV2(channel.audio.values) : channel.audio.values : KnifeMediaProfiles.projectGlobalAudio(record(raw.config));
     const video = KnifeMediaProfiles.validateValues("video", Object.fromEntries(KnifeMediaProfiles.videoFields.map((field) => [field.id, resolved.effectiveConfig[field.id]])));
     if (!video.ok || video.domain !== "video") throw fault("read", "invalid-media-values");
+    const effectiveGain = resolved.effectiveConfig.audioGain;
+    if (typeof effectiveGain !== "number" || !Number.isFinite(effectiveGain) || effectiveGain < 0 || effectiveGain > 2) throw fault("read", "invalid-media-values");
     return {
       selection,
       version: { globalRevision: global.revision, mediaRevision: store?.revision ?? null },
       profileState: resolved.profileState,
       gainOrigin: resolved.gainOrigin,
-      code: store ? store.schema === 1 ? "media-upgrade-required" : null : read2.state === "invalid" || read2.state === "unsupported" ? read2.code : null,
+      effectiveGain,
+      code: incognito ? "incognito-media-disabled" : store ? store.schema === 1 ? "media-upgrade-required" : null : read2.state === "invalid" || read2.state === "unsupported" ? read2.code : null,
       canWrite: !!store && store.schema === 2 && !incognito,
       values: { audio, video: video.values },
       store,
@@ -375,6 +378,12 @@ var createSettingsBroker = (chromeApi) => {
     return { config, settingsRevision: contract.readRevision(raw.settingsRevision) + 1 };
   }
   async function executeMediaV3(request, sender) {
+    if (request.action === "get-audio-state" || request.action === "set-audio-wanted") {
+      if (await mediaContext(sender, true)) throw fault("sender", "incognito-media-disabled");
+      const audioState = await relayAudio(request, sender);
+      if (await mediaContext(sender, true)) throw fault("sender", "incognito-media-disabled");
+      return { protocol: 3, ok: true, requestId: request.requestId, stored: false, audioState, stage: null, code: null };
+    }
     const selection = "selection" in request ? request.selection : { kind: "global" };
     const checkContext = async () => await mediaContext(sender, true) || await mediaTarget(selection);
     const incognito = await checkContext();
@@ -434,6 +443,52 @@ var createSettingsBroker = (chromeApi) => {
     raw = { ...raw, ...changes };
     snapshot = mediaSnapshotV3(raw, selection, false);
     return response(true);
+  }
+  async function fixedAudioRead(expected, wanted) {
+    const runtime = globalThis[/* @__PURE__ */ Symbol.for("cheese-knife.runtime.v1")];
+    if (!runtime || runtime.ownerProtocol !== 3 || !runtime.player) return null;
+    const context = { ...runtime.media.context }, runtimeRequestId = runtime.requestId, mediaRequestId = runtime.mediaRequestId;
+    if (expected && (runtimeRequestId !== expected.runtimeRequestId || mediaRequestId !== expected.mediaRequestId || JSON.stringify(context) !== JSON.stringify(expected.context))) return null;
+    const result = wanted === null ? runtime.player.getAudioWanted(context) : await runtime.player.setAudioWanted(wanted, context);
+    if (!result.ok || runtime.requestId !== runtimeRequestId || runtime.mediaRequestId !== mediaRequestId || JSON.stringify(runtime.media.context) !== JSON.stringify(context) || JSON.stringify(result.context) !== JSON.stringify(context)) return null;
+    return { url: location.href, runtimeRequestId, mediaRequestId, context, wanted: result.wanted, state: result.state };
+  }
+  async function relayAudio(request, sender) {
+    const deadline = Date.now() + 4e3, target = request.target;
+    const tab = async () => {
+      const current = await nativeCall(() => chromeApi.tabs.get(target.tabId), deadline);
+      let url;
+      try {
+        url = new URL(current.url);
+      } catch {
+        throw fault("target", "target-context-changed");
+      }
+      if (current.id !== target.tabId || current.windowId !== target.windowId || current.incognito !== false || url.origin !== "https://chzzk.naver.com" || url.pathname !== target.routePath) throw fault("target", "target-context-changed");
+      return current;
+    };
+    const before = await tab();
+    const probe = async (binding2, wanted) => {
+      const expected = binding2 ? { runtimeRequestId: binding2.runtimeRequestId, mediaRequestId: binding2.mediaRequestId, context: binding2.context } : null;
+      const rows = await nativeCall(() => chromeApi.scripting.executeScript({
+        target: binding2 ? { tabId: target.tabId, documentIds: [binding2.documentId] } : { tabId: target.tabId, frameIds: [0] },
+        world: "MAIN",
+        func: fixedAudioRead,
+        args: [expected, wanted]
+      }), deadline);
+      const row = rows.length === 1 ? rows[0] : void 0;
+      const state = row?.result ? { ...row.result, tabId: target.tabId, windowId: target.windowId, documentId: row.documentId } : null;
+      if (!row || row.frameId !== 0 || !contract.audioState(state) || state.url !== before.url || new URL(state.url).pathname !== state.context.routePath || binding2 && (state.documentId !== binding2.documentId || state.runtimeRequestId !== binding2.runtimeRequestId || state.mediaRequestId !== binding2.mediaRequestId || JSON.stringify(state.context) !== JSON.stringify(binding2.context))) throw fault("target", "audio-target-changed");
+      return state;
+    };
+    const first = await probe(null, null);
+    const binding = request.action === "set-audio-wanted" ? request.binding : first;
+    if (first.documentId !== binding.documentId || first.url !== binding.url || first.runtimeRequestId !== binding.runtimeRequestId || first.mediaRequestId !== binding.mediaRequestId || JSON.stringify(first.context) !== JSON.stringify(binding.context)) throw fault("target", "audio-target-changed");
+    if ((await tab()).url !== before.url) throw fault("target", "audio-target-changed");
+    if (await mediaContext(sender, true)) throw fault("sender", "incognito-media-disabled");
+    const result = await probe(binding, request.action === "set-audio-wanted" ? request.wanted : null);
+    const after = await probe(null, null);
+    if ((await tab()).url !== before.url || after.documentId !== result.documentId || after.runtimeRequestId !== result.runtimeRequestId || after.mediaRequestId !== result.mediaRequestId || JSON.stringify(after.context) !== JSON.stringify(result.context)) throw fault("target", "audio-target-changed");
+    return result;
   }
   function fixedLegacyGainRead() {
     try {

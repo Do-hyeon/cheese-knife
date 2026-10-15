@@ -14,11 +14,11 @@ async function mainModule() {
   }
 }
 
-async function fixture(t) {
+async function fixture(t, mainFolder = 'src/main') {
   await fs.mkdir('output', { recursive: true });
   const root = await fs.mkdtemp(path.resolve('output/af03-main-'));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  await fs.cp('src/main', path.join(root, 'src/main'), { recursive: true });
+  await fs.cp('src/main', path.join(root, mainFolder), { recursive: true });
   for(const file of ['src/settings/media-profiles.ts','src/shared/media-contracts.ts']){
     await fs.mkdir(path.dirname(path.join(root,file)),{recursive:true});await fs.copyFile(file,path.join(root,file));
   }
@@ -143,14 +143,13 @@ test('MAIN runtime check is read-only for stale and unexpected outputs', async t
 
 test('MAIN runtime rejects linked sources and outputs', async t => {
   const mod = await mainModule();
-  const root = await fixture(t);
+  const root = await fixture(t, 'linked-source');
   const linkedSource = path.join(root, 'linked-source');
-  await fs.rename(path.join(root, 'src/main'), linkedSource);
   await fs.symlink(linkedSource, path.join(root, 'src/main'), process.platform === 'win32' ? 'junction' : 'dir');
   await assert.rejects(mod.renderMainRuntime(root), { code: 'owned-path-link' });
 
   await fs.rm(path.join(root, 'src/main'), { recursive: true });
-  await fs.rename(linkedSource, path.join(root, 'src/main'));
+  await fs.cp(linkedSource, path.join(root, 'src/main'), { recursive: true });
   const rendered = await mod.renderMainRuntime(root);
   await fs.rm(path.join(root, 'web'), { recursive: true });
   const linkedOutput = path.join(root, 'linked-output');

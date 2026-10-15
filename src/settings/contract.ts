@@ -78,13 +78,18 @@ type KnifeMediaMutationV3 = KnifeMediaMutationV2
 type KnifeMediaRequestV3 = { namespace: 'cheese-knife-settings'; protocol: 3; requestId: string } & (
   { action: 'get-media-snapshot'; selection: KnifeMediaSelection }
   | { action: 'read-legacy-gain'; selection: Extract<KnifeMediaSelection, { kind: 'current' }> }
+  | { action: 'get-audio-state'; target: KnifeAudioTarget }
+  | { action: 'set-audio-wanted'; target: KnifeAudioTarget; binding: KnifeAudioState; wanted: boolean }
   | (KnifeMediaMutationV3 & { storeSchema: 1 | 2 }));
+type KnifeAudioTarget = { tabId: number; windowId: number; routePath: string };
+type KnifeAudioState = Pick<KnifeAudioTarget,'tabId'|'windowId'> & { documentId: string; url: string; runtimeRequestId: string; mediaRequestId: string;
+  context: KnifeScopedContext; wanted: boolean; state: 'off' | 'pending' | 'on' | 'unavailable' };
 type KnifeMediaSnapshotV3 = Omit<KnifeMediaSnapshot, 'values' | 'store' | 'channel'> & {
   values: { audio: KnifeAudioValuesV2; video: KnifeVideoValues }; store: KnifeMediaStore | KnifeMediaStoreV2 | null;
-  channel: KnifeChannelRecord | KnifeChannelRecordV2 | null; gainOrigin: KnifeGainOrigin };
+  channel: KnifeChannelRecord | KnifeChannelRecordV2 | null; gainOrigin: KnifeGainOrigin; effectiveGain: number };
 type KnifeLegacyGainRead = { value: number; state: 'valid' | 'fallback'; documentId: string; tabId: number; windowId: number; url: string };
 type KnifeMediaReplyV3 = Omit<KnifeMediaReply, 'protocol' | 'snapshot'> & {
-  protocol: 3; snapshot?: KnifeMediaSnapshotV3; legacyGain?: KnifeLegacyGainRead };
+  protocol: 3; snapshot?: KnifeMediaSnapshotV3; legacyGain?: KnifeLegacyGainRead; audioState?: KnifeAudioState };
 type KnifeMediaRequestResultV3 = KnifeFailure | { ok: true; request: KnifeMediaRequestV3 };
 type KnifeGainRequest = { namespace: 'cheese-knife-player-gain'; protocol: 3; requestId: string } & (
   { action: 'get-gain-view' } | { action: 'set-gain'; ticket: string; intentId: string; value: number });
@@ -179,6 +184,16 @@ var KnifeSettingsContract = (() => {
       extensionId: string, getURL: (path: string) => string): KnifeMediaRequestResultV3 {
     return validateMediaContract(message, sender, extensionId, getURL, 3) as KnifeMediaRequestResultV3;
   }
+  function audioState(value: unknown): value is KnifeAudioState {
+    const state = mediaRecord(value,['tabId','windowId','documentId','url','runtimeRequestId','mediaRequestId','context','wanted','state']);
+    const context = state && mediaRecord(state.context,['documentGeneration','routePath','channelId','playerGeneration']);
+    return !!state && !!context && KnifeMediaProfiles.isCounter(state.tabId) && KnifeMediaProfiles.isCounter(state.windowId) &&
+      [state.documentId,state.runtimeRequestId,state.mediaRequestId].every(id => typeof id === 'string' && id.length > 0 && id.length <= 128) &&
+      typeof state.url === 'string' && state.url.length <= 2048 && typeof state.wanted === 'boolean' && ['off','pending','on','unavailable'].includes(state.state as string) &&
+      KnifeMediaProfiles.isCounter(context.documentGeneration) && KnifeMediaProfiles.isCounter(context.playerGeneration) &&
+      typeof context.routePath === 'string' && context.routePath.length <= 512 &&
+      (context.channelId === null || KnifeMediaProfiles.isChannelId(context.channelId));
+  }
   function validateMediaContract(message: unknown, sender: chrome.runtime.MessageSender | null | undefined,
       extensionId: string, getURL: (path: string) => string, protocol: 2 | 3): KnifeMediaRequestResult | KnifeMediaRequestResultV3 {
     const own = validateRequest({ namespace: 'cheese-knife-settings', protocol: 1, action: 'get-snapshot', requestId: 'sender-check' }, sender, extensionId, getURL);
@@ -187,10 +202,10 @@ var KnifeSettingsContract = (() => {
     const header = ['namespace', 'protocol', 'action', 'requestId'];
     const value = mediaRecord(message, header, ['selection', 'domain', 'expectedGlobalRevision', 'expectedMediaRevision', 'expectedRecord',
       'channelToken', 'patch', 'expectedRecordRevision', 'values', 'presetToken', 'recordCreatedRevision', 'domainCreatedRevision', 'id', 'name', 'createdRevision', 'expectedPresetRevision',
-      ...(protocol === 3 ? ['storeSchema', 'documentId', 'value'] : [])]);
+      ...(protocol === 3 ? ['storeSchema', 'documentId', 'value', 'target', 'binding', 'wanted'] : [])]);
     if (!value || value.namespace !== 'cheese-knife-settings' || value.protocol !== protocol || typeof value.requestId !== 'string' || !value.requestId.length || value.requestId.length > 128) return fail('invalid-request');
     const modern = protocol === 3;
-    const readOnly = ['get-media-snapshot', 'read-legacy-gain'].includes(value.action as string);
+    const readOnly = ['get-media-snapshot', 'read-legacy-gain', 'get-audio-state', 'set-audio-wanted'].includes(value.action as string);
     if (modern && !readOnly) {
       if (value.storeSchema !== 1 && value.storeSchema !== 2) return fail('invalid-request');
       header.push('storeSchema');
@@ -221,6 +236,15 @@ var KnifeSettingsContract = (() => {
     const full = () => domain(value.domain) && (modern && value.domain === 'audio' ? media.validateAudioV2(value.values) : media.validateValues(value.domain, value.values)).ok;
     let valid = false;
     switch (value.action) {
+      case 'get-audio-state':
+      case 'set-audio-wanted': {
+        const target = mediaRecord(value.target,['tabId','windowId','routePath']);
+        valid = modern && !!target && media.isCounter(target.tabId) && media.isCounter(target.windowId) &&
+          typeof target.routePath === 'string' && target.routePath.length <= 512 && /^\/(?:live\/[a-f0-9]{32}|[a-f0-9]{32}|video\/\d+)\/?$/i.test(target.routePath) &&
+          (value.action === 'get-audio-state' ? exact(['target']) : exact(['target','binding','wanted']) && typeof value.wanted === 'boolean' &&
+            audioState(value.binding) && value.binding.tabId === target.tabId && value.binding.windowId === target.windowId && value.binding.context.routePath === target.routePath);
+        break;
+      }
       case 'get-media-snapshot': valid = exact(['selection']) && selected(value.selection, true); break;
       case 'upgrade-media-store': valid = modern && exact(['expectedMediaRevision']) && value.storeSchema === 1 && media.isCounter(value.expectedMediaRevision); break;
       case 'patch-global-fields': valid = modern && exact(['domain', 'expectedGlobalRevision', 'patch']) && media.isCounter(value.expectedGlobalRevision) && patch(value.domain, value.patch); break;
@@ -309,5 +333,5 @@ var KnifeSettingsContract = (() => {
     return { revision: readRevision(raw.settingsRevision), config: normalizeConfig(raw.config),
       styles: cssFiles(raw.styles).map(file => file.slice(7, -4)), styleParameters, css: { ...css } };
   }
-  return { validateOperations, validateRequest, validateMediaRequest, validateMediaRequestV3, validateGainRequest, readRevision, mergeOperations, makeSnapshot, cssFiles };
+  return { validateOperations, validateRequest, validateMediaRequest, validateMediaRequestV3, validateGainRequest, audioState, readRevision, mergeOperations, makeSnapshot, cssFiles };
 })();

@@ -78,6 +78,11 @@ var KnifeSettingsContract = (() => {
   function validateMediaRequestV3(message, sender, extensionId, getURL) {
     return validateMediaContract(message, sender, extensionId, getURL, 3);
   }
+  function audioState(value) {
+    const state = mediaRecord(value, ["tabId", "windowId", "documentId", "url", "runtimeRequestId", "mediaRequestId", "context", "wanted", "state"]);
+    const context = state && mediaRecord(state.context, ["documentGeneration", "routePath", "channelId", "playerGeneration"]);
+    return !!state && !!context && KnifeMediaProfiles.isCounter(state.tabId) && KnifeMediaProfiles.isCounter(state.windowId) && [state.documentId, state.runtimeRequestId, state.mediaRequestId].every((id) => typeof id === "string" && id.length > 0 && id.length <= 128) && typeof state.url === "string" && state.url.length <= 2048 && typeof state.wanted === "boolean" && ["off", "pending", "on", "unavailable"].includes(state.state) && KnifeMediaProfiles.isCounter(context.documentGeneration) && KnifeMediaProfiles.isCounter(context.playerGeneration) && typeof context.routePath === "string" && context.routePath.length <= 512 && (context.channelId === null || KnifeMediaProfiles.isChannelId(context.channelId));
+  }
   function validateMediaContract(message, sender, extensionId, getURL, protocol) {
     const own = validateRequest({ namespace: "cheese-knife-settings", protocol: 1, action: "get-snapshot", requestId: "sender-check" }, sender, extensionId, getURL);
     if (!own.ok) return fail("invalid-sender");
@@ -100,11 +105,11 @@ var KnifeSettingsContract = (() => {
       "name",
       "createdRevision",
       "expectedPresetRevision",
-      ...protocol === 3 ? ["storeSchema", "documentId", "value"] : []
+      ...protocol === 3 ? ["storeSchema", "documentId", "value", "target", "binding", "wanted"] : []
     ]);
     if (!value || value.namespace !== "cheese-knife-settings" || value.protocol !== protocol || typeof value.requestId !== "string" || !value.requestId.length || value.requestId.length > 128) return fail("invalid-request");
     const modern = protocol === 3;
-    const readOnly = ["get-media-snapshot", "read-legacy-gain"].includes(value.action);
+    const readOnly = ["get-media-snapshot", "read-legacy-gain", "get-audio-state", "set-audio-wanted"].includes(value.action);
     if (modern && !readOnly) {
       if (value.storeSchema !== 1 && value.storeSchema !== 2) return fail("invalid-request");
       header.push("storeSchema");
@@ -143,6 +148,12 @@ var KnifeSettingsContract = (() => {
     const full = () => domain(value.domain) && (modern && value.domain === "audio" ? media.validateAudioV2(value.values) : media.validateValues(value.domain, value.values)).ok;
     let valid = false;
     switch (value.action) {
+      case "get-audio-state":
+      case "set-audio-wanted": {
+        const target = mediaRecord(value.target, ["tabId", "windowId", "routePath"]);
+        valid = modern && !!target && media.isCounter(target.tabId) && media.isCounter(target.windowId) && typeof target.routePath === "string" && target.routePath.length <= 512 && /^\/(?:live\/[a-f0-9]{32}|[a-f0-9]{32}|video\/\d+)\/?$/i.test(target.routePath) && (value.action === "get-audio-state" ? exact(["target"]) : exact(["target", "binding", "wanted"]) && typeof value.wanted === "boolean" && audioState(value.binding) && value.binding.tabId === target.tabId && value.binding.windowId === target.windowId && value.binding.context.routePath === target.routePath);
+        break;
+      }
       case "get-media-snapshot":
         valid = exact(["selection"]) && selected(value.selection, true);
         break;
@@ -258,5 +269,5 @@ var KnifeSettingsContract = (() => {
       css: { ...css }
     };
   }
-  return { validateOperations, validateRequest, validateMediaRequest, validateMediaRequestV3, validateGainRequest, readRevision, mergeOperations, makeSnapshot, cssFiles };
+  return { validateOperations, validateRequest, validateMediaRequest, validateMediaRequestV3, validateGainRequest, audioState, readRevision, mergeOperations, makeSnapshot, cssFiles };
 })();

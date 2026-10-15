@@ -283,8 +283,11 @@ function validateMediaReplyV3(request, value, requestId) {
   const reply = value;
   if (reply.protocol !== 3 || reply.requestId !== requestId || typeof reply.ok !== "boolean" || typeof reply.stored !== "boolean" || reply.code !== void 0 && reply.code !== null && typeof reply.code !== "string" || reply.stage !== void 0 && reply.stage !== null && typeof reply.stage !== "string") return null;
   if (!reply.ok) return typeof reply.code === "string" && !reply.stored ? reply : null;
+  if (request.action === "get-audio-state" || request.action === "set-audio-wanted") {
+    return !reply.stored && KnifeSettingsContract.audioState(reply.audioState) && reply.audioState.tabId === request.target.tabId && reply.audioState.windowId === request.target.windowId && reply.audioState.context.routePath === request.target.routePath ? reply : null;
+  }
   const snapshot = reply.snapshot, readOnly = ["get-media-snapshot", "read-legacy-gain"].includes(request.action);
-  if (reply.stored === readOnly || !snapshot || !snapshot.version || !snapshot.values || !snapshot.selection || typeof snapshot.canWrite !== "boolean" || !(snapshot.code === null || typeof snapshot.code === "string") || !["global", "scoped", "repair-required"].includes(snapshot.profileState) || !["site-legacy", "global-owned", "channel-owned"].includes(snapshot.gainOrigin)) return null;
+  if (reply.stored === readOnly || !snapshot || !snapshot.version || !snapshot.values || !snapshot.selection || typeof snapshot.canWrite !== "boolean" || !(snapshot.code === null || typeof snapshot.code === "string") || !["global", "scoped", "repair-required"].includes(snapshot.profileState) || !["site-legacy", "global-owned", "channel-owned"].includes(snapshot.gainOrigin) || !Number.isFinite(snapshot.effectiveGain) || snapshot.effectiveGain < 0 || snapshot.effectiveGain > 2) return null;
   const selection = "selection" in request ? request.selection : { kind: "global" };
   if (JSON.stringify(snapshot.selection) !== JSON.stringify(selection) || !KnifeMediaProfiles.isCounter(snapshot.version.globalRevision) || snapshot.version.mediaRevision !== null && !KnifeMediaProfiles.isCounter(snapshot.version.mediaRevision) || !KnifeMediaProfiles.validateAudioV2(snapshot.values.audio).ok || !KnifeMediaProfiles.validateValues("video", snapshot.values.video).ok) return null;
   if (snapshot.store === null) {
@@ -326,20 +329,21 @@ var createMediaSettingsClient = (chromeApi) => {
   const transport = createSettingsRequestTransport(chromeApi), subscribers = /* @__PURE__ */ new Set();
   const dirty = /* @__PURE__ */ new Map();
   let selection = { kind: "global" }, snapshot = null;
+  let fresh = false;
   let phase = "loading", code = null, disposed = false, busy = false;
   let generation = 0, scopeEpoch = 0, epoch = 0, acceptedSequence = 0, reading = null, wanted = false;
   let pendingRequest = null;
   let pendingValues = null;
   const pendingGenerations = /* @__PURE__ */ new Map();
   const fault = (code2) => Object.assign(new Error(code2), { code: code2 });
-  const defaults = (domain) => Object.fromEntries((domain === "audio" ? KnifeMediaProfiles.audioFields : KnifeMediaProfiles.videoFields).map((field) => [field.id, field.defaultValue]));
+  const defaults = (domain) => Object.fromEntries((domain === "audio" ? KnifeMediaProfiles.audioFieldsV2 : KnifeMediaProfiles.videoFields).map((field) => [field.id, field.defaultValue]));
   function view() {
     const values = {
       audio: { ...snapshot?.values.audio ?? defaults("audio") },
       video: { ...snapshot?.values.video ?? defaults("video") }
     };
     for (const entry of dirty.values()) Object.assign(values[entry.domain], { [entry.id]: entry.value });
-    return { selection, snapshot, values, phase, pendingKeys: [...dirty.keys()], pendingRequest, pendingValues, code };
+    return { selection, snapshot, fresh, values, phase, pendingKeys: [...dirty.keys()], pendingRequest, pendingValues, code };
   }
   function emit() {
     if (!disposed) for (const fn of subscribers) fn(view());
@@ -349,6 +353,7 @@ var createMediaSettingsClient = (chromeApi) => {
     if (snapshot && (next.version.globalRevision < snapshot.version.globalRevision || next.version.mediaRevision !== null && snapshot.version.mediaRevision !== null && next.version.mediaRevision < snapshot.version.mediaRevision)) return;
     snapshot = next;
     acceptedSequence = requestSequence;
+    fresh = true;
   }
   function settledPhase() {
     if (busy) phase = "saving";
@@ -363,7 +368,7 @@ var createMediaSettingsClient = (chromeApi) => {
         wanted = false;
         const started = epoch, scope = scopeEpoch, confirming = phase === "unknown" ? pendingRequest : null;
         try {
-          const result = await transport.send(2, { action: "get-media-snapshot", selection }).promise;
+          const result = await transport.send(3, { action: "get-media-snapshot", selection }).promise;
           if (disposed || scope !== scopeEpoch) continue;
           if (started !== epoch) {
             wanted = true;
@@ -375,8 +380,8 @@ var createMediaSettingsClient = (chromeApi) => {
             phase = "loading";
             code = null;
           }
-          if (!busy && phase === "unknown" && pendingRequest && pendingRequest === confirming && snapshot?.store && ["create-preset", "enable-channel-domain"].includes(pendingRequest.action)) {
-            const merged = KnifeMediaProfiles.mergeMediaOperation(
+          if (!busy && phase === "unknown" && pendingRequest && pendingRequest === confirming && snapshot?.store?.schema === 2 && (pendingRequest.action === "create-preset" || pendingRequest.action === "enable-channel-domain")) {
+            const merged = KnifeMediaProfiles.mergeMediaOperationV2(
               snapshot.store,
               pendingRequest,
               { config: { ...snapshot.values.audio, ...snapshot.values.video }, revision: snapshot.version.globalRevision }
@@ -406,11 +411,16 @@ var createMediaSettingsClient = (chromeApi) => {
     });
     return reading;
   }
+  function capture(request) {
+    if (!snapshot?.store) throw fault("media-not-ready");
+    return structuredClone({ ...request, storeSchema: request.storeSchema ?? snapshot.store.schema });
+  }
   async function mutateMedia(request, entries = []) {
-    if (disposed || busy || !snapshot || !snapshot.canWrite || ["unknown", "conflict", "failed", "repair-required", "unavailable"].includes(phase)) throw fault("media-not-ready");
-    if ("selection" in request && JSON.stringify(request.selection) !== JSON.stringify(selection)) throw fault("scope-changed");
+    const upgrade = request.action === "upgrade-media-store" && snapshot?.store?.schema === 1 && snapshot.code === "media-upgrade-required";
+    if (disposed || busy || !snapshot || !snapshot.canWrite && !upgrade || ["unknown", "conflict", "failed", "repair-required", "unavailable"].includes(phase)) throw fault("media-not-ready");
+    if ("selection" in request && request.action !== "import-legacy-gain" && JSON.stringify(request.selection) !== JSON.stringify(selection)) throw fault("scope-changed");
     const scope = scopeEpoch;
-    pendingRequest = JSON.parse(JSON.stringify(request));
+    pendingRequest = capture(request);
     const sourceToken = "presetToken" in pendingRequest ? pendingRequest.presetToken : null;
     pendingValues = "values" in pendingRequest && pendingRequest.values ? { ...pendingRequest.values } : sourceToken ? snapshot.store?.presets.find((preset) => preset.id === sourceToken.id && preset.createdRevision === sourceToken.createdRevision && preset.revision === sourceToken.revision)?.values ?? null : null;
     pendingGenerations.clear();
@@ -420,7 +430,7 @@ var createMediaSettingsClient = (chromeApi) => {
     code = null;
     emit();
     try {
-      const result = await transport.send(2, request).promise;
+      const result = await transport.send(3, pendingRequest).promise;
       if (disposed) throw fault("disposed");
       if (scope !== scopeEpoch) throw fault("scope-changed");
       if (!result.reply.ok) {
@@ -456,11 +466,11 @@ var createMediaSettingsClient = (chromeApi) => {
     }
   }
   function flush() {
-    if (disposed || busy || !snapshot || !snapshot.canWrite || selection.kind === "global" || ["unknown", "conflict", "failed", "repair-required", "unavailable"].includes(phase)) return;
+    if (disposed || busy || !snapshot || !snapshot.canWrite || ["unknown", "conflict", "failed", "repair-required", "unavailable"].includes(phase)) return;
     const pending = [...dirty].filter(([, entry]) => entry.status === "pending"), domain = pending[0]?.[1].domain;
     if (!domain) return;
     const channel = snapshot.channel, binding = domain === "audio" ? channel?.audio : channel?.video;
-    if (!channel || !binding) {
+    if (selection.kind !== "global" && (!channel || !binding)) {
       code = "domain-not-enabled";
       phase = "failed";
       emit();
@@ -469,7 +479,7 @@ var createMediaSettingsClient = (chromeApi) => {
     const entries = pending.filter(([, entry]) => entry.domain === domain);
     for (const [, entry] of entries) entry.status = "sent";
     const patch = Object.fromEntries(entries.map(([, entry]) => [entry.id, entry.value]));
-    const request = {
+    const request = selection.kind === "global" ? { action: "patch-global-fields", domain, expectedGlobalRevision: snapshot.version.globalRevision, patch } : {
       action: "patch-channel-fields",
       selection,
       domain,
@@ -481,10 +491,11 @@ var createMediaSettingsClient = (chromeApi) => {
   }
   function editFields(domain, patch) {
     if (domain !== "audio" && domain !== "video") return;
-    if (disposed || !snapshot?.canWrite || selection.kind === "global" || !(domain === "audio" ? snapshot.channel?.audio : snapshot.channel?.video) || ["unknown", "conflict", "failed"].includes(phase)) return;
+    if (disposed || !snapshot?.canWrite || selection.kind !== "global" && !(domain === "audio" ? snapshot.channel?.audio : snapshot.channel?.video) || ["unknown", "conflict", "failed"].includes(phase)) return;
     if (!Object.keys(patch).length) return;
     const values = view().values;
-    const check = KnifeMediaProfiles.validateValues(domain, { ...domain === "audio" ? values.audio : values.video, ...patch });
+    const next = { ...domain === "audio" ? values.audio : values.video, ...patch };
+    const check = domain === "audio" ? KnifeMediaProfiles.validateAudioV2(next) : KnifeMediaProfiles.validateValues("video", next);
     if (!check.ok) {
       code = check.code;
       phase = "failed";
@@ -503,6 +514,7 @@ var createMediaSettingsClient = (chromeApi) => {
     if (pendingRequest) return { ok: false, code: "media-not-ready" };
     selection = { ...next };
     snapshot = null;
+    fresh = false;
     scopeEpoch++;
     epoch++;
     acceptedSequence = 0;
@@ -529,6 +541,8 @@ var createMediaSettingsClient = (chromeApi) => {
   const onChanged = (changes, area) => {
     if (area !== "local" || !["mediaProfiles", "config", "settingsRevision"].some((key) => Object.hasOwn(changes, key))) return;
     epoch++;
+    fresh = false;
+    emit();
     void refresh();
   };
   chromeApi.storage.onChanged.addListener(onChanged);
@@ -545,6 +559,7 @@ var createMediaSettingsClient = (chromeApi) => {
     },
     selectScope,
     editFields,
+    capture,
     perform: (request) => mutateMedia(request),
     refresh,
     discardPending,

@@ -70,3 +70,19 @@ manifest의 Gain 자산은 승인된 별도 top-frame ISOLATED 항목으로 이�
 초기 계약 RED5개와 source 재판별 전 옛 측정창 혼입 RED를 확인했다. 보완 뒤 집중22개·전체1483개 중1482통과/실패0/기존private증거1skip·9개 기반/build/package PASS(65.225초). pause/ended/muted/volume0/Gain0/context/hidden 재개 새 window·source/video/route 폐기·늦은 callback·오류 제한 상태·범위 밖 rate에서 다른 효과 유지·EMA/양수 boost 상한/무음 양방향 복귀를 고정했다. 측정 버퍼/power는 status·postMessage·storage·로그로 보내지 않는다.
 
 timeout-only shared clock을 interval clock으로 오인한 테스트는 기존 audio fixture의 수동 interval 호출로 수정했다. 이 검사는 결정적 제어/automation 단위 증거이며 실제 wall-clock/연속 출력의 속도 증거는 아니다. 기존 scope의 child cleanup으로 meter/timer를 정리하고 source/route/document를 tick 시작에서도 검사한다. 새 모듈은 기존 audio bundle 내부에만 들어가 dist61/runtime19이며 원본 dist58은 보존한다. 실제 출력·stereo/phase·native 전체 효과 통합은 T7/T8/T9에 남는다.
+
+## T6 설정 TAB·프리셋·현재 방송 연결
+
+기존 TAB client를 protocol3로 전환하고 필드별 직렬 저장을 재사용했다. schema1은 읽기만 하며 명시적 확인 뒤 전환한다. 같은 snapshot에 해석한 유효 Gain과 출처를 포함하되 원시 채널 Gain/상속 쌍은 유지한다. 사이트 Gain 미확인은 100%로 가장하지 않고 `—`로 표시하며, 원래 방송에서 읽어 확인한 값 또는 명시적으로 저장한 값만 구분해 표시한다. 전역/채널 상속 선택과 오디오 전체 전역 사용은 별도다.
+
+렌더·입력 전용 helper 하나로 전체 ON/OFF, 단일 Gain/80px 수치, 분리된 정적 참고 그래프, 5개 상대 다이얼/숫자, 580px 8대역 페이더/숫자, 노멀라이저 목표 숫자 입력을 구성했다. 패널은 약680px이며 오디오·영상·관리 탭, 각 도메인에서만 적용, 관리 상단 목록/이름 변경/분리 삭제와 하단 접힌 생성을 사용한다. 원값을 반올림해 저장하지 않는다. 빈/범위 밖 숫자 초안은 보존하고 확정 복사를 차단하며 명시적 초기화로만 정리한다.
+
+저장 알림을 받았으나 아직 최신 snapshot을 읽지 못한 상태는 별도 freshness로 구분한다. 프리셋/확인은 잠그되 숫자 입력을 disable하거나 focus를 옮기지 않는다. 생성 진입 시 도메인·scope·확정 원본·revision/출처를 캡처하고 후속 변경은 이름을 보존한 채 저장0으로 처리한다. 늦은 native details 알림으로 새 원본을 다시 캡처하는 경쟁도 RED→GREEN으로 보완했다. 이전 protocol1 콜백을 기다리던 테스트 자식만 신원을 확인해 종료하고, protocol3 저장·확정 snapshot 흐름으로 갱신했다. 중단 로그도 보존한다.
+
+현재 방송 master는 own TAB·원래 tab/window/route·native document를 전후 검사하는 고정 MAIN 함수만 호출한다. Chrome documentId를 MAIN에 전달하지 않으며 기존 `PlayerController.setAudioWanted`의 private intent를 공유한다. 문서 교체/route·runtime·window·sender retirement 거부, 설정 저장0을 검사했다. 실제 제품 런타임 연결 회귀에서도 TAB OFF가 설정 변경/같은 영상 재배치 뒤 유지되고 genuine 새 영상에서만 default가 갱신됐다. 이 단위 연결은 실제 Chromium의 gesture 전달·출력 증거가 아니며 pending/제한 시 방송에서 직접 켜도록 안내한다.
+
+최종 전체6차는1509개 중1508통과/실패0/기존 private 감사1skip(65.850초), 9개 기반·build/package PASS, 후보dist62/runtime20이다. 3·5차의 Windows 임시 폴더 rename EPERM 실패도 보존했다. 링크 대상 폴더를 처음부터 별도로 만들고 링크 해제 뒤 동일 바이트를 복사해 정상 복원을 검사하도록 불필요한 이동만 제거했다. 링크 거부·정상 복원·출력 링크 거부 조건은 그대로이며 단독21개/최종 전체가 통과했다. native `step="any"` 문자열의 타입 금지 오탐은 정확한 인용 문자열만 제외하며 실제/generic any 금지 자체와 음성 대조는 유지했다. 새 UI helper도 기존 정적 동적속성 관측 게이트에 포함했으며 억제하지 않았다.
+
+최종 로그는 격리 후보 `output/f01-execution-20261015/source/output/f01-t6-full6.log` 및 `f01-t6-final-*.log`에 보존한다. 생성14개를 바이트 비교 후 원래 작업 폴더에 복사했고 원본 dist58은 빌드하지 않았다. T6 원본/생성물·독립 실행 핀·UI/i18n·회귀·계획 기록을 한 로컬 checkpoint로 묶는다.
+
+T7 실제 설치/두 창/전환·고배율·좁은 화면과 T8 객관 출력·RMS/EQ, T9 종합/최종 Astra max는 아직 미완료다. 원본 dist58·사용자 Chrome/P09·버전2.13.3·권한/WAR/CSP·private 증거는 유지한다. push/PR·릴리즈/스토어 변경은 하지 않았다.

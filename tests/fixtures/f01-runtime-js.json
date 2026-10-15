@@ -1,4 +1,5 @@
 [
+  "audio-settings-ui.js",
   "background.js",
   "config.js",
   "gain-authority.js",

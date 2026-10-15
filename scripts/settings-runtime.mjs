@@ -15,6 +15,7 @@ export const SETTINGS_RUNTIME_ENTRIES = Object.freeze([
   Object.freeze({ source: 'src/settings/style-schema.ts', output: 'style-schema.js', global: 'STYLES' }),
   Object.freeze({ source: 'src/settings/contract.ts', output: 'settings-contract.js', global: 'KnifeSettingsContract' }),
   Object.freeze({ source: 'src/settings/client.ts', output: 'settings-client.js', global: 'createSettingsClient' }),
+  Object.freeze({ source: 'src/settings/audio-settings-ui.ts', output: 'audio-settings-ui.js', global: 'createAudioSettingsUI' }),
   Object.freeze({ source: 'src/settings/broker.ts', output: 'settings-broker.js', global: 'createSettingsBroker' }),
   Object.freeze({ source: 'src/settings/background.ts', output: 'background.js', global: null }),
   Object.freeze({ source: 'src/settings/permission.ts', output: 'permission.js', global: null }),
@@ -65,7 +66,7 @@ export function validateSettingsRuntime(outputs, identities = []) {
     if (!hasExpectedGlobal(entry, body)) throw fail('settings-runtime-global');
     let inspected = source.replace(/(\.origin\s*!==\s*)(["'])https:\/\/chzzk\.naver\.com\2/g, '$1$2$2');
     if (entry.output === 'config.js') inspected = inspected.replace(/(origins: Object\.freeze\(\[)["']https:\/\/chzzk\.naver\.com\/\*["'](\]\))/, '$1""$2');
-    if (entry.output === 'web/main.js') inspected = inspected.replace(/(document\.createElementNS\()["']http:\/\/www\.w3\.org\/2000\/svg["']/, '$1""');
+    if (entry.output === 'web/main.js' || entry.output === 'audio-settings-ui.js') inspected = inspected.replace(/(\b(?:document|doc)\.createElementNS\()["']http:\/\/www\.w3\.org\/2000\/svg["']/g, '$1""');
     validateClassicRuntime(inspected, identities, generatedCodes);
   }
 }

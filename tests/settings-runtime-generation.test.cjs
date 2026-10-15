@@ -12,6 +12,7 @@ const entries = [
   { source: 'src/settings/style-schema.ts', output: 'style-schema.js', global: 'STYLES' },
   { source: 'src/settings/contract.ts', output: 'settings-contract.js', global: 'KnifeSettingsContract' },
   { source: 'src/settings/client.ts', output: 'settings-client.js', global: 'createSettingsClient' },
+  { source: 'src/settings/audio-settings-ui.ts', output: 'audio-settings-ui.js', global: 'createAudioSettingsUI' },
   { source: 'src/settings/broker.ts', output: 'settings-broker.js', global: 'createSettingsBroker' },
   { source: 'src/settings/background.ts', output: 'background.js', global: null },
   { source: 'src/settings/permission.ts', output: 'permission.js', global: null },

@@ -3,6 +3,7 @@ const {settingsHarness}=require('./settings-fixture.cjs');
 const {page,load,flush}=require('./helpers.cjs');
 const A='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',P='11111111-1111-4111-8111-111111111111';
 const saved={kind:'saved',channelId:A};
+const ownedAudio=c=>({...structuredClone(c.view().values.audio),audioGain:1,gainInherited:false});
 function client(t,h){const dom=page();for(const file of ['media-profiles.js','config.js','style-schema.js','settings-contract.js','settings-client.js'])load(dom,file);
   assert.equal(typeof dom.window.createMediaSettingsClient,'function','media client must exist');
   const api=h.apiFor('popup'),instance=dom.window.createMediaSettingsClient(api);let view;instance.subscribe(next=>{view=next;});
@@ -15,7 +16,8 @@ test('media client subscribes before read and selection never writes',async t=>{
   const h=settingsHarness(t),c=client(t,h);await h.settle();assert.equal(c.view().phase,'ready');
   assert.equal((await c.selectScope(saved)).ok,true);await h.settle();assert.equal(c.view().selection.channelId,A);
   assert.equal(h.calls.filter(call=>call.kind==='commit').length,0);
-  assert.ok(h.messages.filter(entry=>entry.message.protocol===2).every(entry=>entry.subscribers>0));
+  const reads=h.messages.filter(entry=>entry.message.action==='get-media-snapshot');assert.ok(reads.length>0);
+  assert.ok(reads.every(entry=>entry.message.protocol===3 && entry.subscribers>0));
 });
 test('two independent media clients merge field patches and synchronize without global writes',async t=>{
   const {h,c}=await enabled(t),other=client(t,h);await h.settle();await other.selectScope(saved);
@@ -27,7 +29,7 @@ test('two independent media clients merge field patches and synchronize without 
 });
 test('saving scope cannot switch and unknown create keeps its original id and draft until explicit read-back',async t=>{
   const {h,c}=await enabled(t),gate=h.holdNext('callback:create-preset');
-  const values=structuredClone(c.view().values.audio),pending=c.perform({action:'create-preset',id:P,expectedMediaRevision:1,domain:'audio',name:'Quiet',values});
+  const values=ownedAudio(c),pending=c.perform({action:'create-preset',id:P,expectedMediaRevision:1,domain:'audio',name:'Quiet',values});
   await gate.reached;assert.equal((await c.selectScope({kind:'global'})).code,'media-not-ready');gate.fail();
   await assert.rejects(pending);await h.settle();assert.equal(c.view().phase,'unknown');
   assert.equal((await c.selectScope({kind:'global'})).ok,false);
@@ -47,7 +49,7 @@ test('corrupt media has independent repair state and does not block the existing
 });
 test('explicit read-back confirms only the original unknown preset creation without a new UUID or write',async t=>{
   const {h,c}=await enabled(t),gate=h.holdNext('callback:create-preset');
-  const request={action:'create-preset',id:P,expectedMediaRevision:1,domain:'audio',name:'Quiet',values:structuredClone(c.view().values.audio)};
+  const request={action:'create-preset',id:P,expectedMediaRevision:1,domain:'audio',name:'Quiet',values:ownedAudio(c)};
   const pending=c.perform(request);await gate.reached;gate.fail();await assert.rejects(pending);await h.settle();
   assert.equal(c.view().pendingRequest?.id,P);const writes=h.calls.filter(call=>call.kind==='commit').length;
   await c.refresh();await h.settle();assert.equal(c.view().phase,'ready');assert.equal(c.view().pendingRequest,null);
@@ -87,7 +89,7 @@ for(const failure of ['storage-read-failed','response-unknown'])for(const repair
 });
 test('unknown original preset creation remains confirmable after a transient read failure',async t=>{
   const {h,c}=await enabled(t),gate=h.holdNext('callback:create-preset'),request={action:'create-preset',id:P,
-    expectedMediaRevision:1,domain:'audio',name:'Quiet',values:structuredClone(c.view().values.audio)};
+    expectedMediaRevision:1,domain:'audio',name:'Quiet',values:ownedAudio(c)};
   const pending=c.perform(request);await gate.reached;gate.fail();await assert.rejects(pending);await h.settle();
   const read=h.holdNext('callback:get-media-snapshot'),reading=c.refresh(),reply=await read.reached;
   Object.assign(reply,{ok:false,stored:false,code:'storage-read-failed'});read.release();await reading;await h.settle();
@@ -98,7 +100,7 @@ test('unknown original preset creation remains confirmable after a transient rea
 });
 test('unknown preset confirmation holds newer unsent fields until explicit discard and re-edit',async t=>{
   const {h,c}=await enabled(t),gate=h.holdNext('callback:create-preset');const request={action:'create-preset',id:P,
-    expectedMediaRevision:1,domain:'audio',name:'Quiet',values:structuredClone(c.view().values.audio)};
+    expectedMediaRevision:1,domain:'audio',name:'Quiet',values:ownedAudio(c)};
   const pending=c.perform(request);await gate.reached;c.editFields('audio',{compressorRatio:5});gate.fail();await assert.rejects(pending);await h.settle();
   const before=h.calls.filter(x=>x.kind==='commit').length;await c.refresh();await h.settle();
   assert.equal(h.calls.filter(x=>x.kind==='commit').length,before);assert.equal(c.view().phase,'failed');assert.equal(c.view().code,'draft-held');
@@ -109,7 +111,7 @@ test('unknown preset confirmation holds newer unsent fields until explicit disca
 test('unknown preset cannot confirm a modified or recreated record',async t=>{
   for(const change of [preset=>{preset.revision++;},preset=>{preset.createdRevision+=2;},preset=>{preset.values.compressorRatio=5;}]){
     const {h,c}=await enabled(t),gate=h.holdNext('callback:create-preset');const request={action:'create-preset',id:P,
-      expectedMediaRevision:1,domain:'audio',name:'Quiet',values:structuredClone(c.view().values.audio)};
+      expectedMediaRevision:1,domain:'audio',name:'Quiet',values:ownedAudio(c)};
     const pending=c.perform(request);await gate.reached;gate.fail();await assert.rejects(pending);await h.settle();
     change(h.saved.mediaProfiles.presets[0]);h.saved.mediaProfiles.revision+=2;const before=h.messages.length;
     await c.refresh();await h.settle();assert.equal(c.view().phase,'unknown');assert.equal(c.view().pendingRequest.id,P);
@@ -125,7 +127,7 @@ test('unknown channel enable confirms only its original creation without another
 });
 test('media transport retires even when invalidated Chrome rejects listener cleanup',async t=>{
   const {h,c}=await enabled(t),gate=h.holdNext('callback:create-preset');const pending=c.perform({action:'create-preset',id:P,
-    expectedMediaRevision:1,domain:'audio',name:'Quiet',values:structuredClone(c.view().values.audio)});
+    expectedMediaRevision:1,domain:'audio',name:'Quiet',values:ownedAudio(c)});
   await gate.reached;const outcome=pending.then(()=> 'unexpected',error=>error.code);
   c.api.storage={...c.api.storage,onChanged:{...c.api.storage.onChanged,removeListener:()=>{throw Error('Extension context invalidated.');}}};
   assert.throws(()=>c.dispose(),/context invalidated/);

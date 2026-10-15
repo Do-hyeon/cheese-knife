@@ -72,7 +72,7 @@ test('site adapter removes webpack injection without a Node dynamic-require warn
 
 test('runtime dictionary boundaries have no generic object-injection observation', async () => {
   const lint = new ESLint({ overrideConfigFile: 'eslint.security.config.mjs' });
-  const result = await lint.lintFiles(['popup.js', 'web/main.js', 'web/player.js', 'web/runtime.js']);
+  const result = await lint.lintFiles(['popup.js', 'audio-settings-ui.js', 'web/main.js', 'web/player.js', 'web/runtime.js']);
   const findings = result.flatMap(file => file.messages)
     .filter(message => message.ruleId === 'security/detect-object-injection');
   assert.deepEqual(findings.map(message => `${message.line}:${message.column}`), []);
