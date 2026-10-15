@@ -3,6 +3,16 @@ import {AUDIO_ARTIFACT_FILES} from './audio-artifact-core.mjs';
 import {audioQualityFailures} from './audio-metrics.mjs';
 import {summarizeCapture} from './audio-signal.mjs';
 import {validateQualityEvidence} from './audio-quality-diagnostics.mjs';
+import fs from 'node:fs/promises';
+import {createReadStream} from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import {fileURLToPath} from 'node:url';
+import {createRequire} from 'node:module';
+import {spawn,execFileSync} from 'node:child_process';
+import {Writable} from 'node:stream';
+import {finished} from 'node:stream/promises';
+import {stopVisibilityChild} from './extension-e2e/visibility-browser.mjs';
 
 const frozenCommit='c5d45b8a7abf30450d3f1bbff45afbb8cd020cb5';
 /** @typedef {'f'|'u'|'t'} ObserverMode */
@@ -16,7 +26,7 @@ function array(value){need(Array.isArray(value),'observer-array');return value;}
 /** @param {unknown} value */
 const finite=value=>typeof value==='number'&&Number.isFinite(value);
 /** @param {unknown} value @param {number} length */
-const hex=(value,length)=>typeof value==='string'&&new RegExp('^[a-f0-9]{'+length+'}$').test(value);
+const hex=(value,length)=>typeof value==='string'&&(length===40?/^[a-f0-9]{40}$/:/^[a-f0-9]{64}$/).test(value);
 
 /** @param {string} prefix @returns {readonly ObserverRun[]} */
 export function observerRunPlan(prefix){
@@ -36,12 +46,12 @@ function validateSummary(input){
   need(value.sampleRate===48000&&finite(value.windowSeconds)&&/** @type {number} */(value.windowSeconds)>0&&channels.length===2&&finite(value.channelDifferenceRms),'observer-window');
   for(const item of channels){
     const channel=record(item),envelope=record(channel.envelope8ms);
-    for(const key of ['samples','mean','rms','peak','overFullScaleSamples','maxAdjacentStep'])need(finite(channel[key]),'observer-channel');
+    for(const key of ['samples','mean','rms','peak','overFullScaleSamples','maxAdjacentStep'])need(finite(Reflect.get(channel,key)),'observer-channel');
     need(Number.isSafeInteger(channel.samples)&&/** @type {number} */(channel.samples)>0&&
       Math.abs(/** @type {number} */(channel.samples)-/** @type {number} */(value.windowSeconds)*48000)<1e-7,'observer-sample-count');
     need(Number.isSafeInteger(channel.overFullScaleSamples)&&/** @type {number} */(channel.overFullScaleSamples)>=0&&
       /** @type {number} */(channel.overFullScaleSamples)<=/** @type {number} */(channel.samples),'observer-full-scale-count');
-    for(const key of ['peakDbfs','rmsDbfs','thdPercent','thdnPercent','fundamentalAmplitude'])need(channel[key]===null||finite(channel[key]),'observer-nullable-metric');
+    for(const key of ['peakDbfs','rmsDbfs','thdPercent','thdnPercent','fundamentalAmplitude']){const value=Reflect.get(channel,key);need(value===null||finite(value),'observer-nullable-metric');}
     need(['','non-coherent-window','tone-not-detectable'].includes(/** @type {string} */(channel.spectralReason)),'observer-spectrum');
     need(envelope.windowSamples===384&&finite(envelope.min)&&finite(envelope.max)&&/** @type {number} */(envelope.min)>=0&&
       /** @type {number} */(envelope.max)>=/** @type {number} */(envelope.min),'observer-envelope');
@@ -53,17 +63,17 @@ function validateReport(report){
   const nodes=record(report.nodes),cases=array(report.cases),transitions=array(report.transitions),alignments=array(report.alignments);
   need(nodes.sampleRate===48000&&nodes.sources===1&&cases.length===14&&transitions.length===18&&alignments.length===12,'observer-report-shape');
   for(const [index,item]of cases.entries()){
-    const row=record(item);need(isDeepStrictEqual(['frequency','inputAmplitude','gain','enabled','stereo','bursts'].map(key=>row[key]),caseInputs.at(index)),'observer-case-input');validateSummary(row);
+    const row=record(item);need(isDeepStrictEqual(['frequency','inputAmplitude','gain','enabled','stereo','bursts'].map(key=>Reflect.get(row,key)),caseInputs.at(index)),'observer-case-input');validateSummary(row);
   }
   const calibration=record(array(record(cases[0]).channels)[0]);need(/** @type {number} */(calibration.rms)>=.34&&/** @type {number} */(calibration.rms)<=.36,'observer-calibration');
   const steps=[['gain',1.5],['gain',2],['gain',0],['gain',1],['enabled',false],['enabled',true]];
   for(const [index,item]of transitions.entries()){
     const row=record(item);need(row.frequency===[250,750,1000].at(Math.floor(index/6))&&isDeepStrictEqual([row.kind,row.value],steps.at(index%6)),'observer-transition-input');
-    for(const phase of ['before','change','after'])validateSummary(row[phase]);
+    for(const phase of ['before','change','after'])validateSummary(Reflect.get(row,phase));
   }
   for(const [index,item]of alignments.entries()){
     const row=record(item),expected=alignmentInputs.at(index);need(expected&&row.sampleRate===expected[0]&&
-      ['expectedFrame','dryFirst','dryLast','compressorFirst','compressorLast'].every(key=>row[key]===expected[1]),'observer-alignment-input');
+      ['expectedFrame','dryFirst','dryLast','compressorFirst','compressorLast'].every(key=>Reflect.get(row,key)===expected[1]),'observer-alignment-input');
   }
   const stress=record(report.stress);need(stress.profile==='threshold0/knee0/ratio1/gain2','observer-stress');validateSummary(stress);
   return audioQualityFailures(/** @type {import('./audio-metrics.mjs').QualityReport} */(/** @type {unknown} */(report)));
@@ -83,7 +93,7 @@ export function assessObserverRunSet({manifest,records}){
     /** @type {unknown} */let identity,audioIdentity;
     for(const [index,expected]of order.entries()){
       try{
-        const item=record(records[index]),report=record(item.report),artifact=record(report.artifact);
+        const item=record(records.at(index)),report=record(item.report),artifact=record(report.artifact);
         need(item.label===expected.label&&item.mode===expected.mode&&item.signal===null&&item.timedOut===false&&item.overflow===false&&item.closeConfirmed===true,'observer-run-state');
         need(artifact.label===expected.label&&typeof artifact.root==='string'&&isDeepStrictEqual(artifact.files,files),'observer-artifact');
         need(typeof report.browser==='string'&&report.browser.length>0&&report.browser.length<=128,'observer-browser');
@@ -111,4 +121,193 @@ export function assessObserverRunSet({manifest,records}){
     }
   }catch(error){transportComplete=false;failures.push(error instanceof Error?error.message:'observer-invalid');}
   return {transportComplete,qualityPass:transportComplete&&failures.length===0,failures};
+}
+
+/** @typedef {{root:string,resolve:(name:string,options?:{type?:string,optional?:boolean})=>Promise<string>,lstat:(name:string,options?:{optional?:boolean})=>Promise<import('node:fs').Stats|null>,readFile:(name:string,encoding?:'utf8')=>Promise<string|Buffer>,writeFile:(name:string,data:string|Uint8Array,options:{flag:string})=>Promise<unknown>,ensureDirectory:(name:string)=>Promise<string>,readdir:(name:string)=>Promise<string[]>}} ObserverFiles */
+/** @param {string} prefix */
+export function observerEvidencePaths(prefix){
+  const directory='output/audio-observer/'+prefix;
+  return [directory+'/manifest.json',directory+'/result.json',...observerRunPlan(prefix).flatMap(({label,mode})=>[
+    directory+'/'+label+'-report.json',...mode==='f'?[]:[directory+'/'+label+'-diagnostic.json'],directory+'/'+label+'-stdout.log',directory+'/'+label+'-stderr.log'])];
+}
+
+/** Fixed iteration, not retries. @param {string} prefix @param {(run:ObserverRun)=>Promise<unknown>} execute */
+export async function executeObserverSequence(prefix,execute){
+  const records=[];
+  for(const run of observerRunPlan(prefix)){
+    /** @type {Record<string,unknown>} */let result;
+    try{result=record(await execute(run));}
+    catch(error){result={...run,exitCode:null,signal:null,timedOut:false,overflow:false,closeConfirmed:false,report:null,diagnostic:null,errors:[error instanceof Error?error.message.slice(0,240):'observer-invocation-failed']};}
+    records.push(result);
+    if(result.closeConfirmed!==true||result.label!==run.label||result.mode!==run.mode||result.stopReason!==undefined)break;
+  }
+  return records;
+}
+
+/** @param {{files:ObserverFiles,cwd:string,args:string[],env:NodeJS.ProcessEnv,stdout:string,stderr:string,timeoutMs?:number}} options */
+export async function executeObserverChild({files,cwd,args,env,stdout,stderr,timeoutMs=120000}){
+  need(path.isAbsolute(cwd)&&Number.isSafeInteger(timeoutMs)&&timeoutMs>0&&timeoutMs<=120000,'observer-child-input');
+  for(const name of [stdout,stderr])need(!await files.lstat(name,{optional:true}),'observer-log-exists');
+  const outPath=await files.resolve(stdout,{type:'missing-or-file'}),errPath=await files.resolve(stderr,{type:'missing-or-file'});
+  // Capability resolution checks every component; wx refuses an existing evidence file.
+  const out=await fs.open(outPath,'wx'); // eslint-disable-line security/detect-non-literal-fs-filename
+  let err;
+  try{err=await fs.open(errPath,'wx');}catch(error){await out.close();throw error;} // eslint-disable-line security/detect-non-literal-fs-filename
+  const child=spawn(process.execPath,args,{cwd,env,windowsHide:true,stdio:['ignore','pipe','pipe']});
+  let timedOut=false,overflow=false,cancelled=false,stopStarted=false;
+  /** @type {string[]} */const errors=[];
+  const closed=new Promise(resolve=>{child.once('close',resolve);child.once('error',error=>errors.push(error.message.slice(0,240)));});
+  /** @type {()=>void} */let stopped=()=>{};
+  const stopCompleted=new Promise(resolve=>{stopped=()=>resolve(true);});
+  const stop=()=>{if(stopStarted)return;stopStarted=true;void stopVisibilityChild(child,closed).catch(error=>errors.push(String(error?.message??error).slice(0,240))).finally(stopped);};
+  /** @param {import('node:fs/promises').FileHandle} file */
+  const sink=file=>{
+    let count=0;
+    return new Writable({write(chunk,encoding,callback){
+      const bytes=Buffer.isBuffer(chunk)?chunk:Buffer.from(chunk,encoding);
+      if(overflow||count+bytes.length>2*1024*1024){overflow=true;stop();callback();return;}
+      count+=bytes.length;file.writeFile(bytes).then(()=>callback(),error=>{errors.push(String(error.message).slice(0,240));stop();callback(error);});
+    }});
+  };
+  const sinks=[sink(out),sink(err)],drained=sinks.map(stream=>finished(stream).catch(error=>{errors.push(String(error.message).slice(0,240));stop();}));
+  child.stdout?.pipe(/** @type {Writable} */(sinks[0]));child.stderr?.pipe(/** @type {Writable} */(sinks[1]));
+  const cancel=()=>{cancelled=true;stop();};
+  process.once('SIGINT',cancel);process.once('SIGTERM',cancel);
+  const timer=setTimeout(()=>{timedOut=true;stop();},timeoutMs);
+  try{
+    await Promise.race([closed,stopCompleted]);
+    if(stopStarted){child.stdout?.destroy();child.stderr?.destroy();}
+    for(const stream of sinks)if(!stream.writableEnded)stream.end();
+    await Promise.all(drained);
+  }finally{
+    clearTimeout(timer);process.off('SIGINT',cancel);process.off('SIGTERM',cancel);await out.close();await err.close();
+  }
+  return {exitCode:child.exitCode,signal:child.signalCode,timedOut,overflow,
+    closeConfirmed:!stopStarted&&!cancelled&&!errors.length&&child.exitCode!==null,errors:errors.slice(0,16)};
+}
+
+const require=createRequire(import.meta.url),repositoryRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+/** @param {Uint8Array|string} bytes */
+const sha=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
+/** @param {string} filename */
+async function hashFile(filename){const hash=crypto.createHash('sha256');for await(const chunk of createReadStream(filename))hash.update(chunk);return hash.digest('hex');} // eslint-disable-line security/detect-non-literal-fs-filename
+/** @param {string} root */
+async function ownedRoot(root){
+  need(!(await fs.lstat(root)).isSymbolicLink(),'observer-root-link'); // eslint-disable-line security/detect-non-literal-fs-filename
+  const specifier='./owned-files.mjs',provider=record(await import(specifier)),open=provider.openOwnedRoot;
+  need(typeof open==='function','observer-files-provider');
+  const value=record(await open(root));need(typeof value.root==='string'&&['resolve','lstat','readFile','writeFile','ensureDirectory','readdir'].every(key=>typeof Reflect.get(value,key)==='function'),'observer-files-provider');
+  return /** @type {ObserverFiles} */(/** @type {unknown} */(value));
+}
+/** @param {ObserverFiles} files */
+async function sourceIdentity(files){
+  const git=/** @param {string[]} args */args=>execFileSync('git',args,{cwd:files.root,encoding:'utf8',timeout:15000,maxBuffer:2097152,windowsHide:true});
+  need(!git(['status','--porcelain','--untracked-files=no']).trim(),'observer-source-dirty');
+  const names=git(['ls-files','-z']).split('\0').filter(Boolean).sort(),entries=[];
+  need(names.includes('scripts/check-audio-quality.mjs'),'observer-source-input');
+  for(const name of names)entries.push([name,sha(await files.readFile(name))]);
+  return {commit:git(['rev-parse','HEAD']).trim(),inputSha256:sha(JSON.stringify(entries)),lockSha256:sha(await files.readFile('package-lock.json'))};
+}
+/** @param {ObserverFiles} files */
+async function productIdentity(files){const result=[];for(const name of AUDIO_ARTIFACT_FILES)result.push({path:name,sha256:sha(await files.readFile(name))});return result;}
+/** @param {ObserverFiles} files @param {string} name */
+async function boundedJSON(files,name){const stat=await files.lstat(name);need(stat?.isFile()&&stat.size<=8*1024*1024,'observer-json-size');return await files.readFile(name);}
+/** @param {ObserverFiles} files */
+async function profiles(files){return await files.lstat('output/audio-quality',{optional:true})?(await files.readdir('output/audio-quality')).filter(name=>/^profile-[a-zA-Z0-9_-]+$/.test(name)):[];}
+/** @param {string} profilePath */
+async function profileProcesses(profilePath){
+  const specifier='./extension-e2e/native-profile.mjs';
+  /** @type {unknown} */const loaded=await import(specifier);
+  const query=record(loaded).queryWindowsProcesses;need(typeof query==='function','observer-process-provider');return array(await query(profilePath));
+}
+/** @param {string} root */
+async function browserExecutable(root){
+  const fromRoot=createRequire(path.join(root,'package.json'));
+  need(await fs.realpath(fromRoot.resolve('playwright/package.json'))===await fs.realpath(require.resolve('playwright/package.json')),'observer-playwright-drift');
+  const packageFile=record(require('playwright/package.json'));need(packageFile.version==='1.62.1','observer-playwright-version');
+  const registry=record(record(record(require('playwright-core/lib/coreBundle')).registry).registry);
+  need(typeof registry.findExecutable==='function','observer-browser-provider');
+  const executable=record(registry.findExecutable(process.platform==='win32'?'chromium':'chromium-headless-shell'));
+  need(typeof executable.executablePath==='function','observer-browser-provider');
+  const filename=executable.executablePath();need(typeof filename==='string'&&path.isAbsolute(filename),'observer-browser-path');return filename;
+}
+
+export {browserExecutable as observerBrowserExecutable};
+
+/** @param {{frozenRoot:string,prefix:string}} options */
+export async function runObserverIsolation({frozenRoot,prefix}){
+  const started=Date.now(),order=observerRunPlan(prefix),paths=observerEvidencePaths(prefix),files=await ownedRoot(repositoryRoot);
+  need(typeof frozenRoot==='string'&&frozenRoot.length>0,'observer-frozen-root');
+  const frozen=await ownedRoot(path.resolve(files.root,frozenRoot));
+  const inside=/** @param {string} a @param {string} b */(a,b)=>{const r=path.relative(a,b);return r===''||r!=='..'&&!r.startsWith('..'+path.sep)&&!path.isAbsolute(r);};
+  need(!inside(files.root,frozen.root)&&!inside(frozen.root,files.root),'observer-root-overlap');
+  const currentIdentity=await sourceIdentity(files),frozenIdentity=await sourceIdentity(frozen);
+  need(frozenIdentity.commit===frozenCommit&&currentIdentity.lockSha256===frozenIdentity.lockSha256,'observer-frozen-input');
+  const original=execFileSync('git',['show',frozenCommit+':scripts/check-audio-quality.mjs'],{cwd:frozen.root,maxBuffer:2097152});
+  const frozenBytes=await frozen.readFile('scripts/check-audio-quality.mjs');
+  need(typeof frozenBytes!=='string'&&original.equals(frozenBytes),'observer-frozen-runner-bytes');
+  for(const name of ['scripts/audio-artifacts.mjs','scripts/audio-artifact-core.mjs','scripts/audio-metrics.mjs','scripts/audio-signal.mjs','scripts/audio-native-browser.mjs','scripts/owned-files.mjs','scripts/extension-e2e/visibility-browser.mjs','tests/helpers.cjs'])
+    need(sha(await files.readFile(name))===sha(await frozen.readFile(name)),'observer-shared-input-drift');
+  need(!process.env.PLAYWRIGHT_BROWSERS_PATH||path.isAbsolute(process.env.PLAYWRIGHT_BROWSERS_PATH),'observer-browser-relative-cache');
+  const executable=await browserExecutable(files.root);need(executable===await browserExecutable(frozen.root),'observer-browser-drift');
+  const environment={platform:process.platform,nodeVersion:process.version,nodeExecutableSha256:await hashFile(process.execPath),playwrightVersion:'1.62.1',
+    browserExecutableSha256:await hashFile(executable),sampleRate:48000,lockSha256:currentIdentity.lockSha256};
+  const product=await productIdentity(files),ci={checkout:currentIdentity.commit,head:process.env.GITHUB_HEAD_SHA??null};
+  const manifest={schema:1,prefix,order,tools:{frozen:frozenIdentity,current:currentIdentity},product:{files:product},environment,ci};
+  const directory='output/audio-observer/'+prefix;
+  need(!await files.lstat(directory,{optional:true}),'observer-output-exists');
+  for(const run of order)for(const root of [files,frozen])for(const suffix of ['.json','-diagnostic.json'])
+    need(!await root.lstat('output/audio-quality/report-'+run.label+suffix,{optional:true}),'observer-source-output-exists');
+  await files.ensureDirectory('output/audio-observer');
+  // Exclusive run-directory claim before publishing the immutable plan.
+  await fs.mkdir(await files.resolve(directory,{type:'missing-or-directory'})); // eslint-disable-line security/detect-non-literal-fs-filename
+  await files.writeFile(directory+'/manifest.json',JSON.stringify(manifest,null,2),{flag:'wx'});
+  /** @type {Record<string,unknown>[]} */let records=[];/** @type {string[]} */const hostFailures=[];
+  try{
+    records=await executeObserverSequence(prefix,async run=>{
+      const role=run.mode==='f'?frozen:files,before=await profiles(role),env={...process.env};delete env.KNIFE_AUDIO_QUALITY_TRACE;if(run.mode==='t')env.KNIFE_AUDIO_QUALITY_TRACE='1';
+      const remaining=20*60000-(Date.now()-started);need(remaining>0,'observer-set-timeout');
+      const execution=await executeObserverChild({files,cwd:role.root,args:['scripts/check-audio-quality.mjs','--root',files.root,'--label',run.label],env,
+        stdout:directory+'/'+run.label+'-stdout.log',stderr:directory+'/'+run.label+'-stderr.log',timeoutMs:Math.min(120000,remaining)});
+      /** @type {unknown} */let report=null,diagnostic=null;
+      for(const suffix of ['report',...run.mode==='f'?[]:['diagnostic']]){
+        const raw='output/audio-quality/report-'+run.label+(suffix==='report'?'':'-diagnostic')+'.json';
+        try{const bytes=await boundedJSON(role,raw);await files.writeFile(directory+'/'+run.label+'-'+suffix+'.json',bytes,{flag:'wx'});
+          const value=JSON.parse(bytes.toString());if(suffix==='report')report=value;else diagnostic=value;}
+        catch{hostFailures.push(run.label+'/observer-evidence-read');}
+      }
+      let closeConfirmed=execution.closeConfirmed;
+      if(process.platform==='win32'){
+        const created=(await profiles(role)).filter(name=>!before.includes(name));
+        if(created.length!==1)closeConfirmed=false;
+        else{
+          try{closeConfirmed=closeConfirmed&&(await profileProcesses(path.join(role.root,'output/audio-quality',/** @type {string} */(created[0])))).length===0;}catch{closeConfirmed=false;}
+          const copied=await ownedRoot(path.join(role.root,'output/audio-quality',/** @type {string} */(created[0])));
+          try{need(await hashFile(await copied.resolve('bundled-chromium/chrome.exe',{type:'file'}))===environment.browserExecutableSha256,'observer-launched-binary-drift');}catch{closeConfirmed=false;}
+        }
+      }
+      if(run.mode!=='f'){
+        try{validateQualityEvidence(diagnostic);}catch{closeConfirmed=false;}
+      }else if(execution.exitCode!==0){
+        // Original F has no structured shutdown diagnostic; never infer a valid failure from exit1 alone.
+        try{const failures=validateReport(record(report)),stderr=(await files.readFile(directory+'/'+run.label+'-stderr.log','utf8')).toString();
+          closeConfirmed=closeConfirmed&&execution.exitCode===1&&failures.length>0&&stderr.includes('Error: Audio quality failed: '+failures.join(', '));}
+        catch{closeConfirmed=false;}
+      }
+      let stopReason;
+      if(!isDeepStrictEqual(product,await productIdentity(files))||!isDeepStrictEqual(currentIdentity,await sourceIdentity(files))||!isDeepStrictEqual(frozenIdentity,await sourceIdentity(frozen))){
+        stopReason='observer-input-changed';hostFailures.push(run.label+'/'+stopReason);
+      }
+      return {...run,...execution,closeConfirmed,report,diagnostic,...stopReason?{stopReason}:{}};
+    });
+  }catch(error){hostFailures.push(error instanceof Error?error.message:'observer-host-failed');}
+  const result=assessObserverRunSet({manifest,records});
+  try{need(isDeepStrictEqual(currentIdentity,await sourceIdentity(files))&&isDeepStrictEqual(frozenIdentity,await sourceIdentity(frozen))&&
+    isDeepStrictEqual(product,await productIdentity(files))&&environment.nodeExecutableSha256===await hashFile(process.execPath)&&environment.browserExecutableSha256===await hashFile(executable),'observer-input-changed');}
+  catch{hostFailures.push('observer-input-changed');}
+  if(hostFailures.length){result.transportComplete=false;result.qualityPass=false;result.failures.push(...hostFailures);}
+  const evidence=[];for(const name of paths.filter(name=>name!==directory+'/result.json')){const stat=await files.lstat(name,{optional:true});if(stat?.isFile())evidence.push({path:name,sha256:sha(await files.readFile(name))});}
+  const output={...result,records:records.map(({report:_report,diagnostic:_diagnostic,...rest})=>rest),evidence,limits:['fixed-nine-not-statistical-proof','frozen-has-no-raw-pcm','not-causal-closure']};
+  const json=JSON.stringify(output,null,2);need(Buffer.byteLength(json)<=8*1024*1024,'observer-result-size');await files.writeFile(directory+'/result.json',json,{flag:'wx'});
+  return {...result,paths};
 }

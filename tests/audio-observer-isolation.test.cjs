@@ -74,3 +74,68 @@ test('real numerical failure stays available without becoming transport success 
   assert.ok(result.failures.some(x=>x.includes('peak=1.1')));assert.equal(record.report.stress.channels[0].peak,1.1);
   record.closeConfirmed=false;assert.equal(assessObserverRunSet(f).transportComplete,false);
 });
+
+test('owned child streams exact separate logs and retains exit1 without replacing a written result',async t=>{
+  const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path');
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'observer-child-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+  const {openOwnedRoot}=await import('../scripts/owned-files.mjs'),files=await openOwnedRoot(root);
+  const {executeObserverChild}=await subject();
+  const result=await executeObserverChild({files,cwd:root,args:['-e',"require('node:fs').writeFileSync('result.json','kept');process.stdout.write('out');process.stderr.write('err');process.exitCode=1"],env:{...process.env},stdout:'stdout.log',stderr:'stderr.log'});
+  assert.equal(result.exitCode,1);assert.equal(result.signal,null);assert.equal(result.timedOut,false);assert.equal(result.overflow,false);
+  assert.equal(await files.readFile('stdout.log','utf8'),'out');assert.equal(await files.readFile('stderr.log','utf8'),'err');assert.equal(await files.readFile('result.json','utf8'),'kept');
+  await assert.rejects(executeObserverChild({files,cwd:root,args:['-e',"throw Error('must not start')"],env:{...process.env},stdout:'stdout.log',stderr:'other.log'}));
+  assert.equal(await files.readFile('stdout.log','utf8'),'out');
+});
+
+test('owned child output overflow and timeout cannot be promoted to normal closure',async t=>{
+  const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path');
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'observer-bounds-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+  const {openOwnedRoot}=await import('../scripts/owned-files.mjs'),files=await openOwnedRoot(root),{executeObserverChild}=await subject();
+  const overflow=await executeObserverChild({files,cwd:root,args:['-e',"process.stdout.write(Buffer.alloc(3*1024*1024));setInterval(()=>{},1000)"],env:{...process.env},stdout:'large.log',stderr:'large-err.log'});
+  assert.equal(overflow.overflow,true);assert.equal(overflow.closeConfirmed,false);assert.ok((await files.lstat('large.log')).size<=2*1024*1024);
+  const timeout=await executeObserverChild({files,cwd:root,args:['-e','setInterval(()=>{},1000)'],env:{...process.env},stdout:'hang.log',stderr:'hang-err.log',timeoutMs:80});
+  assert.equal(timeout.timedOut,true);assert.equal(timeout.closeConfirmed,false);
+});
+
+test('fixed sequence continues after numeric exit but stops before another child after uncertain close',async()=>{
+  const {executeObserverSequence}=await subject();
+  const all=await executeObserverSequence('f01obs-test',async run=>({...run,exitCode:1,closeConfirmed:true}));
+  assert.deepEqual(all.map(x=>x.label),'f1,u1,t1,u2,t2,f2,t3,f3,u3'.split(',').map(s=>'f01obs-test-'+s));
+  const stopped=await executeObserverSequence('f01obs-test',async run=>({...run,exitCode:0,closeConfirmed:run.mode==='f'}));
+  assert.equal(stopped.length,2);assert.equal(stopped.at(-1).label,'f01obs-test-u1');
+  const failed=await executeObserverSequence('f01obs-test',async run=>{if(run.mode==='u')throw Error('later-read-failed');return {...run,closeConfirmed:true};});
+  assert.equal(failed.length,2);assert.equal(failed[0].label,'f01obs-test-f1');assert.equal(failed[1].closeConfirmed,false);
+  const drift=await executeObserverSequence('f01obs-test',async run=>({...run,closeConfirmed:true,stopReason:'input-drift'}));assert.equal(drift.length,1);
+});
+
+test('public evidence layout materializes exactly35 unique owned files with no profiles',async t=>{
+  const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path');
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'observer-paths-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+  const {observerEvidencePaths}=await subject(),{openOwnedRoot}=await import('../scripts/owned-files.mjs'),files=await openOwnedRoot(root);
+  const paths=observerEvidencePaths('f01obs-test');assert.equal(paths.length,35);assert.equal(new Set(paths).size,35);
+  for(const name of paths){assert.ok(name.startsWith('output/audio-observer/f01obs-test/'));assert.ok(!name.includes('profile'));await files.ensureDirectory(path.posix.dirname(name));await files.writeFile(name,'{}',{flag:'wx'});}
+  assert.equal((await files.readdir('output/audio-observer/f01obs-test')).length,35);
+});
+
+test('isolation rejects overlap and dirty or unpinned source before a browser invocation',async()=>{
+  const {runObserverIsolation}=await subject();
+  for(const frozenRoot of ['.','output','../cheese-knife'])await assert.rejects(runObserverIsolation({frozenRoot,prefix:'f01obs-reject'}));
+});
+
+test('CI publishes the exact35 paths even when the real host rejects its frozen root before launch',async t=>{
+  const fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path'),{spawnSync}=require('node:child_process');
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'observer-ci-'));t.after(()=>fs.rm(root,{recursive:true,force:true}));
+  const workflow=await fs.readFile('.github/workflows/ci.yml','utf8'),match=workflow.match(/<<'OBSERVER_NODE'\r?\n([\s\S]*?)\r?\n\s+OBSERVER_NODE/);assert.ok(match);
+  const script=match[1].split(/\r?\n/).map(line=>line.replace(/^          /,'')).join('\n');
+  const filename=path.join(root,'github-output');
+  const result=spawnSync(process.execPath,['--input-type=module','-e',script],{encoding:'utf8',env:{...process.env,GITHUB_RUN_ID:'123',GITHUB_RUN_ATTEMPT:'1',GITHUB_OUTPUT:filename,F01_OBSERVER_FROZEN:'.'},timeout:15000});
+  assert.equal(result.status,1);assert.match(result.stderr,/observer-root-overlap/);
+  const lines=(await fs.readFile(filename,'utf8')).trim().split('\n');assert.equal(lines.shift(),'paths<<F01_OBSERVER_PATHS');assert.equal(lines.pop(),'F01_OBSERVER_PATHS');
+  const {observerEvidencePaths}=await subject();assert.deepEqual(lines,observerEvidencePaths('f01obs-123-1'));
+});
+
+test('browser attestation selects an installed pinned executable without launching a browser',async()=>{
+  const fs=require('node:fs/promises'),{observerBrowserExecutable}=await subject();
+  const executable=await observerBrowserExecutable(process.cwd());assert.ok((await fs.lstat(executable)).isFile());
+  assert.match(executable,process.platform==='win32'?/chrome\.exe$/:/headless_shell/);
+});
