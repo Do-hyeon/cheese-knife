@@ -14,6 +14,74 @@ function setup(t, html = playerHTML, url) {
   return dom;
 }
 
+test('hidden player replacement is reconciled even when animation frames never run', async t => {
+  const dom=page(playerHTML);
+  t.after(()=>{dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));dom.window.close();});
+  Object.defineProperty(dom.window.document,'hidden',{configurable:true,value:true});
+  dom.window.requestAnimationFrame=()=>1;dom.window.cancelAnimationFrame=()=>{};
+  load(dom,'media-profiles.js');load(dom,'web/runtime.js');load(dom,'web/site-adapter.js');
+  const knife=runtime(dom),old=knife.state.player.video,next=dom.window.document.createElement('video');
+  old.replaceWith(next);
+  await new Promise(resolve=>setTimeout(resolve,150));
+  assert.equal(knife.state.player.video,next,'a hidden player must not retain the detached video while rAF is suspended');
+});
+
+async function scheduledPage(t) {
+  const dom=page(playerHTML),{window}=dom;
+  if(window.document.readyState!=='complete')await new Promise(resolve=>window.addEventListener('load',resolve,{once:true}));
+  let hidden=true,nextId=0,reconciles=0;
+  const timers=new Map(),frames=new Map();
+  Object.defineProperty(window.document,'hidden',{configurable:true,get:()=>hidden});
+  window.setTimeout=(fn,delay)=>{const id=++nextId;timers.set(id,{fn,delay});return id;};
+  window.clearTimeout=id=>timers.delete(id);
+  window.requestAnimationFrame=fn=>{const id=++nextId;frames.set(id,fn);return id;};
+  window.cancelAnimationFrame=id=>frames.delete(id);
+  t.after(()=>{window.dispatchEvent(new window.PageTransitionEvent('pagehide'));window.close();});
+  load(dom,'media-profiles.js');load(dom,'web/runtime.js');load(dom,'web/site-adapter.js');deliver(dom);
+  const knife=runtime(dom),reconcile=knife.reconcile;
+  knife.reconcile=()=>{reconciles++;reconcile();};
+  return {dom,knife,timers,frames,count:()=>reconciles,
+    visibility(value){hidden=value;window.document.dispatchEvent(new window.Event('visibilitychange'));}};
+}
+
+test('hidden relevant mutations coalesce into one bounded task without polling or owned DOM feedback',async t=>{
+  const {dom,knife,timers,frames,count}=await scheduledPage(t),document=dom.window.document;
+  const owned=document.createElement('button');owned.className='knife-owned';document.body.append(owned);await flush();
+  assert.equal(timers.size,0);assert.equal(frames.size,0);assert.equal(count(),0);
+  const first=document.createElement('video'),latest=document.createElement('video');
+  knife.state.player.video.replaceWith(first);first.replaceWith(latest);await flush();
+  assert.equal(frames.size,0);assert.equal(timers.size,1);assert.equal(count(),0);
+  const [id,task]=[...timers][0];assert.equal(task.delay,100);
+  knife.schedule();knife.schedule();assert.equal(timers.size,1);
+  timers.delete(id);task.fn();assert.equal(knife.state.player.video,latest);assert.equal(count(),1);
+  deliver(dom);await flush();assert.equal(timers.size,0);assert.equal(frames.size,0);
+});
+
+test('visibility changes cancel both scheduling kinds and stale tasks cannot consume the new frame',async t=>{
+  const state=await scheduledPage(t),{dom,knife,timers,frames,count}=state;
+  knife.schedule();const old=[...timers.values()][0];assert.ok(old,'hidden reconciliation must not depend on rAF');
+  state.visibility(false);deliver(dom);assert.equal(timers.size,0);
+  knife.schedule();knife.schedule();assert.equal(frames.size,1);assert.equal(timers.size,0);
+  const before=count();old.fn();assert.equal(count(),before);assert.equal(frames.size,1);
+  const frame=[...frames.values()][0];
+  state.visibility(true);deliver(dom);assert.equal(frames.size,0);
+  knife.schedule();const pending=[...timers.values()][0];assert.ok(pending);
+  const hiddenBefore=count();frame();assert.equal(count(),hiddenBefore);assert.equal(timers.size,1);
+  pending.fn();assert.equal(count(),hiddenBefore+1);
+});
+
+test('BFCache and final disposal retire hidden tasks including callbacks delivered after a new schedule',async t=>{
+  const state=await scheduledPage(t),{dom,knife,timers,count}=state,{window}=dom;
+  knife.schedule();const old=[...timers.values()][0];assert.ok(old);
+  window.dispatchEvent(new window.PageTransitionEvent('pagehide',{persisted:true}));assert.equal(timers.size,0);
+  const frozenCount=count();state.visibility(false);state.visibility(true);assert.equal(count(),frozenCount);
+  window.dispatchEvent(new window.PageTransitionEvent('pageshow',{persisted:true}));deliver(dom);
+  knife.schedule();const current=[...timers.values()][0];assert.ok(current);
+  const before=count();old.fn();assert.equal(count(),before);assert.equal(timers.size,1);
+  window.dispatchEvent(new window.PageTransitionEvent('pagehide'));assert.equal(timers.size,0);
+  current.fn();assert.equal(count(),before);assert.equal(runtime(dom),undefined);
+});
+
 test('runtime stays useful without an adapter and late adapter reconciles exactly once', t => {
   const dom = page(playerHTML), key = dom.window.Symbol.for('cheese-knife.runtime.v1');
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });

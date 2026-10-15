@@ -163,6 +163,24 @@ runtime은 기존 settings transform(런타임 import/export 금지)와 MAIN bun
 
 익명 pipe의 NUL 구분 JSON은 UTF8 분할/여러 frame·32MiB 상한·잘못된 입력/EOF/error/close를 회귀 검증하고 새 helper도 strict checkJs·필수 tracked source 입력에 포함한다. Native 실제 탭 전환 뒤 document.hidden=true와 복귀 false를 조건부 대기해 확인하며 property override/합성 visibility 이벤트는 금지한다. 종료3증명·전후 source 일치·기존 UI/저장 gate는 완화하지 않는다. 새 clean checkpoint 정상/정확한4손실이 끝나기 전 T7 완료가 아니며 T8의 정밀 timer/출력 검증을 대체하지 않는다.
 
+### T7 비활성 플레이어 재연결 보완안 — 승인 완료·재검증 중
+
+2026-10-15 사용자가 위 구현·종합 재검증과 후속 T8/T9 진행을 승인했다. 새 권한/의존성/전송·수용 기준 변경·push/PR은 여전히 제외한다.
+
+**근거:** 301c2e9의 AT는 실제 비활성 탭에서 video 교체 뒤 decoded/blob=true·wanted=false·source0으로15초 제한에 걸렸다. runtime의 관련 DOM 변경은 rAF에만 재조정을 예약한다. rAF가 실행되지 않는 숨김 문서를 모사한 독립 회귀에서도 제거된 옛 video가 state에 남아 실패했다. 검사에서 탭을 강제로 활성화하면 이 제품 결함을 가릴 수 있으므로 하지 않는다. 세 번의 Native 보완이 startup/조작/실제 수명이라는 다른 층의 결함을 드러낸 시점에서 실행 구조를 재검토하며, 아래 제품 변경은 별도 승인 전 시작하지 않는다.
+
+**권장 설계:** `src/main/runtime/lifecycle.ts`의 기존 관련 DOM 변경 필터·재조정 경로를 유지한다. 보이는 문서는 기존 rAF를 사용하고, 숨겨진 문서는 같은 관련 변경이 있을 때만100ms 단발 timeout으로 합친다. 상시 polling/새 interval은 만들지 않고 재조정 예약은 종류와 무관하게 최대1개다. 브라우저가 timeout을 더 늦게 실행할 수 있으므로100ms 내 실행 보장을 광고하지 않는다. visibility 변경 때 이전 예약을 취소한 뒤 기존 즉시 재조정을 수행하고, BFCache freeze·최종 pagehide/dispose에서도 모두 취소한다. 예약 ticket 일치를 확인해 취소/재개 이전의 옛 callback이 새 문서/플레이어에 작용하지 않게 한다.
+
+동기 재조정은 DOM 조립 중 재진입/과도한 숨김 작업을 늘릴 수 있어 채택하지 않는다. rAF 강제 실행·document.hidden 위조·숨김 case를 표시 case로 바꾸는 테스트 우회도 제외한다. 오디오 알고리즘·저장 형식·writer/문서 권위·권한·외부 통신·원격 포트·user Chrome은 변경하지 않는다.
+
+**구현·검증 묶음(승인 대상):**
+
+- [x] rAF가 전혀 실행되지 않는 숨김 상태의 실제 runtime/video 교체 회귀 RED. 이 단위 모사는 Native 성공 증거가 아니다.
+- [ ] 단발 예약 coalescing/표시 복귀 시 중복0/관련 없는 DOM0/BFCache·dispose·늦은 callback0 회귀를 먼저 추가하고 최소 스케줄러 변경으로 GREEN.
+- [ ] 기존 MAIN 생성 경로로 재생성하고 필요한 독립 실행 pin을 변경 이유와 함께 갱신. 기존 수치/quality 기준은 유지한다.
+- [ ] 격리 후보 전체·9기반/build/package·기존 lifecycle/Gain/오디오 회귀. 새 clean checkpoint에서 Gain full·설정 정상/정확한4손실·cold39/19를 다시 실행하며 각 source와 종료3증명을 요구한다.
+- [ ] 실제 비활성 상태를 유지한 video/PZP 교체와 표시 복귀를 모두 통과한 뒤 T7 마감. 이어 이미 승인된 T8 객관 출력/수명 계측 및 T9 최종 검토를 진행한다. 새 권한/의존성/전송·수용 기준/알고리즘 변경이 필요하면 다시 중지한다. push/PR은 하지 않는다.
+
 ## Task 8 — 객관 EQ/노멀라이저/출력·수명 검증
 
 **파일:** 기존 `scripts/{check-audio-quality,audio-artifact-core,audio-signal,audio-metrics}.mjs`의 현행 도구/fixture 보존; 신규 `scripts/check-audio-processing.mjs`, `scripts/audio-processing-metrics.mjs`, `tests/f01-audio-quality-contract.test.cjs`, F01 독립 fixture. 기존 영상/미리보기 검사도 유지한다.

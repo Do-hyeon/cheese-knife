@@ -247,3 +247,11 @@ transport 신규3개 및 복귀 관측 누락 거부를 RED→GREEN으로 확인
 복원 뒤 집중32/32·strict·격리 전체1574개 중1573통과/실패0/기존1skip(65.595초)을 확인했다. AP의 정확한 자기 프로필 DeBcON에는 현재 남은 root process가0개였으나 이를 과거 종료3증명으로 바꿔 기록하지 않는다. 후속 AR정상/AS정확한4손실은 새 checkpoint에 고정한다.
 
 27c95b2의 AR은 실제 hidden 관측과 앞선 ABA/스타일/ACK 검사를 지나 두 번째 방송 reload 뒤 클릭에서 중단됐다(40.922초/종료3증명true). 보존한 trace는 call@937의 두 번째 방송 reload, call@947의 같은 page `.knife-comp button` 클릭 대기, 직전 활성화가 다른 설정 TAB임을 보여 준다. 실제 비활성 문서의 클릭 안정화에 강제 focus가 필요하다는 기존 도구 전제가 드러난 것이다. 각 lifecycle 조작 전에 정확한 해당 방송/설정 TAB을 앞으로 가져오도록 순서를 명시한다. 강제 클릭·visibility 위조·제품 변경은 없고 AS는 미실행이다. 새로운 정상/손실 재검증 전 T7 미완료를 유지한다.
+
+301c2e9의 AT는 위 조작을 지나 `audio-settings-new-video-default`로 실패했다(41.361초/종료3증명true). 마지막 Native 관측은 owner3/ready=true/decoded=true/blob=true/effectiveGain0.5/hidden=true이나 wanted=false·audio off·source0이었다. AU는 미실행이다. runtime의 MutationObserver→schedule 경로는 rAF만 사용하고 숨김 상태에서는 route pulse도 중단된다. rAF가 전혀 실행되지 않는 문서에서 video 교체 후 옛 video가 runtime.state에 남는 독립 회귀를 RED로 재현했다. Native 출력과 코드·단위 재현이 같은 지연을 지목하므로 단순 검사 timeout 연장/활성화로 통과시키지 않는다.
+
+현재 제품 변경은 하지 않았고 새 RED 테스트와 한국어 보완 설계만 추가했다. 기존 기본 launcher 아래의 과거 PASS는 숨김 수명을 증명하지 않는다. 기존 T7 정상/손실·cold/Gain 성공은 해당 checkpoint의 범위로 보존하며, 제품 수명 스케줄러를 변경하면 새 입력으로 재검증한다. 반복 보완에서 다른 층의 실행 문제가 드러나 systematic-debugging의 구조 재검토 단계로 전환했고, 계획의 단발 timeout/취소/ticket 설계 승인 전에는 네 번째 수정이나 T8 진행을 하지 않는다.
+
+사용자 추가 승인 뒤 lifecycle 한 곳에만 숨김100ms 단발 예약/표시 rAF·공유 취소 epoch를 구현했다. visibility/BFCache/final dispose에서 예약을 취소하고, 취소되거나 실행된 옛 callback은 새 예약을 소비하지 않는다. frozen visibility 이벤트도 재조정을 실행하지 않는다. 신규4개 RED→GREEN 및 관련 runtime/scoped/normalizer/Gain62개가 통과했다. 기존 MAIN 생성기로 web/runtime.js만 달라졌고 실행 pin은598655ca…로 갱신했다. 다른 DSP/권한/저장 계약은 변경하지 않았다. 9개 기반/build/package는 격리 후보에서 PASS; inventory를 포함한 별도 샌드박스 집중 실행의 symlink EPERM은 성공으로 계산하지 않으며 네이티브 전체 회귀로 확인한다. 새 actual Native 검증은 아직 남아 있다.
+
+빌드 완료 뒤 단독 실행한 격리 전체 회귀1578개 중1577통과/실패0/기존1skip(60.169초)을 확인했다. 앞선 동시 빌드 실행은 hls-verifier의 complete-pass 기대에 incomplete가 나온1건(1576통과/1실패/1skip)으로 실패했으며 별도 로그를 보존했다. HLS 코드·제한·기대 값은 바꾸지 않았고 같은 소스의 빌드 종료 후 전체가 통과했다. 다음 새 checkpoint 실제 설정 정상/4손실·Gain full·cold19/39를 모두 마쳐야 T7 완료다.

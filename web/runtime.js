@@ -579,6 +579,7 @@
     const cleanups = [];
     let observer = null;
     let revision = -1, attempts = 0, frame = null, pulse = null, requestTimer = null;
+    let reconcileTimer = null, reconcileEpoch = 0;
     let started = false, suspended = false, disposed = false;
     const clearRequest = () => {
       if (requestTimer !== null) environment.clearTimeout(requestTimer);
@@ -588,9 +589,12 @@
       if (pulse !== null) environment.clearInterval(pulse);
       pulse = null;
     };
-    const clearFrame = () => {
+    const clearScheduled = () => {
+      reconcileEpoch++;
       if (frame !== null) environment.cancelAnimationFrame(frame);
+      if (reconcileTimer !== null) environment.clearTimeout(reconcileTimer);
       frame = null;
+      reconcileTimer = null;
     };
     const on = (target, type, listener) => {
       target.addEventListener(type, listener);
@@ -644,7 +648,7 @@
       suspended = true;
       clearPulse();
       clearRequest();
-      clearFrame();
+      clearScheduled();
     };
     const dispose = () => {
       if (disposed) return;
@@ -660,11 +664,17 @@
       observer = null;
     };
     const schedule = () => {
-      if (disposed || suspended || frame !== null) return;
-      frame = environment.requestAnimationFrame(() => {
+      if (disposed || suspended || frame !== null || reconcileTimer !== null) return;
+      const epoch = ++reconcileEpoch;
+      const run = () => {
+        if (epoch !== reconcileEpoch) return;
         frame = null;
+        reconcileTimer = null;
+        reconcileEpoch++;
         if (!disposed && !suspended) runtime.reconcile();
-      });
+      };
+      if (environment.document.hidden) reconcileTimer = environment.setTimeout(run, 100);
+      else frame = environment.requestAnimationFrame(run);
     };
     const onMessage = (event) => {
       const message = event;
@@ -742,6 +752,8 @@
         cleanups.push(() => observer?.disconnect());
         on(environment.window, "message", onMessage);
         on(environment.document, "visibilitychange", () => {
+          if (disposed || suspended) return;
+          clearScheduled();
           startPulse();
           runtime.reconcile();
           if (!environment.document.hidden) {
@@ -752,6 +764,7 @@
         on(environment.window, "popstate", () => runtime.reconcile());
         on(environment.window, "pageshow", () => {
           if (disposed) return;
+          clearScheduled();
           suspended = false;
           startPulse();
           runtime.reconcile();

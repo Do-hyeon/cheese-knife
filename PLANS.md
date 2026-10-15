@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T7 실제 설치·다중 창 검증/발견 사항 보완**. T1–T6 로컬 구현·해당 단계 게이트를 마쳤으며 실제 후행 검증 T7–T9는 미완료다. 완료/실패 이력과 검증 범위는 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)에 유지한다. F00 PR #44 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
+최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T7 승인된 비활성 플레이어 스케줄러 보완·격리 재검증**. T1–T6 로컬 구현·해당 단계 게이트를 마쳤으며 실제 후행 검증 T7–T9는 미완료다. 완료/실패 이력과 검증 범위는 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)에 유지한다. F00 PR #44 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -124,6 +124,10 @@
   - [ ] 체크리스트 대조에서 분리한 실제 ABA·전역 EQ/스타일 동시 merge·설정 UI를 남긴 원래 대상 종료·hidden 관측의 새 checkpoint 검증 후 T7 마감. 정밀 hidden timer/출력 계측은 T8에서도 별도 완료해야 한다.
     - [x] e280e0d의 AN은 재부팅 전 `audio-settings-hidden-unobserved`로 실패/종료3증명true, AO 미실행임을 확인했다. Playwright 기본 focus emulation의 관측 간섭을 최소 재현했고, 공식 `noDefaults`·익명 pipe 경로에서 실제 hidden→visible/자식 exit0을 확인했다. 제품/권한/기존 Chrome/원격 port 변경 없음.
     - [ ] F01 설정 검사에만 적용한 native-visibility launcher의 strict/전체 회귀·새 clean checkpoint 정상/정확한4손실을 확인한다. 기본 검사 launcher/과거 증거는 유지하고 hidden 및 visible 복귀의 실제 관측을 모두 요구한다.
+      - [x] 익명 pipe/내장 확장 제외/실제 대상 활성화 순서 보완. 301c2e9 직전 전체1574개 중1573통과/실패0/기존1skip·strict/집중32 통과. AR/AT 모두 종료3증명true지만 정상 PASS는 아니다.
+      - [x] AT에서 실제 hidden 상태의 새 video가 decoded/blob임에도 wanted=false/source0으로15초간 남았다. 별도 회귀에서 rAF가 실행되지 않으면 runtime이 제거된 옛 video를 계속 참조함을 RED 재현했다. AU는 미실행이다.
+      - [x] [제품 스케줄러 보완안](docs/superpowers/plans/2026-10-14-f01-audio-processing.md#t7-비활성-플레이어-재연결-보완안--승인-완료재검증-중) 사용자 승인/최소 구현: 표시 중 rAF 유지/숨김 중 관련 DOM 변경에만100ms 단발 coalescing·예약1개·visibility/BFCache/최종 종료 취소·옛 callback0. 실패4개→GREEN·관련62개·MAIN 재생성/독립 실행 pin·9기반/build/package 확인.
+      - [ ] 새 전체 회귀·clean checkpoint의 Gain full/설정 정상·4손실/cold39·19 및 종료/source 재검증을 거쳐 T7 마감, 이어 T8/T9. 단위 GREEN을 실제 숨김 탭 성공으로 간주하지 않는다.
     - [x] 별도 F00 ae9f8e5의59자산/765607byte/고정 해시 입력·strict helper/오용 검출. 게시본58·현재F01 62와 구분한다.
     - [x] 독립 v1/명시 전환/edited 기대 값·6개 데이터 상태·기존 baseline을 보존하는 supervised 실행/손실 대조/실제 cold 검증. eb9cfd5의 AI19/AJ39 결과에 포함되며 새 visibility launcher의 성공으로 전용하지 않는다.
 - [ ] T8 clean checkpoint·기존14/12/18/stress와 새 EQ/normalizer/전환/수명 객관 출력 검증.

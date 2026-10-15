@@ -7,6 +7,7 @@ export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvir
   const cleanups: (() => void)[] = [];
   let observer: MutationObserver | null = null;
   let revision = -1, attempts = 0, frame: number | null = null, pulse: number | null = null, requestTimer: number | null = null;
+  let reconcileTimer: number | null = null, reconcileEpoch = 0;
   let started = false, suspended = false, disposed = false;
 
   const clearRequest = () => {
@@ -17,9 +18,11 @@ export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvir
     if (pulse !== null) environment.clearInterval(pulse);
     pulse = null;
   };
-  const clearFrame = () => {
+  const clearScheduled = () => {
+    reconcileEpoch++;
     if (frame !== null) environment.cancelAnimationFrame(frame);
-    frame = null;
+    if (reconcileTimer !== null) environment.clearTimeout(reconcileTimer);
+    frame = null;reconcileTimer = null;
   };
   const on = (target: EventTarget, type: string, listener: EventListener) => {
     target.addEventListener(type, listener);
@@ -50,7 +53,7 @@ export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvir
   };
   const freeze = () => {
     suspended = true;
-    clearPulse(); clearRequest(); clearFrame();
+    clearPulse(); clearRequest(); clearScheduled();
   };
   const dispose = () => {
     if (disposed) return;
@@ -61,8 +64,16 @@ export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvir
     observer = null;
   };
   const schedule = () => {
-    if (disposed || suspended || frame !== null) return;
-    frame = environment.requestAnimationFrame(() => { frame = null; if (!disposed && !suspended) runtime.reconcile(); });
+    if (disposed || suspended || frame !== null || reconcileTimer !== null) return;
+    const epoch = ++reconcileEpoch;
+    const run = () => {
+      if (epoch !== reconcileEpoch) return;
+      frame = null;reconcileTimer = null;reconcileEpoch++;
+      if (!disposed && !suspended) runtime.reconcile();
+    };
+    // Hidden documents may never receive animation frames, but their player can still be replaced.
+    if (environment.document.hidden) reconcileTimer = environment.setTimeout(run,100);
+    else frame = environment.requestAnimationFrame(run);
   };
   const onMessage = (event: Event) => {
     const message = event as MessageEvent<unknown>;
@@ -118,10 +129,15 @@ export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvir
       observer = new environment.MutationObserver(onMutations);
       cleanups.push(() => observer?.disconnect());
       on(environment.window, 'message', onMessage);
-      on(environment.document, 'visibilitychange', () => { startPulse();runtime.reconcile();if (!environment.document.hidden) { runtime.revalidateMedia();runtime.notify(); } });
+      on(environment.document, 'visibilitychange', () => {
+        if (disposed || suspended) return;
+        clearScheduled();startPulse();runtime.reconcile();
+        if (!environment.document.hidden) { runtime.revalidateMedia();runtime.notify(); }
+      });
       on(environment.window, 'popstate', () => runtime.reconcile());
       on(environment.window, 'pageshow', () => {
         if (disposed) return;
+        clearScheduled();
         suspended = false;
         startPulse();runtime.reconcile();runtime.revalidateMedia();runtime.notify();
       });
