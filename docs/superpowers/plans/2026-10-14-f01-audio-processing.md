@@ -157,6 +157,12 @@ runtime은 기존 settings transform(런타임 import/export 금지)와 MAIN bun
 - [ ] 각각 정확한 loss control: 예컨대 F01 owned Gain=0/상속bit/한 EQ대역·preset ID를 한 가지씩 제거/변경하는 bounded fixture대조를 `--control=storage-loss`에서 선택하고 case별 기대실패 code/phase/rawdiff를 pin한다. unrelated 에러/실행 안됨/timeout은 성공대조가 아니다. 실제 user gesture 저장을 seed 주입으로 대체하지 않는다. old baseline의 fixture/손실대조는 그대로 실행한다.
 - [ ] 매 launch profile종료·브라우저/session/프로세스 retirement의 기존3증명/cleanup0, snapshot source hash 입력 일치·정확한관측수가 모두 필요하다. 실제 user Chrome/store 업데이트·플랫폼rollback·자연 BFCache/worker suspension은 여전히 미검증으로 기록한다. 로컬 커밋만.
 
+### T7 비활성 탭 관측 보완 — 2026-10-15
+
+기본 Playwright 연결의 focus emulation은 비활성 탭을 visible로 유지하므로 실제 숨김 수명 검사의 전제와 충돌한다. 화면 표시 모드만 바꾸거나 별도 CDP session에서 false를 보내는 것으로는 해결되지 않았다. 현재 설치된 Playwright1.62.1의 공식 `connectOverCDP(transport,{noDefaults:true})`를 F01 설정 검사에만 적용한다. 기존 물리 후보의 동일 bundled Chromium을 새 자기 프로필·익명 debugging pipe로 실행하며 TCP/원격 포트·새 의존성·기존 Chrome·확장 권한 변경은 없다. 기존 일반/Gain/전환 launcher는 유지한다.
+
+익명 pipe의 NUL 구분 JSON은 UTF8 분할/여러 frame·32MiB 상한·잘못된 입력/EOF/error/close를 회귀 검증하고 새 helper도 strict checkJs·필수 tracked source 입력에 포함한다. Native 실제 탭 전환 뒤 document.hidden=true와 복귀 false를 조건부 대기해 확인하며 property override/합성 visibility 이벤트는 금지한다. 종료3증명·전후 source 일치·기존 UI/저장 gate는 완화하지 않는다. 새 clean checkpoint 정상/정확한4손실이 끝나기 전 T7 완료가 아니며 T8의 정밀 timer/출력 검증을 대체하지 않는다.
+
 ## Task 8 — 객관 EQ/노멀라이저/출력·수명 검증
 
 **파일:** 기존 `scripts/{check-audio-quality,audio-artifact-core,audio-signal,audio-metrics}.mjs`의 현행 도구/fixture 보존; 신규 `scripts/check-audio-processing.mjs`, `scripts/audio-processing-metrics.mjs`, `tests/f01-audio-quality-contract.test.cjs`, F01 독립 fixture. 기존 영상/미리보기 검사도 유지한다.

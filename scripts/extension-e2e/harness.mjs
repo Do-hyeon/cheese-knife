@@ -226,7 +226,7 @@ async function findManifestTool() {
   throw harnessError('manifest-tool-unavailable');
 }
 
-async function prepareWindowsBundledChromium({ chromiumApi, profilePath }) {
+export async function prepareWindowsBundledChromium({ chromiumApi, profilePath }) {
   if (typeof chromiumApi.executablePath !== 'function') throw harnessError('bundled-chromium-path-unavailable');
   const sourceExecutable = chromiumApi.executablePath();
   const sourceRoot = path.dirname(sourceExecutable);

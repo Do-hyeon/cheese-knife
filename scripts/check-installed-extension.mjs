@@ -602,6 +602,7 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
   const startedAt = Date.now();
   const deps = { ...defaultDependencies, ...qualification === 'audio-settings' ? {loadFixtureResponses:loadAudioFixtureResponses,expectedMediaFiles:expectedF01MediaFiles} : {}, ...dependencies };
   const requiredInputs = qualification === 'audio-settings' ? ['scripts/check-installed-audio-settings.mjs','tests/installed-audio-settings.test.cjs',
+    'scripts/extension-e2e/visibility-browser.mjs','tests/visibility-browser.test.cjs',
     'src/settings/audio-settings-ui.ts','audio-settings-ui.js','tests/fixtures/f01-runtime-executable.json','tests/fixtures/f01-runtime-js.json'] : [];
   const files = await deps.openRepository();
   const artifactRelative = `output/playwright/installed-extension-${runId}`;

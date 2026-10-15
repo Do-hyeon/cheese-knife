@@ -122,8 +122,10 @@
   - [x] eb9cfd5의 실제 cold 전환39회·손실 대조19회, source 전후 전체 일치·모든 종료3증명·cleanup/secondary0. F00 전역/채널 제한·재개와 게시본의 전역 OFF/ON 왕복을 별도 검사했다.
   - [x] 공통 helper 분리 후 같은 eb9cfd5의 Gain full(AK)·설정 UI positive(AL)/정확한4손실(AM) 재확인. 모든 source 전후 일치·종료3증명true.
   - [ ] 체크리스트 대조에서 분리한 실제 ABA·전역 EQ/스타일 동시 merge·설정 UI를 남긴 원래 대상 종료·hidden 관측의 새 checkpoint 검증 후 T7 마감. 정밀 hidden timer/출력 계측은 T8에서도 별도 완료해야 한다.
+    - [x] e280e0d의 AN은 재부팅 전 `audio-settings-hidden-unobserved`로 실패/종료3증명true, AO 미실행임을 확인했다. Playwright 기본 focus emulation의 관측 간섭을 최소 재현했고, 공식 `noDefaults`·익명 pipe 경로에서 실제 hidden→visible/자식 exit0을 확인했다. 제품/권한/기존 Chrome/원격 port 변경 없음.
+    - [ ] F01 설정 검사에만 적용한 native-visibility launcher의 strict/전체 회귀·새 clean checkpoint 정상/정확한4손실을 확인한다. 기본 검사 launcher/과거 증거는 유지하고 hidden 및 visible 복귀의 실제 관측을 모두 요구한다.
     - [x] 별도 F00 ae9f8e5의59자산/765607byte/고정 해시 입력·strict helper/오용 검출. 게시본58·현재F01 62와 구분한다.
-    - [ ] 독립 v1/명시 전환/edited 기대 값·6개 데이터 상태·기존 baseline을 보존하는 supervised 실행/손실 대조/실제 cold 검증. CLI 연결·Native 실행은 아직 미완료다.
+    - [x] 독립 v1/명시 전환/edited 기대 값·6개 데이터 상태·기존 baseline을 보존하는 supervised 실행/손실 대조/실제 cold 검증. eb9cfd5의 AI19/AJ39 결과에 포함되며 새 visibility launcher의 성공으로 전용하지 않는다.
 - [ ] T8 clean checkpoint·기존14/12/18/stress와 새 EQ/normalizer/전환/수명 객관 출력 검증.
 - [ ] T9 종합 타입/생성·전체/패키지/도구·보호/고지·whole-F01 Astra max 최종 검토/보완·로컬 마감. 완료 후에만 별도 공개 지시를 요청한다.
 

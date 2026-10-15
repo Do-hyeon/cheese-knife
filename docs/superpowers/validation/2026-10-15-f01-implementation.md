@@ -231,3 +231,13 @@ AK70.833초/AL25.345초/AM25.604초 모두 exit0/ok=true이며 같은 eb9cfd5/so
 대상 종료 검사는 실제 target tab을 먼저 닫고 settings UI를 유지한 상태에서 tabs.get 부재/contexts0와 원래 binding의 거부를 확인한 뒤 창을 닫는다. 현재 broker의 정확한 실패는 read/settings-operation-failed/storedfalse이며, 별도 native 부재·UI disabled·원시 전체 무쓰기·남은 재생/source1과 함께 요구한다. 일반 오류를 단독으로 성공 처리하지 않는다. 실제 document.hidden도 읽으며 강제 visibility 주입은 하지 않는다. 정밀 hidden timer/rate/old-callback 수명 계측은 T8에서도 별도로 완료해야 하고 finite heap은 leak-free 증명이 아니다.
 
 누락/잘못된 ABA·merge·종료 증거를 허용하던 report gate의 RED→GREEN, 집중29개/strict/9기반/build/package와 최신 전체1570/1569통과/0실패/기존1skip(72.427초)이 통과했다. 제품·권한·numeric gate 변경 없이 새 checkpoint의 실제 UI 정상/정확한4손실 검증이 남아 있다.
+
+#### 재시작 후 비활성 탭 관측 원인 확인
+
+2026-10-15 점검에서 root/native는 clean e280e0d였다. AN의 마지막 summary는12:59 실패(`audio-settings-hidden-unobserved`)·종료3증명true이며 시스템 가동 시간으로 추정한13:05 재부팅보다 앞선다. 따라서 재부팅 중 검사가 끊긴 결과로 보지 않는다. 후행 AO는 미실행이며 Windows Update가 재시작 원인인지는 별도로 확인하지 않았다.
+
+별도 일회성 새 프로필에서 headless/화면 표시 모드 모두 두 탭 visible/visible, 별도 session의 focus emulation=false와 실제 창 최소화에도 hidden=false를 재현했다. 설치된 Playwright1.62.1 coreBundle은 페이지 연결 시 focus emulation=true를 전송한다. [공식 noDefaults 설명](https://playwright.dev/docs/api/class-browsertype#browser-type-connect-over-cdp-option-no-defaults)에 따라 익명 pipe와 noDefaults를 사용한 최소 재현에서는 비활성 탭 hidden=true/state=hidden/focus=false, 복귀 hidden=false/state=visible/focus=true, 자기 자식 프로세스 exit0이었다. diagnostic profile/evidence는 보존한다. 이 재현은 제품의 hidden DSP/timer 성공이 아닌 제어 도구 간섭의 원인 증거다.
+
+F01 설정 Native 검사에만 같은 공식 연결 경로를 적용하고 일반/Gain/전환 launcher는 그대로 둔다. 새로운 transport framing·폐기 테스트와 visible 복귀 report 거부 테스트를 RED→GREEN으로 검증한다. 제품/DSP/수치·설정 권위는 변경하지 않는다. 전체 회귀와 새 clean checkpoint의 실제 정상/정확한4손실·종료3증명·전후 source 확인 전에는 T7 성공으로 올리지 않는다.
+
+transport 신규3개 및 복귀 관측 누락 거부를 RED→GREEN으로 확인했다. 집중31/31·strict development, 격리 후보의 네이티브 전체1573개 중1572통과/실패0/기존1skip(66.116초), 9개 기반/build/package가 통과했다. 별도 샌드박스 root 실행의 링크 권한 실패2건/중단은 성공으로 계산하지 않았고 로그를 보존한다. root dist58/제품2.13.3은 유지했다. 새 clean checkpoint 실제 정상/정확한4손실 재검증이 남아 있다.

@@ -3,6 +3,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {isDeepStrictEqual} from 'node:util';
 import {openInstalledMediaSettings} from './extension-e2e/popup-cdp.mjs';
+import {launchVisibilityExtension} from './extension-e2e/visibility-browser.mjs';
 
 /** @typedef {{runId:string,headed:boolean,control:null|'storage-loss'}} AudioSettingsOptions */
 /** @typedef {'audio-zoom200.png'|'audio-zoom200-controls.png'|'audio-zoom200-eq.png'} ZoomCaptureName */
@@ -10,7 +11,7 @@ import {openInstalledMediaSettings} from './extension-e2e/popup-cdp.mjs';
  * responses:readonly {url:string,status:number,contentType:string,body:string}[],artifactPath:string,
  * browserSession:import('playwright').CDPSession,writeZoomCapture:(name:ZoomCaptureName,bytes:Uint8Array)=>Promise<void>}} AudioSettingsScenario */
 /** @typedef {{runId:string,headed:boolean,qualification:'audio-settings',dependencies:{
- * mediaScenario:(input:AudioSettingsScenario)=>Promise<unknown>}}} AudioSettingsExecution */
+ * launchInstalledExtension:typeof launchVisibilityExtension,mediaScenario:(input:AudioSettingsScenario)=>Promise<unknown>}}} AudioSettingsExecution */
 /** @param {string} code */
 const fail=code=>Object.assign(new Error(code),{code});
 /** @param {unknown} value @returns {Record<string,unknown>|null} */
@@ -92,7 +93,7 @@ export function assertAudioSettingsReport(raw,options){
     !windows.every(value=>Number.isSafeInteger(value))||!Array.isArray(tabWindows)||tabWindows.length!==2||tabWindows[0]===tabWindows[1]||
     !tabWindows.every(value=>Number.isSafeInteger(value)&&value>=0)||lifecycle?.oneWindowClosed!==true||lifecycle.remainingNativeSource!==1||
     ![lifecycle.beforeHeap,lifecycle.afterHeap].every(value=>typeof value==='number'&&Number.isFinite(value)&&value>0)||
-    lifecycle.closedNativeMissing!==true||lifecycle.closedReplyStage!=='read'||lifecycle.closedReplyCode!=='settings-operation-failed'||lifecycle.closedUiDisabled!==true||lifecycle.hiddenObserved!==true||
+    lifecycle.closedNativeMissing!==true||lifecycle.closedReplyStage!=='read'||lifecycle.closedReplyCode!=='settings-operation-failed'||lifecycle.closedUiDisabled!==true||lifecycle.hiddenObserved!==true||lifecycle.visibleRestored!==true||
     quota?.actualQuotaFailure!==true||typeof quota.bytesAtLimit!=='number'||!Number.isSafeInteger(quota.bytesAtLimit)||quota.bytesAtLimit<1||quota.bytesAtLimit>16*1024*1024||
     restart?.actualWorkerReplacement!==true||restart.nativeStopped!==true||restart.nativeRunning!==true||restart.markerAbsent!==true||
     ![restart.beforeTimeOrigin,restart.afterTimeOrigin].every(value=>typeof value==='number'&&Number.isFinite(value)&&value>0)||
@@ -623,8 +624,8 @@ async function rejectNativeTarget(page,captured,wanted,expected,stage='target'){
  * @param {Awaited<ReturnType<typeof secondWindowProof>>} secondState */
 async function targetAndLifecycleProof(input,first,settings,secondState){
   const {second,other,firstTab,secondTab}=secondState;
-  await settings.bringToFront();const hiddenObserved=(await audioFacts(first)).hidden;
-  if(!hiddenObserved)throw fail('audio-settings-hidden-unobserved');
+  await settings.bringToFront();
+  const hiddenObserved=(await waitNative(()=>audioFacts(first),facts=>facts.hidden===true,'audio-settings-hidden-unobserved')).hidden;
   await settings.locator('#audioDefault').check();
   await waitNative(()=>stored(input.worker),raw=>channelAudio(raw,'c'.repeat(32))?.audioDefault===true,'audio-settings-channel-default');await readyUI(settings);
   if((await audioFacts(first)).wanted!==false)throw fail('audio-settings-default-reset-manual');
@@ -678,7 +679,9 @@ async function targetAndLifecycleProof(input,first,settings,secondState){
     const secondInputs=await nativeInputProof(other);
     await input.worker.evaluate(id=>chrome.windows.remove(id),secondTab.windowId);
     await waitNative(async()=>second.isClosed(),closed=>closed,'audio-settings-second-window-open');
-    await first.bringToFront();const time=await first.locator('video').evaluate(video=>{
+    await first.bringToFront();
+    const visibleRestored=!(await waitNative(()=>audioFacts(first),facts=>facts.hidden===false,'audio-settings-visible-unobserved')).hidden;
+    const time=await first.locator('video').evaluate(video=>{
       if(!(video instanceof HTMLVideoElement))throw new Error('audio-settings-video-type');return video.currentTime;
     });await first.waitForTimeout(500);
     const after=await audioFacts(first),nextTime=await first.locator('video').evaluate(video=>{
@@ -688,7 +691,7 @@ async function targetAndLifecycleProof(input,first,settings,secondState){
     const afterClose=await session.send('Performance.getMetrics');
     /** @param {typeof beforeClose} metrics */const heap=metrics=>metrics.metrics.find(metric=>metric.name==='JSHeapUsedSize')?.value;
     if(!Number.isFinite(heap(beforeClose))||!Number.isFinite(heap(afterClose))||(heap(beforeClose)??0)<=0||(heap(afterClose)??0)<=0)throw fail('audio-settings-memory-unobserved');
-    return {beforeHeap:heap(beforeClose),afterHeap:heap(afterClose),oneWindowClosed:true,remainingNativeSource:1,secondInputs,hiddenObserved,closedNativeMissing,
+    return {beforeHeap:heap(beforeClose),afterHeap:heap(afterClose),oneWindowClosed:true,remainingNativeSource:1,secondInputs,hiddenObserved,visibleRestored,closedNativeMissing,
       closedReplyStage:'read',closedReplyCode:'settings-operation-failed',closedUiDisabled:true};
   }finally{await session.detach();}
 }
@@ -833,6 +836,7 @@ async function scenario(input,options){
 export async function runInstalledAudioSettings(options,execute=executeNative){
   if(!options||typeof options.headed!=='boolean'||![null,'storage-loss'].includes(options.control)||typeof options.runId!=='string'||!/^[A-Za-z0-9]{1,64}$/.test(options.runId))throw fail('audio-settings-args');
   const raw=await execute({runId:options.runId,headed:options.headed,qualification:'audio-settings',dependencies:{
+    launchInstalledExtension:launchVisibilityExtension,
     mediaScenario:input=>boundedAudioScenario(()=>scenario(input,options),180000),
   }});
   return assertAudioSettingsReport(raw,options);

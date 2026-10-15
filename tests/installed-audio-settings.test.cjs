@@ -9,7 +9,7 @@ const report=()=>({ok:true,runId:'Settings1',qualification:'audio-settings',sour
     sameScope:{nativeFullRequests:2,heldDispatches:1,committedRevisionDelta:1,lateCode:'conflict',lateStored:false},
     aba:{nativeFullRequests:1,nativePatchRequests:2,heldDispatches:1,committedRevisionDelta:2,valuesRestored:true,lateCode:'conflict',lateStored:false},
     unrelatedMerge:{nativeRequests:2,nativeDocumentsDistinct:true,globalRevisionDelta:2,mediaUnchanged:true,unknownRawPreserved:true,styleEnabled:true,eqValue:.5},
-    lifecycle:{oneWindowClosed:true,remainingNativeSource:1,beforeHeap:100,afterHeap:90,hiddenObserved:true,closedNativeMissing:true,
+    lifecycle:{oneWindowClosed:true,remainingNativeSource:1,beforeHeap:100,afterHeap:90,hiddenObserved:true,visibleRestored:true,closedNativeMissing:true,
       closedReplyStage:'read',closedReplyCode:'settings-operation-failed',closedUiDisabled:true},quota:{actualQuotaFailure:true,bytesAtLimit:10485760},
     workerRestart:{actualWorkerReplacement:true,nativeStopped:true,nativeRunning:true,markerAbsent:true,beforeTimeOrigin:1000,afterTimeOrigin:2000,wrapperReused:true,targetReused:true},
     layout:{viewports:[1280,800,360].map(width=>({width,output:80,shell:580,bands:Array(8).fill(100),scrollable:width===360,overflow:false})),
@@ -62,7 +62,8 @@ test('explicit ABA and unrelated style merge require their own native witnesses,
 test('a closed original target requires native disappearance and rejection while its own settings UI is still alive',async()=>{
   const {assertAudioSettingsReport}=await load(),options={runId:'Settings1',headed:false,control:null};
   for(const mutate of [r=>{r.audioSettings.lifecycle.closedNativeMissing=false;},r=>{r.audioSettings.lifecycle.closedReplyCode='timeout';},
-    r=>{r.audioSettings.lifecycle.closedReplyStage='unknown';},r=>{r.audioSettings.lifecycle.closedUiDisabled=false;},r=>{r.audioSettings.lifecycle.hiddenObserved=false;}]){
+    r=>{r.audioSettings.lifecycle.closedReplyStage='unknown';},r=>{r.audioSettings.lifecycle.closedUiDisabled=false;},r=>{r.audioSettings.lifecycle.hiddenObserved=false;},
+    r=>{r.audioSettings.lifecycle.visibleRestored=false;}]){
     const r=report();mutate(r);assert.throws(()=>assertAudioSettingsReport(r,options),/audio-settings-proof/);
   }
 });
