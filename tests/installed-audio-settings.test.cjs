@@ -7,7 +7,10 @@ const report=()=>({ok:true,runId:'Settings1',qualification:'audio-settings',sour
   audioSettings:{passed:true,checks:['native-ui','two-windows','storage-authority','layout','original-target','preset-draft','input-focus','lifecycle'],lossControls:[],
     nativeInputs:[nativeInputs(),nativeInputs()],nativeWindows:[1,2],nativeTabWindows:[3,4],
     sameScope:{nativeFullRequests:2,heldDispatches:1,committedRevisionDelta:1,lateCode:'conflict',lateStored:false},
-    lifecycle:{oneWindowClosed:true,remainingNativeSource:1,beforeHeap:100,afterHeap:90},quota:{actualQuotaFailure:true,bytesAtLimit:10485760},
+    aba:{nativeFullRequests:1,nativePatchRequests:2,heldDispatches:1,committedRevisionDelta:2,valuesRestored:true,lateCode:'conflict',lateStored:false},
+    unrelatedMerge:{nativeRequests:2,nativeDocumentsDistinct:true,globalRevisionDelta:2,mediaUnchanged:true,unknownRawPreserved:true,styleEnabled:true,eqValue:.5},
+    lifecycle:{oneWindowClosed:true,remainingNativeSource:1,beforeHeap:100,afterHeap:90,hiddenObserved:true,closedNativeMissing:true,
+      closedReplyStage:'read',closedReplyCode:'settings-operation-failed',closedUiDisabled:true},quota:{actualQuotaFailure:true,bytesAtLimit:10485760},
     workerRestart:{actualWorkerReplacement:true,nativeStopped:true,nativeRunning:true,markerAbsent:true,beforeTimeOrigin:1000,afterTimeOrigin:2000,wrapperReused:true,targetReused:true},
     layout:{viewports:[1280,800,360].map(width=>({width,output:80,shell:580,bands:Array(8).fill(100),scrollable:width===360,overflow:false})),
       zoom:{actual:2,output:80,beforeDpr:1,afterDpr:2,beforeWidth:1280,afterWidth:640,overflow:false,bands:Array(8).fill(100),shell:580}}},pageErrors:[]});
@@ -45,6 +48,22 @@ test('same-scope full request race requires two real senders one delayed dispatc
   for(const mutate of [r=>{r.audioSettings.sameScope.nativeFullRequests=1;},r=>{r.audioSettings.sameScope.heldDispatches=2;},
     r=>{r.audioSettings.sameScope.lateCode='timeout';},r=>{r.audioSettings.sameScope.committedRevisionDelta=2;},r=>{r.audioSettings.sameScope.lateStored=true;}]){
     const r=report();mutate(r);assert.throws(()=>assertAudioSettingsReport(r,{runId:'Settings1',headed:false,control:null}),/audio-settings-proof/);
+  }
+});
+test('explicit ABA and unrelated style merge require their own native witnesses, not a single CAS pass',async()=>{
+  const {assertAudioSettingsReport}=await load(),options={runId:'Settings1',headed:false,control:null};
+  for(const mutate of [r=>{delete r.audioSettings.aba;},r=>{r.audioSettings.aba.nativePatchRequests=0;},r=>{r.audioSettings.aba.committedRevisionDelta=1;},
+    r=>{r.audioSettings.aba.valuesRestored=false;},r=>{r.audioSettings.aba.lateCode='timeout';},r=>{r.audioSettings.aba.lateStored=true;},
+    r=>{delete r.audioSettings.unrelatedMerge;},r=>{r.audioSettings.unrelatedMerge.nativeDocumentsDistinct=false;},r=>{r.audioSettings.unrelatedMerge.globalRevisionDelta=1;},
+    r=>{r.audioSettings.unrelatedMerge.mediaUnchanged=false;},r=>{r.audioSettings.unrelatedMerge.unknownRawPreserved=false;}]){
+    const r=report();mutate(r);assert.throws(()=>assertAudioSettingsReport(r,options),/audio-settings-proof/);
+  }
+});
+test('a closed original target requires native disappearance and rejection while its own settings UI is still alive',async()=>{
+  const {assertAudioSettingsReport}=await load(),options={runId:'Settings1',headed:false,control:null};
+  for(const mutate of [r=>{r.audioSettings.lifecycle.closedNativeMissing=false;},r=>{r.audioSettings.lifecycle.closedReplyCode='timeout';},
+    r=>{r.audioSettings.lifecycle.closedReplyStage='unknown';},r=>{r.audioSettings.lifecycle.closedUiDisabled=false;},r=>{r.audioSettings.lifecycle.hiddenObserved=false;}]){
+    const r=report();mutate(r);assert.throws(()=>assertAudioSettingsReport(r,options),/audio-settings-proof/);
   }
 });
 

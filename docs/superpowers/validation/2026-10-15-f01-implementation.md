@@ -208,3 +208,26 @@ AH는 F00 복귀3의 UI 검사에서 실패했다. F00은 새 catalogue를 제�
 cold caller는 F00 global 사용 가능/채널·preset 작업 잠금→실제 current 선택 후 필드 잠금, F01 schema1 전환 버튼 활성/미디어 입력 잠금, F01 schema2 쓰기 가능 ready를 각각 검사한다. 연결만 됐는데 UI도 준비됐다고 간주하지 않는다. 새 core 누락 RED→GREEN, 기존 writable helper·core 권한 음성 대조·실제 소비자의 sender/writer 혼동 및 UI bypass 속성 오용 compiler 대조를 포함한129개와 strict가 통과했다. 최종 전체 검사 후 새 checkpoint의 정상39/손실19 재검증으로 이어간다.
 
 분리 후 최신 전체1568/1567통과/0실패/기존1skip(71.870초)을 확인했다. 이를 새 로컬 checkpoint로 고정해 동일 권한 경계의 순차 Native 재검증을 수행한다.
+
+#### Cold 정상·음성 최종 통과 — eb9cfd5
+
+eb9cfd53be450d7aaac8969b996e8d6de97c122b의 AI 음성 대조와 AJ 정상 전환 모두 CLI exit0/ok=true다. sourceSha256=51fbfa55346d7bb3e5d7c260824eb90d54a912e519ebfcac78c88dd3085c1602이며 두 run 모두 source/after5필드 전체가 일치한다.
+
+- AI: 새 profile5개/성공 관측9phase/예상한 config+F01 4필드 손실5개만 검출/launch19 전부 종료3증명true/cleanup·secondary0.
+- AJ: 새 profile11개/seed11·관측28phase/launch39 전부 종료3증명true/예상 밖 failure0·cleanup·secondary0.
+
+AJ는 기존5baseline·v1 읽기 무쓰기/명시 전환/실제 전역·채널 Gain0/EQ/preset 저장·F00 global 사용 가능 및 current 채널/preset 제한·raw 보존·F01 재개·게시본 전역 OFF/ON 왕복·absent 첫 저장·최대 revision/손상/미래 형식의 수용기준을 통과했다. AI는 실제 저장 뒤 한 필드 손실만 정확히 검출했다. 모든 profile/candidate 및 과거 실패 증거를 보존한다. 이는 bundled code cold relaunch이며 실제 스토어 업데이트나 플랫폼 rollback 성공이 아니다.
+
+공통 helper의 기존 정상 경로도 같은 checkpoint에서 Gain full(AK)·설정 UI positive(AL)·정확한4손실(AM)로 재확인한 뒤 T7을 마감한다. 이 기록 시점에는 해당 재실행이 진행 중이며 T8/T9는 시작하지 않았다.
+
+AK70.833초/AL25.345초/AM25.604초 모두 exit0/ok=true이며 같은 eb9cfd5/source51fbfa…5필드 전후 일치·종료3증명true·pageErrors=[]다. AK는 fullEvidence4종/61초 idle 뒤 첫 입력/포커스·Gain0·원래 mute/volume 보존을 확인했고, AL은 UI 정상, AM은 정확한4손실을 확인했다. 이는 해당 case들의 통과이며 아래 체크리스트 대조까지 whole T7 완료로 올리지 않는다.
+
+#### T7 완료 전 명시적 잔여 관측 보강
+
+체크리스트와 실제 case를 대조해 별도 Native 증거가 필요한 항목을 구분했다. 기존 단일 CAS와 A→B→A는 같지 않고, EQ만의 외부 merge와 스타일 동시 merge도 같지 않다. 다른 창 종료 때 설정 UI까지 닫힌 결과는 ‘원래 대상만 닫혔지만 UI는 살아 있는’ stale 조작 거부를 대신하지 않는다.
+
+새 ABA는 기존 실제 full-confirm 보류/원본1회 전달 장치를 재사용한다. 다른 실제 TAB에서 EQ 한 필드를 두 번 조작해 값 A를 복원하되 catalogue/record revision만 각각2 증가시키고, 원래 full 요청은 conflict/storedfalse로 거부해야 한다. 원래 CAS의 revision+1 조건은 변경하지 않는다. 스타일 검사는 실제 styles.html의 protocol1 checkbox와 설정 TAB의 protocol3 전역 EQ 입력을 동시 저장해 서로 다른 native document/frame0의 요청2개·전역 revision+2·전체 raw의 정확한 두 변경과 CSS 등록을 요구한다.
+
+대상 종료 검사는 실제 target tab을 먼저 닫고 settings UI를 유지한 상태에서 tabs.get 부재/contexts0와 원래 binding의 거부를 확인한 뒤 창을 닫는다. 현재 broker의 정확한 실패는 read/settings-operation-failed/storedfalse이며, 별도 native 부재·UI disabled·원시 전체 무쓰기·남은 재생/source1과 함께 요구한다. 일반 오류를 단독으로 성공 처리하지 않는다. 실제 document.hidden도 읽으며 강제 visibility 주입은 하지 않는다. 정밀 hidden timer/rate/old-callback 수명 계측은 T8에서도 별도로 완료해야 하고 finite heap은 leak-free 증명이 아니다.
+
+누락/잘못된 ABA·merge·종료 증거를 허용하던 report gate의 RED→GREEN, 집중29개/strict/9기반/build/package와 최신 전체1570/1569통과/0실패/기존1skip(72.427초)이 통과했다. 제품·권한·numeric gate 변경 없이 새 checkpoint의 실제 UI 정상/정확한4손실 검증이 남아 있다.

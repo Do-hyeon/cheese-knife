@@ -84,10 +84,15 @@ export function assertAudioSettingsReport(raw,options){
   const zoomBands=zoom?.bands;
   const race=record(result.sameScope);
   if(race?.nativeFullRequests!==2||race.heldDispatches!==1||race.committedRevisionDelta!==1||race.lateCode!=='conflict'||race.lateStored!==false)throw fail('audio-settings-proof');
+  const aba=record(result.aba),merge=record(result.unrelatedMerge);
+  if(aba?.nativeFullRequests!==1||aba.nativePatchRequests!==2||aba.heldDispatches!==1||aba.committedRevisionDelta!==2||aba.valuesRestored!==true||
+    aba.lateCode!=='conflict'||aba.lateStored!==false||merge?.nativeRequests!==2||merge.nativeDocumentsDistinct!==true||merge.globalRevisionDelta!==2||
+    merge.mediaUnchanged!==true||merge.unknownRawPreserved!==true||merge.styleEnabled!==true||merge.eqValue!==.5)throw fail('audio-settings-proof');
   if(!Array.isArray(inputs)||inputs.length!==2||!Array.isArray(windows)||windows.length!==2||windows[0]===windows[1]||
     !windows.every(value=>Number.isSafeInteger(value))||!Array.isArray(tabWindows)||tabWindows.length!==2||tabWindows[0]===tabWindows[1]||
     !tabWindows.every(value=>Number.isSafeInteger(value)&&value>=0)||lifecycle?.oneWindowClosed!==true||lifecycle.remainingNativeSource!==1||
     ![lifecycle.beforeHeap,lifecycle.afterHeap].every(value=>typeof value==='number'&&Number.isFinite(value)&&value>0)||
+    lifecycle.closedNativeMissing!==true||lifecycle.closedReplyStage!=='read'||lifecycle.closedReplyCode!=='settings-operation-failed'||lifecycle.closedUiDisabled!==true||lifecycle.hiddenObserved!==true||
     quota?.actualQuotaFailure!==true||typeof quota.bytesAtLimit!=='number'||!Number.isSafeInteger(quota.bytesAtLimit)||quota.bytesAtLimit<1||quota.bytesAtLimit>16*1024*1024||
     restart?.actualWorkerReplacement!==true||restart.nativeStopped!==true||restart.nativeRunning!==true||restart.markerAbsent!==true||
     ![restart.beforeTimeOrigin,restart.afterTimeOrigin].every(value=>typeof value==='number'&&Number.isFinite(value)&&value>0)||
@@ -155,7 +160,7 @@ async function audioFacts(page){
     return {owner:runtime?.ownerProtocol,ready:runtime?.configReady===true,decoded:!!video&&video.readyState>=2,
       blob:!!video&&video.currentSrc.startsWith('blob:'),wanted:runtime?.player?.getAudioWanted({...runtime.media.context}).wanted??null,
       effectiveGain:typeof runtime?.config.audioGain==='number'?runtime.config.audioGain:null,
-      audio:video?runtime?.audio?.getReadback(video)??null:null,muted:video?.muted,volume:video?.volume};
+      audio:video?runtime?.audio?.getReadback(video)??null:null,muted:video?.muted,volume:video?.volume,hidden:document.hidden};
   });
 }
 /** @param {import('playwright').Page} page @param {number} arrows */
@@ -407,17 +412,19 @@ async function secondWindowProof(input,first,settings){
   if(firstTab.windowId===secondTab.windowId)throw fail('audio-settings-native-windows');
   return {second,other,firstTab,secondTab,cdpWindows:[firstWindow.windowId,secondWindow.windowId]};
 }
-/** @param {AudioSettingsScenario} input @param {import('playwright').Page} settings @param {import('playwright').Page} other */
-async function sameScopeProof(input,settings,other){
+/** @param {AudioSettingsScenario} input @param {import('playwright').Page} settings @param {import('playwright').Page} other @param {boolean} [aba] */
+async function sameScopeProof(input,settings,other,aba=false){
   const channelId='c'.repeat(32);await selectScope(settings,'current');await selectScope(other,'saved:'+channelId);
-  await settings.locator('#media-audio-preset').selectOption('recipe:voice');await other.locator('#media-audio-preset').selectOption('recipe:voice');
+  await settings.locator('#media-audio-preset').selectOption(aba?'recipe:compressor':'recipe:voice');await other.locator('#media-audio-preset').selectOption('recipe:voice');
   const before=await stored(input.worker),revision=record(before.mediaProfiles)?.revision;
   if(typeof revision!=='number')throw fail('audio-settings-race-revision');
   await input.worker.evaluate(()=>{
-    const entries=/** @type {{tabId:number|undefined,frameId:number|undefined,documentId:string|undefined}[]} */([]);
+    const entries=/** @type {{action:string,tabId:number|undefined,frameId:number|undefined,documentId:string|undefined}[]} */([]);
     const observe=(/** @type {unknown} */message,/** @type {chrome.runtime.MessageSender} */sender)=>{
-      if(message&&typeof message==='object'&&Reflect.get(message,'namespace')==='cheese-knife-settings'&&Reflect.get(message,'protocol')===3&&
-        Reflect.get(message,'action')==='replace-channel-domain'&&entries.length<4)entries.push({tabId:sender.tab?.id,frameId:sender.frameId,documentId:sender.documentId});return false;
+      if(message&&typeof message==='object'&&Reflect.get(message,'namespace')==='cheese-knife-settings'&&Reflect.get(message,'protocol')===3){
+        const action=Reflect.get(message,'action');if(typeof action==='string'&&['replace-channel-domain','patch-channel-fields'].includes(action)&&entries.length<4)
+          entries.push({action,tabId:sender.tab?.id,frameId:sender.frameId,documentId:sender.documentId});
+      }return false;
     };
     const state=/** @type {typeof globalThis & {__f01NativeFullRequests?:typeof entries,__f01NativeFullRestore?:()=>void}} */(globalThis);
     if(state.__f01NativeFullRequests)throw new Error('audio-settings-cas-observer-exists');
@@ -455,8 +462,13 @@ async function sameScopeProof(input,settings,other){
       const state=/** @type {typeof globalThis & {__f01NativeFullHold?:NativeFullHold}} */(globalThis);return state.__f01NativeFullHold?.calls===1;
     });
     if(!isDeepStrictEqual(before,await stored(input.worker)))throw fail('audio-settings-race-held-write');
-    await confirmClick(other,'#media-audio-preset-apply',true);
-    await waitNative(()=>stored(input.worker),raw=>record(raw.mediaProfiles)?.revision===revision+1,'audio-settings-race-first');
+    if(aba){
+      const original=channelAudio(before,channelId)?.eq250;if(typeof original!=='number')throw fail('audio-settings-aba-original');
+      const temporary=original===.75?1:.75;
+      await numberInput(other,'#eq250-value',String(temporary),input.worker,raw=>channelAudio(raw,channelId)?.eq250===temporary);
+      await numberInput(other,'#eq250-value',String(original),input.worker,raw=>channelAudio(raw,channelId)?.eq250===original);
+    }else await confirmClick(other,'#media-audio-preset-apply',true);
+    await waitNative(()=>stored(input.worker),raw=>record(raw.mediaProfiles)?.revision===revision+(aba?2:1),'audio-settings-race-first');
     await settings.evaluate(()=>{
       const state=/** @type {typeof globalThis & {__f01NativeFullHold?:NativeFullHold}} */(globalThis);state.__f01NativeFullHold?.release();
     });
@@ -466,16 +478,23 @@ async function sameScopeProof(input,settings,other){
       return held?{calls:held.calls,dispatches:held.dispatches,code:held.code,stored:held.stored}:null;
     });
     const senders=await input.worker.evaluate(()=>{
-      const state=/** @type {typeof globalThis & {__f01NativeFullRequests?:{tabId:number|undefined,frameId:number|undefined,documentId:string|undefined}[]}} */(globalThis);return state.__f01NativeFullRequests??[];
+      const state=/** @type {typeof globalThis & {__f01NativeFullRequests?:{action:string,tabId:number|undefined,frameId:number|undefined,documentId:string|undefined}[]}} */(globalThis);return state.__f01NativeFullRequests??[];
     });
     const a=await settings.evaluate(()=>chrome.tabs.getCurrent()),b=await other.evaluate(()=>chrome.tabs.getCurrent());
-    if(fault?.calls!==1||fault.dispatches!==1||fault.code!=='conflict'||fault.stored!==false||senders.length!==2||
-      senders[0]?.tabId!==b?.id||senders[1]?.tabId!==a?.id||a?.id===b?.id||!senders.every(sender=>sender.frameId===0&&typeof sender.documentId==='string'&&sender.documentId.length>0)||
-      senders[0]?.documentId===senders[1]?.documentId)throw fail('audio-settings-race-native-requests');
+    const full=senders.filter(row=>row.action==='replace-channel-domain'),patches=senders.filter(row=>row.action==='patch-channel-fields');
+    if(fault?.calls!==1||fault.dispatches!==1||fault.code!=='conflict'||fault.stored!==false||senders.length!==(aba?3:2)||full.length!==(aba?1:2)||patches.length!==(aba?2:0)||
+      senders.slice(0,-1).some(row=>row.tabId!==b?.id||row.documentId!==senders[0]?.documentId)||senders.at(-1)?.tabId!==a?.id||a?.id===b?.id||
+      !senders.every(sender=>sender.frameId===0&&typeof sender.documentId==='string'&&sender.documentId.length>0)||senders[0]?.documentId===senders.at(-1)?.documentId)throw fail('audio-settings-race-native-requests');
     const after=await stored(input.worker),audio=channelAudio(after,channelId);
-    if(record(after.mediaProfiles)?.revision!==revision+1||audio?.audioGain!==.5||audio.gainInherited!==false||audio.eqEnabled!==true||audio.eq63!==-2||audio.eq2000!==2)throw fail('audio-settings-race-loss');
+    if(aba){
+      const expected=structuredClone(before),store=record(expected.mediaProfiles),channels=store?.channels;
+      const channel=Array.isArray(channels)?channels.map(record).find(row=>row?.channelId===channelId):null;
+      if(!store||!channel||typeof channel.revision!=='number')throw fail('audio-settings-aba-original');
+      store.revision=revision+2;channel.revision+=2;if(!isDeepStrictEqual(after,expected))throw fail('audio-settings-aba-values');
+    }else if(record(after.mediaProfiles)?.revision!==revision+1||audio?.audioGain!==.5||audio.gainInherited!==false||audio.eqEnabled!==true||audio.eq63!==-2||audio.eq2000!==2)throw fail('audio-settings-race-loss');
     await settings.locator('#media-discard').click();await readyUI(settings);await readyUI(other);await selectScope(other,'current');
-    return {nativeFullRequests:senders.length,heldDispatches:fault.dispatches,committedRevisionDelta:Number(record(after.mediaProfiles)?.revision)-revision,lateCode:fault.code,lateStored:fault.stored};
+    return {nativeFullRequests:full.length,nativePatchRequests:patches.length,heldDispatches:fault.dispatches,committedRevisionDelta:Number(record(after.mediaProfiles)?.revision)-revision,
+      valuesRestored:aba,lateCode:fault.code,lateStored:fault.stored};
   }finally{
     await settings.evaluate(()=>{
       const state=/** @type {typeof globalThis & {__f01NativeFullHold?:NativeFullHold}} */(globalThis);state.__f01NativeFullHold?.restore();delete state.__f01NativeFullHold;
@@ -487,6 +506,53 @@ async function sameScopeProof(input,settings,other){
   }
 }
 /** @typedef {{calls:number,dispatches:number,code:string|null,stored:boolean|null,release:()=>void,restore:()=>void}} NativeFullHold */
+/** @param {AudioSettingsScenario} input @param {import('playwright').Page} settings @param {{id:number,windowId:number}} target */
+async function unrelatedStyleProof(input,settings,target){
+  await selectScope(settings,'global');const styles=await input.context.newPage();styles.setDefaultTimeout(15000);
+  let observing=false;
+  try{
+    await styles.goto(`chrome-extension://${input.extensionId}/styles.html?targetTabId=${target.id}&targetWindowId=${target.windowId}`,{waitUntil:'domcontentloaded'});
+    await styles.locator('#settings-status[data-phase="ready"]').waitFor();
+    const before=await stored(input.worker),revision=before.settingsRevision,config=record(before.config),prior=before.styles;
+    if(typeof revision!=='number'||!config||prior!==undefined&&(!Array.isArray(prior)||prior.some(value=>typeof value!=='string'))||
+      Array.isArray(prior)&&prior.includes('hide-ranking')||config.eq4000===.5)throw fail('audio-settings-merge-baseline');
+    await input.worker.evaluate(()=>{
+      const entries=/** @type {{protocol:number,own:boolean,tabId:number|undefined,frame:number|undefined,documentId:string|undefined}[]} */([]);
+      const observe=(/** @type {unknown} */message,/** @type {chrome.runtime.MessageSender} */sender)=>{
+        if(!message||typeof message!=='object'||Reflect.get(message,'namespace')!=='cheese-knife-settings')return false;
+        const protocol=Reflect.get(message,'protocol'),action=Reflect.get(message,'action');
+        if((protocol===1&&action==='patch'||protocol===3&&action==='patch-global-fields')&&entries.length<8)
+          entries.push({protocol,own:sender.id===chrome.runtime.id,tabId:sender.tab?.id,frame:sender.frameId,documentId:sender.documentId});return false;
+      };
+      const state=/** @type {typeof globalThis & {__f01MergeEntries?:typeof entries,__f01MergeRestore?:()=>void}} */(globalThis);
+      if(state.__f01MergeEntries)throw new Error('audio-settings-merge-observer-exists');state.__f01MergeEntries=entries;
+      state.__f01MergeRestore=()=>chrome.runtime.onMessage.removeListener(observe);chrome.runtime.onMessage.addListener(observe);
+    });observing=true;
+    await Promise.all([styles.locator('#hide-ranking').check(),settings.locator('#eq4000-value').fill('0.5')]);
+    const after=await waitNative(()=>stored(input.worker),raw=>record(raw.config)?.eq4000===.5&&Array.isArray(raw.styles)&&raw.styles.includes('hide-ranking'),'audio-settings-merge-lost');
+    await styles.locator('#settings-status[data-phase="ready"]').waitFor();await readyUI(settings);
+    const expected=structuredClone(before),expectedConfig=record(expected.config);if(!expectedConfig)throw fail('audio-settings-merge-baseline');
+    expectedConfig.eq4000=.5;expected.styles=[...(Array.isArray(prior)?prior:[]),'hide-ranking'];expected.settingsRevision=revision+2;
+    if(!isDeepStrictEqual(after,expected))throw fail('audio-settings-merge-unknown-loss');
+    const rows=await input.worker.evaluate(()=>{
+      const state=/** @type {typeof globalThis & {__f01MergeEntries?:{protocol:number,own:boolean,tabId:number|undefined,frame:number|undefined,documentId:string|undefined}[]}} */(globalThis);
+      return state.__f01MergeEntries??[];
+    });
+    const a=await styles.evaluate(()=>chrome.tabs.getCurrent()),b=await settings.evaluate(()=>chrome.tabs.getCurrent()),styleRow=rows.find(row=>row.protocol===1),mediaRow=rows.find(row=>row.protocol===3);
+    if(rows.length!==2||styleRow?.tabId!==a?.id||mediaRow?.tabId!==b?.id||a?.id===b?.id||styleRow?.documentId===mediaRow?.documentId||
+      !rows.every(row=>row.own&&row.frame===0&&typeof row.documentId==='string'&&row.documentId.length>0))throw fail('audio-settings-merge-senders');
+    const registered=await input.worker.evaluate(()=>chrome.scripting.getRegisteredContentScripts({ids:['styles']}));
+    if(registered.length!==1||!registered[0]?.css?.includes('styles/hide-ranking.css'))throw fail('audio-settings-merge-style-registration');
+    await selectScope(settings,'current');
+    return {nativeRequests:rows.length,nativeDocumentsDistinct:true,globalRevisionDelta:2,mediaUnchanged:true,unknownRawPreserved:true,styleEnabled:true,eqValue:.5};
+  }finally{
+    if(observing)await input.worker.evaluate(()=>{
+      const state=/** @type {typeof globalThis & {__f01MergeEntries?:unknown,__f01MergeRestore?:()=>void}} */(globalThis);
+      state.__f01MergeRestore?.();delete state.__f01MergeEntries;delete state.__f01MergeRestore;
+    });
+    await styles.close();
+  }
+}
 /** @param {AudioSettingsScenario} input @param {import('playwright').Page} other */
 async function unknownAckProof(input,other){
   await readyUI(other);
@@ -546,17 +612,19 @@ async function captureNativeTarget(page,tab,routePath){
   }
   return {target,binding};
 }
-/** @param {import('playwright').Page} page @param {Awaited<ReturnType<typeof captureNativeTarget>>} captured @param {boolean} wanted @param {string} expected */
-async function rejectNativeTarget(page,captured,wanted,expected){
+/** @param {import('playwright').Page} page @param {Awaited<ReturnType<typeof captureNativeTarget>>} captured @param {boolean} wanted @param {string} expected @param {string} [stage] */
+async function rejectNativeTarget(page,captured,wanted,expected,stage='target'){
   /** @type {unknown} */const raw=await page.evaluate(request=>chrome.runtime.sendMessage(request),{namespace:'cheese-knife-settings',protocol:3,
     action:'set-audio-wanted',requestId:'native-target-reject',...captured,wanted});
   const reply=record(raw);
-  if(reply?.ok!==false||reply.stored!==false||reply.stage!=='target'||reply.code!==expected)throw fail('audio-settings-target-denial-unconfirmed');
+  if(reply?.ok!==false||reply.stored!==false||reply.stage!==stage||reply.code!==expected)throw fail('audio-settings-target-denial-unconfirmed');
 }
 /** @param {AudioSettingsScenario} input @param {import('playwright').Page} first @param {import('playwright').Page} settings
  * @param {Awaited<ReturnType<typeof secondWindowProof>>} secondState */
 async function targetAndLifecycleProof(input,first,settings,secondState){
   const {second,other,firstTab,secondTab}=secondState;
+  await settings.bringToFront();const hiddenObserved=(await audioFacts(first)).hidden;
+  if(!hiddenObserved)throw fail('audio-settings-hidden-unobserved');
   await settings.locator('#audioDefault').check();
   await waitNative(()=>stored(input.worker),raw=>channelAudio(raw,'c'.repeat(32))?.audioDefault===true,'audio-settings-channel-default');await readyUI(settings);
   if((await audioFacts(first)).wanted!==false)throw fail('audio-settings-default-reset-manual');
@@ -596,6 +664,17 @@ async function targetAndLifecycleProof(input,first,settings,secondState){
   const session=await input.context.newCDPSession(first);
   try{
     await session.send('Performance.enable');const beforeClose=await session.send('Performance.getMetrics');
+    await other.locator('#media-refresh').click();await other.locator('#audio-master:not([disabled])').waitFor();
+    const closedBinding=await captureNativeTarget(other,secondTab,new URL(second.url()).pathname);
+    await input.worker.evaluate(id=>chrome.tabs.remove(id),secondTab.id);await waitNative(async()=>second.isClosed(),closed=>closed,'audio-settings-original-target-open');
+    const closedNativeMissing=await input.worker.evaluate(async id=>{
+      try{await chrome.tabs.get(id);return false;}catch{return (await chrome.runtime.getContexts({tabIds:[id]})).length===0;}
+    },secondTab.id);
+    if(!closedNativeMissing||other.isClosed())throw fail('audio-settings-original-target-present');
+    await rejectNativeTarget(other,closedBinding,false,'settings-operation-failed','read');
+    if(await other.locator('#audio-master').isEnabled())await other.locator('#audio-master').click();
+    await other.locator('#audio-master:disabled').waitFor();
+    if(!isDeepStrictEqual(before,await stored(input.worker)))throw fail('audio-settings-closed-target-write');
     const secondInputs=await nativeInputProof(other);
     await input.worker.evaluate(id=>chrome.windows.remove(id),secondTab.windowId);
     await waitNative(async()=>second.isClosed(),closed=>closed,'audio-settings-second-window-open');
@@ -609,7 +688,8 @@ async function targetAndLifecycleProof(input,first,settings,secondState){
     const afterClose=await session.send('Performance.getMetrics');
     /** @param {typeof beforeClose} metrics */const heap=metrics=>metrics.metrics.find(metric=>metric.name==='JSHeapUsedSize')?.value;
     if(!Number.isFinite(heap(beforeClose))||!Number.isFinite(heap(afterClose))||(heap(beforeClose)??0)<=0||(heap(afterClose)??0)<=0)throw fail('audio-settings-memory-unobserved');
-    return {beforeHeap:heap(beforeClose),afterHeap:heap(afterClose),oneWindowClosed:true,remainingNativeSource:1,secondInputs};
+    return {beforeHeap:heap(beforeClose),afterHeap:heap(afterClose),oneWindowClosed:true,remainingNativeSource:1,secondInputs,hiddenObserved,closedNativeMissing,
+      closedReplyStage:'read',closedReplyCode:'settings-operation-failed',closedUiDisabled:true};
   }finally{await session.detach();}
 }
 /** @param {AudioSettingsScenario} input @param {import('playwright').Page} settings */
@@ -738,13 +818,14 @@ async function scenario(input,options){
   const expected=await stored(worker);
   if(record(expected.config)?.eqEnabled!==true||Object.hasOwn(expected,'mediaProfiles'))throw fail('audio-settings-global-field-merge');
   const layout=await layoutProof(settings,input);await presetAndMasterProof(input,settings,first);await dialProof(input,settings);
-  const secondState=await secondWindowProof(input,first,settings),sameScope=await sameScopeProof(input,settings,secondState.other);await unknownAckProof(input,secondState.other);
+  const secondState=await secondWindowProof(input,first,settings),sameScope=await sameScopeProof(input,settings,secondState.other),aba=await sameScopeProof(input,settings,secondState.other,true);
+  const unrelatedMerge=await unrelatedStyleProof(input,settings,secondState.firstTab);await unknownAckProof(input,secondState.other);
   const lifecycle=await targetAndLifecycleProof(input,first,settings,secondState),quota=await quotaProof(input,settings);
   const workerRestart=await restartWorkerProof(input,settings);
   const controls=options.control?await lossControls(input):[],firstInputs=await nativeInputProof(settings);
   context.off('page',observe);
   if(errors.length)throw fail('audio-settings-page-error');
-  return {audioSettings:{passed:options.control===null,checks:[...checks],lossControls:controls,layout,lifecycle,quota,workerRestart,sameScope,
+  return {audioSettings:{passed:options.control===null,checks:[...checks],lossControls:controls,layout,lifecycle,quota,workerRestart,sameScope,aba,unrelatedMerge,
     nativeWindows:secondState.cdpWindows,nativeTabWindows:[secondState.firstTab.windowId,secondState.secondTab.windowId],nativeInputs:[firstInputs,lifecycle.secondInputs],physicalAudioNotEvaluated:true},pageErrors:errors};
 }
 
