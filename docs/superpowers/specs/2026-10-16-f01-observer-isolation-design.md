@@ -1,6 +1,6 @@
 # F01 관측 효과 분리·전환 재검증 추가 설계
 
-2026-10-16 / Asia-Seoul. **작성·자체 검토 완료, 사용자 문서 승인 전.** 이번 승인은 추가 설계 작성까지다. 아래 구현·Chrome 실행·추가 push는 아직 승인되지 않았다.
+2026-10-16 / Asia-Seoul. **기본 작성 설계 사용자 승인 완료.** 다음 상세 계획 작성·Astra max 계획 검토까지만 진행한다. 계획 검토로 발견한 아래 보존 경계 보완도 작성 계획의 다음 확인 대상이며, 구현·Chrome 실행·추가 push는 아직 승인되지 않았다.
 
 ## 1. 목적과 현재 사실
 
@@ -77,9 +77,10 @@
 
 코드 조사에서 기존 base/negative runner가 정상 종료 시 자체 profile/candidate를 삭제하는 경로를 확인했다. 이전 계획의 ‘모든 profile/후보 보존’과 충돌하므로 실행 전에 아래 국소 보완을 설계에 포함한다.
 
-- `runInstalledExtensionE2E`와 `runInstalledExtensionNegative`의 **programmatic boolean `retainEvidence=false`**를 추가한다. boolean 이외 값은 생성/실행 전 거부한다. CLI parser/qualification 의미와 기존 false 동작은 유지한다.
-- 이번 Native host만 true를 전달한다. negative 준비·실패 경로와 base finally까지 전파해 해당 run이 생성한 후보/negative 복사/프로필만 보존한다. 숨겨진 dependency no-op으로 cleanup을 우회하지 않는다.
+- `runInstalledExtensionE2E`·`runInstalledExtensionNegative`·**일반 `runInstalledTransition`**에 programmatic boolean `retainEvidence=false`를 추가한다. boolean 이외 값은 생성/실행 전 거부한다. CLI parser/qualification 의미와 기존 false의 정상 cleanup 동작은 유지한다.
+- 이번 Native host만 true를 전달한다. negative 준비·실패 경로/base finally 및 transition 부모→자식→후보 준비까지 전파한다. `verifyCandidate`도 기존 directory 인자를 유지하는 선택적 보존 인자를 받아 **복사/build/check 실패의 소유 부분 후보**를 보존한다. 생성 전에 거부한 기존 경로는 소유 자료로 기록하지 않는다. 숨겨진 dependency no-op으로 cleanup을 우회하지 않는다.
 - browser/trace/session 정상 종료는 보존 여부와 무관하게 수행한다. close 실패는 원래 오류/secondary와 함께 실패로 남기고, profile 보존을 process 종료의 증거로 사용하지 않는다. 일반 base의 context.close를 native3증명으로 부풀리지 않는다.
+- MAIN 제거 음성 대조는 **정확한 기대 오류만 있고 필수 close·보존 확인·보고서 쓰기의 secondary 실패가 없을 때만** 성공한다. 기대 오류와 secondary가 함께 있으면 원래 오류를 cause로 보존하는 전체 실패로 전달하며 기대 코드만 보고 성공시키지 않는다. 이 조합은 보존 모드와 무관하게 실패여야 한다.
 - report에 실제 소유 경로와 존재 확인/보존 상태를 남긴다. 이미 존재하던 경로는 생성 대상으로 채택하지 않는다. Native 자료는 private output에만 둔다. 원본 F 및 Linux 임시 context의 기존 자동 수명주기는 바꾸지 않고, 디스크에 실제 생성된 관측 자료만 보존한다.
 - 기존 `output/f01-ci-follow-up-20261016/source`(65ad9b6 준비본)와 과거 실패를 그대로 두고 새 run root를 만든다. 새 상세 계획에서 source 고정 후 모든 run ID와 exact 명령을 확정한다. 사용자 시청 Chrome/P09·root dist는 건드리지 않는다.
 
@@ -94,7 +95,7 @@
 | 오디오 host orchestration/판정 | 기존 `audio-quality-diagnostics.mjs`의 gate/shape/owned helpers 재사용. 원본 실행·9집합/실패 자료 판정만 작은 host 모듈로 분리; 기존6집합 계약을 완화하지 않음 |
 | 원본 runner/제품 DSP/생성 pin | **무수정**. 원본 source/hash·같은 제품6파일·본문/CLI frozen mutation 검사 |
 | CI | pinned F 사본 준비·전용9run job·exact35artifact. 기본6run/설치형/전환 gate는 유지 |
-| base/negative caller·fixture | 위 retainEvidence 전파와 report만 변경. 기존 false cleanup 계약·true 실패/정상 보존·항상 close·잘못된 bool/기존 경로 거부를 실제 실행 경계 테스트 |
+| base/negative/일반전환·후보 준비·fixture | retainEvidence의 parent/child/verifyCandidate 전파와 report. 기존 false cleanup·true 정상/부분실패 보존·항상 close·기대오류+secondary 실패 거부를 실제 경계 테스트 |
 | source attestation/도구 타입·목록 | 새 host 모듈의 실제 전이 입력·strict checkJs·검사 fixture 목록을 연결. 새 export 소비자 전부 검색; 목록/hash를 이유 없이 재발급하지 않음 |
 | 문서 | PLANS의 승인 상태·source별 결과·실패/미실행·자체/독립 검토를 구분 |
 
@@ -103,7 +104,7 @@
 ## 7. 승인과 후행 경계
 
 - [x] 기존 실제 근거/도구 호출부/보존 충돌 조사, 대안 비교, 한글 추가 설계와 자체 검토.
-- [ ] **사용자 작성 설계 승인:** 다음은 상세 구현 계획 작성·Astra max 공격적 계획 검토다. 현재 문서의 작성이 구현/실행 승인은 아니다.
+- [x] **사용자 작성 설계 승인:** 다음은 상세 구현 계획 작성·Astra max 공격적 계획 검토다. 작성 설계 승인이 구현/실행 승인은 아니다.
 - [ ] **상세 계획·Native 실행 묶음 승인:** 새 host/retention 보완·격리 Windows9run/설치·전환/cold·기존 PR45 추가 조사 push1회와 Linux9run job(+기존6run)을 구체화해 한번에 확인받는다. 해당 신규 공개 전송은 synthetic exact artifact만이다.
 - [ ] 구현/로컬 검증/독립 검토 후 승인된 추가 조사 checkpoint만 push. 새 PR·최종 push·병합은 조사 결과로 자동 진행하지 않는다.
 - [ ] 인과/잔여 한계 판정 후 기존 Task4의 source별 종합 Native·Astra max 최종 검토·최종CI·정확한head 병합/F01브랜치정리 게이트 재확인.
@@ -112,4 +113,4 @@
 
 ### 자체 검토
 
-F의 raw 부재와 U의 clock 관측을 명시했고, transport/수치 통과를 분리했다. 9집합의 위치 균형을 인과/통계 증명으로 과장하지 않는다. 추가 job의 총15run 비용·25분 상한·실패/종료 중단·exact35파일과 private Native 보존을 구분했다. 기존 source의 cleanup 충돌을 숨기지 않았으며, 작성/계획/실행/push/병합 권한을 분리했다. **Astra max 독립 검토는 아직 미실행**이며 자체 검토를 대체물로 제시하지 않는다.
+F의 raw 부재와 U의 clock 관측을 명시했고, transport/수치 통과를 분리했다. 9집합의 위치 균형을 인과/통계 증명으로 과장하지 않는다. 추가 job의 총15run 비용·25분 상한·실패/종료 중단·exact35파일과 private Native 보존을 구분했다. 작성/계획/실행/push/병합 권한은 분리한다. Astra max 계획 검토 최초0Critical/3Important/0Minor에서 일반전환 삭제·후보 준비 실패 삭제·음성 대조의 secondary 수용 누락을 지적했고, 해당 보존/판정 경계를 설계와 계획에 보완했다. 재검토 전에는 해소 판정을 주장하지 않으며 실제 코드/Native 검증은 별도다.
