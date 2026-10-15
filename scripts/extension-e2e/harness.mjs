@@ -293,6 +293,26 @@ export async function launchInstalledExtension({ chromiumApi, extensionPath, pro
     const worker = await waitForExtensionWorker(context);
     return { context, worker, extensionId: extensionIdFromWorkerURL(worker.url()) };
   } catch (error) {
+    if (typeof context.newPage === 'function') {
+      let timer;
+      try {
+        error.startupDiagnostic = await Promise.race([(async () => {
+          const manager = await context.newPage();
+          await manager.goto('chrome://extensions', { timeout: 3000 });
+          const text = await manager.evaluate(() => {
+            const pending = [document.documentElement]; let text = '', count = 0;
+            while (pending.length && text.length < 4096 && count++ < 2048) {
+              const node = pending.shift();
+              if (node.nodeType === Node.TEXT_NODE) text += node.textContent + '\n';
+              else { pending.push(...node.childNodes); if (node.shadowRoot) pending.push(node.shadowRoot); }
+            }
+            return text.slice(0, 4096);
+          });
+          return typeof text === 'string' ? text.slice(0, 4096) : 'unavailable';
+        })(), new Promise((_, reject) => { timer = setTimeout(() => reject(harnessError('startup-diagnostic-timeout')), 5000); })]);
+      } catch { error.startupDiagnostic = 'unavailable'; }
+      finally { clearTimeout(timer); }
+    }
     try {
       await context.close();
     } catch {

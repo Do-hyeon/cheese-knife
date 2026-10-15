@@ -122,6 +122,19 @@ test('launch closes every created context when worker validation fails', async (
   }
 });
 
+test('worker startup failure retains bounded native extension-manager diagnostics without changing the failure', async () => {
+  const { launchInstalledExtension } = await harnessModule();
+  const visits=[];let closed=0;
+  const context={serviceWorkers:()=>[],waitForEvent:async()=>{throw new Error('timeout');},close:async()=>{closed++;},
+    newPage:async()=>({goto:async(url,options)=>{visits.push([url,options.timeout]);},
+      evaluate:async()=> 'Load error: invalid message key'.repeat(300)})};
+  await assert.rejects(launchInstalledExtension({chromiumApi:{launchPersistentContext:async()=>context},
+    extensionPath:path.resolve('output/candidate'),profilePath:path.resolve('output/profile'),artifactPath:path.resolve('output/artifacts'),headed:false}),error=>{
+    assert.equal(error.code,'extension-worker-timeout');assert.equal(error.startupDiagnostic.length,4096);return true;
+  });
+  assert.deepEqual(visits,[['chrome://extensions',3000]]);assert.equal(closed,1);
+});
+
 test('launch maps browser startup failures and returns a validated worker', async () => {
   const { launchInstalledExtension } = await harnessModule();
   const extensionPath = path.resolve('output', 'candidate', 'chrome-candidate');

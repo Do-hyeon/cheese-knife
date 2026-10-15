@@ -669,7 +669,8 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
     report = { ok: true, runId, ...sections };
   } catch (error) {
     remember(error);
-    report = { ok: false, runId, error: { code: error?.code || 'installed-e2e-failed' } };
+    report = { ok: false, runId, error: { code: error?.code || 'installed-e2e-failed',
+      ...(typeof error?.startupDiagnostic === 'string' ? {startupDiagnostic:error.startupDiagnostic.slice(0,4096)} : {}) } };
     if (context) {
       const page = context.pages().at(-1);
       if (page) {
