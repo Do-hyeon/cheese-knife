@@ -103,19 +103,23 @@ test('independent raw oracle catches tolerance and selected THD mutations in act
   assert.equal(await fs.readFile('scripts/audio-artifact-core.mjs','utf8'),original);
 });
 
-test('public entry retains the frozen CLI and calibration body apart from the exact F00 bridge bootstrap',async()=>{
+test('public entry retains frozen CLI calibration and limits apart from exact F01 bootstrap and owned browser glue',async()=>{
   const crypto=require('node:crypto'),source=(await fs.readFile('scripts/audio-artifacts.mjs','utf8')).replaceAll('\r\n','\n');
   const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
   assert.equal(hash(source.slice(source.indexOf('export function parseAudioQualityArgs'),source.indexOf('export async function describeAudioArtifact'))),'6a8fb8a811f17bba7a6ffbdd7f841fea21d4e7470231dd0a5f37a45959eb413b');
   const cli=(await fs.readFile('scripts/check-audio-quality.mjs','utf8')).replaceAll('\r\n','\n');
   const previous=`    window.postMessage({namespace:'cheese-knife',protocol:1,type:'config',requestId:runtime.requestId,
       revision:100,config:normalizeConfig({})},location.origin);`;
-  const current=`    const config=normalizeConfig({});
-    window.postMessage({namespace:'cheese-knife',protocol:2,type:'config',requestId:runtime.mediaRequestId,context:{...runtime.media.context},
+  const current=`    const config={...normalizeConfig({}),...KnifeMediaProfiles.projectGlobalAudio({})};
+    window.postMessage({namespace:'cheese-knife',protocol:3,type:'config',requestId:runtime.mediaRequestId,context:{...runtime.media.context},
       deliverySequence:100,baseConfig:config,effectiveConfig:config,i18n:{},version:{globalRevision:0,mediaRevision:0},
-      profileState:'global',revisionStatus:'ready',mediaPhase:'ready',audioBindingGeneration:1,audioKind:'global',videoKind:'global'},location.origin);`;
-  assert.equal(cli.split(current).length,2,'only the approved bootstrap block differs');
-  assert.equal(hash(cli.replace(current,previous)),'6f8338b5c56b2043c33babea9957c3885c76b4be706ec578d300a849b789eee6');
+      profileState:'global',revisionStatus:'ready',mediaPhase:'ready',audioBindingGeneration:1,audioKind:'global',videoKind:'global',gainOrigin:'site-legacy'},location.origin);`;
+  const browserPrevious="const browser=await chromium.launch({headless:true,...(options.chrome?{channel:'chrome'}:{})});";
+  const browserCurrent="const measurement=options.chrome?null:await openAudioMeasurementBrowser(chromium,files);\nconst browser=measurement?.browser??await chromium.launch({headless:true,...(options.chrome?{channel:'chrome'}:{})});";
+  const nativeImport="import {openAudioMeasurementBrowser} from './audio-native-browser.mjs';\n";
+  const closeCurrent='}finally{if(measurement)await measurement.close();else await browser.close();}';
+  for(const block of [current,browserCurrent,nativeImport,closeCurrent])assert.equal(cli.split(block).length,2,'only exact reviewed bootstrap/ownership glue differs');
+  assert.equal(hash(cli.replace(current,previous).replace(browserCurrent,browserPrevious).replace(nativeImport,'').replace(closeCurrent,'}finally{await browser.close();}')),'6f8338b5c56b2043c33babea9957c3885c76b4be706ec578d300a849b789eee6');
   assert.match(source,/const files = await openOwnedRoot\(root\);\s+return describeAudioArtifactFiles\(files, label\);/);
   const {parseAudioQualityArgs}=await load();
   assert.deepEqual(parseAudioQualityArgs(['--chrome','--chrome','--label','first','--label','last'],process.cwd()),{chrome:true,root:process.cwd(),label:'last'});

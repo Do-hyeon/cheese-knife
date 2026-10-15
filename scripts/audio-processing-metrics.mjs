@@ -1,0 +1,190 @@
+import {summarizeCapture} from './audio-signal.mjs';
+import {readFile} from 'node:fs/promises';
+
+/** @param {unknown} value @returns {Record<string,unknown>|null} */
+const record=value=>value!==null&&typeof value==='object'&&!Array.isArray(value)?/** @type {Record<string,unknown>} */(value):null;
+/** @param {unknown} value @returns {value is number} */
+const finite=value=>typeof value==='number'&&Number.isFinite(value);
+/** @type {unknown} */const rawFixture=JSON.parse(await readFile(new URL('../tests/fixtures/f01-audio-processing.json',import.meta.url),'utf8'));
+const fixtureRecord=record(rawFixture);
+if(!fixtureRecord||fixtureRecord.schema!=='f01-audio-processing-v1'||
+  !['sampleRates','eqFrequencies','neutralAndMixedFrequencies','mixedLevels'].every(key=>{const row=fixtureRecord[key];return Array.isArray(row)&&row.length>0&&row.every(finite);}))throw new Error('audio-processing-fixture-invalid');
+const fixture=/** @type {{sampleRates:number[],eqFrequencies:number[],neutralAndMixedFrequencies:number[],mixedLevels:number[]}} */(rawFixture);
+
+/** Independent RBJ peaking transfer response; do not import the production EQ implementation.
+ * @param {readonly number[]} levels @param {number} sampleRate @param {number} frequency
+ */
+export function equalizerResponseDb(levels,sampleRate,frequency){
+  if(!Array.isArray(levels)||levels.length!==8||!levels.every(level=>finite(level)&&level>=-6&&level<=6)||
+    ![44100,48000,96000].includes(sampleRate)||!finite(frequency)||frequency<=0||frequency>=sampleRate/2)throw new Error('eq-measurement-invalid');
+  let db=0;
+  const omega=2*Math.PI*frequency/sampleRate;
+  for(const [index,centre] of [63,125,250,500,1000,2000,4000,8000].entries()){
+    const a=10**(/** @type {number} */(levels[index])/40),w=2*Math.PI*centre/sampleRate,alpha=Math.sin(w)/2;
+    const b=[1+alpha*a,-2*Math.cos(w),1-alpha*a],den=[1+alpha/a,-2*Math.cos(w),1-alpha/a];
+    /** @param {number[]} coefficients */
+    const power=coefficients=>{
+      let re=0,im=0;
+      for(const [n,c] of coefficients.entries()){re+=c*Math.cos(n*omega);im-=c*Math.sin(n*omega);}
+      return re*re+im*im;
+    };
+    db+=10*Math.log10(power(b)/power(den));
+  }
+  if(!finite(db))throw new Error('eq-measurement-invalid');
+  return db;
+}
+
+/** @param {unknown} raw @returns {import('./audio-signal.mjs').CaptureWindow} */
+export function validateProcessingCapture(raw){
+  const value=record(raw);
+  if(!value||!finite(value.rate)||![44100,48000,96000].includes(value.rate)||
+    !Number.isSafeInteger(value.start)||!Number.isSafeInteger(value.end)||Number(value.start)<0||Number(value.end)<=Number(value.start)||
+    !Array.isArray(value.channels)||value.channels.length!==2)throw new Error('audio-capture-invalid');
+  const length=Number(value.end)-Number(value.start);
+  if(length>value.rate*15)throw new Error('audio-capture-invalid');
+  for(const channel of value.channels){
+    if((!Array.isArray(channel)&&!(channel instanceof Float32Array)&&!(channel instanceof Float64Array))||channel.length!==length)throw new Error('audio-capture-invalid');
+    for(let index=0;index<length;index++)if(!finite(channel[index]))throw new Error('audio-capture-invalid');
+  }
+  return /** @type {import('./audio-signal.mjs').CaptureWindow} */(raw);
+}
+
+/** @typedef {{sampleRate:number,frequency:number,levels:readonly number[],masterGain:number}} EqualizerCase */
+/** @param {unknown} raw @param {EqualizerCase} spec @param {number} inputRms @param {number} nativeDb */
+export function evaluateEqualizerCapture(raw,spec,inputRms,nativeDb){
+  const capture=validateProcessingCapture(raw),summary=summarizeCapture(capture);
+  if(!finite(inputRms)||inputRms<=0||!finite(spec.masterGain)||spec.masterGain<=0||spec.masterGain>2)throw new Error('eq-measurement-invalid');
+  const responseDb=equalizerResponseDb(spec.levels,spec.sampleRate,spec.frequency);
+  const headroomDb=-spec.levels.reduce((sum,value)=>sum+Math.max(0,value),0),expectedDb=responseDb+headroomDb+20*Math.log10(spec.masterGain);
+  const tolerance=spec.levels.every(level=>level===0)?.05:.5;
+  const failures=[];
+  if(capture.rate!==spec.sampleRate)failures.push('eq-capture-rate');
+  if(!finite(nativeDb)||Math.abs(nativeDb-responseDb)>.05)failures.push('eq-native-response');
+  const measuredDb=summary.channels.map(channel=>channel.rms>0?20*Math.log10(channel.rms/inputRms):null);
+  for(const [index,value] of measuredDb.entries())if(value===null||!finite(value)||Math.abs(value-expectedDb)>tolerance)failures.push(`eq-output-channel-${index}`);
+  for(const [index,channel] of summary.channels.entries())if(channel.overFullScaleSamples!==0||channel.peak>.9801)failures.push(`eq-headroom-channel-${index}`);
+  return {summary,responseDb,nativeDb,headroomDb,expectedDb,measuredDb,tolerance,failures};
+}
+
+/** @returns {(EqualizerCase & {id:string})[]} */
+export function equalizerMeasurementCases(){
+  const zero=()=>Array(8).fill(0);
+  return fixture.sampleRates.flatMap(sampleRate=>{
+    /** @type {(EqualizerCase & {id:string})[]} */const cases=[];
+    for(const frequency of fixture.neutralAndMixedFrequencies)cases.push({id:`${sampleRate}/neutral/${frequency}`,sampleRate,frequency,levels:zero(),masterGain:1});
+    for(const [index,frequency] of fixture.eqFrequencies.entries())for(const value of [-6,6]){
+      const levels=zero();levels[index]=value;cases.push({id:`${sampleRate}/band/${frequency}/${value}`,sampleRate,frequency,levels,masterGain:1});
+    }
+    for(const frequency of fixture.neutralAndMixedFrequencies)cases.push({id:`${sampleRate}/mixed/${frequency}`,sampleRate,frequency,levels:fixture.mixedLevels,masterGain:1});
+    for(const masterGain of [.5,2])cases.push({id:`${sampleRate}/gain/${masterGain}`,sampleRate,frequency:1000,levels:zero(),masterGain});
+    return cases;
+  });
+}
+
+/** @typedef {{sampleRate:number,inputDbfs:number,pattern:string,seconds:number}} NormalizerCase */
+/** @typedef {{node:number,from:number,to:number,start:number,end:number,observed:number}} AutomationEvent */
+/** @typedef {{start:number,end:number,count:number[],squares:number[],peaks:number[],over:number[]}} OutputBin */
+/** @param {unknown} raw @param {NormalizerCase} spec */
+export function evaluateNormalizerTrace(raw,spec){
+  const trace=record(raw),bad=()=>new Error('normalizer-trace-invalid');
+  if(!trace||trace.sampleRate!==spec.sampleRate||![44100,48000,96000].includes(spec.sampleRate)||
+    !finite(spec.inputDbfs)||!finite(spec.seconds)||spec.seconds<1||!Array.isArray(trace.events)||!Array.isArray(trace.bins)||!trace.bins.length||trace.invalidFrames!==0)throw bad();
+  /** @type {AutomationEvent[]} */const events=[];
+  for(const value of trace.events){
+    const event=record(value);if(!event||![event.node,event.from,event.to,event.start,event.end,event.observed].every(finite)||
+      Number(event.from)<=0||Number(event.to)<=0||Number(event.end)<=Number(event.start))throw bad();
+    if(event.node===7)events.push(/** @type {AutomationEvent} */(value));
+  }
+  /** @type {OutputBin[]} */const bins=[];
+  for(const value of trace.bins){
+    const bin=record(value);if(!bin||!Number.isSafeInteger(bin.start)||!Number.isSafeInteger(bin.end)||Number(bin.end)-Number(bin.start)!==spec.sampleRate/10||
+      ![bin.count,bin.squares,bin.peaks,bin.over].every(row=>Array.isArray(row)&&row.length===2&&row.every(value=>finite(value)&&value>=0)))throw bad();
+    const row=/** @type {OutputBin} */(value);
+    if(row.count.every(count=>count===spec.sampleRate/10))bins.push(row);
+    else if(value!==trace.bins.at(0)&&value!==trace.bins.at(-1))throw bad();
+  }
+  if(bins.length<10)throw bad();
+  const failures=[];
+  const first=/** @type {OutputBin} */(bins.at(0)),last=/** @type {OutputBin} */(bins.at(-1));
+  const seconds=(last.end-first.start)/spec.sampleRate;
+  if(seconds<spec.seconds-.4)failures.push('normalizer-duration');
+  for(let index=1;index<bins.length;index++)if(bins[index]?.start!==bins[index-1]?.end)failures.push('normalizer-output-gap');
+  if(!events.length)failures.push('normalizer-missing-automation');
+  let maxUpDbPerSecond=0,maxDownDbPerSecond=0,maxGap=0,previous;
+  for(const event of events){
+    const fromDb=20*Math.log10(event.from),toDb=20*Math.log10(event.to),slope=(toDb-fromDb)/(event.end-event.start);
+    maxUpDbPerSecond=Math.max(maxUpDbPerSecond,slope);maxDownDbPerSecond=Math.max(maxDownDbPerSecond,-slope);
+    if(fromDb< -12.0001||fromDb>6.0001||toDb< -12.0001||toDb>6.0001)failures.push('normalizer-clamp');
+    if(previous!==undefined)maxGap=Math.max(maxGap,event.start-previous);previous=event.start;
+  }
+  if(maxUpDbPerSecond>1.0001||maxDownDbPerSecond>12.0001)failures.push('normalizer-rate');
+  if(maxGap>.2001)failures.push('normalizer-tick-gap');
+  for(const bin of bins)if(bin.over.some(value=>value!==0)||bin.peaks.some(value=>value>.9801))failures.push('normalizer-output-headroom');
+  const tail=bins.slice(-10),outputDbfs=[0,1].map(channel=>{
+    const sum=tail.reduce((total,bin)=>total+/** @type {number} */(bin.squares[channel]),0),count=tail.reduce((total,bin)=>total+/** @type {number} */(bin.count[channel]),0);
+    return sum>0?10*Math.log10(sum/count):null;
+  });
+  const targetDelta=Math.max(-12,Math.min(6,-20-spec.inputDbfs)),expectedDbfs=spec.inputDbfs+targetDelta;
+  if(['mono','stereo','antiphase','left','right'].includes(spec.pattern))for(const [channel,db] of outputDbfs.entries()){
+    const silent=spec.pattern==='left'&&channel===1||spec.pattern==='right'&&channel===0;
+    if(silent?db!==null&&db> -90:db===null||Math.abs(db-expectedDbfs)>1)failures.push(`normalizer-target-channel-${channel}`);
+  }
+  return {seconds,outputDbfs,expectedDbfs,targetReachable:targetDelta===-20-spec.inputDbfs,maxUpDbPerSecond,maxDownDbPerSecond,maxGap,automationEvents:events.length,completeBins:bins.length,failures:[...new Set(failures)]};
+}
+
+/** @returns {(NormalizerCase & {id:string})[]} */
+export function normalizerMeasurementCases(){
+  return [44100,48000,96000].flatMap(sampleRate=>[-36,-24,-12,-6].flatMap(inputDbfs=>['mono','stereo','antiphase','left','right'].map(pattern=>({
+    id:`${sampleRate}/normalizer/${inputDbfs}/${pattern}`,sampleRate,inputDbfs,pattern,seconds:inputDbfs===-24?15:inputDbfs===-36?10:4,
+  }))));
+}
+
+/** @param {unknown} value */
+function validSource(value){
+  const source=record(value);
+  return source!==null&&Object.keys(source).length===5&&typeof source.sourceCommit==='string'&&/^[a-f0-9]{40}$/.test(source.sourceCommit)&&
+    ['sourceSha256','lockSha256','manifestSha256','toolchainSha256'].every(key=>typeof source[key]==='string'&&/^[a-f0-9]{64}$/.test(source[key]));
+}
+/** Only complete, same-source Native results can clear the gate.
+ * @param {unknown} raw @param {unknown} expectedSource
+ */
+export function processingReportFailures(raw,expectedSource){
+  const report=record(raw),failures=[];
+  if(!report||report.schema!=='f01-audio-processing-v1'||!validSource(expectedSource)||!validSource(report.source)||!validSource(report.after)||
+    JSON.stringify(report.source)!==JSON.stringify(expectedSource)||JSON.stringify(report.after)!==JSON.stringify(expectedSource))return ['audio-processing-source'];
+  if(report.error!==null||!Array.isArray(report.pageErrors)||report.pageErrors.length)failures.push('audio-processing-exception');
+  if(!Array.isArray(report.rates)||report.rates.length!==3)return [...failures,'audio-processing-rates'];
+  for(const sampleRate of [44100,48000,96000]){
+    const rows=report.rates.filter(row=>record(row)?.sampleRate===sampleRate),rate=record(rows[0]);
+    if(rows.length!==1||!rate){failures.push(`rate-${sampleRate}/missing`);continue;}
+    const shutdown=record(rate.shutdown),nodes=record(rate.nodes);
+    if(!shutdown||!['browserCloseAcknowledged','browserDisconnected','ownedRootClosed'].every(key=>shutdown[key]===true))failures.push(`rate-${sampleRate}/shutdown`);
+    const expectedNodes={sources:1,gainNodes:8,filters:8,compressors:1,delays:2,shapers:1};
+    if(!nodes||Object.entries(expectedNodes).some(([key,value])=>nodes[key]!==value))failures.push(`rate-${sampleRate}/identity-nodes`);
+    const expectedEq=equalizerMeasurementCases().filter(row=>row.sampleRate===sampleRate);
+    if(!Array.isArray(rate.equalizer)||rate.equalizer.length!==expectedEq.length){failures.push(`rate-${sampleRate}/equalizer-missing`);continue;}
+    for(const spec of expectedEq){
+      const matches=rate.equalizer.filter(row=>record(row)?.id===spec.id),row=record(matches[0]),summary=record(row?.summary);
+      if(matches.length!==1||!row||!summary||!Array.isArray(summary.channels)||summary.channels.length!==2||!finite(row.nativeDb)||!finite(row.inputRms)||row.inputRms<=0||
+        !Array.isArray(row.failures)||row.failures.length){failures.push(spec.id+'/incomplete');continue;}
+      const db=equalizerResponseDb(spec.levels,spec.sampleRate,spec.frequency),headroom=-spec.levels.reduce((sum,value)=>sum+Math.max(0,value),0);
+      if(Math.abs(row.nativeDb-db)>.05)failures.push(spec.id+'/native-response');
+      for(const value of summary.channels){const channel=record(value);
+        if(!channel||!finite(channel.rms)||channel.rms<=0||!finite(channel.peak)||channel.peak>.9801||channel.overFullScaleSamples!==0||
+          Math.abs(20*Math.log10(channel.rms/row.inputRms)-db-headroom-20*Math.log10(spec.masterGain))>(spec.levels.every(value=>value===0)?.05:.5))failures.push(spec.id+'/output');
+      }
+    }
+    const expectedNorm=normalizerMeasurementCases().filter(row=>row.sampleRate===sampleRate);
+    if(!Array.isArray(rate.normalizer)||rate.normalizer.length!==expectedNorm.length)failures.push(`rate-${sampleRate}/normalizer-missing`);
+    else for(const spec of expectedNorm){
+      const rows=rate.normalizer.filter(row=>record(row)?.id===spec.id),row=record(rows[0]);
+      try{const trace=record(row?.trace);if(rows.length!==1||!row||trace?.buffers!==2||trace.active100msTimers!==1||evaluateNormalizerTrace(trace,spec).failures.length)failures.push(spec.id+'/output');}
+      catch{failures.push(spec.id+'/incomplete');}
+    }
+    const lifetime=record(rate.lifetime);
+    for(const key of ['sourceOne','gainZero','muteVolumePreserved','oldCallbacksZero','metersOffAfterDisable','hiddenObserved','hiddenHold','visibleRestored','independentWindows','oneWindowClosed','remainingSourceOne'])if(lifetime?.[key]!==true)failures.push(`rate-${sampleRate}/lifetime-${key}`);
+    const controls=record(rate.controls);
+    for(const key of ['dryUnity','dry99','wetPeak','extreme48db','silenceNoBoost','noiseNoBoost','burstFinite','stallHold','analysisErrorUnity'])if(controls?.[key]!==true)failures.push(`rate-${sampleRate}/control-${key}`);
+  }
+  return failures;
+}

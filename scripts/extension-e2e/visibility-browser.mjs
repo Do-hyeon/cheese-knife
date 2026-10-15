@@ -44,10 +44,12 @@ export function createVisibilityTransport(read,write){
   return transport;
 }
 
-/** @param {{chromiumApi:import('playwright').BrowserType,extensionPath:string,profilePath:string,artifactPath:string,headed:boolean}} options */
-export async function launchVisibilityExtension(options){
+/** @typedef {{chromiumApi:import('playwright').BrowserType,extensionPath?:string,profilePath:string,artifactPath:string,headed:boolean}} VisibilityOptions */
+/** @param {VisibilityOptions} options */
+export async function launchVisibilityBrowser(options){
   const {chromiumApi,extensionPath,profilePath,artifactPath,headed}=options;
-  if(process.platform!=='win32'||typeof headed!=='boolean'||![extensionPath,profilePath,artifactPath].every(value=>typeof value==='string'&&path.isAbsolute(value)))throw fail('visibility-launch-invalid');
+  if(process.platform!=='win32'||typeof headed!=='boolean'||!chromiumApi||typeof chromiumApi.connectOverCDP!=='function'||
+    ![profilePath,artifactPath,...extensionPath===undefined?[]:[extensionPath]].every(value=>typeof value==='string'&&path.isAbsolute(value)))throw fail('visibility-launch-invalid');
   // Keep the legacy untyped harness behind a checked runtime boundary, as the other strict Native runners do.
   const harnessSpecifier='./harness.mjs';
   /** @type {unknown} */const loaded=await import(harnessSpecifier);
@@ -55,11 +57,15 @@ export async function launchVisibilityExtension(options){
   const prepare=Reflect.get(loaded,'prepareWindowsBundledChromium'),wait=Reflect.get(loaded,'waitForExtensionWorker'),launchOptions=Reflect.get(loaded,'extensionLaunchOptions');
   if(typeof prepare!=='function'||typeof wait!=='function'||typeof launchOptions!=='function')throw fail('visibility-provider-invalid');
   /** @type {unknown} */const prepared=await Reflect.apply(prepare,undefined,[{chromiumApi,profilePath}]);
-  /** @type {unknown} */const launch=Reflect.apply(launchOptions,undefined,[extensionPath,headed]);
-  if(typeof prepared!=='string'||!path.isAbsolute(prepared)||path.relative(profilePath,prepared).startsWith('..')||
-    !launch||typeof launch!=='object')throw fail('visibility-provider-invalid');
-  /** @type {unknown} */const args=Reflect.get(launch,'args');
-  if(!Array.isArray(args)||args.length!==2||!args.every(value=>typeof value==='string')||args[0]!==`--disable-extensions-except=${extensionPath}`||args[1]!==`--load-extension=${extensionPath}`)throw fail('visibility-provider-invalid');
+  if(typeof prepared!=='string'||!path.isAbsolute(prepared)||path.relative(profilePath,prepared).startsWith('..')||path.isAbsolute(path.relative(profilePath,prepared)))throw fail('visibility-provider-invalid');
+  /** @type {string[]} */let args=[];
+  if(extensionPath!==undefined){
+    /** @type {unknown} */const launch=Reflect.apply(launchOptions,undefined,[extensionPath,headed]);
+    if(!launch||typeof launch!=='object')throw fail('visibility-provider-invalid');
+    /** @type {unknown} */const supplied=Reflect.get(launch,'args');
+    if(!Array.isArray(supplied)||supplied.length!==2||supplied[0]!==`--disable-extensions-except=${extensionPath}`||supplied[1]!==`--load-extension=${extensionPath}`)throw fail('visibility-provider-invalid');
+    args=supplied;
+  }
   const child=spawn(prepared,visibilityBrowserArgs(args,profilePath,headed),{stdio:['ignore','ignore','ignore','pipe','pipe'],windowsHide:true});
   /** @type {ReturnType<typeof setTimeout>|undefined} */let timer;
   const exited=new Promise(resolve=>{child.once('exit',()=>resolve(true));child.once('error',()=>resolve(true));});
@@ -73,10 +79,15 @@ export async function launchVisibilityExtension(options){
     const browser=await chromiumApi.connectOverCDP(transport,{noDefaults:true,timeout:15000});
     const contexts=browser.contexts(),context=contexts.at(0);
     if(contexts.length!==1||!context)throw fail('visibility-context-invalid');
-    /** @type {unknown} */const found=await Reflect.apply(wait,undefined,[context]);
-    const worker=context.serviceWorkers().find(worker=>worker===found),match=worker?.url().match(/^chrome-extension:\/\/([a-p]{32})\/background\.js$/);
-    if(!worker||!match?.[1])throw fail('visibility-worker-invalid');
-    ready=true;return {context,worker,extensionId:match[1]};
+    /** @type {import('playwright').Worker|null} */let worker=null;
+    /** @type {string|null} */let extensionId=null;
+    if(extensionPath!==undefined){
+      /** @type {unknown} */const found=await Reflect.apply(wait,undefined,[context]);
+      worker=context.serviceWorkers().find(worker=>worker===found)??null;
+      const match=worker?.url().match(/^chrome-extension:\/\/([a-p]{32})\/background\.js$/);
+      if(!worker||!match?.[1])throw fail('visibility-worker-invalid');extensionId=match[1];
+    }
+    ready=true;return {context,worker,extensionId};
   }finally{
     if(!ready){
       child.kill();
@@ -84,4 +95,11 @@ export async function launchVisibilityExtension(options){
       finally{clearTimeout(timer);}
     }
   }
+}
+
+/** @param {VisibilityOptions & {extensionPath:string}} options */
+export async function launchVisibilityExtension(options){
+  const {context,worker,extensionId}=await launchVisibilityBrowser(options);
+  if(!worker||!extensionId)throw fail('visibility-worker-invalid');
+  return {context,worker,extensionId};
 }

@@ -267,3 +267,11 @@ ACK phase 보완은 집중32·strict·격리 전체1577통과/실패0/기존1ski
 BE의9번째 launch(legacy-null seed)는 browser-unavailable로 실패했다.8회 종료와1회 미확인/IPC 등 후속 오류는 그대로 보존했고 정확한 실패 프로필의 현재 프로세스0만 따로 확인했다. Windows 내부 원인은 미확정이며, BF는 같은 입력의 새 전체39회 재실행 성공이다. 실패를 소급해 성공으로 고치지 않았다.
 
 마지막 task-done은 격리 후보의 전체1578개 중1577통과/실패0/기존private감사1skip(60.919초)을 실행하고 T7 완료를 원장에 기록했다. T8 정밀 출력/수명 및 T9 종합/독립 최종 검토는 미완료다. root dist58·제품2.13.3·기존 Chrome/P09·ZIP/CRX·모든 실패 증거를 보존하며 공개 작업은 하지 않았다.
+
+#### T8 측정 도구 구현·Native 실행 전 게이트 — 2026-10-15
+
+기존 CLI의 parser/정규화된 전체 calibration 본문 hash와14 steady·12 alignment·18 transition·stress 수치/허용치를 유지했다. 변경 허용 부분은 protocol3 완전 기본값 주입, 같은 기존 Windows bundled 준비/익명 pipe/noDefaults/정확한 자기 프로필 종료 경로 재사용뿐이다. `--chrome`의 기존 의미는 유지한다. synthetic MAIN Gain 호출은 영속 저장 권위 검사나 실제 사용자 동작 증명이 아니다.
+
+새 F01 측정기는44.1/48/96kHz에서 EQ108개·RMS/채널 패턴60개와 출력/무음/지연/오류/숨김/두 창 대조군을 실행한다. 독립 RBJ 응답식·양쪽 채널·캡처 완전성·증거 누락/native예외/소스 불일치 거부를 검사하며 원본 신호/오차 fixture와 별도의 F01 fixture 및 엄격 checkJs 그래프를 사용한다. 오디오 graph 변경, 실제 사용자 데이터 수집, 새 확장/권한/원격 포트는 없다. 새 worklet은 합성 측정 도구에만 있고 실제 스피커에는0을 보낸다.
+
+집중35/35·새 계약8/8·strict audio/development 및 격리 전체1588개 중1587통과/실패0/기존private감사1skip(63.712초),9개 기반 검사/build/package를 확인했다. 로그는 자기 execution 후보의 `output/f01-t8-{full-preflight,foundation}.log`에 보존했다. 이는 Native 출력/수명 성공이 아니며 T8은 계속 미완료다. 완전한 입력을 로컬 checkpoint에 묶은 후 clean Native 후보에서 실제 캡처와 전후 attestation·종료3증명을 새로 확인한다.

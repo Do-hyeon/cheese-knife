@@ -7,6 +7,7 @@ import {audioQualityReportFailures as audioQualityFailures} from './audio-metric
 import {summarizeCapture} from './audio-signal.mjs';
 import {openOwnedRoot} from './owned-files.mjs';
 import {AUDIO_ARTIFACT_FILES,describeAudioArtifact,parseAudioQualityArgs} from './audio-artifacts.mjs';
+import {openAudioMeasurementBrowser} from './audio-native-browser.mjs';
 const require=createRequire(import.meta.url);
 const {playerHTML}=require('../tests/helpers.cjs');
 const repositoryRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
@@ -15,7 +16,8 @@ const {chromium}=await import('playwright');
 const files=await openOwnedRoot(repositoryRoot);
 const targetFiles=await openOwnedRoot(options.root);
 const artifact=await describeAudioArtifact(options.root,options.label);
-const browser=await chromium.launch({headless:true,...(options.chrome?{channel:'chrome'}:{})});
+const measurement=options.chrome?null:await openAudioMeasurementBrowser(chromium,files);
+const browser=measurement?.browser??await chromium.launch({headless:true,...(options.chrome?{channel:'chrome'}:{})});
 const output='output/audio-quality';
 const reportPath=options.label==='source'?`${output}/report.json`:`${output}/report-${options.label}.json`;
 try {
@@ -53,10 +55,10 @@ try {
   for(const file of AUDIO_ARTIFACT_FILES) await page.evaluate(await targetFiles.readFile(file,'utf8'));
   await page.evaluate(()=>{
     const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
-    const config=normalizeConfig({});
-    window.postMessage({namespace:'cheese-knife',protocol:2,type:'config',requestId:runtime.mediaRequestId,context:{...runtime.media.context},
+    const config={...normalizeConfig({}),...KnifeMediaProfiles.projectGlobalAudio({})};
+    window.postMessage({namespace:'cheese-knife',protocol:3,type:'config',requestId:runtime.mediaRequestId,context:{...runtime.media.context},
       deliverySequence:100,baseConfig:config,effectiveConfig:config,i18n:{},version:{globalRevision:0,mediaRevision:0},
-      profileState:'global',revisionStatus:'ready',mediaPhase:'ready',audioBindingGeneration:1,audioKind:'global',videoKind:'global'},location.origin);
+      profileState:'global',revisionStatus:'ready',mediaPhase:'ready',audioBindingGeneration:1,audioKind:'global',videoKind:'global',gainOrigin:'site-legacy'},location.origin);
   });
   await page.locator('.knife-comp').waitFor();
   const signal=async({frequency=1000,amplitude=0.5,stereo='identical',bursts=false}={})=>{
@@ -180,4 +182,4 @@ try {
     stress:{profile:stress.profile,peak:stress.channels[0].peak,overFullScaleSamples:stress.channels[0].overFullScaleSamples},alignments,
     transitions:transitions.map(item=>({frequency:item.frequency,kind:item.kind,value:item.value,maxAdjacentStep:item.change.channels[0].maxAdjacentStep,baselineAdjacentStep:Math.max(item.before.channels[0].maxAdjacentStep,item.after.channels[0].maxAdjacentStep),peak:item.change.channels[0].peak,min8msRms:item.change.channels[0].envelope8ms.min,baselineMin8msRms:Math.min(item.before.channels[0].envelope8ms.min,item.after.channels[0].envelope8ms.min)}))},null,2));
   if(qualityFailures.length)throw new Error(`Audio quality failed: ${qualityFailures.join(', ')}`);
-}finally{await browser.close();}
+}finally{if(measurement)await measurement.close();else await browser.close();}

@@ -1,6 +1,16 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {PassThrough}=require('node:stream');
 const load=()=>import('../scripts/extension-e2e/visibility-browser.mjs');
+test('standalone synthetic browser rejects unsafe profile paths before accessing the browser provider',async()=>{
+  const {launchVisibilityBrowser}=await load();assert.equal(typeof launchVisibilityBrowser,'function');
+  const chromiumApi={connectOverCDP(){throw new Error('provider invoked');},executablePath(){throw new Error('provider invoked');}};
+  for(const profilePath of ['relative/profile',''])await assert.rejects(launchVisibilityBrowser({chromiumApi,profilePath,artifactPath:'C:/owned/artifacts',headed:false}),/visibility-launch-invalid/);
+});
+test('standalone measurement arguments keep an anonymous pipe and omit all extension loading flags',async()=>{
+  const {visibilityBrowserArgs}=await load(),args=visibilityBrowserArgs([],'C:/owned/synthetic-profile',false);
+  assert.ok(args.includes('--remote-debugging-pipe'));assert.ok(args.includes('--user-data-dir=C:/owned/synthetic-profile'));
+  assert.equal(args.some(arg=>arg.startsWith('--load-extension=')||arg.startsWith('--disable-extensions-except=')||arg.startsWith('--remote-debugging-port=')),false);
+});
 test('native visibility process excludes component background extensions without adding a network debug endpoint',async()=>{
   const {visibilityBrowserArgs}=await load();
   for(const headed of [false,true]){
