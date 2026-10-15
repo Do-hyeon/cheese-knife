@@ -240,6 +240,9 @@ export function processingLifetimeFailures(raw,sampleRate){
   const evidence=record(lifetime?.evidence),windows=evidence?.windowIds,targets=evidence?.targetIds;
   if(!Array.isArray(windows)||windows.length!==2||windows[0]===windows[1]||!windows.every(value=>Number.isSafeInteger(value)&&value>=0)||
     !Array.isArray(targets)||targets.length!==2||targets[0]===targets[1]||!targets.every(value=>typeof value==='string'&&/^[A-Fa-f0-9]{32}$/.test(value)))failures.push(`rate-${sampleRate}/native-window-identity`);
+  const hiddenWindows=evidence?.hiddenWindowIds,hiddenTargets=evidence?.hiddenTargetIds;
+  if(!Array.isArray(hiddenWindows)||hiddenWindows.length!==2||hiddenWindows[0]!==hiddenWindows[1]||!hiddenWindows.every(value=>Number.isSafeInteger(value)&&value>=0)||
+    !Array.isArray(hiddenTargets)||hiddenTargets.length!==2||hiddenTargets[0]===hiddenTargets[1]||!hiddenTargets.every(value=>typeof value==='string'&&/^[A-Fa-f0-9]{32}$/.test(value)))failures.push(`rate-${sampleRate}/native-hidden-window-identity`);
   return failures;
 }
 /** @param {unknown} raw @param {unknown} expectedSource */

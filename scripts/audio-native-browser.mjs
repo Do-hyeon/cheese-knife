@@ -37,21 +37,45 @@ export async function openAudioMeasurementBrowser(chromiumApi,files){
   }};
 }
 
+/** @param {import('playwright').Page} page @param {import('playwright').BrowserContext} context @param {import('playwright').CDPSession} browserSession */
+async function windowIdentity(page,context,browserSession){
+  const session=await context.newCDPSession(page);
+  /** @type {unknown} */let identity;
+  try{
+    identity=await session.send('Target.getTargetInfo');
+  }finally{await session.detach();}
+  const info=identity&&typeof identity==='object'?Reflect.get(identity,'targetInfo'):null;
+  if(!info||typeof info!=='object'||typeof Reflect.get(info,'targetId')!=='string')throw new Error('audio-browser-window-target');
+  const targetId=/** @type {string} */(Reflect.get(info,'targetId'));
+  /** @type {unknown} */const window=await browserSession.send('Browser.getWindowForTarget',{targetId});
+  const windowId=window&&typeof window==='object'?Reflect.get(window,'windowId'):null;
+  if(typeof windowId!=='number'||!Number.isSafeInteger(windowId)||windowId<0)throw new Error('audio-browser-window-target');
+  return {targetId,windowId};
+}
+
 /** @param {import('playwright').BrowserContext} context @param {import('playwright').CDPSession} browserSession */
 export async function openAudioMeasurementWindow(context,browserSession){
   const created=context.waitForEvent('page',{timeout:15000}).catch(()=>null);
   /** @type {unknown} */const target=await browserSession.send('Target.createTarget',{url:'about:blank',newWindow:true});
   if(!target||typeof target!=='object'||typeof Reflect.get(target,'targetId')!=='string')throw new Error('audio-browser-window-target');
-  const targetId=/** @type {string} */(Reflect.get(target,'targetId')),page=await created;
-  if(!page)throw new Error('audio-browser-window-target');
-  const session=await context.newCDPSession(page);
-  try{
-    /** @type {unknown} */const identity=await session.send('Target.getTargetInfo');
-    const info=identity&&typeof identity==='object'?Reflect.get(identity,'targetInfo'):null;
-    if(!info||typeof info!=='object'||Reflect.get(info,'targetId')!==targetId)throw new Error('audio-browser-window-target');
-  }finally{await session.detach();}
-  /** @type {unknown} */const window=await browserSession.send('Browser.getWindowForTarget',{targetId});
-  const windowId=window&&typeof window==='object'?Reflect.get(window,'windowId'):null;
-  if(typeof windowId!=='number'||!Number.isSafeInteger(windowId)||windowId<0)throw new Error('audio-browser-window-target');
-  return {page,targetId,windowId};
+  const page=await created;if(!page)throw new Error('audio-browser-window-target');
+  const identity=await windowIdentity(page,context,browserSession);
+  if(identity.targetId!==Reflect.get(target,'targetId'))throw new Error('audio-browser-window-target');
+  return {page,...identity};
+}
+
+/** A trusted link opens a sibling tab in its owner's native window; verify, never assume.
+ * @param {import('playwright').Page} first @param {import('playwright').BrowserContext} context @param {import('playwright').CDPSession} browserSession
+ */
+export async function openAudioSiblingTab(first,context,browserSession){
+  const before=await windowIdentity(first,context,browserSession),created=context.waitForEvent('page',{timeout:15000}).catch(()=>null);
+  await first.evaluate(()=>{
+    const link=document.createElement('a');link.id='f01-visibility-sibling';link.href='about:blank';link.target='_blank';link.rel='noopener';link.textContent='Visibility test';
+    link.style.cssText='position:fixed;left:16px;top:16px;z-index:2147483647';document.body.append(link);
+  });
+  await first.locator('#f01-visibility-sibling').click();const page=await created;
+  if(!page)throw new Error('audio-browser-sibling-window');
+  const after=await windowIdentity(page,context,browserSession);
+  if(after.windowId!==before.windowId||after.targetId===before.targetId)throw new Error('audio-browser-sibling-window');
+  return {page,...after,firstWindowId:before.windowId,firstTargetId:before.targetId};
 }

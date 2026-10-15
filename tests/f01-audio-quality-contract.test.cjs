@@ -183,7 +183,7 @@ test('standalone preflight rejects partial rates stale source failed output shut
   const {processingPreflightFailures,processingReportFailures}=await metrics();
   const source={sourceCommit:'1'.repeat(40),sourceSha256:'2'.repeat(64),lockSha256:'3'.repeat(64),manifestSha256:'4'.repeat(64),toolchainSha256:'5'.repeat(64)};
   const environment={browserVersion:'155.0.1.2',platform:'win32',arch:'x64',nodeVersion:'v24.19.0'};
-  const lifetime={sourceOne:true,gainZero:true,gainZeroHold:true,muteVolumePreserved:true,oldCallbacksZero:true,metersOffAfterDisable:true,hiddenObserved:true,hiddenHold:true,visibleRestored:true,independentWindows:true,oneWindowClosed:true,remainingSourceOne:true,evidence:{windowIds:[7,9],targetIds:['a'.repeat(32),'b'.repeat(32)]}};
+  const lifetime={sourceOne:true,gainZero:true,gainZeroHold:true,muteVolumePreserved:true,oldCallbacksZero:true,metersOffAfterDisable:true,hiddenObserved:true,hiddenHold:true,visibleRestored:true,independentWindows:true,oneWindowClosed:true,remainingSourceOne:true,evidence:{hiddenWindowIds:[7,7],hiddenTargetIds:['a'.repeat(32),'c'.repeat(32)],windowIds:[7,9],targetIds:['a'.repeat(32),'b'.repeat(32)]}};
   const report={schema:'f01-audio-preflight-v1',source,after:source,error:null,pageErrors:[],rates:[44100,48000,96000].map(sampleRate=>({sampleRate,environment,lifetime,rapid:rapidRows(),shutdown:{browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:true}}))};
   assert.deepEqual(processingPreflightFailures(report,source),[]);
   const full={schema:'f01-audio-processing-v2',source,after:source,error:null,pageErrors:[],preflight:report,rates:report.rates.map(({sampleRate,environment})=>({sampleRate,environment}))};
@@ -252,6 +252,18 @@ test('Native operation timeout and disconnect keep a named failure instead of an
   await assert.rejects(()=>audioOperation('lifetime-create-page',()=>new Promise(()=>{}),10),/audio-operation-timeout:lifetime-create-page/);
   await assert.rejects(()=>audioOperation('closed',async()=>{throw new Error('browser-disconnected');},20),/browser-disconnected/);
   for(const timeout of [0,NaN,30001])await assert.rejects(()=>audioOperation('invalid',async()=>17,timeout),/audio-operation-invalid/);
+});
+
+test('visibility sibling must share the first native window, never merely be another foreground target',async()=>{
+  const {openAudioSiblingTab}=await import('../scripts/audio-native-browser.mjs');
+  for(const windowId of [7,9]){
+    const first={evaluate:async()=>{},locator:()=>({click:async()=>{}})},second={};
+    const context=/** @type {import('playwright').BrowserContext} */(/** @type {unknown} */({waitForEvent:async()=>second,newCDPSession:/** @param {unknown} page */async(page)=>({send:async()=>({targetInfo:{targetId:page===first?'first':'second'}}),detach:async()=>{}})}));
+    const session=/** @type {import('playwright').CDPSession} */(/** @type {unknown} */({send:/** @param {string} method @param {{targetId:string}} params */async(method,params)=>({windowId:params.targetId==='first'?7:windowId})}));
+    const input=/** @type {import('playwright').Page} */(/** @type {unknown} */(first));
+    if(windowId!==7)await assert.rejects(()=>openAudioSiblingTab(input,context,session),/audio-browser-sibling-window/);
+    else{const result=await openAudioSiblingTab(input,context,session);assert.equal(result.page,second);assert.equal(result.windowId,7);}
+  }
 });
 
 test('invalid normalizer trace is saved to disk checkpoint before the measurement rejects',async()=>{

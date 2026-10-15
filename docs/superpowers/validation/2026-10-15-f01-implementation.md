@@ -314,6 +314,10 @@ root dist58·제품2.13.3·사용자 Chrome/P09·모든 실패 증거와 로컬 
 
 #### T8 사전계측 분리 도구 보완 — 2026-10-15
 
+P(14608b6/6WOy9H)는44.1kHz 수명/빠른 전환12개를 통과한 뒤48kHz의 실제 hidden-condition에서15초 timeout으로 실패했다. 이번에는120개 중간 JSON·preflight/final report를 남기고 두 rate 모두 정상 종료3증명을 확보했다. source/after5필드 일치·pageErrors0이며 강제 종료나 긴 행렬 실행은 없다. 진단에서 원래 방송과 새 blank가 모두visible이었다. 이는 같은 창의 다른 탭이라는 전제가 입증되지 않았음을 보여주며, 당시 window ID가 없으므로 서로 다른 창이었다고 단정하지 않는다.
+
+기존 context.newPage/현재 CDP createTarget에는 대상 window ID 지정이 없었다. 새 드라이버는 자기 fixture의 target=_blank 링크를 실제 클릭하고, 생성한 두 target의 native window ID 동일/target ID 상이를 확인한 뒤 실제 숨김을 검사한다. 잘못된 창을 거부하는 RED→GREEN, 집중51/51·strict·격리 전체1613개 중1612통과/실패0/기존private1skip(60.986초)·9기반/build/package를 확인했다. 새 Native 전제/출력 성공은 아직 미완료이며 과거 P/O를 소급 PASS로 바꾸지 않는다.
+
 사용자 추가 승인 뒤 기존 도구에 이름 있는 조작별 timeout·고유 번호 원자료 JSON·실패 finally/자기 ChildProcess 종료 경계를 보완했다. 같은 수명 함수를 사전계측 앞에서 먼저 실행하며 긴 행렬 뒤 검사도 유지한다. 실제 숨김15초/100ms polling과 측정 시간·DSP·허용치는 그대로다. timeout/원자료 누락을 RED로 확인한 뒤 집중50/50·strict와 격리 전체1612개 중1611통과/실패0/기존private1skip(61.821초),9개 기반/build/package가 통과했다. 자기 execution 후보의 output/f01-t8-lifetime-{full,foundation}.log에 보존했다. 이는 새 Native 성공이 아니며 원래 O의 미기록 자료를 복구하거나 소급 PASS로 바꾸지 않는다.
 
 **최신 O(2f494f39644fa3901c75930c1305d9b6286f8158/KOUZd1):** 사전계측36개 전체가 PASS이며 rate마다 실제 hold/reset 중간/unity를 확보했다. 최대 gain 오차는44.1/48/96kHz에서 각각3.91e−7/2.79e−7/2.75e−7dB, 최대 양쪽 출력 오차는1.15e−6/2.91e−6/1.26e−6dB다. 사전계측 source/after5필드 일치·pageErrors0·각 종료3증명true를 별도 preflight.json에 보존했다. 고정12자극/rate·DSP·기존 모든 허용치는 그대로다.

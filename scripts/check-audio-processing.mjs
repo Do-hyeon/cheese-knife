@@ -2,7 +2,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
 import {createHash} from 'node:crypto';
-import {openAudioMeasurementBrowser,openAudioMeasurementWindow,audioOperation} from './audio-native-browser.mjs';
+import {openAudioMeasurementBrowser,openAudioMeasurementWindow,openAudioSiblingTab,audioOperation} from './audio-native-browser.mjs';
 import {installProcessingProbe,callProcessingProbe} from './audio-processing-probe.mjs';
 import {AUDIO_ARTIFACT_FILES} from './audio-artifact-core.mjs';
 import {summarizeCapture} from './audio-signal.mjs';
@@ -219,7 +219,8 @@ export async function lifetimeProof(page,measurement,sampleRate,files,html,save)
   await pause(page,1200);const zero=summarizeCapture(await capture(page)),zeroAfter=await observe(page,'zero-after');await save('lifetime-zero',zero);
   const gainZeroHold=Math.abs(gainAt(zeroAfter,7)-gainAt(zeroBefore,7))<.0001&&zeroAfter.reads===zeroBefore.reads;
   await configure(page,{},1);await pause(page,600);
-  const other=await op('create-tab',()=>measurement.context.newPage());await op('activate-other',()=>other.bringToFront());
+  const sibling=await op('create-sibling',()=>openAudioSiblingTab(page,measurement.context,measurement.browserSession)),other=sibling.page;
+  await save('lifetime-hidden-identity',{windowIds:[sibling.firstWindowId,sibling.windowId],targetIds:[sibling.firstTargetId,sibling.targetId]});await op('activate-other',()=>other.bringToFront());
   await op('hidden-condition',()=>page.waitForFunction(()=>document.hidden===true,undefined,{polling:100}));await pause(page,1200);const hidden=await observe(page,'hidden-facts');await pause(page,1200);const held=await observe(page,'hidden-held');
   await op('activate-first',()=>page.bringToFront());await op('visible-condition',()=>page.waitForFunction(()=>document.hidden===false,undefined,{polling:100}));await pause(page,550);
   const restored=await observe(page,'restored');await op('close-other',()=>other.close());
@@ -238,7 +239,7 @@ export async function lifetimeProof(page,measurement,sampleRate,files,html,save)
     metersOffAfterDisable:after.active100msTimers===0,hiddenObserved:hidden.hidden===true,hiddenHold:Math.abs(gainAt(held,7)-gainAt(hidden,7))<.0001&&held.reads===hidden.reads,
     visibleRestored:restored.hidden===false,independentWindows:firstWindow.windowId!==created.windowId&&gainAt(first,2)===.5&&gainAt(secondFacts,2)===2,
     oneWindowClosed:second.isClosed(),remainingSourceOne:remaining.sources===1,
-    evidence:{visible,holdEvidence,zeroBefore,zeroAfter,hidden,held,restored,before,after,zero,first,secondFacts,remaining,windowIds:[firstWindow.windowId,created.windowId],targetIds:[identity.targetInfo.targetId,created.targetId]}};
+    evidence:{visible,holdEvidence,zeroBefore,zeroAfter,hidden,held,restored,before,after,zero,first,secondFacts,remaining,hiddenWindowIds:[sibling.firstWindowId,sibling.windowId],hiddenTargetIds:[sibling.firstTargetId,sibling.targetId],windowIds:[firstWindow.windowId,created.windowId],targetIds:[identity.targetInfo.targetId,created.targetId]}};
 }
 
 /** @param {{runId:string}} options */
