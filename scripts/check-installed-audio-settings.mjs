@@ -282,6 +282,7 @@ async function presetAndMasterProof(input,settings,first){
   }finally{await pair.close();}
   await settings.locator('#media-presets-tab').click();
   if(!await settings.locator('#media-preset-new').evaluate(node=>/** @type {HTMLDetailsElement} */(node).open))throw fail('audio-settings-empty-create-closed');
+  if(!await settings.locator('#media-preset-create').isEnabled())throw fail('audio-settings-empty-create-unprepared');
   await settings.locator('#media-preset-new > summary').click();await settings.locator('#media-audio-tab').click();
   await settings.locator('#audio-master').click();
   await waitNative(()=>audioFacts(first),facts=>facts.wanted===false&&facts.audio?.state==='off','audio-settings-master-off');

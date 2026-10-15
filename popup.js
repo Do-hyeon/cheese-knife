@@ -474,9 +474,13 @@
     button("media-legacy-import").disabled = !currentScope || blocked || !legacy || legacy.basis !== fingerprint();
     if (!currentScope) legacyStatus.textContent = legacyLimited;
     else if (legacyStatus.textContent === legacyLimited) legacyStatus.textContent = "";
-    if (!managementOpened && !document.getElementById("media-presets").hidden && snapshot && mediaView.phase === "ready") {
+    if (!managementOpened && !document.getElementById("media-presets").hidden && ready()) {
       managementOpened = true;
-      if (!store?.presets.length) createDetails.open = true;
+      if (!store?.presets.length && !createDetails.open) {
+        prepareCreation(presetDomain.value === "audio" ? "audio" : "video");
+        creationOpenedBySaveAs = true;
+        createDetails.open = true;
+      }
     }
     scopeSelect.disabled = audioBusy || ["saving", "unknown"].includes(mediaView.phase) || mediaView.pendingKeys.length > 0;
     const nextCatalogue = JSON.stringify([store?.channels.map((item) => item.channelId), store?.presets.map((item) => [item.id, item.name, item.domain]), currentScope?.channelId, scopeKey(mediaView.selection)]);

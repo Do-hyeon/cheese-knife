@@ -92,3 +92,20 @@ test('delayed native details toggle cannot recapture a changed source after save
   assert.equal(h.saved.mediaProfiles,undefined);assert.equal(h.calls.filter(c=>c.kind==='commit').length,writes);
   assert.equal(doc.getElementById('media-preset-create-name').value,'Original');
 });
+test('delayed first empty management toggle cannot capture settings changed after entry',async t=>{
+  const {h,dom,doc}=await setup(t),details=doc.getElementById('media-preset-new'),hold=event=>event.stopImmediatePropagation();
+  details.addEventListener('toggle',hold,true);doc.querySelector('[data-media-panel="presets"]').click();
+  doc.getElementById('media-preset-create-name').value='First entry';
+  await h.patch('popup',[{type:'config',id:'compressorThreshold',value:-20}]);await h.settle();
+  details.removeEventListener('toggle',hold,true);details.dispatchEvent(new dom.window.Event('toggle'));
+  const writes=h.calls.filter(c=>c.kind==='commit').length;doc.getElementById('media-preset-create').click();await h.settle();
+  assert.equal(h.saved.mediaProfiles,undefined,'entry must not silently capture the later source');
+  assert.equal(h.calls.filter(c=>c.kind==='commit').length,writes);assert.equal(doc.getElementById('media-preset-create-name').value,'First entry');
+});
+test('first management entry during invalidation waits for a fresh snapshot before preparing creation',async t=>{
+  const {h,doc}=await setup(t),gate=h.holdNext('callback:get-media-snapshot');
+  h.changes.emit({config:{}},'local');await gate.reached;
+  doc.querySelector('[data-media-panel="presets"]').click();assert.equal(doc.getElementById('media-preset-new').open,false);
+  gate.release();await h.settle();assert.equal(doc.getElementById('media-preset-new').open,true);
+  assert.equal(doc.getElementById('media-preset-create').disabled,false);assert.equal(h.saved.mediaProfiles,undefined);
+});
