@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 전체 [한글 PR #45](https://github.com/Do-hyeon/cheese-knife/pull/45) 생성, 공개 CI 확인 중**. T1–T9와 Minor 보완을 함께 공개하며 F02를 PR 선행 의존성으로 묶지 않는다. [PR 사전검증](docs/superpowers/validation/2026-10-15-f01-pr-preflight.md), [Minor 후속 검증](docs/superpowers/validation/2026-10-15-f01-minor-ui-follow-up.md), [단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md)에 근거를 보존한다. **병합·릴리즈·스토어 배포는 이번 승인 범위가 아니다.** 버전2.13.3·root dist·시청 Chrome/P09·스토어는 불변이다.
+최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 전체 [한글 PR #45](https://github.com/Do-hyeon/cheese-knife/pull/45) 생성, Linux 공개 오디오 게이트 실패로 추가 DSP 조사·보완 설계 승인 필요**. T1–T9와 Minor 보완을 함께 공개했으며 F02를 PR 선행 의존성으로 묶지 않는다. [PR 사전검증](docs/superpowers/validation/2026-10-15-f01-pr-preflight.md)의 새 250Hz ON step 실패는 과거 Windows Native 성공과 별도로 미해결이다. 허용치를 완화하거나 재실행 성공만으로 닫지 않는다. **병합·릴리즈·스토어 배포는 이번 승인 범위가 아니다.** 버전2.13.3·root dist·시청 Chrome/P09·스토어는 불변이다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -52,7 +52,7 @@
 | ID | 작업 묶음 | 상태 | 다음 게이트 |
 | --- | --- | --- | --- |
 | F00 | 채널별 미디어 저장·프리셋 | DONE (통합) | PR #44 공개 CI 통과·병합·해당 브랜치 정리 완료; 릴리즈 없음 |
-| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | DOING (공개 CI 확인) | 전체 PR #45 생성·공개 CI 확인; 병합 금지, 릴리즈는 F02·통합 후 |
+| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | WAITING-USER (새 공개 수치 실패) | PR #45 생성; Linux250Hz ON step 원인 조사·추가 DSP 설계/검토·새 Native 승인 필요, 병합 금지 |
 | AF05-B 실제 수용 / AF05 종료 | 차기 게시본 설치·업데이트 | WAITING-DEPENDENCY | 차기 게시와 실제 검사 별도 승인 후 수행; F00/F01과 독립 |
 | DT02 | 선택 파일의 native TS 실행 | DEFERRED | 실제 유지보수 이득과 검사/실행 경계 보존이 증명되면 재설계 |
 | F02–F05 | 후속 기능 | BACKLOG-BLOCKED | F00/F01 검증과 각 범위 승인 |
@@ -106,7 +106,8 @@
 - [x] F01 T1–T9와 Minor 후속 구현·객관 출력 상한/전환/수명주기/저장·로컬 F00 연결 검증과 최종 검토 마감. 실제 플랫폼/통합 후행 범위는 별도이며 주관적 청취만의 완료가 아니다.
 - [x] 2026-10-15 F01 전체 범위 push·한글 PR 하나·공개 CI 확인 승인. 병합·릴리즈·스토어 배포는 하지 않는다.
 - [x] F01 T1–T9·Minor2까지 포함한 전체 [한글 PR #45](https://github.com/Do-hyeon/cheese-knife/pull/45) 생성. F02 구현 완료를 F01 PR의 의존성으로 묶지 않는다.
-- [ ] PR #45 최신 head의 공개 CI 확인. 최초 shallow checkout의 F00 고정 객체 누락 실패와 준비 보완을 [PR 사전검증](docs/superpowers/validation/2026-10-15-f01-pr-preflight.md)에 보존한다. 과거 Native 근거와 구분한다.
+- [x] PR #45 공개 CI 확인: 두 OS 기반·전체 테스트·빌드·패키지는 통과, 고정 F00 입력 누락과 Linux 실행기 오선택을 재현·보완했다. 세 번째 실행에서 실제250Hz ON step 게이트가 실패했다. [현재 근거](docs/superpowers/validation/2026-10-15-f01-pr-preflight.md).
+- [ ] 새 Linux250Hz ON step 실패의 원인 분리와 국소 DSP 보완 설계·Astra max 검토·새 입력 Native/공개 CI 재검증의 추가 승인. 기존 수치 허용치와 실패 기록을 유지한다. 반복 성공만으로 미해결 수치 실패를 닫지 않는다.
 - [ ] F02도 기능 전체 단위로 별도 공개 지시·한글 PR·공개 CI·병합을 확인한다. F00 PR #44 통합은 완료했고 Task/문서 PR로 더 쪼개지 않는다.
 - [ ] 최종 통합 commit의 전체 회귀·점검도구·패키지·설치/저장 전환·native baseline/제한 대조.
 - [ ] 최종 통합 후보에서 실제 도구 감사를 다시 실행하고 원본 경고·원장/입력 해시·기존 private 자료 부재 skip1과 대조한다. 과거 목업 단계의1402/1403·감사 해시 불일치는 [당시 기록](docs/superpowers/validation/2026-10-14-f01-mockup-layout-review.md)에 보존하며 현재 회귀 실패로 표시하지 않는다. 원장 해시만 바꿔 PASS를 만들지 않는다.
@@ -129,6 +130,6 @@
 
 ## 10. 현재 사용자 개입 지점
 
-승인된 F01 T1–T9와 Minor 후속 실행 범위는 로컬 마감했다. **사용자가 F01 전체 push·한글 PR 하나·공개 CI 확인을 승인했으므로 해당 범위는 계속 진행한다. 병합·릴리즈·스토어 배포는 하지 않는다.** F02 설계/구현·버전 변경도 별도 승인이다. 실패 checkpoint와 private 증거를 삭제하거나 성공으로 재해석하지 않으며 사용자 Chrome/P09도 보존한다. 목업/문서·정적 성공을 실제 음질·저장·Chrome 성공으로 전용하지 않고 file URL 보안 차단을 우회하지 않는다. 과거 T3의 중지/해결 이력은 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)으로 구분한다.
+승인된 F01 전체 push·한글 PR 하나·공개 CI 확인은 실행했다. **새 Linux 수치 실패 때문에 F01 품질 게이트는 미충족이다. 다음 승인 지점은 원인 분리 계측·국소 DSP 보완 설계/Astra max 검토·새 Native/공개 CI 재검증이다.** 기존 허용치를 유지하고 새 DSP를 설계 없이 수정하지 않는다. 병합·릴리즈·스토어 배포는 하지 않는다. F02 설계/구현·버전 변경도 별도 승인이다. 실패 checkpoint와 private 증거를 삭제하거나 성공으로 재해석하지 않으며 사용자 Chrome/P09도 보존한다. 목업/문서·정적 성공을 실제 음질·저장·Chrome 성공으로 전용하지 않고 file URL 보안 차단을 우회하지 않는다. 과거 T3의 중지/해결 이력은 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)으로 구분한다.
 
 실제 설치/새로고침·P09 변경·새 의존성/권한/외부 전송·버전·공개는 별도 STOP 게이트다. 이전 MCP 연결/종료 승인이나 다른 작업의 공개 승인을 재사용하지 않는다.

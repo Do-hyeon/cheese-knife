@@ -39,3 +39,11 @@ head `bdea384`의 [CI 38748653001](https://github.com/Do-hyeon/cheese-knife/acti
 일반 frozen 오디오 검사만 Windows에서 기존 Native 경로를 쓰고 다른 OS는 원래 Playwright headless 경로를 쓰도록 단일 분기를 보완했다. `--chrome` 경로와 Windows 전용 가시성 실측 도구는 그대로다. 실제 실행 glue를 Windows/Linux/macOS·Chrome 지정 여부로 실행하는 회귀에서 Linux 오선택 RED를 확인했고 보완 후 관련21검사가 통과했다. calibration/측정/허용치 고정 해시는 유지했다.
 
 보완 후 전체1633중1632통과/실패0/기존제외1(exit0, 64.951초), 개발/오디오 도구 타입 검사 통과. 로그는 `output/f01-pr-ci-platform-{red,green}.log`와 격리 후보 `output/f01-pr-ci-platform-full.log`에 보존한다. 새 실제 감사 `run-2026-10-15T14-13-04-096Z-XtXQSa`는 입력 전후 일치·npm/Gitleaks0·기존과 같은 ESLint55/rawexit1이다. Linux의 실제 오디오 측정 성공 여부는 다음 공개 CI로 별도 확인한다.
+
+### 세 번째 공개 CI — 실제 수치 실패, 미해결
+
+head `69ae557d445eb45c8a76b25ec60f65970e21d521`의 [CI 38749600904](https://github.com/Do-hyeon/cheese-knife/actions/runs/38749600904)는 두 OS 기반·전체 테스트·빌드·패키지 통과 후 실제 오디오 검사에서 **`250Hz/on/step`**으로 실패했다. 변화창 maxAdjacentStep `0.01922585815191269`가 전후 기준 `0.016357921063899994`+기존 `1e-6`을 초과했다. 변화창 peak는 `0.5786308646202087`, 최소8ms RMS는 `0.2632465749886688`이며 그 전후 기준은 `0.26324657498866944`다. full-scale 초과나 dip으로 바꾸어 설명하지 않는다. 이 오류 뒤 설치형 E2E·거부·전환·저장 손실 CI 단계는 실행되지 않았다.
+
+이는 앞의 준비/플랫폼 실행 오류와 다른 **미해결 실제 수치 게이트 실패**다. 기존 Windows151의 source별 성공을 Linux 성공으로 전용하지 않는다. 원본 CI/실패 로그 `output/f01-pr45-ci-38749600904-failed.log`를 유지하며, 현재 로그만으로 DSP·스케줄링·브라우저 차이 중 원인을 확정하지 않는다. 재실행 성공만으로 닫거나 허용치/검사 창/고정 기준을 바꾸지 않는다.
+
+현재 PR은 열린 상태로 유지하며 병합·릴리즈·스토어 배포는 하지 않는다. 추가 계측과 국소 DSP 보완이 필요할 수 있으므로, 원인 분리 설계·Astra max 검토·새 source의 Native/공개 CI 재검증을 다음 승인 지점으로 남긴다. 이 문서의 공개 상태 기록은 제품/DSP 변경이 아니다.
