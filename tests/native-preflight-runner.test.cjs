@@ -6,7 +6,7 @@ const { spawnSync } = require('node:child_process');
 const fixture = require('./native-preflight-fixture.cjs');
 const subject = () => import('../scripts/check-native-preflight.mjs');
 const sources = ['scripts/check-native-preflight.mjs','scripts/extension-e2e/native-preflight.mjs','scripts/extension-e2e/native-preflight-contract.mjs','scripts/extension-e2e/native-profile.mjs','scripts/extension-e2e/published-payload.mjs',
-  'scripts/extension-e2e/transition-scenario.mjs','scripts/extension-e2e/fixture-router.mjs','scripts/owned-files.mjs','tests/fixtures/installed-extension/published-payload.json'];
+  'scripts/extension-e2e/transition-scenario.mjs','scripts/extension-e2e/installed-protocol.mjs','scripts/extension-e2e/fixture-router.mjs','scripts/owned-files.mjs','tests/fixtures/installed-extension/published-payload.json'];
 async function runFixture(t) {
   const { openOwnedRoot } = await import('../scripts/owned-files.mjs');
   const base = path.resolve('output');

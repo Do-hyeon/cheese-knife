@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-16 / Asia-Seoul. 현재 커서: **F01 보완 상세 구현 계획 작성 완료, 실행 묶음 확인 대기**. 사용자는 F01 보완·재검증 후 PR병합·해당브랜치정리→F02 순서를 승인했다. [상세 계획](docs/superpowers/plans/2026-10-16-f01-public-ci-follow-up.md)에 기존 Native 직접 실행과 Linux 계측 중간push/최종push·새 격리프로필 검증 범위를 묶었다. 전체 [PR #45](https://github.com/Do-hyeon/cheese-knife/pull/45)는 아직 미병합이고 Linux250Hz ON step·설치형E2E는 미해결이다. [기존 설계 검토](docs/superpowers/validation/2026-10-15-f01-public-ci-follow-up-review.md)의0/0/0을 구현 성공으로 세지 않는다. **계획 확인 전 추가 push·구현·브라우저 실행은 하지 않으며, 병합은 모든 게이트 충족 후에만 한다.** 버전2.13.3·root dist·시청 Chrome/P09·스토어는 불변이다.
+최신화: 2026-10-16 / Asia-Seoul. 현재 커서: **F01 보완 상세 구현 계획 실행 승인·Task1 진행 중**. 사용자는 [상세 계획](docs/superpowers/plans/2026-10-16-f01-public-ci-follow-up.md)의 Native 직접 실행·Linux 계측 중간push/최종push·새 격리프로필 검증과 모든 게이트 충족 후 PR병합·해당브랜치정리→F02 설계 순서를 승인했다. 전체 [PR #45](https://github.com/Do-hyeon/cheese-knife/pull/45)는 아직 미병합이고 Linux250Hz ON step·설치형E2E는 미해결이다. [기존 설계 검토](docs/superpowers/validation/2026-10-15-f01-public-ci-follow-up-review.md)의0/0/0을 구현 성공으로 세지 않는다. **허용치 완화·추측 DSP 변경·새 권한/다운로드는 승인 범위 밖이며, 병합은 모든 게이트 충족 후에만 한다.** 버전2.13.3·root dist·시청 Chrome/P09·스토어는 불변이다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -52,7 +52,7 @@
 | ID | 작업 묶음 | 상태 | 다음 게이트 |
 | --- | --- | --- | --- |
 | F00 | 채널별 미디어 저장·프리셋 | DONE (통합) | PR #44 공개 CI 통과·병합·해당 브랜치 정리 완료; 릴리즈 없음 |
-| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | WAITING-USER (상세 계획 실행 확인) | PR #45 미병합; 보완 상세계획 작성, Native/계측push묶음 확인 후 구현·최종검토·CI통과→병합/정리 |
+| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | DOING (보완 Task1) | PR #45 미병합; 보완 실행 묶음 승인, E2E 복구→계측·인과판정→종합검증·최종검토·CI통과→병합/정리 |
 | AF05-B 실제 수용 / AF05 종료 | 차기 게시본 설치·업데이트 | WAITING-DEPENDENCY | 차기 게시와 실제 검사 별도 승인 후 수행; F00/F01과 독립 |
 | DT02 | 선택 파일의 native TS 실행 | DEFERRED | 실제 유지보수 이득과 검사/실행 경계 보존이 증명되면 재설계 |
 | F02–F05 | 후속 기능 | BACKLOG-BLOCKED | F00/F01 검증과 각 범위 승인 |
@@ -111,8 +111,8 @@
 - [x] 기존 source의 clock 진행 모델·실제 base readiness/fixture를 일회성 probe로 조사하고 한글 [보완 설계](docs/superpowers/specs/2026-10-15-f01-public-ci-follow-up-design.md)를 작성. Linux 실제 PCM 인과는 아직 미확정이다.
 - [x] 보완 설계 Astra max 최초0/3/1·계측 비간섭/fixture신선도/비DSP분기cold게이트·inventory사실정정 반영, 동일 reviewer 문서재검토 잔여0/0/0. published1/F00의2/현재F01의3·현재payload62·기존 전체 runtime oracle을 보존한다.
 - [x] 사용자 F01 상세계획→보완·재검증→병합·해당브랜치정리→F02 순서 승인. 작성 설계의 후속 [상세 구현 계획](docs/superpowers/plans/2026-10-16-f01-public-ci-follow-up.md)에 Linux환경·계측선택·사전6run/산출물·Native직접실행·보호범위를 구체화하고 자체검토했다. 기존 설계 hash/검토 판정은 그대로 보존한다.
-- [ ] 작성 계획의 실행 묶음 확인: 검증 전용TRACE환경·기존PR45 중간Linux계측push/최종push·새격리사본/프로필검증. 새 제품옵션/의존성/권한/시청프로필 변경은 제외한다.
-- [ ] Task1 E2E protocol/신선도/전체inventory·독립runtime oracle 연결 복구 및 집중RED/GREEN.
+- [x] 작성 계획의 실행 묶음 승인: 검증 전용TRACE환경·기존PR45 중간Linux계측push/최종push·새격리사본/프로필검증. 새 제품옵션/의존성/권한/시청프로필 변경은 제외한다.
+- [x] Task1 E2E protocol/신선도/전체inventory·독립runtime oracle 연결 복구 및 집중RED/GREEN. 격리 전체1648중1647통과·실패0·기존private1제외, 9foundation·후보build62/진입자산22 통과. 새source 실제설치/cold는Task4의필수후행게이트다.
 - [ ] Task2 비계측/계측PCM·native-first진단·원본수치/오류보존·사전6run Linux조사.
 - [ ] Task3 Linux인과판정 뒤 조건부국소DSP·예약회귀·생성/pin. 미확정이면 임의수정하지 않고STOP한다.
 - [ ] Task4 새source 전체/점검도구·설치/전환/정확한손실/F01cold·조건부DSP전량Native·Astra max최종검토·최종CI. 기존허용치와실패기록유지.

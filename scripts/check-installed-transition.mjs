@@ -77,7 +77,8 @@ export function matchesStorageLoss(failure, nonce, extensionId) {
     isDeepStrictEqual(failure.observation?.raw, expected);
 }
 
-export function validateTransitionResult(result, nonce, control, launches) {
+export function validateTransitionResult(result, nonce, control, launches, currentProtocol=3) {
+  if (![2,3].includes(currentProtocol)) throw fail('installed-protocol-invalid');
   const cases = control ? ['valid-ui'] : TRANSITION_CASES;
   if (!result?.source?.sourceCommit || !isDeepStrictEqual(result.source, result.after) ||
       !/^[a-f0-9]{64}$/.test(result.candidateInventory || '') || result.seeds?.length !== cases.length ||
@@ -102,7 +103,7 @@ export function validateTransitionResult(result, nonce, control, launches) {
         if (Boolean(record.reloaded) !== shouldReload) throw fail('transition-result-incomplete');
         reloaded ||= shouldReload;
         assertTransitionState(record.observation, expectedTransitionState(caseId, phase.phase, record.step, nonce, seed.extensionId,
-          { reloaded, reloads: reloaded ? [1, 0] : [0, 0] }));
+          { reloaded, reloads: reloaded ? [1, 0] : [0, 0],expectedProtocol:phase.phase==='new'?currentProtocol:1 }));
       }
       if (!isDeepStrictEqual(phase.final, phase.records.at(-1).observation)) throw fail('transition-result-incomplete');
     }
@@ -152,7 +153,7 @@ export function validateF01TransitionResult(result,nonce,control,launches,seedFi
     launches.length!==assignments.reduce((sum,row)=>sum+f01TransitionStages(row,control).length,0))throw fail('f01-transition-result');
   const legacyIds=assignments.filter(row=>row.kind==='legacy').map(row=>row.caseId);
   validateTransitionResult({...result,seeds:result.seeds.filter(row=>legacyIds.includes(row.caseId)),phases:result.phases.filter(row=>legacyIds.includes(row.caseId)),candidateInventory:result.payloads.f00.inventorySha256},
-    nonce,control,launches.filter(row=>legacyIds.includes(row.caseId)));
+    nonce,control,launches.filter(row=>legacyIds.includes(row.caseId)),2);
   let phaseCount=0,launchIndex=0;
   for(const [index,assignment]of assignments.entries()){
     const seed=result.seeds.at(index),stages=f01TransitionStages(assignment,control),phases=result.phases.filter(row=>row.caseId===assignment.caseId),
@@ -353,7 +354,7 @@ export async function executeTransitionChild(options, dependencies = {}) {
       'audio-settings-ui.js','gain-authority.js','web/player-gain.js']:[]);
     const published = await deps.readPublishedPayload();
     const metadata=validatePayloadMetadata(JSON.parse(await (await openOwnedRoot(repositoryRoot)).readFile('tests/fixtures/installed-extension/published-payload.json','utf8')));
-    const currentNames=[...metadata.map(entry=>entry.name),'media-profiles.js',...(f01?['gain-authority.js','web/player-gain.js','audio-settings-ui.js']:[])].sort();
+    const currentNames=[...metadata.map(entry=>entry.name),'media-profiles.js','gain-authority.js','web/player-gain.js','audio-settings-ui.js'].sort();
     const first = await deps.verifyCandidate(options.candidateIds[0], files.root);
     const current = await payloadFromDirectory(first.dist,currentNames);
     const second = await deps.verifyCandidate(options.candidateIds[1], files.root);
@@ -408,6 +409,7 @@ export async function executeTransitionChild(options, dependencies = {}) {
             seeds.push({ caseId: assigned.caseId, raw: seed, extensionId: expectedId, writes: 1, preparation: launched.preparation });
           } else {
             const args={ ...launched, responses, caseId: assigned.caseId, phase,runNonce:options.nonce,
+              expectedProtocol:sourcePayload===published?1:sourcePayload===frozen?2:3,
               expectedBrokerSource:entries.find(entry=>entry.name==='settings-broker.js').bytes.toString('utf8') };
             const result = f01?(assignment.kind==='legacy'?await deps.runTransitionPhase(args):await runF01TransitionPhase({...args,responses:audioResponses,
               caseId:assignment.mediaCase,assignedCaseId:assignment.caseId,occurrence:launchOccurrence,payload,browserSession,...(presetId?{presetId}:{}),

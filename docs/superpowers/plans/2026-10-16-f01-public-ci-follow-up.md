@@ -1,6 +1,6 @@
 # F01 공개 CI 보완 상세 구현 계획
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans. 기존 Native 직접 실행 방식을 유지한다. 아래 계획의 사용자 확인 전에는 제품/도구 구현·새 브라우저 실행·push를 하지 않는다. Task별 로컬 커밋은 가능하지만 PR은 기존 #45 하나만 사용한다.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans. 2026-10-16 사용자 실행 묶음 승인. 기존 Native 직접 실행 방식을 유지한다. 승인된 범위 안에서 순차 실행하며 Task별 로컬 커밋은 가능하지만 PR은 기존 #45 하나만 사용한다.
 
 **Goal:** F01의 실제 오디오 수치 실패를 원인에 맞게 보완하고 설치형 protocol/payload 검사를 복구한 뒤, 공개 CI 통과·병합·해당 브랜치 정리를 마치고 F02 설계로 이동한다.
 **Architecture:** 설치형 관측은 실제 payload 역할1/2/3에서 기대 protocol을 정한다. 오디오는 비계측/계측 원자료를 같은 수치 기준으로 비교한 뒤, 인과가 확인된 국소 DSP만 변경한다. 제품 권한/저장 ABI와 과거 근거는 유지한다.
@@ -121,4 +121,4 @@
 - 설계1–7절은 Task1(protocol/payload/oracle), Task2(계측/환경/보존), Task3(조건부DSP), Task4(재검증/최종검토/통합)로 연결한다. 검토 집중5종류의 RED/음성 대조도 각 Task에 있다.
 - Native 직접 실행 방식은 기존 결정을 유지한다. 이번에 구현을 subagent별로 쪼개거나 Task별 PR을 만들지 않는다.
 - 작성 계획의 확인 시 **검증 전용 TRACE 환경 선택·기존 PR의 중간 Linux 계측 push·새 격리 사본/프로필 검증·최종 검토/CI 통과 뒤 병합과F01브랜치정리**를 한 번에 확정한다. 허용치 변경·새 권한/다운로드/사용자프로필·설명되지 않는 DSP 변경은 묶음 밖 STOP이다.
-- 현재는 계획 작성만 완료한 상태다. 구현·새 Native·Linux조사push·CI통과·병합·브랜치정리·F02착수를 실행한 것으로 표기하지 않는다.
+- 실행 승인 후 Task1의 연결 복구·단위/전체 회귀를 진행했다. 새 Native·Linux조사push·공개CI통과·병합·브랜치정리·F02착수는 아직 미실행이며 후행게이트 완료 전 성공으로 표기하지 않는다.

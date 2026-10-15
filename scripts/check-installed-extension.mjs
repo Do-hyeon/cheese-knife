@@ -11,6 +11,7 @@ import { refreshTransitionWorker } from './extension-e2e/transition-preparation.
 import { openOwnedRoot } from './owned-files.mjs';
 import { nativeFailureDetails } from './audio-native-browser.mjs';
 import { removeCandidate, verifyCandidate } from './verify-candidate.mjs';
+import { observeInstalledProtocol, sendInstalledEnvelopeControl } from './extension-e2e/installed-protocol.mjs';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const slash = value => value.split(path.sep).join('/');
@@ -34,8 +35,8 @@ const waitUntil = async (read, accept, code, timeoutMs = 15000) => {
 
 const storageSnapshot = worker => worker.evaluate(() => chrome.storage.local.get(null));
 
-export async function runBaseInstalledScenario({ context, worker, extensionId, responses, restartSession, captureState, expectedProtocol = 2 }) {
-  assertCondition(expectedProtocol === 1 || expectedProtocol === 2,'installed-protocol-invalid');
+export async function runBaseInstalledScenario({ context, worker, extensionId, responses, restartSession, captureState, expectedProtocol = 3 }) {
+  assertCondition([1,2,3].includes(expectedProtocol),'installed-protocol-invalid');
   const pageErrors = [];
   const routeErrors = [];
   const fulfilled = [];
@@ -89,14 +90,11 @@ export async function runBaseInstalledScenario({ context, worker, extensionId, r
     'storage-setting-missing',
   );
   const main = await waitUntil(
-    () => page.evaluate(protocol => {
-      const runtime = window[Symbol.for('cheese-knife.runtime.v1')];
-      return runtime ? { ready: runtime.configReady && (protocol === 1 || runtime.ownerProtocol === 2 && runtime.media.phase !== 'pending'), arrowSeek: runtime.config.arrowSeek } : null;
-    },expectedProtocol),
-    value => value?.ready && value.arrowSeek === false,
+    () => page.evaluate(observeInstalledProtocol,expectedProtocol),
+    value => value?.config.arrowSeek === false,
     'main-setting-missing',
   );
-  const envelope = await page.evaluate(protocol => protocol === 1 ? window.__knifeFixture?.lastConfigEnvelopeV1 : window.__knifeFixture?.lastConfigEnvelopeV2,expectedProtocol);
+  const envelope = main.metadata;
   assertCondition(envelope && typeof envelope.requestId === 'string' && Number.isSafeInteger(expectedProtocol === 1 ? envelope.revision : envelope.deliverySequence), 'isolated-bridge-metadata-missing');
 
   const beforeInvalid = await storageSnapshot(worker);
@@ -107,32 +105,25 @@ export async function runBaseInstalledScenario({ context, worker, extensionId, r
   assertCondition(invalidReply?.ok === false && invalidReply.code === 'invalid-request', 'invalid-message-accepted');
   assertCondition(JSON.stringify(beforeInvalid) === JSON.stringify(afterInvalid), 'invalid-message-mutated-storage');
 
-  await page.evaluate(({metadata,protocol}) => {
-    const runtime = window[Symbol.for('cheese-knife.runtime.v1')];
-    const message = protocol === 1 ? {
-      namespace: 'cheese-knife', protocol: 1, type: 'config', requestId: metadata.requestId,
-      revision: metadata.revision - 1, config: { ...runtime.config, arrowSeek: true }, i18n: {},
-    } : { ...metadata,namespace:'cheese-knife',protocol:2,type:'config',deliverySequence:metadata.deliverySequence-1,
-      baseConfig:{...runtime.baseConfig,arrowSeek:true},effectiveConfig:{...runtime.config,arrowSeek:true},i18n:{...runtime.i18n} };
-    window.postMessage(message,location.origin);
-  }, {metadata:envelope,protocol:expectedProtocol});
-  await page.waitForTimeout(100);
-  assertCondition(await page.evaluate(() => window[Symbol.for('cheese-knife.runtime.v1')].config.arrowSeek === false), 'stale-revision-accepted');
-  if(expectedProtocol===2){
+  for (const mode of expectedProtocol===1?['accepted','stale']:['accepted','stale','context']) {
+    const control=await context.newPage();
+    try {
+      await control.goto(FIXTURE_LIVE_URL,{waitUntil:'domcontentloaded'});
+      const canonical=await waitUntil(()=>control.evaluate(observeInstalledProtocol,expectedProtocol),value=>value?.config.arrowSeek===false,'control-handshake-missing');
+      await control.evaluate(sendInstalledEnvelopeControl,{metadata:canonical.metadata,protocol:expectedProtocol,mode});
+      await control.waitForTimeout(100);
+      assertCondition(await control.evaluate(()=>window[Symbol.for('cheese-knife.runtime.v1')].config.arrowSeek) === (mode==='accepted'),mode==='accepted'?'positive-envelope-not-applied':mode==='stale'?'stale-revision-accepted':'retired-channel-envelope-accepted');
+      assertCondition(isDeepStrictEqual(await storageSnapshot(worker),afterInvalid),'envelope-control-mutated-storage');
+    } finally { await control.close(); }
+  }
+  // Start ordinary route checks with a fresh handshake, never the injected fixture slot.
+  await page.reload({waitUntil:'domcontentloaded'});
+  await waitUntil(()=>page.evaluate(observeInstalledProtocol,expectedProtocol),Boolean,'fresh-handshake-missing');
+  if(expectedProtocol!==1){
     await page.evaluate(()=>{history.pushState(null,'','/live/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');window.dispatchEvent(new PopStateEvent('popstate'));});
-    await page.waitForFunction(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
-      return runtime?.ownerProtocol===2&&runtime.media.phase==='ready'&&runtime.media.context.channelId==='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';},null,{timeout:15000});
-    const beforeReplay=await page.evaluate(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];return JSON.stringify({context:runtime.media.context,config:runtime.config});});
-    await page.evaluate(metadata=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
-      window.postMessage({...metadata,namespace:'cheese-knife',protocol:2,type:'config',deliverySequence:metadata.deliverySequence+100,
-        baseConfig:{...runtime.baseConfig,arrowSeek:true},effectiveConfig:{...runtime.config,arrowSeek:true},i18n:{...runtime.i18n}},location.origin);
-    },envelope);
-    await page.waitForTimeout(100);
-    assertCondition(await page.evaluate(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
-      return JSON.stringify({context:runtime.media.context,config:runtime.config});})===beforeReplay,'retired-channel-envelope-accepted');
+    await waitUntil(()=>page.evaluate(observeInstalledProtocol,expectedProtocol),value=>value?.metadata.context.channelId==='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb','route-handshake-missing');
     await page.evaluate(()=>{history.pushState(null,'','/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');window.dispatchEvent(new PopStateEvent('popstate'));});
-    await page.waitForFunction(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
-      return runtime?.media.phase==='ready'&&runtime.media.context.channelId==='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';},null,{timeout:15000});
+    await waitUntil(()=>page.evaluate(observeInstalledProtocol,expectedProtocol),value=>value?.metadata.context.channelId==='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','return-handshake-missing');
   }
 
   const validSnapshot = await storageSnapshot(worker);
@@ -167,7 +158,7 @@ export async function runBaseInstalledScenario({ context, worker, extensionId, r
     popup: passed({ phase: 'ready' }),
     storage: passed({ revision: validSnapshot.settingsRevision, arrowSeek: stored.config.arrowSeek }),
     isolatedBridge: passed({ requestIdObserved: true, revisionObserved: true }),
-    mainRuntime: passed({ arrowSeek: main.arrowSeek }),
+    mainRuntime: passed({ arrowSeek: main.config.arrowSeek }),
     invalidMessage: passed({ code: invalidReply.code }),
     staleRevision: passed({ preserved: true }),
     damagedStorage: passed({ repairPhase: 'repair-required', restored: true }),

@@ -31,6 +31,7 @@ async function fixture(t, fault, scenario) {
         const target = `${name}/${entry.name}`; await files.ensureDirectory(path.posix.dirname(target)); await files.writeFile(target, entry.bytes);
       }
       if(fault!=='missing-media-module')await files.writeFile(`${name}/media-profiles.js`,'var KnifeMediaProfiles = {};');
+      for(const asset of ['gain-authority.js','audio-settings-ui.js','web/player-gain.js'])if(fault!=='missing-'+asset)await files.writeFile(`${name}/${asset}`,'var fixture = true;');
       if(fault==='extra-media-module')await files.writeFile(`${name}/unexpected.js`,'var unexpected = true;');
       return { dist: await files.resolve(name, { type: 'directory' }) };
     },
@@ -71,6 +72,7 @@ async function fixture(t, fault, scenario) {
     refreshTransitionWorker: async ({ fixtureVersion, ...launched }) => ({ ...launched,
       preparation: { developerMode: true, workerClosed: true, extensionId: launched.extensionId, version: fixtureVersion, state: 'ENABLED' } }),
     runTransitionPhase: async args => {
+      assert.equal(args.expectedProtocol,args.phase==='new'?3:1,'payload role must supply the protocol');
       events.push(`scenario:${args.phase}`);
       if (['loss', 'postclose-inventory'].includes(fault) && args.phase === 'new') throw Object.assign(faultError('transition-storage-preservation'), {
         failure: { code: 'transition-storage-preservation', caseId: 'valid-ui', phase: 'new', step: 'startup', stage: 'candidate-init', cleanupErrors: [], observation: { raw: {}, execution: { extensionId: id, version: '2.13.4', brokerMatches: true } } },
@@ -150,7 +152,7 @@ test('media child never replaces or relaunches after an unproven owned root clos
   assert.ok(f.messages.at(-1).result.failure);assert.equal(f.events.includes('launch:new'),false);
   assert.equal(f.messages.filter(value=>value.type==='close-success').length,1);
 });
-for(const fault of ['missing-media-module','extra-media-module'])test('child rejects current asset '+fault+' before launching',async t=>{
+for(const fault of ['missing-media-module','extra-media-module','missing-gain-authority.js','missing-audio-settings-ui.js','missing-web/player-gain.js'])test('child rejects current asset '+fault+' before launching',async t=>{
   const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t,fault);await executeTransitionChild(f.options,f.deps);
   assert.equal(f.paths.length,0);assert.equal(f.messages.at(-1).result.failure.code,'transition-inventory');
 });

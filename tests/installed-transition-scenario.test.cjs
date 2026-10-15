@@ -101,7 +101,7 @@ test('wrong execution takes precedence over simultaneous storage loss', async ()
 test('phase refuses the wrong version before accessing any UI or storage', async () => {
   const { runTransitionPhase } = await subject();
   await assert.rejects(runTransitionPhase({ context: {}, worker: { evaluate: async () => ({ extensionId, version: '2.13.3', brokerSource: 'function() {}' }) },
-    extensionId, responses: {}, caseId: 'valid-ui', phase: 'new', runNonce: nonce, expectedBrokerSource: 'var createSettingsBroker = function() {};' }),
+    extensionId, responses: {}, caseId: 'valid-ui', phase: 'new', expectedProtocol:3, runNonce: nonce, expectedBrokerSource: 'var createSettingsBroker = function() {};' }),
   error => { assert.equal(error.code, 'transition-execution'); assert.equal(error.failure.observation.execution.version, '2.13.3'); return true; });
 });
 
@@ -148,6 +148,23 @@ test('font0 raw zero and registration contract are independently retained', asyn
   }
 });
 
+test('F01 runtime oracle includes the complete independent audio defaults while published and F00 stay unchanged',async()=>{
+  const {expectedTransitionState,assertTransitionState}=await subject();
+  const args=['legacy-invalid','new','startup',nonce,extensionId];
+  const old=expectedTransitionState(...args,{expectedProtocol:2});
+  assert.deepEqual(old.runtime.config,normalized);
+  const current=expectedTransitionState(...args,{expectedProtocol:3});
+  assert.deepEqual(current.runtime.config,{...normalized,audioDefault:false,compressorEnabled:true,audioGain:1,gainInherited:true,
+    eqEnabled:false,eq63:0,eq125:0,eq250:0,eq500:0,eq1000:0,eq2000:0,eq4000:0,eq8000:0,
+    normalizerEnabled:false,normalizerTargetDbfs:-20});
+  assert.equal(Object.hasOwn(current.raw.config,'audioDefault'),false);
+  for(const mutate of [config=>{delete config.eq8000;},config=>{config.extra=true;},config=>{config.audioGain=0;}]){
+    const actual=structuredClone(current);mutate(actual.runtime.config);
+    assert.throws(()=>assertTransitionState(actual,current),{code:'transition-main'});
+  }
+  assert.throws(()=>expectedTransitionState(...args,{expectedProtocol:4}),{code:'installed-protocol-invalid'});
+});
+
 test('bounded polling observes real provider results, does not swallow errors or accept timeout', async () => {
   const { waitTransition } = await subject();
   let calls = 0;
@@ -160,7 +177,7 @@ test('actual phase propagates worker failure with case phase step stage and no i
   const { runTransitionPhase } = await subject();
   const worker = { evaluate: async () => { throw Object.assign(Error('worker'), { code: 'worker-failed' }); } };
   await assert.rejects(runTransitionPhase({ context: {}, worker, extensionId, responses: [], caseId: 'valid-ui',
-    phase: 'new', runNonce: nonce, expectedBrokerSource: 'source' }), error => {
+    phase: 'new', expectedProtocol:3, runNonce: nonce, expectedBrokerSource: 'source' }), error => {
     assert.equal(error.code, 'worker-failed');
     assert.deepEqual(error.failure, { code: 'worker-failed', caseId: 'valid-ui', phase: 'new', step: 'startup',
       stage: 'candidate-init', cleanupErrors: [] }); return true;

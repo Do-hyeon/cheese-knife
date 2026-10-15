@@ -7,7 +7,7 @@ import { NATIVE_STAGES, NATIVE_CONTEXTS, NATIVE_CODES } from './extension-e2e/na
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sourceFiles = ['scripts/check-native-preflight.mjs','scripts/extension-e2e/native-preflight.mjs','scripts/extension-e2e/native-preflight-contract.mjs','scripts/extension-e2e/native-profile.mjs','scripts/extension-e2e/published-payload.mjs',
-  'scripts/extension-e2e/transition-scenario.mjs','scripts/extension-e2e/fixture-router.mjs','scripts/owned-files.mjs','tests/fixtures/installed-extension/published-payload.json'];
+  'scripts/extension-e2e/transition-scenario.mjs','scripts/extension-e2e/installed-protocol.mjs','scripts/extension-e2e/fixture-router.mjs','scripts/owned-files.mjs','tests/fixtures/installed-extension/published-payload.json'];
 const fail = code => Object.assign(new Error(code), { code });
 const need = (value, code = 'native-evidence-invalid') => { if (!value) throw fail(code); };
 const hash = value => createHash('sha256').update(value).digest('hex');
