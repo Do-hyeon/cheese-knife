@@ -272,14 +272,17 @@ export async function runObserverIsolation({frozenRoot,prefix}){
     records=await executeObserverSequence(prefix,async run=>{
       const role=run.mode==='f'?frozen:files,before=await profiles(role),env={...process.env};delete env.KNIFE_AUDIO_QUALITY_TRACE;if(run.mode==='t')env.KNIFE_AUDIO_QUALITY_TRACE='1';
       const execution=await executeObserverChild({files,cwd:role.root,args:['scripts/check-audio-quality.mjs','--root',files.root,'--label',run.label],env,
-        stdout:directory+'/'+run.label+'-stdout.log',stderr:directory+'/'+run.label+'-stderr.log',timeoutMs:Math.min(120000,remaining())});remaining();
+        stdout:directory+'/'+run.label+'-stdout.log',stderr:directory+'/'+run.label+'-stderr.log',timeoutMs:Math.min(120000,remaining())});
       /** @type {unknown} */let report=null,diagnostic=null;
+      try{
+      remaining();
       for(const suffix of ['report',...run.mode==='f'?[]:['diagnostic']]){
         const raw='output/audio-quality/report-'+run.label+(suffix==='report'?'':'-diagnostic')+'.json';
         try{const bytes=await boundedJSON(role,raw,remaining);await files.writeFile(directory+'/'+run.label+'-'+suffix+'.json',bytes,{flag:'wx',signal:AbortSignal.timeout(Math.min(15000,remaining()))});remaining();
           const value=JSON.parse(bytes.toString());if(suffix==='report')report=value;else diagnostic=value;}
-        catch{hostFailures.push(run.label+'/observer-evidence-read');}
+        catch{hostFailures.push(run.label+'/observer-evidence-read');remaining();}
       }
+      remaining();
       let closeConfirmed=execution.closeConfirmed;
       if(process.platform==='win32'){
         const created=(await profiles(role)).filter(name=>!before.includes(name));
@@ -304,6 +307,10 @@ export async function runObserverIsolation({frozenRoot,prefix}){
       }
       remaining();
       return {...run,...execution,closeConfirmed,report,diagnostic,...stopReason?{stopReason}:{}};
+      }catch(error){
+        const reason=error instanceof Error?error.message.slice(0,240):'observer-postprocess-failed';hostFailures.push(run.label+'/'+reason);
+        return {...run,...execution,closeConfirmed:false,report,diagnostic,stopReason:reason,secondaryErrors:[reason]};
+      }
     });
   }catch(error){hostFailures.push(error instanceof Error?error.message:'observer-host-failed');}
   const result=assessObserverRunSet({manifest,records});

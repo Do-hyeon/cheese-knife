@@ -150,7 +150,7 @@ test('browser attestation selects an installed pinned executable without launchi
   assert.match(executable,process.platform==='win32'?/chrome\.exe$/:/headless_shell/);
 });
 
-for(const expiry of ['prepare','last-attestation','evidence','publication'])test(`whole observer deadline rejects expiry during ${expiry}`,async()=>{
+for(const expiry of ['prepare','child-timeout','last-attestation','evidence','publication'])test(`whole observer deadline rejects expiry during ${expiry}`,async()=>{
   const fs=require('node:fs/promises'),path=require('node:path'),{isDeepStrictEqual}=require('node:util'),api=await subject();
   const {validateQualityEvidence}=await import('../scripts/audio-quality-diagnostics.mjs'),fixture=await nine(),saved=new Map();
   const repositoryRoot=path.resolve('memory-current'),frozenRoot=path.resolve('memory-frozen');let elapsed=0,count=0,advanced=false;
@@ -168,8 +168,11 @@ for(const expiry of ['prepare','last-attestation','evidence','publication'])test
     ownedRoot:async root=>root===repositoryRoot?files:frozen,sourceIdentity:async root=>{
       if(expiry==='prepare'||expiry==='last-attestation'&&count===9)expire();return identities[root===files?'current':'frozen'];},
     execFileSync:()=>Buffer.from('fixed tracked bytes'),sha:()=> '2'.repeat(64),hashFile:async()=> '3'.repeat(64),
-    browserExecutable:async()=>path.resolve('memory-browser'),productIdentity:async()=>fixture.manifest.product.files,profiles:async()=>[],
-    executeObserverChild:async()=>{elapsed+=119000;count++;return{exitCode:0,signal:null,timedOut:false,overflow:false,closeConfirmed:true,errors:[]};},
+    browserExecutable:async()=>{if(expiry==='child-timeout')elapsed=1180000;return path.resolve('memory-browser');},productIdentity:async()=>fixture.manifest.product.files,profiles:async()=>[],
+    executeObserverChild:async options=>{count++;if(expiry==='child-timeout'){
+      assert.equal(options.timeoutMs,20000);elapsed+=21000;
+      return{exitCode:null,signal:'SIGTERM',timedOut:true,overflow:false,closeConfirmed:false,errors:['child-stop-sentinel']};
+    }elapsed+=119000;return{exitCode:0,signal:null,timedOut:false,overflow:false,closeConfirmed:true,errors:[]};},
     boundedJSON:async(_root,name)=>Buffer.from(JSON.stringify(name.includes('-diagnostic.json')?fixture.records[count-1].diagnostic:fixture.records[count-1].report))};
   const source=await fs.readFile('scripts/audio-observer-isolation.mjs','utf8'),original=source.slice(source.indexOf('export async function runObserverIsolation')).replace(/^export /,'');
   const io=source.match(/^async function readWithin.*$/m)?.[0]||'';
@@ -177,5 +180,8 @@ for(const expiry of ['prepare','last-attestation','evidence','publication'])test
   let result,error;try{result=await run({frozenRoot,prefix:'f01obs-test'});}catch(cause){error=cause;}
   assert.ok(error||result?.transportComplete===false,'expired host must reject or report incomplete');
   assert.notEqual(result?.qualityPass,true);assert.ok(elapsed>=1200000);
-  if(expiry==='prepare')assert.equal(count,0);else assert.equal(count,9);
+  if(expiry==='prepare')assert.equal(count,0);else if(expiry==='child-timeout'){
+    assert.equal(count,1);const actual=JSON.parse(saved.get('output/audio-observer/f01obs-test/result.json')).records[0];
+    assert.equal(actual.signal,'SIGTERM');assert.equal(actual.timedOut,true);assert.ok(actual.errors.includes('child-stop-sentinel'));
+  }else{assert.equal(count,9);if(expiry==='last-attestation')assert.equal(JSON.parse(saved.get('output/audio-observer/f01obs-test/result.json')).records.at(-1).exitCode,0);}
 });

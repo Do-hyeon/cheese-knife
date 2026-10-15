@@ -121,7 +121,7 @@
 - [x] 추가 상세 계획 Astra max 최초0Critical/3Important/0Minor·일반전환/verifyCandidate 보존과 음성secondary 수용 보완·첫targeted0/1/1·cold 호출/전달검사/요약 보완·최종targeted잔여0/0/0. [문서 검토 결과](docs/superpowers/validation/2026-10-16-f01-observer-plan-review.md)이며 실제 구현/Native 성공은 아니다. 원본F의raw부재·현재U의추가clock관측·전환예외 미확정은 유지한다.
 - [x] 사용자 추가 계획/Native 실행 묶음 승인. 새 도구·보존/실패 보완·격리Windows9회·전환/cold/손실·Astra max 구현 검토 뒤 기존PR45 조사push1회/Linux9회(+기존6회)까지다. 최종push·병합·배포는 제외한다.
 - [x] 추가 계획 Task1/2 구현·RED→GREEN·집중57/57·strict·최신 격리 전체1675통과/실패0/기존제외1. 새 F/U/T host와 원본 F/제품/기존6gate는 분리하며 정적 신규 파일 I/O7경고는 기존55와 별도 대조한다.
-- [ ] 추가 계획 Task3 보존 전파/복합 오류·전체/9기반/build/check/실제 도구 감사·Astra max 구현 검토. 최초0Critical/3Important/1Minor(보존 표시를 author Important 재등급) 보완 후 최신 전체1725통과/실패0/기존제외1·9기반·build62/check22 통과. [구현 검증 기록](docs/superpowers/validation/2026-10-16-f01-observer-implementation-validation.md); 보완 후 실제 도구 재검사/동일 reviewer targeted 확인은 잔여다.
+- [ ] 추가 계획 Task3 보존 전파/복합 오류·전체/9기반/build/check/실제 도구 감사·Astra max 구현 검토. 최초0Critical/3Important/1Minor(보존 표시를 author Important 재등급), 첫targeted 잔여Important1(시간 초과의 실제 종료 기록 유실)까지 보완했다. 최신 전체1726통과/실패0/기존제외1·9기반·build62/check22 통과. [구현 검증 기록](docs/superpowers/validation/2026-10-16-f01-observer-implementation-validation.md); 마지막 보완의 실제 도구 감사/동일 reviewer targeted 확인은 잔여다.
 - [ ] 추가 계획 Task4 새 격리 Native/Windows9회·설치/전환/cold·정확한손실/보존·종료. 자료 불완전이면 조사push도 하지 않는다.
 - [ ] 추가 계획 Task5 기존PR45 조사push1회·정확한head 공개CI/원자료 재평가·근거targeted 검토·원인/한계 기록 후STOP. 결과를 최종 수용으로 확대하지 않는다.
 - [ ] Task4 새source 전체/점검도구·설치/전환/정확한손실/F01cold·조건부DSP전량Native·Astra max최종검토·최종CI. 기존허용치와실패기록유지.
