@@ -27,7 +27,7 @@
 | 후보 준비/negative/일반전환의 다중 cleanup | verifyCandidate/부모/자식까지 retention 전달·기대오류+secondary 성공 금지 | Task3 |
 | reload 전환 실패가 storage-loss보다 먼저 발생 | 원래 실패 보존·정확한 손실 PASS 금지 | Task3/4/5 |
 
-## Task1 — 대조 입력·판정 계약
+## Task 1: 대조 입력·판정 계약
 
 **Files:** 새 `scripts/audio-observer-isolation.mjs`, `tests/audio-observer-isolation.test.cjs`; `scripts/audio-quality-diagnostics.mjs`의 기존 validator 명시 export; `tsconfig.audio-tools.json`, `tests/audio-signal-contract.test.cjs`의 strict 파일 목록. 테스트가 필요로 하는 고정 유효 report는 테스트 자체의 literal 입력으로 구성하며 private 실패 PCM을 커밋하지 않는다.
 
@@ -55,7 +55,7 @@ assert.equal(assessObserverRunSet(withMissingReport).transportComplete, false);
 - [ ] **GREEN/타입:** `node --test tests/audio-observer-isolation.test.cjs tests/audio-quality-diagnostics.test.cjs tests/audio-artifacts.test.cjs tests/audio-signal-contract.test.cjs` 및 `npm run typecheck:audio-tools`. 새 명시 목록과 실제 import graph가 정확히 같고 strict 옵션을 유지해야 한다.
 - [ ] **로컬 checkpoint:** 위 파일만 커밋하고 task 결과를 기록한다. push하지 않는다.
 
-## Task2 — 원본 실행·출력 상한·종료·CI 연결
+## Task 2: 원본 실행·출력 상한·종료·CI 연결
 
 **Files:** Task1 host/test; `.github/workflows/ci.yml`; 필요하면 현재 strict graph 안의 `visibility-browser.mjs`에 이미 있는 `stopVisibilityChild`를 재사용한다. 원본 F/현재 `check-audio-quality.mjs` 본문·CLI·신호는 수정하지 않는다.
 
@@ -70,7 +70,7 @@ assert.equal(assessObserverRunSet(withMissingReport).transportComplete, false);
 - [ ] **CI artifacts:** prefix는 `f01obs-<github.run_id>-<github.run_attempt>`다. 실행 전 manifest1/result1, 고정 suffix9개 report9·U/T diagnostic6·stdout/stderr18의 exact35경로만 `always()`/retention7일로 업로드한다. wildcard로 profile/다른 output을 포함하지 않는다. 공개 manifest는 repo 상대 경로·버전/hash만이며 private 절대 경로/환경 전체를 올리지 않는다. 기존 verify6회·설치형/전환 gate/required 이름과 artifact는 그대로다.
 - [ ] **GREEN:** Task1 명령 + 실제 child integration test. 원본 byte/hash 불변·manifest overwrite 거부·child/role/root 바꿔치기·초과/timeout 후 STOP·자료 전송 허용 목록을 검사한다. workflow 문자열만이 아니라 같은 경로 생성/수집 함수를 실행해 정확35개를 확인한다. 로컬 checkpoint, 아직push하지 않는다.
 
-## Task3 — base/negative 자료 보존과 reload 회귀
+## Task 3: base/negative 자료 보존과 reload 회귀
 
 **Files:** `scripts/check-installed-extension.mjs`, `scripts/check-installed-extension-negative.mjs`, `scripts/check-installed-transition.mjs`, `scripts/verify-candidate.mjs`; `tests/installed-extension-runner.test.cjs`, `tests/installed-extension-negative.test.cjs`, `tests/installed-extension-candidate.test.cjs`, `tests/installed-transition-runner.test.cjs`, `tests/installed-transition-child.test.cjs`, `tests/installed-transition-scenario.test.cjs`; 실제 import consumer의 fixture/입력 attestation 목록만 필요할 때 갱신한다.
 
@@ -91,7 +91,7 @@ assert.equal(assessObserverRunSet(withMissingReport).transportComplete, false);
 - [ ] **통합 checkpoint:** 격리 `output/f01-execution-20261015/source`에 변경 추적 파일만 byte 대조 후 반영한다. 전체 `node --test tests/*.test.cjs`, 기존9foundation, 후보 build/check62/22, `npm run audit:tools`를 실행한다. npm metadata 전송은 기존 승인 범위만이며 원본55경고/rawexit1/private1skip을 대조한다. 입력 전후 hash·root dist/버전 보호를 확인하고 로컬 구현 checkpoint를 고정한다.
 - [ ] **fresh Astra max 구현 검토:** 새 host/CI/retention 전체 diff·집중/전체 결과·실제 미실행 목록을 검토한다. 필수 지적은 재현/보완하고 영향 검사 갱신 후 targeted 확인받는다. 이 단계 완료만으로 Native/push가 실행된 것은 아니다.
 
-## Task4 — 새 Windows Native 조사·전환 검증
+## Task 4: 새 Windows Native 조사·전환 검증
 
 **실행 승인 전에는 아래 경로 생성/Chrome 실행을 하지 않는다.** 고정 implementation commit을 C라 하며, root가 아닌 새 물리 clone을 사용한다. 새 의존성/브라우저 설치가 필요하면 중지한다.
 
@@ -102,7 +102,7 @@ assert.equal(assessObserverRunSet(withMissingReport).transportComplete, false);
 - [ ] **Windows 대조:** 현재 source에서 `runObserverIsolation({frozenRoot:'../frozen',prefix:'f01obs-win-a'})`를 programmatic 실행한다. 실제 API는 frozenRoot를 currentRoot 기준 absolute로 해석하고 앞선 root 검증을 한다. F1,U1,T1,U2,T2,F2,T3,F3,U3와 source/provenance/로그/종료를 보존한다. 모두 통과해도 과거 오디오 인과는 미확정이다.
 - [ ] **증거 정리:** 새 Native source/after·report/diagnostic/raw/profile/trace와 모든 실패를 private output에 남긴다. 일반 base를3종료증명으로 과장하지 않는다. 사전 run ID가 있으면 덮지 말고 새 목록/이유를 사용자에게 확인한다. 재검사에 성공한 값만 선택하지 않는다.
 
-## Task5 — 조사 checkpoint 1회 공개·Linux 근거와 최종 STOP
+## Task 5: 조사 checkpoint 1회 공개·Linux 근거와 최종 STOP
 
 - [ ] **push 전 gate:** Task1–4/독립 구현 검토가 끝났고 추가 조사 실행 묶음의 명시 승인이 있는지 확인한다. Windows 수치만 실패했고 자료/종료가 완전하면 실패를 숨기지 않고 Linux 비교를 계속할 수 있다. Windows 입력 무효/미실행/종료 불명·필수 검토 미해결이면 push하지 않는다. 오디오 원인 미확정은 이번 조사 push의 목적이지 최종 마감 승인으로 바뀌지 않는다.
 - [ ] **같은 PR #45만 갱신:** 구현 checkpoint/미실행·한계를 한글 본문에 합쳐 해당 branch에 1회 push한다. 정확한 head/자동 merge SHA를 함께 기록한다. 새 PR/문서 전용 push/자동 재실행/최종push/병합을 하지 않는다.

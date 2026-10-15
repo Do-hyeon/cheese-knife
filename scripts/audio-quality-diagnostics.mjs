@@ -148,6 +148,8 @@ function validateEvidence(value){
   need(Array.isArray(d.secondaryErrors)&&d.secondaryErrors.length===0,'diagnostic-secondary-error');
 }
 
+export {validateEvidence as validateQualityEvidence};
+
 /** @param {{label:string,trace:boolean}} options */
 export function createQualityDiagnostics({label,trace}){
   qualityOutputPaths(label);if(typeof trace!=='boolean')throw new Error('audio-quality-trace-invalid');
