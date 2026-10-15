@@ -78,10 +78,11 @@ export async function attachPopupCDP(browser,target,timeoutMs=8000,onEvent=()=>{
 /** @typedef {{listener:(message:unknown,sender:chrome.runtime.MessageSender)=>void,observations:MediaSenderObservation[],overflow:boolean}} MediaObserver */
 /**
  * @param {{context:import('playwright').BrowserContext,worker:import('playwright').Worker,fixturePage:import('playwright').Page,
- * extensionId:string,browserSession:PopupBrowserSession,timeoutMs?:number}} options
+ * extensionId:string,browserSession:PopupBrowserSession,timeoutMs?:number,mediaProtocol?:2|3}} options
  * @returns {Promise<{settingsPage:import('playwright').Page,popupAttached:true,tabWriterQualified:true}>}
  */
-export async function openInstalledMediaSettings({context,worker,fixturePage,extensionId,browserSession,timeoutMs=15000}){
+export async function openInstalledMediaSettings({context,worker,fixturePage,extensionId,browserSession,timeoutMs=15000,mediaProtocol=2}){
+  if(mediaProtocol!==2&&mediaProtocol!==3)throw fail('media-tab-protocol-invalid');
   if(!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>15000)throw fail('media-tab-timeout-invalid');
   if(!/^[a-p]{32}$/.test(extensionId)||fixturePage.context()!==context)throw fail('media-tab-context-invalid');
   const deadline=Date.now()+timeoutMs;
@@ -98,21 +99,21 @@ export async function openInstalledMediaSettings({context,worker,fixturePage,ext
   /** @type {Awaited<ReturnType<typeof attachPopupCDP>>|undefined} */let popup;
   /** @type {PopupTarget|undefined} */let openedPopup;
   try{
-    await run(()=>worker.evaluate(()=>{
+    await run(()=>worker.evaluate(protocol=>{
       const state=/** @type {typeof globalThis & {__knifeMediaTabObserver?:MediaObserver}} */(globalThis);
       if(state.__knifeMediaTabObserver)throw new Error('media-tab-observer-exists');
       /** @type {MediaSenderObservation[]} */const observations=[];
       /** @type {MediaObserver} */const observer={observations,overflow:false,listener:(message,sender)=>{
         if(!message||typeof message!=='object')return;
         const request=/** @type {{namespace?:unknown,protocol?:unknown,action?:unknown}} */(message);
-        if(request.namespace!=='cheese-knife-settings'||(request.protocol!==1&&request.protocol!==2)||
+        if(request.namespace!=='cheese-knife-settings'||typeof request.protocol!=='number'||(request.protocol!==1&&request.protocol!==protocol)||
           (request.action!=='get-snapshot'&&request.action!=='get-media-snapshot'))return;
         if(observations.length>=16){observer.overflow=true;return;}
         observations.push({protocol:request.protocol,action:request.action,ownId:sender.id===chrome.runtime.id,
           url:sender.url??null,frame:sender.frameId??null,documentId:sender.documentId??null});
       }};
       state.__knifeMediaTabObserver=observer;chrome.runtime.onMessage.addListener(observer.listener);
-    }));observerInstalled=true;
+    },mediaProtocol));observerInstalled=true;
     await run(()=>fixturePage.bringToFront());
     const tabs=await run(()=>worker.evaluate(()=>chrome.tabs.query({active:true,currentWindow:true})));
     const tab=tabs[0];
@@ -164,7 +165,7 @@ export async function openInstalledMediaSettings({context,worker,fixturePage,ext
     if(toolbar.overflow||toolbar.contexts.length!==1||toolbar.contexts[0]?.documentOrigin!==`chrome-extension://${extensionId}`||
       toolbar.contexts[0]?.incognito!==false||toolbar.contexts[0]?.documentUrl!==popupURL||
       !toolbar.observations.some(value=>value.protocol===1&&value.ownId&&value.url===popupURL)||
-      toolbar.observations.some(value=>value.protocol===2&&value.url===popupURL))throw fail('media-tab-toolbar-unqualified');
+      toolbar.observations.some(value=>value.protocol===mediaProtocol&&value.url===popupURL))throw fail('media-tab-toolbar-unqualified');
     await run(()=>ownPopup.command('Input.dispatchMouseEvent',{type:'mousePressed',x:button.x,y:button.y,button:'left',clickCount:1}));
     await run(()=>ownPopup.command('Input.dispatchMouseEvent',{type:'mouseReleased',x:button.x,y:button.y,button:'left',clickCount:1}));
     const settingsPage=await wait(async()=>{
@@ -189,9 +190,9 @@ export async function openInstalledMediaSettings({context,worker,fixturePage,ext
       }));
       if(state.overflow)throw fail('media-tab-observer-overflow');
       const own=state.observations.filter(value=>value.url===expected.href&&value.documentId===documentId);
-      return own.some(value=>value.protocol===1)&&own.some(value=>value.protocol===2)?own:null;
+      return own.some(value=>value.protocol===1)&&own.some(value=>value.protocol===mediaProtocol)?own:null;
     });
-    const first=observations.find(value=>value.protocol===2);
+    const first=observations.find(value=>value.protocol===mediaProtocol);
     if(!first?.ownId||first.frame!==0||!first.documentId||observations.some(value=>!value.ownId||value.frame!==0||value.documentId!==first.documentId))throw fail('media-tab-sender-invalid');
     const confirmedDocumentId=first.documentId;
     const contexts=await run(()=>worker.evaluate(id=>chrome.runtime.getContexts({documentIds:[id]}),confirmedDocumentId));

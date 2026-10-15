@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { checkPackage } from './check-package.mjs';
-import { FIXTURE_LIVE_URL, FIXTURE_VOD_URL, fixtureDecision, loadFixtureResponses } from './extension-e2e/fixture-router.mjs';
+import { FIXTURE_LIVE_URL, FIXTURE_VOD_URL, fixtureDecision, loadFixtureResponses, loadAudioFixtureResponses } from './extension-e2e/fixture-router.mjs';
 import { launchInstalledExtension, parseInstalledE2EArgs, reacquireExtensionWorker, openInstalledMediaSettings,
   openMediaBrowserSession, closeInstalledMediaBrowser } from './extension-e2e/harness.mjs';
 import { refreshTransitionWorker } from './extension-e2e/transition-preparation.mjs';
@@ -573,13 +573,19 @@ const defaultDependencies = {
   mediaScenario: runInstalledMediaTabScenario,
   refreshTransitionWorker, openMediaBrowserSession, closeInstalledMediaBrowser,
   platform: process.platform,
-  sourceAttestation: async files => (await import('./check-installed-transition.mjs')).sourceAttestation(files),
+  sourceAttestation: async (files, required) => (await import('./check-installed-transition.mjs')).sourceAttestation(files, required),
   expectedMediaFiles: async files => {
     const { validatePayloadMetadata } = await import('./extension-e2e/published-payload.mjs');
     const rows = validatePayloadMetadata(JSON.parse(await files.readFile('tests/fixtures/installed-extension/published-payload.json','utf8')));
     return [...rows.map(row=>`dist/${row.name}`),'dist/media-profiles.js'].sort();
   },
 };
+
+export async function expectedF01MediaFiles(files) {
+  const { validatePayloadMetadata } = await import('./extension-e2e/published-payload.mjs');
+  const rows = validatePayloadMetadata(JSON.parse(await files.readFile('tests/fixtures/installed-extension/published-payload.json','utf8')));
+  return [...rows.map(row=>`dist/${row.name}`),'dist/media-profiles.js','dist/gain-authority.js','dist/web/player-gain.js','dist/audio-settings-ui.js'].sort();
+}
 
 const relativeOwnedPath = (root, absolute) => {
   const relative = path.relative(root, absolute);
@@ -589,11 +595,14 @@ const relativeOwnedPath = (root, absolute) => {
 
 export async function runInstalledExtensionE2E({ headed = false, runId, qualification, dependencies = {} } = {}) {
   if (!/^[A-Za-z0-9]{1,64}$/.test(runId || '')) throw runnerError('installed-e2e-run-id-invalid');
-  if (qualification !== undefined && !['media-tab', 'player-gain'].includes(qualification)) throw runnerError('installed-e2e-qualification-invalid');
+  if (qualification !== undefined && !['media-tab', 'player-gain', 'audio-settings'].includes(qualification)) throw runnerError('installed-e2e-qualification-invalid');
   if (qualification === 'player-gain' && (typeof dependencies.mediaScenario !== 'function' || typeof dependencies.expectedMediaFiles !== 'function')) throw runnerError('player-gain-scenario-required');
+  if (qualification === 'audio-settings' && typeof dependencies.mediaScenario !== 'function') throw runnerError('audio-settings-scenario-required');
   const nativeQualification = qualification !== undefined;
   const startedAt = Date.now();
-  const deps = { ...defaultDependencies, ...dependencies };
+  const deps = { ...defaultDependencies, ...qualification === 'audio-settings' ? {loadFixtureResponses:loadAudioFixtureResponses,expectedMediaFiles:expectedF01MediaFiles} : {}, ...dependencies };
+  const requiredInputs = qualification === 'audio-settings' ? ['scripts/check-installed-audio-settings.mjs','tests/installed-audio-settings.test.cjs',
+    'src/settings/audio-settings-ui.ts','audio-settings-ui.js','tests/fixtures/f01-runtime-executable.json','tests/fixtures/f01-runtime-js.json'] : [];
   const files = await deps.openRepository();
   const artifactRelative = `output/playwright/installed-extension-${runId}`;
   let candidateBuilt = false;
@@ -610,7 +619,7 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
   try {
     if (nativeQualification) {
       if (deps.platform !== 'win32') throw runnerError('media-qualification-platform-unsupported');
-      source = await deps.sourceAttestation(files);
+      source = await deps.sourceAttestation(files, requiredInputs);
     }
     const candidate = await deps.verifyCandidate(runId);
     candidateBuilt = true;
@@ -692,7 +701,7 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
   }
 
   if (nativeQualification && source) {
-    try { after = await deps.sourceAttestation(files);if (!isDeepStrictEqual(source, after)) throw runnerError('media-source-changed'); }
+    try { after = await deps.sourceAttestation(files, requiredInputs);if (!isDeepStrictEqual(source, after)) throw runnerError('media-source-changed'); }
     catch (error) { remember(error); }
   }
   if (primaryError && report?.ok) report = { ok: false, runId, error: { code: primaryError?.code || 'installed-e2e-cleanup-failed' } };

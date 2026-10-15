@@ -34,7 +34,7 @@ function fixture(mode='ok'){
     assert.equal(method,'Target.sendMessageToTarget');const input=JSON.parse(params.message);let value={};
     if(input.method==='Runtime.evaluate')value={result:{value:{ready:true,visible:mode!=='hidden',focused:mode!=='unfocused',enabled:mode!=='disabled',label:mode==='unlabelled'?'':'설정 열기',x:10,y:10}}};
     if(input.method==='Input.dispatchMouseEvent'&&input.params.type==='mouseReleased'){
-      events.push('click');sender(1,mediaURL,'tab-doc');sender(2,mediaURL,'tab-doc');if(mode==='no-page')return;
+      events.push('click');sender(1,mediaURL,'tab-doc');sender(mode==='protocol3'?3:2,mediaURL,'tab-doc');if(mode==='no-page')return;
       pages.push(settingsPage);context.emit('page',settingsPage);
       if(mode==='duplicate'){const other={...settingsPage};pages.push(other);context.emit('page',other);}
     }
@@ -49,6 +49,12 @@ test('media settings helper binds early production sender to the new actual TAB 
   assert.equal(f.listeners.size,0);assert.equal(f.context.listenerCount('page'),0);assert.equal(f.bus.listenerCount('Target.receivedMessageFromTarget'),0);
   assert.equal(f.events.includes('browser-close'),false);
   assert.equal(f.events.includes('popup-close'),true);
+});
+test('media helper qualifies explicit protocol3 without accepting it as legacy role2',async()=>{
+  const {openInstalledMediaSettings}=await import('../scripts/extension-e2e/popup-cdp.mjs');
+  const modern=fixture('protocol3');const result=await openInstalledMediaSettings({...modern.args,mediaProtocol:3});assert.equal(result.tabWriterQualified,true);
+  const legacy=fixture('protocol3');await assert.rejects(openInstalledMediaSettings(legacy.args),/media-tab-timeout/);
+  assert.equal(modern.listeners.size,0);assert.equal(legacy.listeners.size,0);
 });
 for(const mode of ['missing-document','hidden','disabled','unlabelled','unfocused','duplicate','wrong-tab','wrong-context-url','incognito','frame','overflow','cleanup-error','no-page','foreign-popup','popup-close-error','popup-close-stuck'])test('media helper refuses '+mode+' and clears only owned listeners',async()=>{
   const {openInstalledMediaSettings}=await import('../scripts/extension-e2e/popup-cdp.mjs');assert.equal(typeof openInstalledMediaSettings,'function');

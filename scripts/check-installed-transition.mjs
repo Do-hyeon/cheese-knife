@@ -216,11 +216,12 @@ export function superviseTransitionChild({ child, nonce, roots, scenario, deadli
   });
 }
 
-export async function sourceAttestation(files) {
+export async function sourceAttestation(files, required = []) {
   const command = args => execFileSync('git', args, { cwd: files.root, encoding: 'utf8', timeout: 15000, maxBuffer: 2097152, stdio: ['ignore', 'pipe', 'pipe'] });
   if (command(['status', '--porcelain', '--untracked-files=no']).trim()) throw fail('transition-source-dirty');
   const sourceCommit = command(['rev-parse', 'HEAD']).trim();
   const tracked = command(['ls-files', '-z']).split('\0').filter(Boolean).sort();
+  if (!Array.isArray(required) || required.some(name => typeof name !== 'string' || !tracked.includes(name))) throw fail('transition-input-untracked');
   const entries = [];
   for (const name of tracked) entries.push([name, sha256(await files.readFile(name))]);
   return { sourceCommit, sourceSha256: sha256(JSON.stringify(entries)),

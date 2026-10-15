@@ -84,13 +84,14 @@ test('installed E2E runner never overwrites an existing artifact directory', asy
   assert.equal(fixture.events.includes('candidate-remove'), true);
   assert.equal(fixture.events.includes('profile-create'), false);
 });
-for(const qualification of ['media-tab','player-gain']) for(const mode of ['ok','scenario','close-proof','missing-proof','missing-session','unsupported','dirty-source','changed-source','extra-asset','missing-asset'])test(qualification+' runner owns shutdown and preserves failed candidates: '+mode,async()=>{
+for(const qualification of ['media-tab','player-gain','audio-settings']) for(const mode of ['ok','scenario','close-proof','missing-proof','missing-session','unsupported','dirty-source','changed-source','extra-asset','missing-asset'])test(qualification+' runner owns shutdown and preserves failed candidates: '+mode,async()=>{
   const {runInstalledExtensionE2E}=await runnerModule(),f=runnerFixture();
   f.dependencies.platform=mode==='unsupported'?'linux':'win32';
   const buildCandidate=f.dependencies.verifyCandidate;f.dependencies.verifyCandidate=async id=>({...await buildCandidate(id),
     files:mode==='extra-asset'?['dist/media-profiles.js','dist/extra.js']:mode==='missing-asset'?[]:['dist/media-profiles.js']});
   f.dependencies.expectedMediaFiles=async()=>['dist/media-profiles.js'];
-  let attestations=0;f.dependencies.sourceAttestation=async()=>{f.events.push('source-attest');attestations++;
+  let attestations=0;f.dependencies.sourceAttestation=async(_files,required)=>{f.events.push('source-attest');attestations++;
+    if(qualification==='audio-settings')assert.ok(required.includes('scripts/check-installed-audio-settings.mjs'));else assert.deepEqual(required,[]);
     if(mode==='dirty-source')throw Object.assign(Error('dirty'),{code:'transition-source-dirty'});
     return {sourceCommit:'a'.repeat(40),sourceSha256:mode==='changed-source'&&attestations>1?'c'.repeat(64):'b'.repeat(64)};};
   f.dependencies.refreshTransitionWorker=async value=>{f.events.push('worker-refresh');return value;};

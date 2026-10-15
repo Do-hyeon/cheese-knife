@@ -86,3 +86,9 @@ timeout-only shared clock을 interval clock으로 오인한 테스트는 기존 
 최종 로그는 격리 후보 `output/f01-execution-20261015/source/output/f01-t6-full6.log` 및 `f01-t6-final-*.log`에 보존한다. 생성14개를 바이트 비교 후 원래 작업 폴더에 복사했고 원본 dist58은 빌드하지 않았다. T6 원본/생성물·독립 실행 핀·UI/i18n·회귀·계획 기록을 한 로컬 checkpoint로 묶는다.
 
 T7 실제 설치/두 창/전환·고배율·좁은 화면과 T8 객관 출력·RMS/EQ, T9 종합/최종 Astra max는 아직 미완료다. 원본 dist58·사용자 Chrome/P09·버전2.13.3·권한/WAR/CSP·private 증거는 유지한다. push/PR·릴리즈/스토어 변경은 하지 않았다.
+
+## T7 실제 UI 검사 도구 사전 검증
+
+새 UI runner와 strict checkJs 대상 helper, 독립 저장 손실 기대 값, 실제 입력 횟수·두 창·원래 문서/창·ACK 유실·quota·worker 교체 관측 계약을 작성했다. 가짜/0 입력 관측, 추측한 손실 값, 새 입력의 HEAD 누락, 실패한 종료 증명을 거부하는 대조를 포함한다. 기존 Native executor의 소유 경계와 종료 증명3개를 재사용한다. 기존 executor 전체의 타입 이전이나 실제 브라우저 통과를 뜻하지 않는다.
+
+격리 후보의 `f01-t7-ui-preflight-full.log`는1536개 중1535통과/실패0/기존 private 감사1skip(69.359초)이다. 9개 기반 검사·build·package도 통과했다. 후보dist62/runtime20, 원본dist58/version2.13.3 유지. 이 입력을 로컬 checkpoint로 고정한 뒤 새 Native 프로필에서 검사하며, 아직 T7 실제 UI 성공·Gain full·F01 전환·객관 오디오 출력 성공은 주장하지 않는다.
