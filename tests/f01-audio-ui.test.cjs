@@ -56,6 +56,7 @@ test('real stylesheet keeps reference graphs visible, Gain output fixed and eigh
   assert.equal(css(doc.getElementById('audioGain-value')).width,'80px');
   assert.equal(css(doc.querySelector('.f01-eq-shell')).minWidth,'580px');assert.equal(css(doc.querySelector('.f01-eq-scroll')).overflowX,'auto');
   assert.equal(css(doc.querySelector('.f01-graphs svg')).height,'auto');assert.equal(css(doc.querySelector('.f01-dial')).width,'72px');
+  assert.equal(css(doc.querySelector('.f01-dial')).boxSizing,'border-box');
 });
 test('incomplete numeric input blocks confirmed copies until corrected or explicitly reset, including focused double-click',t=>{
   const {doc,ui,state,fire,edits}=setup(t),input=doc.getElementById('compressorThreshold-number');input.focus();
