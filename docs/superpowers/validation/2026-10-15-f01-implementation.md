@@ -126,3 +126,15 @@ c2e377f의I에서는 owned Gain 복원까지 통과한 뒤, 첫 확인창이 열
 J는 마지막 worker 단계에서 실패했다. CDP `Target.closeTarget`만으로는 이 환경의 worker close/replacement 이벤트를 확인하지 못했다. 실제 worker 정지 증거 없이 통과시키지 않고 ServiceWorker의 정확한 version/stopWorker/stopped 관측 뒤 실제 설정 조회로 새 target·Worker 객체·저장값 동일을 확인하도록 도구를 수정한다. [공식 stopWorker](https://chromedevtools.github.io/devtools-protocol/tot/ServiceWorker/#method-stopWorker)를 사용하며 자연 suspension이나 실제 스토어 업데이트 증명으로 부르지 않는다. 정지 관측이 없는 보고서 RED→GREEN와 strict/관련29개 통과, 실제 새 실행은 남아 있다.
 
 동일 checkpoint의 Gain full K는 실제61초 만료/채널 사용/플레이어의 채널 Gain0 저장까지 진행했으나 재배치 fixture에서 실패했다. 도구가 cloneNode로 확장 소유 컨트롤까지 복제해 정상 사이트 재배치와 달라진 것을 확인했다. 이미 UI 수명 검사에서 쓰는 것처럼 새 사이트 PZP/volume 노드와 같은 실제 video만 이동하도록 수정했다. 제품의 불명확한 소유부 거부 조건은 완화하지 않았다. I/J/K 모두 종료3증명true·전후 source 일치, 실패 증거/프로필 보존. T7 전체 성공은 아직 아니다.
+
+#### Gain full 새 checkpoint 통과
+
+a3403d27d9e34dda55895b249f5accc5ef2910e5의 `F01GainFull20261015M --mode=full`은70.784초/exit0/ok=true다. 실제 Blob/source1·trusted pointer/keyboard/native frame0/document·Gain0/포커스/후속 입력/reset/reentry/61초 만료 첫 입력·MAIN/합성/iframe/옛 문서/소유부 제거 거부에 더해 실제 toolbar/TAB 채널 사용·플레이어의 채널0 저장/재진입·전역2 보존·같은 video 새 PZP/source1·수동 OFF 중 owned EQ 저장/재개를 통과했다. 원래 mute/volume을 보존했고 pageErrors=[]다.
+
+summary의 source/after 전체가 같고 종료3증명true다. private 증거는 `output/f01-native-20261015/source/output/playwright/installed-extension-F01GainFull20261015M/summary.json`에 보존한다. 자연 worker 교체는false(미관측)이며 물리 청감/객관 출력/T8 성공은 아니다. 이와 별개로 설정 UI L은 native stopped 상태 이후 제어 도구의 새 Worker 객체를 찾지 못해 실패했다. 실제 worker 실행 문맥과 제어 객체를 구분하는 읽기 중심 진단89a5955/N을 진행 중이며, 그 성공을 추정하지 않는다.
+
+#### worker 실행 문맥 관측과 검사 보완
+
+89a5955/N의 실패 진단에서 native stopped 이후 원래 worker 전역의 임시 UUID 표식은 없어지고 `performance.timeOrigin`은1792029224077.4→1792029243252로 바뀌었으며 runtime ID는 같았다. Playwright Worker 객체와 CDP target ID는 둘 다 재사용됐다. 따라서 객체 wrapper/target ID 교체를 실제 실행 문맥 교체와 동일시한 도구 조건이 틀렸으며, 실제 제품 동작을 바꿀 근거가 아니다. N도 기존 거부 조건대로 실패/증거 보존했고 종료3증명true·source일치다.
+
+새 수용 증거는 정확한 자체 worker version의 stopped→running, 이전 자체 전역 표식의 실제 부재, 유한하고 증가한 새 timeOrigin, 같은 extension ID·원시 저장값, 명시적 TAB 조회 성공을 모두 요구한다. wrapper/target 재사용 여부는 관측값으로 남기며 성공을 꾸미기 위해 ID를 생성하지 않는다. 기존 marker/같은 시작시각/누락·nonfinite/재실행 미관측을 거부하는 RED→GREEN 및 strict/관련30개 PASS. 이 보완의 실제 전체 성공은 다음 새 checkpoint에서 확인한다. 자연 suspension·스토어 업데이트·플랫폼 rollback 증명과는 구분한다.
