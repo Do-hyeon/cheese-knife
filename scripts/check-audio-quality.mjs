@@ -16,7 +16,7 @@ const {chromium}=await import('playwright');
 const files=await openOwnedRoot(repositoryRoot);
 const targetFiles=await openOwnedRoot(options.root);
 const artifact=await describeAudioArtifact(options.root,options.label);
-const measurement=options.chrome?null:await openAudioMeasurementBrowser(chromium,files);
+const measurement=options.chrome||process.platform!=='win32'?null:await openAudioMeasurementBrowser(chromium,files);
 const browser=measurement?.browser??await chromium.launch({headless:true,...(options.chrome?{channel:'chrome'}:{})});
 const output='output/audio-quality';
 const reportPath=options.label==='source'?`${output}/report.json`:`${output}/report-${options.label}.json`;

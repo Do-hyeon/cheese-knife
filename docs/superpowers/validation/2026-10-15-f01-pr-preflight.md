@@ -31,3 +31,11 @@ T1–T9와 Minor2 후속을 함께 공개한다. Gain 소유권·채널/전역 �
 원인은 CI shallow checkout에 F00 고정 커밋이 없는데, 기존 준비 단계가 스토어 baseline만 fetch한 것이다. 별도 shallow 사본에서도 같은 reader로 동일 실패를 재현했고, 정확한 `ae9f8e50a22dae9d549f1e476d302549ecc03b4a`를 depth1 fetch한 뒤59개 리소스·inventory `9715087af1aa2b36fc54b330e5a879ce384f4c9a4f56faf1c6fd8847436580df`가 통과했다. 비공개 로그는 `output/f01-pr-ci-shallow-{red,green}.log`와 최초 CI 실패 로그에 보존한다.
 
 workflow에 unit suite 이전의 고정 F00 fetch 단계만 추가했다. 전체 이력 fetch·테스트 skip·새 기준 해시·제품 수정은 없다. 보완 후 격리 전체 회귀는1632중1631통과/실패0/기존제외1, exit0, 65.433초다(`output/f01-pr-ci-fix-full.log`). 공개 CI의 최신 head를 다시 확인하며 최초 실패를 삭제하지 않는다.
+
+### 두 번째 공개 CI의 플랫폼 경계 보완
+
+head `bdea384`의 [CI 38748653001](https://github.com/Do-hyeon/cheese-knife/actions/runs/38748653001)는 양쪽 기반·전체 테스트·빌드·패키지까지 통과한 뒤 오디오 측정 시작의 `visibility-launch-invalid`로 실패했다. `check-audio-quality.mjs`가 Linux에서도 Windows 전용 Native visibility launcher를 선택한 것이 원인이다. DSP 측정/수치 판정 전에 실패했으며 품질 허용치 실패로 재표기하지 않는다.
+
+일반 frozen 오디오 검사만 Windows에서 기존 Native 경로를 쓰고 다른 OS는 원래 Playwright headless 경로를 쓰도록 단일 분기를 보완했다. `--chrome` 경로와 Windows 전용 가시성 실측 도구는 그대로다. 실제 실행 glue를 Windows/Linux/macOS·Chrome 지정 여부로 실행하는 회귀에서 Linux 오선택 RED를 확인했고 보완 후 관련21검사가 통과했다. calibration/측정/허용치 고정 해시는 유지했다.
+
+보완 후 전체1633중1632통과/실패0/기존제외1(exit0, 64.951초), 개발/오디오 도구 타입 검사 통과. 로그는 `output/f01-pr-ci-platform-{red,green}.log`와 격리 후보 `output/f01-pr-ci-platform-full.log`에 보존한다. 새 실제 감사 `run-2026-10-15T14-13-04-096Z-XtXQSa`는 입력 전후 일치·npm/Gitleaks0·기존과 같은 ESLint55/rawexit1이다. Linux의 실제 오디오 측정 성공 여부는 다음 공개 CI로 별도 확인한다.

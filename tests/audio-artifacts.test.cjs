@@ -103,6 +103,23 @@ test('independent raw oracle catches tolerance and selected THD mutations in act
   assert.equal(await fs.readFile('scripts/audio-artifact-core.mjs','utf8'),original);
 });
 
+test('audio quality selects the Windows Native launcher only on Windows without a Chrome override',async()=>{
+  const source=await fs.readFile('scripts/check-audio-quality.mjs','utf8');
+  const start=source.indexOf('const measurement='),end=source.indexOf("const output='output/audio-quality';",start);
+  assert.ok(start>=0&&end>start);
+  const launch=new (Object.getPrototypeOf(async()=>{}).constructor)('options','process','openAudioMeasurementBrowser','chromium','files',
+    source.slice(start,end)+'return {measurement,browser};');
+  for(const platform of ['win32','linux','darwin'])for(const chrome of [false,true]){
+    const nativeBrowser={},bundledBrowser={},files={};
+    const result=await launch({chrome},{platform},async(api,owned)=>{
+      assert.equal(platform,'win32');assert.equal(chrome,false);assert.equal(owned,files);
+      return {browser:nativeBrowser};
+    },{async launch(options){assert.deepEqual(options,{headless:true,...chrome?{channel:'chrome'}:{}});return bundledBrowser;}},files);
+    assert.equal(result.browser,platform==='win32'&&!chrome?nativeBrowser:bundledBrowser);
+    assert.equal(result.measurement===null,platform!=='win32'||chrome);
+  }
+});
+
 test('public entry retains frozen CLI calibration and limits apart from exact F01 bootstrap and owned browser glue',async()=>{
   const crypto=require('node:crypto'),source=(await fs.readFile('scripts/audio-artifacts.mjs','utf8')).replaceAll('\r\n','\n');
   const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
@@ -115,7 +132,7 @@ test('public entry retains frozen CLI calibration and limits apart from exact F0
       deliverySequence:100,baseConfig:config,effectiveConfig:config,i18n:{},version:{globalRevision:0,mediaRevision:0},
       profileState:'global',revisionStatus:'ready',mediaPhase:'ready',audioBindingGeneration:1,audioKind:'global',videoKind:'global',gainOrigin:'site-legacy'},location.origin);`;
   const browserPrevious="const browser=await chromium.launch({headless:true,...(options.chrome?{channel:'chrome'}:{})});";
-  const browserCurrent="const measurement=options.chrome?null:await openAudioMeasurementBrowser(chromium,files);\nconst browser=measurement?.browser??await chromium.launch({headless:true,...(options.chrome?{channel:'chrome'}:{})});";
+  const browserCurrent="const measurement=options.chrome||process.platform!=='win32'?null:await openAudioMeasurementBrowser(chromium,files);\nconst browser=measurement?.browser??await chromium.launch({headless:true,...(options.chrome?{channel:'chrome'}:{})});";
   const nativeImport="import {openAudioMeasurementBrowser} from './audio-native-browser.mjs';\n";
   const closeCurrent='}finally{if(measurement)await measurement.close();else await browser.close();}';
   for(const block of [current,browserCurrent,nativeImport,closeCurrent])assert.equal(cli.split(block).length,2,'only exact reviewed bootstrap/ownership glue differs');
