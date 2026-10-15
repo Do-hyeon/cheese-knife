@@ -2,7 +2,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const metrics=()=>import('../scripts/audio-processing-metrics.mjs');
 
-test('queued empty packets before native source creation do not poison later output, but current and malformed packets fail',async()=>{
+test('queued empty startup packets do not poison later output, but empty packets after valid rendering and malformed packets fail',async()=>{
   const {installProcessingProbe}=await import('../scripts/audio-processing-probe.mjs'),vm=require('node:vm');
   /** @type {Native[]} */const contexts=[];
   class Native{
@@ -26,16 +26,18 @@ test('queued empty packets before native source creation do not poison later out
     document:{hidden:false,querySelector:()=>({muted:false,volume:1,paused:false,currentTime:0})}});
   const context=contexts[0],receive=sink.port.onmessage;assert.ok(context);assert.ok(receive);
   context.currentTime=12800/44100;context.createMediaElementSource();
-  for(const frame of [12416,12544,12672])receive({data:{frame,samples:[]}});
+  for(const frame of [12416,12544,12672,12800])receive({data:{frame,samples:[]}});
   const probe=/** @type {import('../scripts/audio-processing-probe.mjs', {with:{'resolution-mode':'import'}}).ProcessingProbe} */(Object.getOwnPropertyDescriptor(target,Symbol.for('cheese-knife.f01-processing-probe'))?.value);
   const before=/** @type {Record<string,unknown>} */(await probe.action({kind:'facts'}));
-  assert.equal(before.invalidFrames,0);assert.equal(/** @type {unknown[]} */(before.invalidChunks).length,3);
-  for(const frame of [12800,12928])receive({data:{frame,samples:[new Float32Array(128).fill(.25),new Float32Array(128).fill(-.25)]}});
-  const captured=/** @type {{channels:number[][]}} */(await probe.action({kind:'capture',seconds:256/44100,endFrame:13056}));
+  assert.equal(before.invalidFrames,0);assert.equal(/** @type {unknown[]} */(before.invalidChunks).length,4);
+  await assert.rejects(()=>probe.action({kind:'capture',seconds:128/44100,endFrame:12928}),/audio-probe-capture-invalid/);
+  for(const frame of [12928,13056])receive({data:{frame,samples:[new Float32Array(128).fill(.25),new Float32Array(128).fill(-.25)]}});
+  const captured=/** @type {{channels:number[][]}} */(await probe.action({kind:'capture',seconds:256/44100,endFrame:13184}));
   assert.equal(captured.channels[0]?.length,256);assert.equal(captured.channels[0]?.every(value=>value===.25),true);
-  receive({data:{frame:13056,samples:[]}});receive({data:{frame:NaN,samples:[]}});
+  await assert.rejects(()=>probe.action({kind:'capture',seconds:384/44100,endFrame:13184}),/audio-probe-capture-incomplete/);
+  receive({data:{frame:13184,samples:[]}});receive({data:{frame:NaN,samples:[]}});
   const after=/** @type {Record<string,unknown>} */(await probe.action({kind:'facts'}));assert.equal(after.invalidFrames,2);
-  await assert.rejects(()=>probe.action({kind:'capture',seconds:256/44100,endFrame:13056}),/audio-probe-capture-invalid/);
+  await assert.rejects(()=>probe.action({kind:'capture',seconds:256/44100,endFrame:13184}),/audio-probe-capture-invalid/);
 });
 
 test('independent peaking response is neutral and reaches literal +/-6dB at each centre',async()=>{

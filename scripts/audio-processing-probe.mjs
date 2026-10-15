@@ -22,6 +22,7 @@ export async function installProcessingProbe(sampleRate){
   /** @type {{index:number,time:number,power:number,size:number}[]} */let powerReads=[];
   /** @type {{frame:number,observedFrame:number,sourceFrame:number|null,reason:string,lengths:number[]}[]} */const invalidChunks=[];
   /** @type {number|null} */let sourceFrame=null;
+  /** @type {number|null} */let captureStartFrame=null;
   const buffers=new Set(),ticks=new Map();
   let sources=0,compressors=0,delays=0,shapers=0,splitters=0,reads=0,invalidFrames=0,analysisError=false,url='',sequence=100;
   /** @type {Record<string,unknown>|null} */let configured=null;
@@ -39,10 +40,12 @@ export async function installProcessingProbe(sampleRate){
     /** @type {{frame:number,samples:Float32Array[]}} */const chunk=data;
     if(chunk.samples.length!==2||chunk.samples.some(channel=>!(channel instanceof Float32Array)||channel.length!==128)){
       if(sources){
-        if(!(Number.isSafeInteger(chunk.frame)&&sourceFrame!==null&&chunk.frame<sourceFrame))invalidFrames++;
+        const startup=chunk.samples.length===0&&Number.isSafeInteger(chunk.frame)&&chunk.frame>=0&&(captureStartFrame===null||chunk.frame<captureStartFrame);
+        if(!startup)invalidFrames++;
         invalidChunks.push({frame:chunk.frame,observedFrame:Math.round(context.currentTime*sampleRate),sourceFrame,reason:'channel-shape',lengths:chunk.samples.map(channel=>channel.length)});if(invalidChunks.length>64)invalidChunks.shift();
       }return;
     }
+    if(sources&&captureStartFrame===null)captureStartFrame=chunk.frame;
     chunks.push(chunk);while(chunks.length>2000)chunks.shift();
     const width=sampleRate/10;
     for(let n=0;n<128;n++){
@@ -171,7 +174,7 @@ export async function installProcessingProbe(sampleRate){
       }
       case 'retired-ticks':for(const tick of ticks.values())if(!tick.active&&tick.timeout===100)tick.invoke();return null;
       case 'facts':return {sampleRate,audioTime:context.currentTime,contextState:context.state,hidden:document.hidden,sources,gainNodes:gains.length,filters:filters.length,compressors,delays,shapers,splitters,
-        analysers:analysers.length,fftSizes:analysers.map(node=>node.fftSize),buffers:buffers.size,reads,invalidFrames,invalidChunks,events,linearEvents,steps,bins,powerReads,
+        analysers:analysers.length,fftSizes:analysers.map(node=>node.fftSize),buffers:buffers.size,reads,invalidFrames,invalidChunks,captureStartFrame,events,linearEvents,steps,bins,powerReads,
         gains:gains.map(node=>node.gain.value),active100msTimers:[...ticks.values()].filter(tick=>tick.active&&tick.timeout===100).length,
         readback:runtime().audio.getReadback(video()),video:{muted:video().muted,volume:video().volume,paused:video().paused,currentTime:video().currentTime}};
     }
