@@ -5,6 +5,15 @@ import {Readable,Writable} from 'node:stream';
 /** @param {string} code */
 const fail=code=>Object.assign(new Error(code),{code});
 const maxFrame=32*1024*1024;
+/** Retire only the ChildProcess handle created by this launcher; never a PID search.
+ * @param {import('node:child_process').ChildProcess} child @param {Promise<unknown>} exited
+ */
+export async function stopVisibilityChild(child,exited){
+  /** @type {ReturnType<typeof setTimeout>|undefined} */let timer;
+  if(child.exitCode===null&&child.signalCode===null&&!child.kill())throw fail('visibility-child-stop-failed');
+  try{await Promise.race([exited,new Promise((_,reject)=>{timer=setTimeout(()=>reject(fail('visibility-startup-close-unconfirmed')),15000);})]);}
+  finally{clearTimeout(timer);}
+}
 /** @param {readonly string[]} extensionArgs @param {string} profilePath @param {boolean} headed */
 export function visibilityBrowserArgs(extensionArgs,profilePath,headed){
   return [...extensionArgs,`--user-data-dir=${profilePath}`,'--remote-debugging-pipe',
@@ -67,7 +76,6 @@ export async function launchVisibilityBrowser(options){
     args=supplied;
   }
   const child=spawn(prepared,visibilityBrowserArgs(args,profilePath,headed),{stdio:['ignore','ignore','ignore','pipe','pipe'],windowsHide:true});
-  /** @type {ReturnType<typeof setTimeout>|undefined} */let timer;
   const exited=new Promise(resolve=>{child.once('exit',()=>resolve(true));child.once('error',()=>resolve(true));});
   let ready=false;
   try{
@@ -95,12 +103,10 @@ export async function launchVisibilityBrowser(options){
       if(!session||typeof session!=='object'||typeof Reflect.get(session,'send')!=='function')throw fail('visibility-provider-invalid');
       browserSession=/** @type {import('playwright').CDPSession} */(session);
     }
-    ready=true;return {browser,context,worker,extensionId,browserSession};
+    ready=true;return {browser,context,worker,extensionId,browserSession,abort:()=>stopVisibilityChild(child,exited)};
   }finally{
     if(!ready){
-      child.kill();
-      try{await Promise.race([exited,new Promise((_,reject)=>{timer=setTimeout(()=>reject(fail('visibility-startup-close-unconfirmed')),15000);})]);}
-      finally{clearTimeout(timer);}
+      await stopVisibilityChild(child,exited);
     }
   }
 }

@@ -58,3 +58,15 @@ wall 지연과 실제 결과 판정을 분리한다. 위상 분산은 성공 보
 계획 보완 판정: 첫 N은36개와 실제 세 구간을 모두 수집했지만96kHz 마지막 row에서 호출 전 tick을 reset으로 잘못 선택했다. 이는 자극 미성립/제품 출력 실패가 아니라 기록 선택 오류임을 원자료와 독립 RED로 확인했다. 승인된 도구 보완 범위에서 호출 인덱스 경계를 고치고 전체/strict 후 새 checkpoint에서 한 번 다시 검증한다. 자극12개·순서·지연·수치와 제품은 변경하지 않으며 N을 소급해 PASS로 재분류하지 않는다. 단순 미성립/제품 실패를 같은 방식으로 반복하지 않는 중지 조건은 유지한다.
 
 O 후속 상태: 사전계측은 통과했으나 긴 검사의44.1kHz 수명 단계에서 응답이 멈췄다. 마지막 정상 진행 로그 이후3분 이상 기다린 뒤 정확한 자기 프로필/부모PID를 확인해 검사용 browser root51264만 종료했다. Node는 unsettled top-level await/exit13으로 끝나 최종 report.json이 없다. preflight.json·EQ raw36개·console 로그·프로필·interruption-note.json은 보존했지만 메모리에만 있던 전환/RMS raw trace는 기록되지 못했다. 단순 retry나 O 전체 PASS로 분류하지 않으며, 수명 관측·중간 증거 저장·닫힘/timeout 경로의 제한된 보완 설계를 사용자와 확인한 뒤 재개한다. 제품 원인인지 도구/브라우저 원인인지는 미확정이다.
+
+## 6. 승인된 수명 관측·실패 기록 보완
+
+O 후속의 조작별 timeout·원자료 즉시 저장·중단/종료 경로를 사용자가 승인했다. 기존 runner/helper에만 구현하며 새 의존성/권한/포트는 없다.
+
+- 브라우저 조작은 이름을 가진15초 제한, probe/준비는30초 제한, 기존 길이가 정해진 기다림은 원래 길이+5초의 응답 제한을 둔다. 실제 숨김/표시 조건의 기존15초·100ms polling·측정/automation 길이·수치 기준은 바꾸지 않는다.
+- 수명 조작의 시작/완료/실패, 모든 rapid/EQ/전환/RMS·대조군의 수집 결과를 고유 번호의 별도 JSON에 즉시 저장한다. RMS raw는 평가 전에 저장한다. 파일을 덮어쓰지 않으며 source/run/rate/단계를 결합한다.
+- 같은 수명 함수를 사전계측에서 먼저 실행하고 기존12개 조건/두 실제 window ID를 검증한다. 성공한 경우에만 같은 고정 rapid12개/rate 및 긴 행렬로 이어간다. 긴 행렬 뒤의 수명 검증도 유지한다.
+- 실패 진단 조회는 각각2초로 제한한다. finally에서 원래 오류를 유지하며 정상 close 실패는 자기 spawn ChildProcess handle만 종료한다. 강제 종료는 정상 종료3증명으로 만들지 않는다. report/snapshot은 실패 상태로 남긴다.
+- timeout/예외/평가 실패 전 raw 저장의 RED→GREEN과 실제 자체 child handle 종료 회귀를 확인한다. focused/strict/full/9기반/build/package 후 새 clean Native에서 원래 대기 지점을 확인한다. O 자료를 재구성하거나 최신 PASS로 대체하지 않는다.
+
+로컬 게이트: 신규 timeout/즉시 raw 저장2건 RED→GREEN, 집중50/50·strict·전체1611통과/실패0/기존1skip·9기반/build/package 통과. 새 Native는 별도 clean checkpoint로 수행하며 아직 미완료다.

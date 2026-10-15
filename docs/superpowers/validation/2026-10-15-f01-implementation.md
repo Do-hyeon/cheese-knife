@@ -314,6 +314,8 @@ root dist58·제품2.13.3·사용자 Chrome/P09·모든 실패 증거와 로컬 
 
 #### T8 사전계측 분리 도구 보완 — 2026-10-15
 
+사용자 추가 승인 뒤 기존 도구에 이름 있는 조작별 timeout·고유 번호 원자료 JSON·실패 finally/자기 ChildProcess 종료 경계를 보완했다. 같은 수명 함수를 사전계측 앞에서 먼저 실행하며 긴 행렬 뒤 검사도 유지한다. 실제 숨김15초/100ms polling과 측정 시간·DSP·허용치는 그대로다. timeout/원자료 누락을 RED로 확인한 뒤 집중50/50·strict와 격리 전체1612개 중1611통과/실패0/기존private1skip(61.821초),9개 기반/build/package가 통과했다. 자기 execution 후보의 output/f01-t8-lifetime-{full,foundation}.log에 보존했다. 이는 새 Native 성공이 아니며 원래 O의 미기록 자료를 복구하거나 소급 PASS로 바꾸지 않는다.
+
 **최신 O(2f494f39644fa3901c75930c1305d9b6286f8158/KOUZd1):** 사전계측36개 전체가 PASS이며 rate마다 실제 hold/reset 중간/unity를 확보했다. 최대 gain 오차는44.1/48/96kHz에서 각각3.91e−7/2.79e−7/2.75e−7dB, 최대 양쪽 출력 오차는1.15e−6/2.91e−6/1.26e−6dB다. 사전계측 source/after5필드 일치·pageErrors0·각 종료3증명true를 별도 preflight.json에 보존했다. 고정12자극/rate·DSP·기존 모든 허용치는 그대로다.
 
 긴 검사는44.1kHz EQ36개 raw f32le와 전환24/RMS20의 성공 console 로그를 남긴 뒤 수명 단계에서 응답이 멈췄다. 마지막 진행은18:23:41이며18:27:01에도 완료되지 않았다. 정확한 자체 O 프로필·익명 pipe·부모 test PID48032를 확인하고 browser root51264만 종료했다. 사용자 Chrome/P09에는 조작하지 않았다. Node는 unsettled top-level await/exit13으로 끝나 최종 report.json/정상 종료3증명이 없다. 이후 동일 범위의 자기 프로필/Node 프로세스 조회는0개다. 원인을 제품 또는 도구/브라우저로 확정하지 못했다.

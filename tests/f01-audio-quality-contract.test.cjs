@@ -183,12 +183,14 @@ test('standalone preflight rejects partial rates stale source failed output shut
   const {processingPreflightFailures,processingReportFailures}=await metrics();
   const source={sourceCommit:'1'.repeat(40),sourceSha256:'2'.repeat(64),lockSha256:'3'.repeat(64),manifestSha256:'4'.repeat(64),toolchainSha256:'5'.repeat(64)};
   const environment={browserVersion:'155.0.1.2',platform:'win32',arch:'x64',nodeVersion:'v24.19.0'};
-  const report={schema:'f01-audio-preflight-v1',source,after:source,error:null,pageErrors:[],rates:[44100,48000,96000].map(sampleRate=>({sampleRate,environment,rapid:rapidRows(),shutdown:{browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:true}}))};
+  const lifetime={sourceOne:true,gainZero:true,gainZeroHold:true,muteVolumePreserved:true,oldCallbacksZero:true,metersOffAfterDisable:true,hiddenObserved:true,hiddenHold:true,visibleRestored:true,independentWindows:true,oneWindowClosed:true,remainingSourceOne:true,evidence:{windowIds:[7,9],targetIds:['a'.repeat(32),'b'.repeat(32)]}};
+  const report={schema:'f01-audio-preflight-v1',source,after:source,error:null,pageErrors:[],rates:[44100,48000,96000].map(sampleRate=>({sampleRate,environment,lifetime,rapid:rapidRows(),shutdown:{browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:true}}))};
   assert.deepEqual(processingPreflightFailures(report,source),[]);
   const full={schema:'f01-audio-processing-v2',source,after:source,error:null,pageErrors:[],preflight:report,rates:report.rates.map(({sampleRate,environment})=>({sampleRate,environment}))};
   assert.equal(processingReportFailures(full,source).some(value=>value.includes('preflight-environment')),false);
   assert.ok(processingReportFailures({...full,rates:full.rates.map(row=>({...row,environment:{...row.environment,browserVersion:'155.0.1.3'}}))},source).includes('rate-44100/preflight-environment'));
   assert.ok(processingReportFailures({...full,preflight:undefined},source).includes('audio-preflight-source'));
+  assert.ok(processingPreflightFailures({...report,rates:report.rates.map(row=>({...row,lifetime:{...lifetime,hiddenObserved:false}}))},source).includes('rate-44100/lifetime-hiddenObserved'));
   for(const bad of [{...report,rates:report.rates.slice(1)},{...report,after:{...source,sourceSha256:'6'.repeat(64)}},{...report,pageErrors:['exception']},{...report,rates:report.rates.map((row,index)=>index?row:{...row,shutdown:{}})},{...report,rates:report.rates.map((row,index)=>index?row:{...row,rapid:row.rapid.map((item,n)=>n?item:{...item,boundary:{}})})},{...report,rates:report.rates.map((row,index)=>index?row:{...row,environment:{...environment,browserVersion:''}})}])assert.notDeepEqual(processingPreflightFailures(bad,source),[]);
 });
 
@@ -242,4 +244,21 @@ test('a failed Native normalizer measurement retains the actual offending trace 
   await assert.rejects(()=>normalizerProof(page,44100,rows),/normalizer-trace-invalid/);
   assert.equal(rows.length,1);assert.equal(rows[0]?.id,'44100/normalizer/-36/mono');assert.equal(rows[0]?.trace,trace);
   assert.equal(rows[0]?.measured,undefined,'invalid output must not receive synthetic passing metrics');
+});
+
+test('Native operation timeout and disconnect keep a named failure instead of an unsettled await',async()=>{
+  const {audioOperation}=await import('../scripts/audio-native-browser.mjs');
+  assert.equal(await audioOperation('ready',async()=>17,20),17);
+  await assert.rejects(()=>audioOperation('lifetime-create-page',()=>new Promise(()=>{}),10),/audio-operation-timeout:lifetime-create-page/);
+  await assert.rejects(()=>audioOperation('closed',async()=>{throw new Error('browser-disconnected');},20),/browser-disconnected/);
+  for(const timeout of [0,NaN,30001])await assert.rejects(()=>audioOperation('invalid',async()=>17,timeout),/audio-operation-invalid/);
+});
+
+test('invalid normalizer trace is saved to disk checkpoint before the measurement rejects',async()=>{
+  const {normalizerProof}=await import('../scripts/check-audio-processing.mjs');
+  const trace={sampleRate:44100,events:[],bins:[],powerReads:[],invalidFrames:3};
+  const page=/** @type {import('playwright').Page} */(/** @type {unknown} */({evaluate:/** @param {unknown} fn @param {import('../scripts/audio-processing-probe.mjs', {with:{'resolution-mode':'import'}}).ProcessingAction} input */async(fn,input)=>input.kind==='configure'?{status:input.enabled?'on':'off'}:input.kind==='facts'?trace:null,waitForTimeout:async()=>{}}));
+  /** @type {unknown[]} */const saved=[];
+  await assert.rejects(()=>normalizerProof(page,44100,[],async(stage,value)=>{saved.push(structuredClone({stage,value}));}),/normalizer-trace-invalid/);
+  assert.deepEqual(saved,[{stage:'normalizer-raw',value:{id:'44100/normalizer/-36/mono',trace}}]);
 });

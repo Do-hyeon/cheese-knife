@@ -50,3 +50,12 @@ test('visibility pipe treats read and write errors as retirement instead of unca
     assert.equal(closed,1);transport.close();assert.equal(closed,1);
   }
 });
+test('owned abort stops its exact child handle and is harmless after that child has exited',async()=>{
+  const {spawn}=require('node:child_process'),{once}=require('node:events'),{stopVisibilityChild}=await load();
+  const child=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore',windowsHide:true}),exited=once(child,'exit');
+  try{
+    await stopVisibilityChild(child,exited);
+    assert.ok(child.exitCode!==null||child.signalCode!==null);
+    await stopVisibilityChild(child,exited);
+  }finally{if(child.exitCode===null&&child.signalCode===null)child.kill();}
+});

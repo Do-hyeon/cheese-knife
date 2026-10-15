@@ -2,13 +2,15 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
 import {createHash} from 'node:crypto';
-import {openAudioMeasurementBrowser,openAudioMeasurementWindow} from './audio-native-browser.mjs';
+import {openAudioMeasurementBrowser,openAudioMeasurementWindow,audioOperation} from './audio-native-browser.mjs';
 import {installProcessingProbe,callProcessingProbe} from './audio-processing-probe.mjs';
 import {AUDIO_ARTIFACT_FILES} from './audio-artifact-core.mjs';
 import {summarizeCapture} from './audio-signal.mjs';
-import {equalizerMeasurementCases,evaluateEqualizerCapture,normalizerMeasurementCases,evaluateNormalizerTrace,validateProcessingCapture,evaluateProcessingTransition,complementaryAudioRamps,rapidMasterStimuli,rapidMasterAssessment,processingPreflightFailures,processingReportFailures} from './audio-processing-metrics.mjs';
+import {equalizerMeasurementCases,evaluateEqualizerCapture,normalizerMeasurementCases,evaluateNormalizerTrace,validateProcessingCapture,evaluateProcessingTransition,complementaryAudioRamps,rapidMasterStimuli,rapidMasterAssessment,processingLifetimeFailures,processingPreflightFailures,processingReportFailures} from './audio-processing-metrics.mjs';
 
 /** @typedef {{root:string,readFile:(relative:string,encoding:'utf8')=>Promise<string>,ensureDirectory:(relative:string)=>Promise<string>,makeTempDirectory:(prefix:string)=>Promise<string>,writeFile:(relative:string,data:string|Uint8Array,options?:{flag:string})=>Promise<unknown>}} MeasurementFiles */
+/** @typedef {(stage:string,value:unknown)=>Promise<void>} SaveMeasurement */
+/** @type {SaveMeasurement} */const noSave=async()=>{};
 /** @param {unknown} value @returns {Record<string,unknown>} */
 function record(value){if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('audio-processing-data');return /** @type {Record<string,unknown>} */(value);}
 /** @param {Record<string,unknown>} value @param {string} key */
@@ -21,11 +23,9 @@ export function parseAudioProcessingArgs(args){
   return {runId:/** @type {string} */(args[0]).slice(9)};
 }
 /** @param {import('playwright').Page} page @param {import('./audio-processing-probe.mjs').ProcessingAction} action */
-async function call(page,action){
-  /** @type {ReturnType<typeof setTimeout>|undefined} */let timer;
-  try{return await Promise.race([page.evaluate(callProcessingProbe,action),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('audio-processing-action-timeout')),30000);})]);}
-  finally{clearTimeout(timer);}
-}
+async function call(page,action){return await audioOperation('probe-'+action.kind,()=>page.evaluate(callProcessingProbe,action),30000);}
+/** @param {import('playwright').Page} page @param {number} milliseconds */
+const pause=(page,milliseconds)=>audioOperation('pause-'+milliseconds,()=>page.waitForTimeout(milliseconds),milliseconds+5000);
 /** @param {import('playwright').Page} page */
 const facts=async page=>record(await call(page,{kind:'facts'}));
 /** @param {import('playwright').Page} page @param {Record<string,unknown>} config @param {number} [gain] @param {boolean} [enabled] */
@@ -47,19 +47,19 @@ async function preparePage(page,sampleRate,files,html){
   await call(page,{kind:'bootstrap'});await page.locator('.knife-comp').waitFor();
   await call(page,{kind:'signal',frequency:1000,inputDbfs:-40,pattern:'stereo'});
   await page.locator('.knife-comp button').click();await configure(page,{compressorEnabled:false,eqEnabled:false,normalizerEnabled:false});
-  await page.waitForTimeout(1250);
+  await pause(page,1250);
   const observed=await facts(page);
   if(observed.contextState!=='running'||observed.hidden!==false||observed.sources!==1)throw new Error('audio-processing-native-start');
 }
-/** @param {import('playwright').Page} page @param {number} sampleRate @param {MeasurementFiles} files @param {string} directory */
-async function equalizerProof(page,sampleRate,files,directory){
+/** @param {import('playwright').Page} page @param {number} sampleRate @param {MeasurementFiles} files @param {string} directory @param {SaveMeasurement} save */
+async function equalizerProof(page,sampleRate,files,directory,save){
   const rows=[];
   for(const spec of equalizerMeasurementCases().filter(row=>row.sampleRate===sampleRate)){
     await configure(page,{normalizerEnabled:false,compressorEnabled:false,eqEnabled:false},1,false);
     await call(page,{kind:'signal',frequency:spec.frequency,inputDbfs:-40,pattern:'stereo'});
     const bands=Object.fromEntries([63,125,250,500,1000,2000,4000,8000].map((frequency,index)=>['eq'+frequency,spec.levels[index]]));
     await configure(page,{...bands,eqEnabled:true,normalizerEnabled:false,compressorEnabled:false},spec.masterGain);
-    await page.waitForTimeout(1500);
+    await pause(page,1500);
     const data=await capture(page),nativeDb=await call(page,{kind:'response',frequency:spec.frequency});
     if(typeof nativeDb!=='number')throw new Error('audio-processing-native-response');
     const measured=evaluateEqualizerCapture(data,spec,.01,nativeDb);
@@ -68,17 +68,18 @@ async function equalizerProof(page,sampleRate,files,directory){
     const file=`${directory}/${spec.id.replaceAll('/','-')}.f32le`;
     await files.writeFile(file,bytes,{flag:'wx'});
     rows.push({id:spec.id,inputRms:.01,...measured,capture:{file,sha256:createHash('sha256').update(bytes).digest('hex'),frames:data.end-data.start,sampleRate:data.rate,channels:2,encoding:'interleaved-float32le'}});
+    await save('equalizer',rows.at(-1));
   }
   return rows;
 }
-/** @param {import('playwright').Page} page @param {number} sampleRate @param {Record<string,unknown>[]} [rows] */
-export async function normalizerProof(page,sampleRate,rows=[]){
+/** @param {import('playwright').Page} page @param {number} sampleRate @param {Record<string,unknown>[]} [rows] @param {SaveMeasurement} [save] */
+export async function normalizerProof(page,sampleRate,rows=[],save=noSave){
   for(const spec of normalizerMeasurementCases().filter(row=>row.sampleRate===sampleRate)){
     await configure(page,{normalizerEnabled:false,eqEnabled:false,compressorEnabled:false},1,false);
     await call(page,{kind:'signal',frequency:1000,inputDbfs:spec.inputDbfs,pattern:/** @type {import('./audio-processing-probe.mjs').SignalPattern} */(spec.pattern)});
     await configure(page,{normalizerEnabled:true,normalizerTargetDbfs:-20,eqEnabled:false,compressorEnabled:false});
-    await call(page,{kind:'reset-events'});await page.waitForTimeout(spec.seconds*1000);
-    const trace=await facts(page),row=/** @type {Record<string,unknown>} */({id:spec.id,trace});rows.push(row);
+    await call(page,{kind:'reset-events'});await pause(page,spec.seconds*1000);
+    const trace=await facts(page),row=/** @type {Record<string,unknown>} */({id:spec.id,trace});rows.push(row);await save('normalizer-raw',row);
     const measured=evaluateNormalizerTrace(trace,spec);
     if(trace.buffers!==2||trace.active100msTimers!==1)measured.failures.push('normalizer-buffer-or-timer-bound');
     row.measured=measured;
@@ -86,14 +87,14 @@ export async function normalizerProof(page,sampleRate,rows=[]){
   }
   return rows;
 }
-/** @param {import('playwright').Page} page @param {number} sampleRate */
-async function transitionProof(page,sampleRate){
+/** @param {import('playwright').Page} page @param {number} sampleRate @param {SaveMeasurement} save */
+async function transitionProof(page,sampleRate,save){
   const rows=[];
   for(const frequency of [250,750,1000]){
     await configure(page,{normalizerEnabled:false,eqEnabled:false,compressorEnabled:false},1,false);
     await call(page,{kind:'signal',frequency,inputDbfs:-24,pattern:'stereo'});
     const zero=Object.fromEntries([63,125,250,500,1000,2000,4000,8000].map(frequency=>['eq'+frequency,0]));
-    await configure(page,{...zero,normalizerEnabled:false,eqEnabled:false,compressorEnabled:false});await page.waitForTimeout(1300);
+    await configure(page,{...zero,normalizerEnabled:false,eqEnabled:false,compressorEnabled:false});await pause(page,1300);
     /** @type {{name:string,config:Record<string,unknown>,enabled:boolean}[]} */const steps=[
       {name:'eq-on',config:{eq1000:6,eqEnabled:true},enabled:true},{name:'eq-off',config:{eqEnabled:false},enabled:true},
       {name:'compressor-on',config:{compressorEnabled:true},enabled:true},{name:'compressor-off',config:{compressorEnabled:false},enabled:true},
@@ -103,11 +104,11 @@ async function transitionProof(page,sampleRate){
     for(const step of steps){
       if(step.name==='master-off'){
         const levels=[3,-3,6,-6,2,-2,4,-4],bands=Object.fromEntries([63,125,250,500,1000,2000,4000,8000].map((frequency,index)=>['eq'+frequency,levels[index]]));
-        await configure(page,{...bands,eqEnabled:true,normalizerEnabled:true,compressorEnabled:true});await page.waitForTimeout(7000);
+        await configure(page,{...bands,eqEnabled:true,normalizerEnabled:true,compressorEnabled:true});await pause(page,7000);
       }
       await call(page,{kind:'reset-events'});
       const start=record(await call(page,{kind:'configure',config:step.config,gain:1,enabled:step.enabled})),frame=numeric(start,'frame');
-      await page.waitForTimeout(300);
+      await pause(page,300);
       /** @param {number} seconds @param {number} end */const window=async(seconds,end)=>summarizeCapture(validateProcessingCapture(await call(page,{kind:'capture',seconds,endFrame:frame+Math.round(sampleRate*end)})));
       const before=await window(.04,-.04),change=await window(.06,.04),after=await window(.04,.14);
       const continuityDiagnostics=evaluateProcessingTransition(before,change,after);
@@ -115,67 +116,69 @@ async function transitionProof(page,sampleRate){
       const observed=await facts(page),linearEvents=list(observed,'linearEvents'),normalizerEvents=list(observed,'events').filter(value=>record(value).node===7);
       if(step.name.startsWith('master-')&&!complementaryAudioRamps(linearEvents))failures.push('transition-complementary-weights');
       rows.push({id:`${sampleRate}/${frequency}/${step.name}`,before,change,after,linearEvents,normalizerEvents,continuityDiagnostics,failures});
+      await save('transition',rows.at(-1));
       console.log(JSON.stringify({stage:'transition',id:rows.at(-1)?.id,failures}));
-      await page.waitForTimeout(1500);
+      await pause(page,1500);
     }
   }
   return rows;
 }
-/** @param {import('playwright').Page} page @param {Record<string,unknown>[]} rows */
-export async function rapidMasterProof(page,rows){
+/** @param {import('playwright').Page} page @param {Record<string,unknown>[]} rows @param {SaveMeasurement} [save] */
+export async function rapidMasterProof(page,rows,save=noSave){
   for(const spec of rapidMasterStimuli()){
     const row=/** @type {Record<string,unknown>} */({...spec});rows.push(row);
     try{
       await configure(page,{normalizerEnabled:false,eqEnabled:false,compressorEnabled:false},1,false);
       await call(page,{kind:'signal',frequency:1000,inputDbfs:-36,pattern:'stereo'});
-      await configure(page,{normalizerEnabled:true,normalizerTargetDbfs:-20});await page.waitForTimeout(6500);await call(page,{kind:'reset-events'});
-      const boundary=record(await call(page,{kind:'rapid-master',...spec}));row.boundary=boundary;await page.waitForTimeout(180);
+      await configure(page,{normalizerEnabled:true,normalizerTargetDbfs:-20});await pause(page,6500);await call(page,{kind:'reset-events'});
+      const boundary=record(await call(page,{kind:'rapid-master',...spec}));row.boundary=boundary;await pause(page,180);
       const state=await facts(page);row.state=state;
       row.reset=list(state,'events').slice(numeric(boundary,'offEventIndex'),numeric(boundary,'offEventEnd')).map(record).find(row=>row.node===7);
       row.reentry=list(state,'steps').slice(numeric(boundary,'onStepIndex'),numeric(boundary,'onStepEnd')).map(record).find(row=>row.node===7);
       row.output=summarizeCapture(await capture(page,.05));
       console.log(JSON.stringify({stage:'rapid-stimulus',...spec,reset:row.reset,reentry:row.reentry}));
     }catch(cause){row.error=cause instanceof Error?cause.message:'audio-processing-rapid-failed';throw cause;}
+    finally{await save('rapid-raw',row);}
   }
   return rapidMasterAssessment(rows);
 }
-/** @param {import('playwright').Page} page */
-async function controlProof(page){
+/** @param {import('playwright').Page} page @param {SaveMeasurement} save */
+async function controlProof(page,save){
   await configure(page,{normalizerEnabled:false,eqEnabled:false,compressorEnabled:false},1,false);
-  await call(page,{kind:'signal',frequency:1000,inputDbfs:0,pattern:'dc'});await configure(page,{},1,false);await page.waitForTimeout(1250);
-  const unity=summarizeCapture(await capture(page));
-  await call(page,{kind:'signal',frequency:1000,inputDbfs:20*Math.log10(.99),pattern:'dc'});await configure(page,{},1,false);await page.waitForTimeout(1250);
-  const dry99=summarizeCapture(await capture(page));
-  await configure(page,{compressorThreshold:0,compressorKnee:0,compressorRatio:1},2);await page.waitForTimeout(1250);
-  const wet=summarizeCapture(await capture(page));
+  await call(page,{kind:'signal',frequency:1000,inputDbfs:0,pattern:'dc'});await configure(page,{},1,false);await pause(page,1250);
+  const unity=summarizeCapture(await capture(page));await save('control-unity',unity);
+  await call(page,{kind:'signal',frequency:1000,inputDbfs:20*Math.log10(.99),pattern:'dc'});await configure(page,{},1,false);await pause(page,1250);
+  const dry99=summarizeCapture(await capture(page));await save('control-dry99',dry99);
+  await configure(page,{compressorThreshold:0,compressorKnee:0,compressorRatio:1},2);await pause(page,1250);
+  const wet=summarizeCapture(await capture(page));await save('control-wet',wet);
   const bands=Object.fromEntries([63,125,250,500,1000,2000,4000,8000].map(frequency=>['eq'+frequency,6]));
   await call(page,{kind:'signal',frequency:1000,inputDbfs:-6,pattern:'stereo'});
   await configure(page,{...bands,eqEnabled:true,compressorEnabled:true,normalizerEnabled:true,normalizerTargetDbfs:-12},2);
-  await page.waitForTimeout(9500);const extreme=summarizeCapture(await capture(page)),extremeFacts=await facts(page);
+  await pause(page,9500);const extreme=summarizeCapture(await capture(page)),extremeFacts=await facts(page);await save('control-extreme',{extreme,extremeFacts});
   /** @type {Record<string,unknown>} */const noise={};
   for(const pattern of /** @type {const} */(['silence','noise'])){
     await configure(page,{normalizerEnabled:false,eqEnabled:false,compressorEnabled:false},1,false);
     await call(page,{kind:'signal',frequency:1000,inputDbfs:pattern==='noise'?-70:-24,pattern});
     await configure(page,{normalizerEnabled:true,normalizerTargetDbfs:-20});await call(page,{kind:'reset-events'});
-    await page.waitForTimeout(3500);noise[pattern]=await facts(page);
+    await pause(page,3500);noise[pattern]=await facts(page);await save('control-noise',{pattern,trace:noise[pattern]});
   }
   const bursts=[];
   for(const phase of [.1,2.1,4.1]){
     await configure(page,{normalizerEnabled:false},1,false);
     await call(page,{kind:'signal',frequency:1000,inputDbfs:-24,pattern:'bursts',phase});
-    await configure(page,{normalizerEnabled:true});await call(page,{kind:'reset-events'});await page.waitForTimeout(8000);
+    await configure(page,{normalizerEnabled:true});await call(page,{kind:'reset-events'});await pause(page,8000);
     const trace=await facts(page),result=evaluateNormalizerTrace(trace,{sampleRate:numeric(trace,'sampleRate'),inputDbfs:-24,pattern:'bursts',seconds:8});
-    bursts.push({phase,trace,result});
+    bursts.push({phase,trace,result});await save('control-burst',bursts.at(-1));
   }
   await configure(page,{normalizerEnabled:false},1,false);
   await call(page,{kind:'signal',frequency:1000,inputDbfs:-24,pattern:'stereo'});await configure(page,{normalizerEnabled:true});
-  await page.waitForTimeout(6500);await call(page,{kind:'reset-events'});
-  const stallBoundary=record(await call(page,{kind:'stall',milliseconds:240}));await page.waitForTimeout(700);const stall=await facts(page);
-  await call(page,{kind:'reset-events'});await call(page,{kind:'analysis-error',enabled:true});await page.waitForTimeout(220);const error=await facts(page);
+  await pause(page,6500);await call(page,{kind:'reset-events'});
+  const stallBoundary=record(await call(page,{kind:'stall',milliseconds:240}));await pause(page,700);const stall=await facts(page);await save('control-stall',{stallBoundary,stall});
+  await call(page,{kind:'reset-events'});await call(page,{kind:'analysis-error',enabled:true});await pause(page,220);const error=await facts(page);await save('control-error',error);
   await call(page,{kind:'analysis-error',enabled:false});
   await configure(page,{normalizerEnabled:false},1,false);
   await call(page,{kind:'signal',frequency:1000,inputDbfs:-36,pattern:'tone-silence'});await configure(page,{normalizerEnabled:true});
-  await call(page,{kind:'reset-events'});await page.waitForTimeout(17500);const silenceReturn=await facts(page);
+  await call(page,{kind:'reset-events'});await pause(page,17500);const silenceReturn=await facts(page);await save('control-silence-return',silenceReturn);
   const silence=record(noise.silence),lowNoise=record(noise.noise);
   const bounded=/** @param {Record<string,unknown>} row */row=>row.invalidFrames===0&&list(row,'gains').every(value=>typeof value==='number'&&Number.isFinite(value))&&list(row,'bins').length>10;
   const silenceNoBoost=/** @param {Record<string,unknown>} row */row=>bounded(row)&&list(row,'events').every(value=>{const event=record(value);return event.node!==7||numeric(event,'to')<=1.00001&&numeric(event,'from')<=1.00001;});
@@ -193,34 +196,42 @@ async function controlProof(page){
     analysisErrorUnity:list(error,'events').some(value=>{const event=record(value);return event.node===7&&Math.abs(numeric(event,'end')-numeric(event,'start')-.01)<.001&&numeric(event,'to')===1;}),
     evidence:{unity,dry99,wet,extreme,extremeFacts,silence,lowNoise,bursts,silenceReturn,silentAfter,stall,stallBoundary,error}};
 }
-/** @param {import('playwright').Page} page @param {Awaited<ReturnType<typeof openAudioMeasurementBrowser>>} measurement @param {number} sampleRate @param {MeasurementFiles} files @param {string} html */
-async function lifetimeProof(page,measurement,sampleRate,files,html){
+/** @param {import('playwright').Page} page @param {Awaited<ReturnType<typeof openAudioMeasurementBrowser>>} measurement @param {number} sampleRate @param {MeasurementFiles} files @param {string} html @param {SaveMeasurement} save */
+export async function lifetimeProof(page,measurement,sampleRate,files,html,save){
+  /** @template T @param {string} name @param {()=>Promise<T>} work */
+  const op=async(name,work)=>{
+    console.log(JSON.stringify({stage:'lifetime-operation',sampleRate,name,status:'started'}));await save('lifetime-operation',{name,status:'started'});
+    try{const value=await audioOperation('lifetime-'+name,work);await save('lifetime-operation',{name,status:'completed'});return value;}
+    catch(cause){await save('lifetime-operation',{name,status:'failed',error:cause instanceof Error?cause.message:'lifetime-failed'});throw cause;}
+  };
+  /** @param {import('playwright').Page} target @param {string} name */
+  const observe=async(target,name)=>{const value=await op(name,()=>facts(target));await save('lifetime-facts',{name,value});return value;};
   await configure(page,{normalizerEnabled:false,eqEnabled:false,compressorEnabled:false},1,false);
-  await call(page,{kind:'signal',frequency:1000,inputDbfs:-24,pattern:'stereo'});await configure(page,{normalizerEnabled:true});await page.waitForTimeout(6000);
-  const visible=await facts(page),volume=record(visible.video);
+  await call(page,{kind:'signal',frequency:1000,inputDbfs:-24,pattern:'stereo'});await configure(page,{normalizerEnabled:true});await pause(page,6000);
+  const visible=await observe(page,'visible-facts'),volume=record(visible.video);
   const holdEvidence=[];
   for(const state of [{muted:true,volume:1},{muted:false,volume:0}]){
-    await call(page,{kind:'video',...state});await page.waitForTimeout(300);const before=await facts(page);await page.waitForTimeout(400);const after=await facts(page);
+    await call(page,{kind:'video',...state});await pause(page,300);const before=await observe(page,'hold-before');await pause(page,400);const after=await observe(page,'hold-after');
     holdEvidence.push({state,before,after,held:Math.abs(gainAt(after,7)-gainAt(before,7))<.0001&&after.reads===before.reads});
   }
-  await call(page,{kind:'video',muted:false,volume:1});await page.waitForTimeout(600);
-  await configure(page,{normalizerEnabled:true},0);await page.waitForTimeout(300);const zeroBefore=await facts(page);
-  await page.waitForTimeout(1200);const zero=summarizeCapture(await capture(page)),zeroAfter=await facts(page);
+  await call(page,{kind:'video',muted:false,volume:1});await pause(page,600);
+  await configure(page,{normalizerEnabled:true},0);await pause(page,300);const zeroBefore=await observe(page,'zero-before');
+  await pause(page,1200);const zero=summarizeCapture(await capture(page)),zeroAfter=await observe(page,'zero-after');await save('lifetime-zero',zero);
   const gainZeroHold=Math.abs(gainAt(zeroAfter,7)-gainAt(zeroBefore,7))<.0001&&zeroAfter.reads===zeroBefore.reads;
-  await configure(page,{},1);await page.waitForTimeout(600);
-  const other=await measurement.context.newPage();await other.bringToFront();
-  await page.waitForFunction(()=>document.hidden===true,undefined,{polling:100});await page.waitForTimeout(1200);const hidden=await facts(page);await page.waitForTimeout(1200);const held=await facts(page);
-  await page.bringToFront();await page.waitForFunction(()=>document.hidden===false,undefined,{polling:100});await page.waitForTimeout(550);
-  const restored=await facts(page);await other.close();
-  await configure(page,{normalizerEnabled:false});await page.waitForTimeout(50);await call(page,{kind:'reset-events'});
-  const before=await facts(page);await call(page,{kind:'retired-ticks'});const after=await facts(page);
+  await configure(page,{},1);await pause(page,600);
+  const other=await op('create-tab',()=>measurement.context.newPage());await op('activate-other',()=>other.bringToFront());
+  await op('hidden-condition',()=>page.waitForFunction(()=>document.hidden===true,undefined,{polling:100}));await pause(page,1200);const hidden=await observe(page,'hidden-facts');await pause(page,1200);const held=await observe(page,'hidden-held');
+  await op('activate-first',()=>page.bringToFront());await op('visible-condition',()=>page.waitForFunction(()=>document.hidden===false,undefined,{polling:100}));await pause(page,550);
+  const restored=await observe(page,'restored');await op('close-other',()=>other.close());
+  await configure(page,{normalizerEnabled:false});await pause(page,50);await call(page,{kind:'reset-events'});
+  const before=await observe(page,'retired-before');await call(page,{kind:'retired-ticks'});const after=await observe(page,'retired-after');
   await configure(page,{},.5);
-  const created=await openAudioMeasurementWindow(measurement.context,measurement.browserSession),second=created.page;
-  await preparePage(second,sampleRate,files,html);await configure(second,{normalizerEnabled:false,compressorEnabled:false,eqEnabled:false},2);
-  await second.waitForTimeout(50);
-  const session=await measurement.context.newCDPSession(page),identity=await session.send('Target.getTargetInfo');await session.detach();
-  const firstWindow=await measurement.browserSession.send('Browser.getWindowForTarget',{targetId:identity.targetInfo.targetId});
-  const first=await facts(page),secondFacts=await facts(second);await second.close();await page.bringToFront();await page.waitForTimeout(300);const remaining=await facts(page);
+  const created=await op('create-window',()=>openAudioMeasurementWindow(measurement.context,measurement.browserSession)),second=created.page;
+  await op('prepare-window',()=>preparePage(second,sampleRate,files,html));await configure(second,{normalizerEnabled:false,compressorEnabled:false,eqEnabled:false},2);
+  await pause(second,50);
+  const session=await op('identity-session',()=>measurement.context.newCDPSession(page)),identity=await op('identity-target',()=>session.send('Target.getTargetInfo'));await op('detach-identity',()=>session.detach());
+  const firstWindow=await op('identity-window',()=>measurement.browserSession.send('Browser.getWindowForTarget',{targetId:identity.targetInfo.targetId}));
+  const first=await observe(page,'first-window'),secondFacts=await observe(second,'second-window');await op('close-second',()=>second.close());await op('reactivate-first',()=>page.bringToFront());await pause(page,300);const remaining=await observe(page,'remaining');
   return {sourceOne:visible.sources===1&&restored.sources===1,gainZero:zero.channels.every(row=>row.peak===0&&row.rms===0),
     muteVolumePreserved:record(remaining.video).muted===volume.muted&&record(remaining.video).volume===volume.volume&&holdEvidence.every(row=>row.held),gainZeroHold,
     oldCallbacksZero:list(before,'events').length===list(after,'events').length&&list(before,'steps').length===list(after,'steps').length&&before.reads===after.reads,
@@ -242,10 +253,15 @@ export async function runAudioProcessing(options){
   /** @type {unknown} */const rawFiles=await Reflect.apply(open,undefined,[root]);
   if(!['readFile','writeFile','ensureDirectory','makeTempDirectory'].every(key=>typeof record(rawFiles)[key]==='function')||record(rawFiles).root!==root)throw new Error('audio-processing-files');
   const files=/** @type {MeasurementFiles} */(rawFiles);
-  const required=[...AUDIO_ARTIFACT_FILES,'tests/helpers.cjs','scripts/check-audio-processing.mjs','scripts/audio-processing-probe.mjs','scripts/audio-processing-metrics.mjs','scripts/audio-native-browser.mjs','tests/f01-audio-quality-contract.test.cjs','tests/fixtures/f01-audio-processing.json','tsconfig.audio-tools.json'];
+  const required=[...AUDIO_ARTIFACT_FILES,'tests/helpers.cjs','scripts/check-audio-processing.mjs','scripts/audio-processing-probe.mjs','scripts/audio-processing-metrics.mjs','scripts/audio-native-browser.mjs','scripts/extension-e2e/visibility-browser.mjs','tests/f01-audio-quality-contract.test.cjs','tests/fixtures/f01-audio-processing.json','tsconfig.audio-tools.json'];
   /** @type {unknown} */const source=await Reflect.apply(attest,undefined,[files,required]);
   const directory=await files.makeTempDirectory(`output/audio-processing-${options.runId}-`),relative=path.relative(root,directory).split(path.sep).join('/');
   await files.ensureDirectory(relative+'/captures');
+  await files.ensureDirectory(relative+'/checkpoints');let snapshot=0;
+  /** @type {SaveMeasurement} */const save=async(stage,value)=>{
+    if(!/^[a-z0-9-]{1,48}$/.test(stage))throw new Error('audio-processing-checkpoint-stage');
+    await files.writeFile(`${relative}/checkpoints/${String(++snapshot).padStart(5,'0')}-${stage}.json`,JSON.stringify({source,runId:options.runId,stage,value}),{flag:'wx'});
+  };
   const {chromium}=await import('playwright'),require=createRequire(import.meta.url),helperSpecifier='../tests/helpers.cjs';
   /** @type {unknown} */const helper=require(helperSpecifier);const html=record(helper).playerHTML;
   if(typeof html!=='string')throw new Error('audio-processing-fixture');
@@ -256,19 +272,41 @@ export async function runAudioProcessing(options){
   /** @type {Record<string,unknown>|null} */let preflight=null;
   /** @param {Awaited<ReturnType<typeof openAudioMeasurementBrowser>>} measurement */
   const environment=measurement=>({browserVersion:measurement.browser.version(),platform:process.platform,arch:process.arch,nodeVersion:process.version});
+  /** @param {number} sampleRate @param {Record<string,unknown>[]} rows @param {'preflight'|'matrix'} phase @param {(page:import('playwright').Page,measurement:Awaited<ReturnType<typeof openAudioMeasurementBrowser>>,row:Record<string,unknown>,save:SaveMeasurement)=>Promise<void>} work */
+  const nativeRate=async(sampleRate,rows,phase,work)=>{
+    const measurement=await openAudioMeasurementBrowser(chromium,files),row=/** @type {Record<string,unknown>} */({sampleRate,profilePath:measurement.profilePath,environment:environment(measurement)});rows.push(row);
+    /** @type {SaveMeasurement} */const checkpoint=(stage,value)=>save(stage,{phase,sampleRate,value});
+    /** @type {import('playwright').Page|undefined} */let page;
+    /** @type {unknown} */let failure;
+    try{
+      await checkpoint('rate-start',row);
+      page=await audioOperation('create-page',()=>measurement.context.newPage());page.on('pageerror',exception=>pageErrors.push(exception.message));
+      const target=page;await audioOperation('prepare-page',()=>preparePage(target,sampleRate,files,html),30000);row.nodes=await facts(page);
+      await work(page,measurement,row,checkpoint);
+    }catch(cause){
+      failure=cause;row.error=cause instanceof Error?cause.message:'audio-processing-failed';await checkpoint('rate-error',row);
+      const target=page;
+      if(target)try{row.failureFacts=await audioOperation('failure-facts',()=>target.evaluate(callProcessingProbe,/** @type {const} */({kind:'facts'})),2000);}catch(diagnostic){row.failureFactsError=diagnostic instanceof Error?diagnostic.message:'audio-processing-diagnostic-failed';}
+      try{row.failurePages=await audioOperation('failure-pages',()=>Promise.all(measurement.context.pages().map(target=>target.evaluate(()=>({url:location.href,hidden:document.hidden,visibility:document.visibilityState})))),2000);}
+      catch(diagnostic){row.failurePagesError=diagnostic instanceof Error?diagnostic.message:'audio-processing-diagnostic-failed';}
+    }finally{
+      try{row.shutdown=await measurement.close();}catch(cause){
+        failure??=cause;row.shutdownError=cause instanceof Error?cause.message:'audio-browser-close-failed';
+        row.forcedRetirement=cause&&typeof cause==='object'?Reflect.get(cause,'forcedRetirement')===true:false;
+      }
+      await checkpoint('rate-final',row);
+    }
+    if(failure!==undefined)throw failure;
+  };
   try{
     for(const sampleRate of [44100,48000,96000]){
-      const measurement=await openAudioMeasurementBrowser(chromium,files),page=await measurement.context.newPage();
-      const rapid=/** @type {Record<string,unknown>[]} */([]),row=/** @type {Record<string,unknown>} */({sampleRate,profilePath:measurement.profilePath,environment:environment(measurement),rapid});preflightRates.push(row);
-      page.on('pageerror',exception=>pageErrors.push(exception.message));
-      try{
-        await preparePage(page,sampleRate,files,html);row.nodes=await facts(page);
-        const assessment=await rapidMasterProof(page,rapid);row.assessment=assessment;
+      await nativeRate(sampleRate,preflightRates,'preflight',async(page,measurement,row,checkpoint)=>{
+        row.lifetime=await lifetimeProof(page,measurement,sampleRate,files,html,checkpoint);await checkpoint('lifetime-result',row.lifetime);
+        if(processingLifetimeFailures(row.lifetime,sampleRate).length)throw new Error('audio-preflight-lifetime');
+        const rapid=/** @type {Record<string,unknown>[]} */([]);row.rapid=rapid;
+        const assessment=await rapidMasterProof(page,rapid,checkpoint);row.assessment=assessment;
         if(assessment.status!=='passed')throw new Error('audio-preflight-'+assessment.status);
-      }catch(cause){
-        try{row.failureFacts=await facts(page);}catch(diagnostic){row.failureFactsError=diagnostic instanceof Error?diagnostic.message:'audio-processing-diagnostic-failed';}
-        throw cause;
-      }finally{row.shutdown=await measurement.close();}
+      });
       console.log(JSON.stringify({stage:'preflight-rate-complete',sampleRate}));
     }
   }catch(cause){error=cause instanceof Error?cause.message:'audio-preflight-failed';}
@@ -280,25 +318,16 @@ export async function runAudioProcessing(options){
   try{
     if(preflightFailures.length)throw new Error(error??'audio-preflight-incomplete');
     for(const sampleRate of [44100,48000,96000]){
-      const measurement=await openAudioMeasurementBrowser(chromium,files),page=await measurement.context.newPage();
-      const row=/** @type {Record<string,unknown>} */({sampleRate,profilePath:measurement.profilePath,environment:environment(measurement)});rates.push(row);
-      page.on('pageerror',exception=>pageErrors.push(exception.message));
-      try{
+      await nativeRate(sampleRate,rates,'matrix',async(page,measurement,row,checkpoint)=>{
         if(JSON.stringify(row.environment)!==JSON.stringify(preflightRates.find(row=>row.sampleRate===sampleRate)?.environment))throw new Error('audio-processing-preflight-environment');
-        await preparePage(page,sampleRate,files,html);row.nodes=await facts(page);
-        const controls=await controlProof(page);row.controls=controls;
-        row.equalizer=await equalizerProof(page,sampleRate,files,relative+'/captures');
-        const transitions=await transitionProof(page,sampleRate);row.transitions=transitions;
+        const controls=await controlProof(page,checkpoint);row.controls=controls;await checkpoint('controls',controls);
+        row.equalizer=await equalizerProof(page,sampleRate,files,relative+'/captures',checkpoint);
+        const transitions=await transitionProof(page,sampleRate,checkpoint);row.transitions=transitions;
         if(transitions.some(row=>row.failures.length))throw new Error('audio-processing-transition-limits');
         const normalizer=/** @type {Record<string,unknown>[]} */([]);row.normalizer=normalizer;
-        await normalizerProof(page,sampleRate,normalizer);
-        row.lifetime=await lifetimeProof(page,measurement,sampleRate,files,html);
-      }catch(cause){
-        try{row.failureFacts=await facts(page);}catch(diagnostic){row.failureFactsError=diagnostic instanceof Error?diagnostic.message:'audio-processing-diagnostic-failed';}
-        try{row.failurePages=await Promise.all(measurement.context.pages().map(target=>target.evaluate(()=>({url:location.href,hidden:document.hidden,visibility:document.visibilityState}))));}
-        catch(diagnostic){row.failurePagesError=diagnostic instanceof Error?diagnostic.message:'audio-processing-diagnostic-failed';}
-        throw cause;
-      }finally{row.shutdown=await measurement.close();}
+        await normalizerProof(page,sampleRate,normalizer,checkpoint);
+        row.lifetime=await lifetimeProof(page,measurement,sampleRate,files,html,checkpoint);await checkpoint('lifetime-result',row.lifetime);
+      });
       console.log(JSON.stringify({stage:'rate-complete',sampleRate}));
     }
   }catch(cause){error=cause instanceof Error?cause.message:'audio-processing-failed';}

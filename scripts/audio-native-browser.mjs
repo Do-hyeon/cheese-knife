@@ -1,5 +1,14 @@
 import {launchVisibilityBrowser} from './extension-e2e/visibility-browser.mjs';
 
+/** @template T @param {string} name @param {()=>Promise<T>} work @param {number} [milliseconds] @returns {Promise<T>} */
+export async function audioOperation(name,work,milliseconds=15000){
+  if(!/^[a-zA-Z0-9-]{1,80}$/.test(name)||!Number.isSafeInteger(milliseconds)||milliseconds<1||milliseconds>30000)throw new Error('audio-operation-invalid');
+  /** @type {ReturnType<typeof setTimeout>|undefined} */let timer;
+  /** @type {Promise<never>} */const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('audio-operation-timeout:'+name)),milliseconds);});
+  try{return await Promise.race([Promise.resolve().then(work),timeout]);}
+  finally{clearTimeout(timer);}
+}
+
 /**
  * @param {typeof import('playwright').chromium} chromiumApi
  * @param {{ensureDirectory(relative:string):Promise<string>,makeTempDirectory(prefix:string):Promise<string>}} files
@@ -12,12 +21,19 @@ export async function openAudioMeasurementBrowser(chromiumApi,files){
   if(!loaded||typeof loaded!=='object')throw new Error('audio-browser-provider-invalid');
   const close=Reflect.get(loaded,'closeInstalledMediaBrowser');
   if(typeof close!=='function')throw new Error('audio-browser-provider-invalid');
-  const {browser,context,browserSession}=await launchVisibilityBrowser({chromiumApi,profilePath,artifactPath,headed:false});
+  const {browser,context,browserSession,abort}=await launchVisibilityBrowser({chromiumApi,profilePath,artifactPath,headed:false});
   if(!browserSession)throw new Error('audio-browser-session-invalid');
   return {browser,context,profilePath,browserSession,async close(){
+    try{
     /** @type {unknown} */const proof=await Reflect.apply(close,undefined,[{context,browserSession,profilePath}]);
     if(!proof||typeof proof!=='object'||!['browserCloseAcknowledged','browserDisconnected','ownedRootClosed'].every(key=>Reflect.get(proof,key)===true))throw new Error('audio-browser-close-unconfirmed');
     return proof;
+    }catch(cause){
+      // Forced retirement is retained as failed shutdown, never an orderly-close proof.
+      const error=cause instanceof Error?cause:new Error('audio-browser-close-unconfirmed');
+      try{await abort();Object.assign(error,{forcedRetirement:true});}catch(abortError){Object.assign(error,{forcedRetirement:false,abortError:abortError instanceof Error?abortError.message:'audio-browser-abort-failed'});}
+      throw error;
+    }
   }};
 }
 

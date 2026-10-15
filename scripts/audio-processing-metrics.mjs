@@ -233,6 +233,15 @@ function validEnvironment(value){
   return !!row&&typeof row.browserVersion==='string'&&/^\d+\.\d+\.\d+\.\d+$/.test(row.browserVersion)&&row.platform==='win32'&&
     ['x64','arm64'].includes(String(row.arch))&&typeof row.nodeVersion==='string'&&/^v\d+\.\d+\.\d+$/.test(row.nodeVersion);
 }
+/** @param {unknown} raw @param {number} sampleRate */
+export function processingLifetimeFailures(raw,sampleRate){
+  const lifetime=record(raw),failures=[];
+  for(const key of ['sourceOne','gainZero','gainZeroHold','muteVolumePreserved','oldCallbacksZero','metersOffAfterDisable','hiddenObserved','hiddenHold','visibleRestored','independentWindows','oneWindowClosed','remainingSourceOne'])if(lifetime?.[key]!==true)failures.push(`rate-${sampleRate}/lifetime-${key}`);
+  const evidence=record(lifetime?.evidence),windows=evidence?.windowIds,targets=evidence?.targetIds;
+  if(!Array.isArray(windows)||windows.length!==2||windows[0]===windows[1]||!windows.every(value=>Number.isSafeInteger(value)&&value>=0)||
+    !Array.isArray(targets)||targets.length!==2||targets[0]===targets[1]||!targets.every(value=>typeof value==='string'&&/^[A-Fa-f0-9]{32}$/.test(value)))failures.push(`rate-${sampleRate}/native-window-identity`);
+  return failures;
+}
 /** @param {unknown} raw @param {unknown} expectedSource */
 export function processingPreflightFailures(raw,expectedSource){
   const report=record(raw),failures=[];
@@ -245,6 +254,7 @@ export function processingPreflightFailures(raw,expectedSource){
     if(rows.length!==1||!row||!validEnvironment(row.environment)||!shutdown||!['browserCloseAcknowledged','browserDisconnected','ownedRootClosed'].every(key=>shutdown[key]===true))failures.push(`preflight-${sampleRate}/environment-or-close`);
     const assessment=rapidMasterAssessment(row?.rapid);
     if(assessment.status!=='passed')failures.push(`preflight-${sampleRate}/${assessment.status}`);
+    failures.push(...processingLifetimeFailures(row?.lifetime,sampleRate));
   }
   return failures;
 }
@@ -294,11 +304,7 @@ export function processingReportFailures(raw,expectedSource){
       try{const trace=record(row?.trace);if(rows.length!==1||!row||trace?.buffers!==2||trace.active100msTimers!==1||evaluateNormalizerTrace(trace,spec).failures.length)failures.push(spec.id+'/output');}
       catch{failures.push(spec.id+'/incomplete');}
     }
-    const lifetime=record(rate.lifetime);
-    for(const key of ['sourceOne','gainZero','gainZeroHold','muteVolumePreserved','oldCallbacksZero','metersOffAfterDisable','hiddenObserved','hiddenHold','visibleRestored','independentWindows','oneWindowClosed','remainingSourceOne'])if(lifetime?.[key]!==true)failures.push(`rate-${sampleRate}/lifetime-${key}`);
-    const evidence=record(lifetime?.evidence),windows=evidence?.windowIds,targets=evidence?.targetIds;
-    if(!Array.isArray(windows)||windows.length!==2||windows[0]===windows[1]||!windows.every(value=>Number.isSafeInteger(value)&&value>=0)||
-      !Array.isArray(targets)||targets.length!==2||targets[0]===targets[1]||!targets.every(value=>typeof value==='string'&&/^[A-Fa-f0-9]{32}$/.test(value)))failures.push(`rate-${sampleRate}/native-window-identity`);
+    failures.push(...processingLifetimeFailures(rate.lifetime,sampleRate));
     const controls=record(rate.controls);
     for(const key of ['dryUnity','dry99','wetPeak','extreme48db','silenceNoBoost','noiseNoBoost','silenceReturnUnity','burstFinite','stallHold','analysisErrorUnity'])if(controls?.[key]!==true)failures.push(`rate-${sampleRate}/control-${key}`);
   }

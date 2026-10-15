@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T8 Native 사전계측36개 PASS·긴 검사의 수명 관측 중단 원인 미확정, 보완 설계 확인 대기**. T1–T7 로컬 게이트를 마쳤으며 T8·T9는 미완료다. T7 완료 이력은 [완료 단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md), 상세 결과는 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)에 유지한다. F00 PR #44 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
+최신화: 2026-10-15 / Asia-Seoul. 현재 커서: **F01 T8 수명 조작별 timeout·중간 저장·중단 경로 보완 승인, 로컬 검증 진행**. T1–T7 로컬 게이트를 마쳤으며 T8·T9는 미완료다. T7 완료 이력은 [완료 단계 아카이브](docs/superpowers/archive/2026-10-15-f01-completed-stages.md), 상세 결과는 [구현 검증 기록](docs/superpowers/validation/2026-10-15-f01-implementation.md)에 유지한다. F00 PR #44 통합/브랜치 정리 완료. F01은 로컬 보존만 하며 push/PR·버전·릴리즈·스토어·시청 Chrome/P09·root dist 변경은 없다. 릴리즈 최소 조건은 F00·F01·F02 및 통합 게이트다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -15,7 +15,8 @@ T8 진행: 기존14 steady·12 alignment·18 transition과 모든 수치 허용�
 - [x] **사용자 승인:** [Native 빠른 전환 후속 설계](docs/superpowers/specs/2026-10-15-f01-native-rapid-coverage-follow-up.md)의 사전계측 분리·상세 계획·도구 보완·Native 재검증. [실행 계획](docs/superpowers/plans/2026-10-15-f01-native-stimulus-preflight.md)에 실행 전12개 고정 자극/rate와 중지 기준을 명시한다. 기존 수치·실제 세 구간 확보·모든 측정 보존을 유지하며 통과 보장은 아니다.
 - [x] 사전계측 분리 도구 RED→GREEN·집중49/49·전체1607통과/실패0/기존1skip·9개 기반/build/package. 제품 DSP·기존 fixture/pin·root dist58 불변.
 - [x] 2f494f3의44.1/48/96kHz 사전계측36개·각 실제 세 구간·모든 gain/양쪽 출력 PASS. source/after5필드 일치·종료3증명·pageErrors0, N 실패와 O 원자료 모두 보존.
-- [ ] **확인 필요:** O의 긴 검사에서44.1kHz EQ36/전환24/RMS20의 성공 로그 뒤 수명 단계 응답이 멈췄다. 정확한 자체 프로필 root만 종료했고 Node exit13·최종 report 부재·정상 종료 증명 미확보다. EQ raw36개·사전계측은 보존했지만 메모리의 전환/RMS raw는 기록되지 못했다. 원인을 제품/도구로 단정하지 않는다. 수명 조작별 제한된 관측·중간 증거 즉시 저장·닫힘/timeout 실패 경로를 먼저 보완하는 안을 확인한다. 동일 긴 검사를 무작정 반복하지 않는다.
+- [x] **사용자 승인:** O의 중단 뒤 수명 조작별 timeout·중간 증거 즉시 저장·닫힘/실패 경로의 제한된 보완. O의 exit13·최종 report 부재·긴 전환/RMS raw 미기록은 그대로 보존한다. 원인을 제품/도구로 단정하거나 옛 로그를 전체 PASS로 승격하지 않는다.
+- [ ] 보완 집중/strict/전체/기반 검사 → 새 clean Native에서 동일 수명 흐름을 긴 행렬 앞에 먼저 관측. 실패 단계와 원자료를 즉시 저장하고, timeout 후 해당 자체 browser만 종료하며 원래 오류·강제 종료를 정상 종료 증명과 구분한다. 제품 DSP·기존 수치·고정12자극/rate는 유지한다.
 - [ ] 수명 관측 보완 뒤 전체 출력/수명과 기존 객관 runner를 새 입력으로 재검증한다. T8·T9는 계속 미완료다.
 - [ ] T8 마감 뒤 T9 전체 회귀·도구 점검·fresh Astra max 최종 전체 검토. 공개 작업 금지는 유지.
 
