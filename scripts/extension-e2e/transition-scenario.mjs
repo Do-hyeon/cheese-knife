@@ -278,7 +278,10 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
         await styles.locator('#settings-status[data-phase="ready"]').waitFor({ timeout: 15000 });
         await check(); records.push({ step, observation });
         if (step === 'font8' || step === 'font0' || step === 'rollback-font8') {
-          await styles.locator('#reload').click({ timeout: 15000 });
+          await Promise.all([
+            page.waitForNavigation({waitUntil:'domcontentloaded',timeout:15000}),
+            styles.locator('#reload').click({timeout:15000}),
+          ]);
           await waitTransition(()=>page.evaluate(observeInstalledProtocol,expectedProtocol),value=>value?.load===initialLoads[0]+1,'transition-reload-handshake-timeout');
           reloaded = true; await check(); records.push({ step, reloaded: true, observation });
         }
@@ -286,6 +289,7 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
     }
     return { caseId, phase, records, final: observation };
   } catch (error) {
+    if(!error.code)error.diagnostic={name:String(error.name||'Error').slice(0,80),message:String(error.message||error).slice(0,240)};
     error.code ||= 'transition-phase-failed';
     error.failure = { code: String(error.code).slice(0, 240), caseId, phase, step,
       stage: step === 'startup' ? stageFor(phase) : 'phase-action', ...(observation ? { observation } : {}), ...(error.diagnostic ? { diagnostic: error.diagnostic } : {}), cleanupErrors: [] };

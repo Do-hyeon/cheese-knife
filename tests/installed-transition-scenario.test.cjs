@@ -190,3 +190,28 @@ test('transition scenario passes unchanged static tool rules', () => {
   { encoding: 'utf8', timeout: 20000 });
   assert.equal(result.error, undefined); assert.equal(result.status, 0, result.stdout + result.stderr);
 });
+
+test('actual style reload awaits navigation before evaluating fresh-document metadata',async()=>{
+  const fs=require('node:fs'),source=fs.readFileSync('scripts/extension-e2e/transition-scenario.mjs','utf8');
+  const start=source.indexOf("        if (step === 'font8' || step === 'font0' || step === 'rollback-font8') {"),
+    end=source.indexOf('reloaded = true; await check(); records.push({ step, reloaded: true, observation });',start);
+  assert.ok(start>0&&end>start);
+  let navigating=false,ready;const records=[];
+  const page={waitForNavigation(){return new Promise(resolve=>{ready=resolve;});},async evaluate(){
+    if(navigating)throw Error('Execution context was destroyed');return {load:2};}};
+  const styles={locator(){return {async click(){navigating=true;setTimeout(()=>{navigating=false;ready?.();},5);}};}};
+  const block=source.slice(start,end)+source.slice(end,source.indexOf('\n',end))+'\n}';
+  const execute=new (Object.getPrototypeOf(async()=>{}).constructor)('page','styles','waitTransition','observeInstalledProtocol','initialLoads','expectedProtocol','check','records','step','observation',
+    'let reloaded=false;'+block+';return reloaded;');
+  const {waitTransition}=await subject();
+  assert.equal(await execute(page,styles,waitTransition,()=>{},[1,1],1,async()=>{},records,'font8',{}),true);
+  assert.equal(records.length,1);assert.equal(records[0].reloaded,true);
+});
+
+test('generic phase exceptions retain a bounded original name and message for diagnosis',async()=>{
+  const {runTransitionPhase}=await subject();
+  await assert.rejects(runTransitionPhase({context:{},worker:{async evaluate(){throw new TypeError('x'.repeat(300));}},
+    extensionId,responses:[],caseId:'valid-ui',phase:'old',runNonce:nonce,expectedBrokerSource:'source',expectedProtocol:1}),error=>{
+    assert.equal(error.code,'transition-phase-failed');assert.deepEqual(error.failure.diagnostic,{name:'TypeError',message:'x'.repeat(240)});return true;
+  });
+});

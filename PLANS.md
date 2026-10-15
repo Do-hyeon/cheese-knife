@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-16 / Asia-Seoul. 현재 커서: **F01 보완 상세 구현 계획 실행 승인·Task2 로컬 검증 완료·Linux 조사 준비**. 사용자는 [상세 계획](docs/superpowers/plans/2026-10-16-f01-public-ci-follow-up.md)의 Native 직접 실행·Linux 계측 중간push/최종push·새 격리프로필 검증과 모든 게이트 충족 후 PR병합·해당브랜치정리→F02 설계 순서를 승인했다. 전체 [PR #45](https://github.com/Do-hyeon/cheese-knife/pull/45)는 아직 미병합이고 Linux250Hz ON step·설치형E2E는 미해결이다. [기존 설계 검토](docs/superpowers/validation/2026-10-15-f01-public-ci-follow-up-review.md)의0/0/0을 구현 성공으로 세지 않는다. **허용치 완화·추측 DSP 변경·새 권한/다운로드는 승인 범위 밖이며, 병합은 모든 게이트 충족 후에만 한다.** 버전2.13.3·root dist·시청 Chrome/P09·스토어는 불변이다.
+최신화: 2026-10-16 / Asia-Seoul. 현재 커서: **Task3 미재현 STOP·추가 원인 조사 범위 확인 필요**. 승인된 [상세 계획](docs/superpowers/plans/2026-10-16-f01-public-ci-follow-up.md)에 따라 Task1 로컬 복구와 Task2 중간 계측push를 진행했다. [PR #45](https://github.com/Do-hyeon/cheese-knife/pull/45)의 CI38766311444는 오디오6회·기본E2E/음성검사는 성공했으나 일반전환/손실2건이 실패했다. 후속 reload 경쟁 보완은 로컬 전체1665통과·실패0·기존제외1이며 아직push/실제재검증 전이다. 과거오디오실패는 이번6회에서 미재현·계측18pair 시각차이0으로 원인미확정이다. **승인안의STOP조건에 따라 DSP·최종push·병합은 진행하지 않는다.** 새 Native/Astra최종검토·최종CI·F02설계는 미실행이다. 버전2.13.3·root dist·시청Chrome/P09·스토어·기존증거는 불변이다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -52,7 +52,7 @@
 | ID | 작업 묶음 | 상태 | 다음 게이트 |
 | --- | --- | --- | --- |
 | F00 | 채널별 미디어 저장·프리셋 | DONE (통합) | PR #44 공개 CI 통과·병합·해당 브랜치 정리 완료; 릴리즈 없음 |
-| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | DOING (보완 Task2) | PR #45 미병합; E2E 단위/전체 복구 확인, 계측·인과판정→종합검증·최종검토·CI통과→병합/정리 |
+| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | WAITING-USER (Task3 미재현 STOP) | PR #45 미병합; Linux 오디오6/6 통과하나 과거 원인 미확정. 전환2건 실패·로컬 reload 보완의 실제 재검증도 남음. 추가 조사 범위 확인 필요 |
 | AF05-B 실제 수용 / AF05 종료 | 차기 게시본 설치·업데이트 | WAITING-DEPENDENCY | 차기 게시와 실제 검사 별도 승인 후 수행; F00/F01과 독립 |
 | DT02 | 선택 파일의 native TS 실행 | DEFERRED | 실제 유지보수 이득과 검사/실행 경계 보존이 증명되면 재설계 |
 | F02–F05 | 후속 기능 | BACKLOG-BLOCKED | F00/F01 검증과 각 범위 승인 |
@@ -113,8 +113,10 @@
 - [x] 사용자 F01 상세계획→보완·재검증→병합·해당브랜치정리→F02 순서 승인. 작성 설계의 후속 [상세 구현 계획](docs/superpowers/plans/2026-10-16-f01-public-ci-follow-up.md)에 Linux환경·계측선택·사전6run/산출물·Native직접실행·보호범위를 구체화하고 자체검토했다. 기존 설계 hash/검토 판정은 그대로 보존한다.
 - [x] 작성 계획의 실행 묶음 승인: 검증 전용TRACE환경·기존PR45 중간Linux계측push/최종push·새격리사본/프로필검증. 새 제품옵션/의존성/권한/시청프로필 변경은 제외한다.
 - [x] Task1 E2E protocol/신선도/전체inventory·독립runtime oracle 연결 복구 및 집중RED/GREEN. 격리 전체1648중1647통과·실패0·기존private1제외, 9foundation·후보build62/진입자산22 통과. 새source 실제설치/cold는Task4의필수후행게이트다.
-- [ ] Task2 비계측/계측PCM·native-first진단·원본수치/오류보존·사전6run Linux조사.
+- [x] Task2 비계측/계측PCM·native-first진단·원본수치/오류보존·사전6run Linux조사. 중간head65ad9b6/CI38766311444의12파일 독립재평가 complete=true·실패0. CI전체성공이나 과거오디오원인확정을 뜻하지 않는다.
 - [ ] Task3 Linux인과판정 뒤 조건부국소DSP·예약회귀·생성/pin. 미확정이면 임의수정하지 않고STOP한다.
+- [x] Task3 인과판정: Linux6회 모두미재현·계측18pair clock차이0으로 원인미확정 STOP. DSP/생성/pin 무수정. [실측 판정과 전환 실패](docs/superpowers/validation/2026-10-16-f01-ci-remediation-progress.md)를 보존했다.
+- [ ] 추가 조사 설계/실행범위 확인: frozen runner 대조·관측효과 분리, 전환 reload/정확한손실 Native·CI 재검증. 사전고정집합만 사용하고 pass선택 retry·허용치완화·추측수정을 하지 않는다.
 - [ ] Task4 새source 전체/점검도구·설치/전환/정확한손실/F01cold·조건부DSP전량Native·Astra max최종검토·최종CI. 기존허용치와실패기록유지.
 - [ ] 모든게이트충족한PR45 정확한head병합·F01브랜치만정리. 릴리즈/스토어/버전변경없음. 그뒤F02설계를시작한다.
 - [ ] F02도 기능 전체 단위로 별도 공개 지시·한글 PR·공개 CI·병합을 확인한다. F00 PR #44 통합은 완료했고 Task/문서 PR로 더 쪼개지 않는다.

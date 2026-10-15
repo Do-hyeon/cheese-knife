@@ -63,7 +63,7 @@
 - [x] **파일 경계:** 기존 `--label` 문법을 사용한다. 보고서는 `report-<label>.json`, 진단은 `report-<label>-diagnostic.json`(기본 source는 기존report.json와report-diagnostic.json)이다. 기존 owned-files만 사용하고 덮어쓸 경로가 있으면 실행 전에 거부한다. 진단은 run당1개·8MiB 이하이며 초과를 잘라 PASS로 만들지 않는다. 실패/예외에서도 가능한 원자료와 실패 단계를 남기고 browser close 증명을 별도로 확인한다. 품질검사·write·close가 함께 실패하면 원래 오류를 유지하고 secondary를 구분하며 종료는 비정상이다. Windows 정상 종료3증명과 Linux 기존 browser.close/disconnection 관측은 구분한다.
 - [x] **frozen 계약 검증:** CLI parser/기존 신호·calibration·14/12/18/stress 본문은 그대로다. `audio-artifacts`의 기존 원본 hash 역변환에 추가할 예외는 정확한 import/init·단계 밖 진단·capture passthrough·출력 glue 블록만 각각1회다. 범용 정규식 strip/hash 재발급은 금지하며 실제 임계값/측정 창 변경 mutation이 이 계약을 깨는지 확인한다.
 - [x] **집중 GREEN:** `node --test tests/audio-quality-diagnostics.test.cjs tests/audio-artifacts.test.cjs tests/audio-quality-contract.test.cjs tests/f01-audio-quality-contract.test.cjs` 및 `typecheck:audio-tools`. 미설정 mode에서는 wrapper가 없고 PCM/원래 독립 gate는 작동하며, TRACE=1/미지원값·파일상한·preexisting 파일 음성 대조를 확인한다.
-- [ ] **Linux 조사 checkpoint 준비:** 9foundation/전체/build/package를 격리 후보에서 확인하고 Task1·Task2를 같은 기존 PR #45에 중간 push한다. 아직 제품/DSP를 수정하지 않으며 이 CI는 최종 수용이 아니라 원인 조사다.
+- [x] **Linux 조사 checkpoint 준비:** 9foundation/전체/build/package를 격리 후보에서 확인하고 Task1·Task2를 같은 기존 PR #45에 중간 push한다. 아직 제품/DSP를 수정하지 않으며 이 CI는 최종 수용이 아니라 원인 조사다. 실제head65ad9b6·CI38766311444의 오디오6회/12파일을 독립 재평가했다. 전환2건 실패와 과거오디오미재현으로 최종수용은 미완료다.
 
 ### Linux 관측 집합과 CI 동작
 
@@ -121,4 +121,4 @@
 - 설계1–7절은 Task1(protocol/payload/oracle), Task2(계측/환경/보존), Task3(조건부DSP), Task4(재검증/최종검토/통합)로 연결한다. 검토 집중5종류의 RED/음성 대조도 각 Task에 있다.
 - Native 직접 실행 방식은 기존 결정을 유지한다. 이번에 구현을 subagent별로 쪼개거나 Task별 PR을 만들지 않는다.
 - 작성 계획의 확인 시 **검증 전용 TRACE 환경 선택·기존 PR의 중간 Linux 계측 push·새 격리 사본/프로필 검증·최종 검토/CI 통과 뒤 병합과F01브랜치정리**를 한 번에 확정한다. 허용치 변경·새 권한/다운로드/사용자프로필·설명되지 않는 DSP 변경은 묶음 밖 STOP이다.
-- 실행 승인 후 Task1의 연결 복구·단위/전체 회귀를 진행했다. 새 Native·Linux조사push·공개CI통과·병합·브랜치정리·F02착수는 아직 미실행이며 후행게이트 완료 전 성공으로 표기하지 않는다.
+- Task1 로컬 복구와 Task2 중간push/실제Linux6run까지 수행했다. Task3은 과거오디오실패 미재현·실제18pair시각차이0으로 인과미확정 STOP이다. 전환의 reload 경쟁은 별도 로컬 보완했지만 새 Native/공개CI 재검증 전이다. 전체공개CI성공·Astra최종검토·병합·브랜치정리·F02착수는 미실행이며 [실제 판정](../validation/2026-10-16-f01-ci-remediation-progress.md)을 따른다.
