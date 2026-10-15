@@ -345,7 +345,26 @@ async function secondWindowProof(input,first,settings){
   await waitNative(async()=>({a:await audioFacts(first),b:await audioFacts(second)}),facts=>facts.a.effectiveGain===.5&&facts.b.effectiveGain===inherited&&
     facts.a.wanted===false&&facts.b.wanted===true,'audio-settings-owned-independent');
   await gainFromHome(settings,0);await waitNative(()=>stored(worker),raw=>record(raw.config)?.audioGain===0,'audio-settings-global-zero-restore');await readyUI(settings);
-  const restored=await gainFromHome(other,20);await waitNative(()=>stored(worker),raw=>channelAudio(raw,b)?.audioGain===restored&&channelAudio(raw,b)?.gainInherited===false,'audio-settings-owned-restore');await readyUI(other);
+  await other.evaluate(()=>{
+    const range=document.getElementById('audioGain'),status=document.getElementById('media-status');
+    if(!(range instanceof HTMLInputElement)||!status)throw new Error('audio-settings-gain-diagnostic-missing');
+    const events=/** @type {{time:number,type:string,value:string,phase:string|undefined,output:string|null,focused:boolean}[]} */([]);
+    const state=/** @type {typeof globalThis & {__f01GainDraftEvents?:typeof events}} */(globalThis);state.__f01GainDraftEvents=events;
+    const record=(/** @type {string} */type)=>{if(events.length<128)events.push({time:performance.now(),type,value:range.value,
+      phase:status.dataset.phase,output:document.getElementById('audioGain-value')?.textContent??null,focused:document.activeElement===range});};
+    range.addEventListener('input',()=>{record('input-before');queueMicrotask(()=>record('input-after'));},{capture:true});
+    new MutationObserver(()=>record('render')).observe(status,{attributes:true,attributeFilter:['data-phase']});record('initial');
+  });
+  const restored=await gainFromHome(other,20);
+  try{await waitNative(()=>stored(worker),raw=>channelAudio(raw,b)?.audioGain===restored&&channelAudio(raw,b)?.gainInherited===false,'audio-settings-owned-restore');}
+  catch(error){
+    const events=await other.evaluate(()=>{
+      const state=/** @type {typeof globalThis & {__f01GainDraftEvents?:unknown}} */(globalThis);return state.__f01GainDraftEvents??null;
+    });
+    console.error('F01_GAIN_DRAFT_DIAGNOSTIC '+JSON.stringify({restored,events,stored:channelAudio(await stored(worker),b)}));
+    throw error;
+  }
+  await readyUI(other);
   await selectScope(settings,'current');await settings.locator('#media-audio-save-preset').click();await settings.locator('#media-preset-create-name').fill('Keep original draft');
   const before=await stored(worker);await selectScope(settings,'global');
   if(!(await settings.locator('#media-preset-create').isDisabled())||await settings.locator('#media-preset-create-name').inputValue()!=='Keep original draft'||
