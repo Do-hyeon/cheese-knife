@@ -8,6 +8,10 @@ T8 추가 승인·진행: master OFF의 normalizer 이득을 기존 wet fade 종
 
 Native E(`1a2f819`, `audio-processing-F01audio20261015E-khbg9w`): 44.1kHz EQ36·전환24 통과. 기존750Hz master OFF의 최소8ms 비율은0.999999999999999, step 증가분−2.3841858e-6이며 unity 복귀 예약은 관측시각+10ms→+20ms로 확인했다. source/after5필드 동일·pageErrors0·종료3증명true. 그러나 RMS −36/right 속도 경고와 이후 `normalizer-trace-invalid`로 전체 실패다. 속도 경고의 후보인 두 번의 native 시각 읽기로100ms ramp가 짧아지는 경로를 추가 회귀 RED→GREEN으로 보완했다. 후속 실행은 검증 예외 전에 원자료를 보고서에 남기며, trace 예외의 실제 원인은 아직 미확인이다. E의 부분 통과를 F01 완료로 해석하지 않는다.
 
+후속 `70a2b92`는 전체1601통과/실패0/기존1skip·9개 기반/build/package 통과 후 F를 실행했으나 최초 facts부터invalidFrames3으로 첫 EQ 수집이 거부됐다. source/after 동일·pageErrors0·종료3증명true이며 실패를 보존한다. 진단 전용 `2f80e75`의 G는44.1/48/96kHz EQ108·RMS60·전환72·출력/무음/burst/오류/stall/숨김/퇴역/소스/종료 대조가 모두 통과했고invalidFrames0이다. master 최소8ms 비율은각0.994171/0.994050/0.992969로 기존0.95 이상이다. 유일한 실패는 각 rate의 두 창 Gain 관측: 서로 다른 실제 창 ID·첫 창0.5 유지·한쪽 종료 후0.5 유지는 확인했으나, 두 번째 창의10ms ramp 완료 전에1.86848/1/1을 읽었다. 원래 기대값2는 유지하고 관측에50ms 정착 대기만 추가한다. G 보고서는 전체 실패로 보존하며 새 입력의 실제 재검증이 필요하다.
+
+같은 G 제품의 고정 객관 검사 `report-f01-t8-2f80e75.json`은14 steady/12 alignment/18 transition/stress·source1·qualityFailures0으로 통과했다. 영상/미리보기 기존 도구는 각각 owner2 대기·protocol1 주입으로 실패했고, 제품 변경 없이 owner3·완전한 protocol3 합성 config/현재 재요청 응답으로 연결부를 보완했다. 사용자 활성화·픽셀/오디오 허용치·요청 차단은 유지하며 관련45개 검사 통과 후 Native 재검증한다.
+
 | 단계 | 근거 | 결과 |
 | --- | --- | --- |
 | 준비 | 물리 후보 `output/f01-execution-20261015/source`, 기존 pinned ZIP 해시 확인 후 복사 | root dist58·제품2.13.3·Chrome/P09 보존 |

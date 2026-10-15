@@ -23,6 +23,8 @@ const browser = await chromium.launch({ headless: true, channel: 'chrome' });
 try {
   const reports = [];
   const runtimeSource = await files.readFile('web/runtime.js', 'utf8');
+  const profilesSource = await files.readFile('media-profiles.js', 'utf8');
+  const configSource = await files.readFile('config.js', 'utf8');
   const siteAdapterSource = await files.readFile('web/site-adapter.js', 'utf8');
   const previewSource = await files.readFile('web/preview.js', 'utf8');
   const css = await files.readFile('web/main.css', 'utf8');
@@ -33,18 +35,24 @@ try {
       const translations = { previewAudioBlocked: messages.content_previewAudioBlocked.message, previewAudioRightClick: messages.content_previewAudioRightClick.message };
       // Normal parser scripts avoid Playwright's evaluate/userGesture=true.
       // The supposedly unactivated case must really remain unactivated.
-      const bootstrap = `const r=window[Symbol.for('cheese-knife.runtime.v1')];
-        window.dispatchEvent(new MessageEvent('message',{source:window,origin:location.origin,data:{namespace:'cheese-knife',protocol:1,type:'config',revision:1,requestId:r.requestId,
-          config:{preview:true,livePreview:true,previewStartUnmuted:true,rightClickToUnmute:true,previewVolume:5,previewDelay:0.1,previewWidth:300},i18n:${JSON.stringify(translations)}}}));
+      const bootstrap = `const r=window[Symbol.for('cheese-knife.runtime.v1')];let deliverySequence=1;
+        const config={...normalizeConfig({preview:true,previewStartUnmuted:true,rightClickToUnmute:true,previewVolume:5,previewDelay:0.1,previewWidth:300}),...KnifeMediaProfiles.projectGlobalAudio({})};
+        const deliver=()=>window.dispatchEvent(new MessageEvent('message',{source:window,origin:location.origin,data:{namespace:'cheese-knife',protocol:3,type:'config',requestId:r.mediaRequestId,context:{...r.media.context},deliverySequence:deliverySequence++,
+          baseConfig:config,effectiveConfig:config,i18n:${JSON.stringify(translations)},version:{globalRevision:0,mediaRevision:0},profileState:'global',revisionStatus:'ready',mediaPhase:'ready',audioBindingGeneration:1,audioKind:'global',videoKind:'global',gainOrigin:'site-legacy'}}));
+        window.addEventListener('message',event=>{if(event.source===window&&event.origin===location.origin&&event.data?.namespace==='cheese-knife'&&event.data.protocol===3&&event.data.type==='config-request'&&event.data.requestId===r.mediaRequestId)deliver();});deliver();
         r.Hls={isSupported:()=>false};window.fetch=async()=>({ok:true,json:async()=>({code:200,content:{status:'OPEN',adult:false,livePlaybackJson:JSON.stringify({media:[{mediaId:'HLS',path:${JSON.stringify(streamURL)}}]})}})});`;
       const start = `const begin=()=>{const a=document.querySelector('#target');window[Symbol.for('cheese-knife.runtime.v1')].preview.show(a.href,a,true);};
         ${interact ? "document.querySelector('#activate').addEventListener('click',begin);" : 'setTimeout(begin,0);'}`;
-      const html = `<html><head><meta charset="utf-8"><style>${css}</style></head><body><button id="activate">Synthetic interaction</button><aside id="sidebar"><a id="target" href="/live/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" style="display:block;width:180px;height:40px;margin:40px">Synthetic preview</a></aside><script src="/test-runtime.js"></script><script src="/test-site-adapter.js"></script><script>${bootstrap}</script><script src="/test-preview.js"></script><script>${start}</script></body></html>`;
+      const html = `<html><head><meta charset="utf-8"><style>${css}</style></head><body><button id="activate">Synthetic interaction</button><aside id="sidebar"><a id="target" href="/live/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" style="display:block;width:180px;height:40px;margin:40px">Synthetic preview</a></aside><script src="/test-profiles.js"></script><script src="/test-config.js"></script><script src="/test-runtime.js"></script><script src="/test-site-adapter.js"></script><script>${bootstrap}</script><script src="/test-preview.js"></script><script>${start}</script></body></html>`;
       // Fulfill every allowed request locally; abort all unrelated traffic.
       await context.route('**/*', route => route.request().url() === rootURL
         ? route.fulfill({ contentType: 'text/html; charset=utf-8', body: html })
         : route.request().url() === streamURL
           ? route.fulfill({ contentType: 'audio/wav', body: wave })
+          : route.request().url() === 'https://chzzk.naver.com/test-profiles.js'
+            ? route.fulfill({ contentType: 'text/javascript; charset=utf-8', body: profilesSource })
+          : route.request().url() === 'https://chzzk.naver.com/test-config.js'
+            ? route.fulfill({ contentType: 'text/javascript; charset=utf-8', body: configSource })
           : route.request().url() === 'https://chzzk.naver.com/test-runtime.js'
             ? route.fulfill({ contentType: 'text/javascript; charset=utf-8', body: runtimeSource })
             : route.request().url() === 'https://chzzk.naver.com/test-site-adapter.js'

@@ -199,6 +199,7 @@ async function lifetimeProof(page,measurement,sampleRate,files,html){
   await configure(page,{},.5);
   const created=await openAudioMeasurementWindow(measurement.context,measurement.browserSession),second=created.page;
   await preparePage(second,sampleRate,files,html);await configure(second,{normalizerEnabled:false,compressorEnabled:false,eqEnabled:false},2);
+  await second.waitForTimeout(50);
   const session=await measurement.context.newCDPSession(page),identity=await session.send('Target.getTargetInfo');await session.detach();
   const firstWindow=await measurement.browserSession.send('Browser.getWindowForTarget',{targetId:identity.targetInfo.targetId});
   const first=await facts(page),secondFacts=await facts(second);await second.close();await page.bringToFront();await page.waitForTimeout(300);const remaining=await facts(page);
