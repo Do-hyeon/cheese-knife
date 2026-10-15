@@ -314,6 +314,12 @@ root dist58·제품2.13.3·사용자 Chrome/P09·모든 실패 증거와 로컬 
 
 #### T8 사전계측 분리 도구 보완 — 2026-10-15
 
+**최신 Q(d565b6dc7f9c9fa4883582249e9c88f30dabb432/dznAvs):**44.1/48/96kHz 모두 실제 같은 창의 두 target ID·실제 hidden/visible·mute/volume/Gain0·source1·old callback0·서로 다른 두 창/한쪽 종료와 고정 rapid36개/실제 세 구간을 통과했다. 모든 수명 조건true·사전계측 source/after5필드 일치·pageErrors0·각 정상 종료3증명true이며270개 중간 JSON을 보존했다. Q는 이후 새 긴 행렬용 profile-KhMst3의 Windows SDK10.0.17763 mt.exe 준비에서 실패해 긴 행렬0개·전체 report FAIL이다. 같은 소스의 제한된 환경 재실행 R(cOPekc)도 profile-PRh5aF의 준비 단계에서 실패했다. R 역시 source/after일치·브라우저/행렬0개로 기록했으며 더 반복하지 않는다.
+
+원본 실패 파일을 변경하지 않은 별도 복사본에서 PowerShell/Node24.19의 mt 호출은 각각exit0, 기존 prepareWindowsBundledChromium만 호출한 새 bootstrap-diagnostic-lC6T5u도exit0이었다. 따라서 SDK 자체 고장이나 파일 잠금을 확정하지 않는다. 제품/신호 없이 기존 launcher의 준비·종료만 최대4회 확인하는 진단은 첫 회(profile-JrpyVl)151.0.7922.34/종료3증명true, 두 번째(profile-ewuYjB)media-close-unconfirmed로 실패해 즉시 종료했다. 로그는 Native 후보의 output/f01-bootstrap-cycle-d565b6d.log에 보존했다.19:17:03의 자기 진단/프로필 프로세스 조회는0개다. 준비 환경과 종료 ACK/disconnect/root 조회 중 어느 지점이 실패했는지는 아직 특정하지 못했다.
+
+승인된 F01 관측/중간 저장/timeout/정리 보완은 로컬·P의 실제 실패 경로·Q의 전체 사전계측으로 검증했다. 다만 공통 launcher의 준비/종료 진단을 분리해 원래 오류의 code/signal/stderr와 종료 단계별 상태를 보존하는 후속 확인이 필요하다. 현재 설치·SDK/브라우저 교체나 추가 긴 검사·환경 재시도는 하지 않는다. 과거 A..R·새 독립 진단·모든 실패와 O의 미기록 한계는 유지한다. T8 전체 출력/기존 객관 회귀와 T9/Astra max는 미완료이며 push/PR은 없다.
+
 P(14608b6/6WOy9H)는44.1kHz 수명/빠른 전환12개를 통과한 뒤48kHz의 실제 hidden-condition에서15초 timeout으로 실패했다. 이번에는120개 중간 JSON·preflight/final report를 남기고 두 rate 모두 정상 종료3증명을 확보했다. source/after5필드 일치·pageErrors0이며 강제 종료나 긴 행렬 실행은 없다. 진단에서 원래 방송과 새 blank가 모두visible이었다. 이는 같은 창의 다른 탭이라는 전제가 입증되지 않았음을 보여주며, 당시 window ID가 없으므로 서로 다른 창이었다고 단정하지 않는다.
 
 기존 context.newPage/현재 CDP createTarget에는 대상 window ID 지정이 없었다. 새 드라이버는 자기 fixture의 target=_blank 링크를 실제 클릭하고, 생성한 두 target의 native window ID 동일/target ID 상이를 확인한 뒤 실제 숨김을 검사한다. 잘못된 창을 거부하는 RED→GREEN, 집중51/51·strict·격리 전체1613개 중1612통과/실패0/기존private1skip(60.986초)·9기반/build/package를 확인했다. 새 Native 전제/출력 성공은 아직 미완료이며 과거 P/O를 소급 PASS로 바꾸지 않는다.
