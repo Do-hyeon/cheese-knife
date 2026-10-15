@@ -5,6 +5,13 @@ import {Readable,Writable} from 'node:stream';
 /** @param {string} code */
 const fail=code=>Object.assign(new Error(code),{code});
 const maxFrame=32*1024*1024;
+/** @param {readonly string[]} extensionArgs @param {string} profilePath @param {boolean} headed */
+export function visibilityBrowserArgs(extensionArgs,profilePath,headed){
+  return [...extensionArgs,`--user-data-dir=${profilePath}`,'--remote-debugging-pipe',
+    '--no-first-run','--no-default-browser-check','--disable-background-networking','--disable-component-update','--disable-sync','--disable-default-apps',
+    '--disable-component-extensions-with-background-pages',
+    ...headed?[]:['--headless=new'],'about:blank'];
+}
 /** @param {Readable} read @param {Writable} write @returns {import('playwright').ConnectOverCDPTransport} */
 export function createVisibilityTransport(read,write){
   let pending=Buffer.alloc(0),closed=false;
@@ -53,9 +60,7 @@ export async function launchVisibilityExtension(options){
     !launch||typeof launch!=='object')throw fail('visibility-provider-invalid');
   /** @type {unknown} */const args=Reflect.get(launch,'args');
   if(!Array.isArray(args)||args.length!==2||!args.every(value=>typeof value==='string')||args[0]!==`--disable-extensions-except=${extensionPath}`||args[1]!==`--load-extension=${extensionPath}`)throw fail('visibility-provider-invalid');
-  const child=spawn(prepared,[...args,`--user-data-dir=${profilePath}`,'--remote-debugging-pipe',
-    '--no-first-run','--no-default-browser-check','--disable-background-networking','--disable-component-update','--disable-sync','--disable-default-apps',
-    ...headed?[]:['--headless=new'],'about:blank'],{stdio:['ignore','ignore','ignore','pipe','pipe'],windowsHide:true});
+  const child=spawn(prepared,visibilityBrowserArgs(args,profilePath,headed),{stdio:['ignore','ignore','ignore','pipe','pipe'],windowsHide:true});
   /** @type {ReturnType<typeof setTimeout>|undefined} */let timer;
   const exited=new Promise(resolve=>{child.once('exit',()=>resolve(true));child.once('error',()=>resolve(true));});
   let ready=false;

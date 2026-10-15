@@ -1,6 +1,16 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {PassThrough}=require('node:stream');
 const load=()=>import('../scripts/extension-e2e/visibility-browser.mjs');
+test('native visibility process excludes component background extensions without adding a network debug endpoint',async()=>{
+  const {visibilityBrowserArgs}=await load();
+  for(const headed of [false,true]){
+    const args=visibilityBrowserArgs(['--disable-extensions-except=C:/owned/dist','--load-extension=C:/owned/dist'],'C:/owned/profile',headed);
+    assert.ok(args.includes('--disable-component-extensions-with-background-pages'));
+    assert.ok(args.includes('--remote-debugging-pipe'));assert.ok(args.includes('--user-data-dir=C:/owned/profile'));
+    assert.equal(args.some(arg=>arg.startsWith('--remote-debugging-port')),false);
+    assert.equal(args.includes('--headless=new'),!headed);
+  }
+});
 test('visibility pipe preserves fragmented UTF8 frames and multiple native messages',async()=>{
   const {createVisibilityTransport}=await load(),read=new PassThrough(),write=new PassThrough(),messages=[],sent=[];
   write.on('data',data=>sent.push(data));
