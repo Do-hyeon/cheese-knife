@@ -6,12 +6,12 @@
 
 ## 1. 고정 결정과 공개 경계
 
-T8 진행: 기존 14 steady·12 alignment·18 transition 및 수치 허용치는 동결한다. 별도 F01 측정 행렬은 EQ108개·노멀라이저60개·전환72개와 출력/숨김/두 창/정리 대조군을 포함한다. 중간 Native36 EQ·20 RMS는 해당 입력의 관측만 보존한다. 최신53103ab의 새 프로필 C/D 모두44.1kHz EQ36 통과 후750Hz 복합 master OFF에서 최소8ms RMS 비율0.943722/0.943875(기준0.95)를 재현했고 이후 rate/RMS/수명은 미실행이다. source/after5필드 동일·각 종료3증명true·pageErrors0/full-scale 초과0이며 전체 PASS가 아니다.
+T8 진행: 기존 14 steady·12 alignment·18 transition 및 수치 허용치는 동결한다. 별도 F01 측정 행렬은 EQ108개·노멀라이저60개·전환72개와 출력/숨김/두 창/정리 대조군을 포함한다. 보완 전53103ab C/D의750Hz master OFF 비율0.943722/0.943875(기준0.95)는 보존한다. 국소 보완1a2f819 E에서44.1kHz EQ36·전환24가 통과했고750Hz 비율은약1.0이다. 다만 RMS 속도 경고·도구 trace 예외로 전체 실패이며 source/after5필드 동일·종료3증명true·pageErrors0이다. 단일 시각 예약·예외 원자료 보존 회귀를 보완해 전체1601통과/실패0/기존1skip·9개 기반/build/package 통과 후 새 Native를 준비한다. 이후48/96kHz·RMS/수명·기존 객관 검사는 여전히 미완료다.
 
 - [x] T7 실제 숨김 player 재발견·저장/다중 창/전환 검증 마감.
 - [x] T8 객관 측정 도구·엄격 타입·로컬 전체1590통과/실패0/기존1skip·새 프로필 동일 현상 재현.
 - [x] **사용자 승인:** master OFF의 기존10ms dry 복귀 동안 normalizer gain을 유지하고, wet가0이 된 뒤 unity로 복귀하는 국소 전환 보완. 분석/timer/옛 callback은 즉시 정리하고 빠른 OFF/ON은 현재 계산 곡선에서 예약 취소·재연결한다. 단독 normalizer OFF/측정 오류의 기존10ms 예외는 유지한다. 기존 수치 허용치는 변경하지 않으며 구현/검증 완료 표시는 아니다.
-- [ ] 명세147절에 맞춰 기존 dip/연속성은 master 전환에 유지하고 개별 EQ/comp/normalizer 조작은 출력 상한을 강제한다. 이들의 추가 step 관측은 진단값으로 남기며 master 실패를 이 구분으로 숨기지 않는다.
+- [x] 명세147절에 맞춰 기존 dip/연속성은 master 전환에 유지하고 개별 EQ/comp/normalizer 조작은 출력 상한을 강제한다. 이들의 추가 step 관측은 진단값으로 남기며 master 실패를 이 구분으로 숨기지 않는다.
 - [ ] 보완 RED→GREEN·전체/기반 검사·새 clean checkpoint의44.1/48/96kHz 전체 출력/수명과 기존 객관 runner 재검증.
 - [ ] T8 마감 뒤 T9 전체 회귀·도구 점검·fresh Astra max 최종 전체 검토. 공개 작업 금지는 유지.
 

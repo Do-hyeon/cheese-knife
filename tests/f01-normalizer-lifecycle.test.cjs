@@ -59,6 +59,15 @@ test('analysis failure after rapid reentry still resets boosted gain to unity in
   assert.equal(runtime(dom).statuses.normalizer.reason, 'normalizer-samples-invalid');
 });
 
+test('a native clock quantum between planning and scheduling never shortens normalizer ramps', async t => {
+  const { gain, context, tick } = await boosted(t);
+  let time = 1.2;
+  Object.defineProperty(context(), 'currentTime', { configurable: true, get() { const now = time; time += .003; return now; } });
+  gain.events.length = 0; tick();
+  const start = gain.events.find(event => event[0] === 'set')[2], end = gain.events.find(event => event[0] === 'exp')[2];
+  assert.ok(Math.abs(end - start - .1) < 1e-10);
+});
+
 test('source replacement never inherits a retired meter gain or unity reservation', async t => {
   const { audio, video, gain, context } = await boosted(t);
   Object.defineProperty(video, 'currentSrc', { value: 'blob:https://chzzk.naver.com/replaced', configurable: true });

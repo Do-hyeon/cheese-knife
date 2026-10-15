@@ -126,3 +126,16 @@ test('component transitions enforce wet ceiling while preserving master-only con
   assert.ok(evaluateProcessingTransition(summary,{channels:[{...channel,peak:.981},channel]},summary,'component').includes('transition-channel-0/wet-ceiling'));
   assert.throws(()=>evaluateProcessingTransition(summary,{channels:[{...channel,peak:NaN},channel]},summary,'component'),/audio-transition-invalid/);
 });
+
+test('a failed Native normalizer measurement retains the actual offending trace before rejection',async()=>{
+  const {normalizerProof}=await import('../scripts/check-audio-processing.mjs');
+  const trace={sampleRate:44100,events:[],bins:[],powerReads:[],invalidFrames:3};
+  const page=/** @type {import('playwright').Page} */(/** @type {unknown} */({
+    evaluate:/** @param {unknown} fn @param {import('../scripts/audio-processing-probe.mjs', {with:{'resolution-mode':'import'}}).ProcessingAction} input */async(fn,input)=>input.kind==='configure'?{status:input.enabled?'on':'off'}:input.kind==='facts'?trace:null,
+    waitForTimeout:async()=>{},
+  }));
+  /** @type {Record<string,unknown>[]} */const rows=[];
+  await assert.rejects(()=>normalizerProof(page,44100,rows),/normalizer-trace-invalid/);
+  assert.equal(rows.length,1);assert.equal(rows[0]?.id,'44100/normalizer/-36/mono');assert.equal(rows[0]?.trace,trace);
+  assert.equal(rows[0]?.measured,undefined,'invalid output must not receive synthetic passing metrics');
+});

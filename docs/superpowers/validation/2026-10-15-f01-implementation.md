@@ -6,6 +6,8 @@ T8 추가 승인·진행: master OFF의 normalizer 이득을 기존 wet fade 종
 
 보완의 로컬 게이트: 격리 후보 최종 전체1600개 중1599통과/실패0/기존private 증거1skip(64.265초), 9개 기반 검사·build·package 통과. 마지막 전체 검사는 build 종료 후 단독으로 실행했다. 실제 소리·전체 F01 완료를 의미하지 않으며 새 Native 출력/수명 검증이 남아 있다.
 
+Native E(`1a2f819`, `audio-processing-F01audio20261015E-khbg9w`): 44.1kHz EQ36·전환24 통과. 기존750Hz master OFF의 최소8ms 비율은0.999999999999999, step 증가분−2.3841858e-6이며 unity 복귀 예약은 관측시각+10ms→+20ms로 확인했다. source/after5필드 동일·pageErrors0·종료3증명true. 그러나 RMS −36/right 속도 경고와 이후 `normalizer-trace-invalid`로 전체 실패다. 속도 경고의 후보인 두 번의 native 시각 읽기로100ms ramp가 짧아지는 경로를 추가 회귀 RED→GREEN으로 보완했다. 후속 실행은 검증 예외 전에 원자료를 보고서에 남기며, trace 예외의 실제 원인은 아직 미확인이다. E의 부분 통과를 F01 완료로 해석하지 않는다.
+
 | 단계 | 근거 | 결과 |
 | --- | --- | --- |
 | 준비 | 물리 후보 `output/f01-execution-20261015/source`, 기존 pinned ZIP 해시 확인 후 복사 | root dist58·제품2.13.3·Chrome/P09 보존 |

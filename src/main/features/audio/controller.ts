@@ -179,8 +179,8 @@ export function installAudio(target: Window): AudioController | null {
     try { return video.currentSrc.startsWith('blob:') && new URL(video.currentSrc).origin === target.location.origin; }
     catch { return false; }
   };
-  const automateNormalizer = (entry: AudioEntry, curve: { fromDb: number; toDb: number; start: number; end: number }) => {
-    const parameter = entry.normalizer!.gain, now = context!.currentTime;
+  const automateNormalizer = (entry: AudioEntry, curve: { fromDb: number; toDb: number; start: number; end: number }, now = curve.start) => {
+    const parameter = entry.normalizer!.gain;
     parameter.cancelScheduledValues(now); parameter.setValueAtTime(10 ** (curve.fromDb / 20), now);
     if (curve.start > now) parameter.setValueAtTime(10 ** (curve.fromDb / 20), curve.start);
     if (curve.end > curve.start) parameter.exponentialRampToValueAtTime(10 ** (curve.toDb / 20), curve.end);
@@ -197,7 +197,7 @@ export function installAudio(target: Window): AudioController | null {
     const wet = entry.wet && transitions.get(entry.wet.gain);
     // Keep the wet endpoint stable until the master crossfade has finished.
     const start = !entry.wanted && wet?.to === 0 ? Math.max(time, wet.end) : time;
-    automateNormalizer(entry, { fromDb: normalizerDbAt(data.control, time), toDb: 0, start, end: start + 0.01 });
+    automateNormalizer(entry, { fromDb: normalizerDbAt(data.control, time), toDb: 0, start, end: start + 0.01 }, time);
     Object.assign(entry.normalizerCurve!, { source: data.source, path: data.path, document: data.document });
   }
   const tickMeter = (entry: AudioEntry) => {

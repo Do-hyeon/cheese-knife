@@ -71,17 +71,17 @@ async function equalizerProof(page,sampleRate,files,directory){
   }
   return rows;
 }
-/** @param {import('playwright').Page} page @param {number} sampleRate */
-async function normalizerProof(page,sampleRate){
-  const rows=[];
+/** @param {import('playwright').Page} page @param {number} sampleRate @param {Record<string,unknown>[]} [rows] */
+export async function normalizerProof(page,sampleRate,rows=[]){
   for(const spec of normalizerMeasurementCases().filter(row=>row.sampleRate===sampleRate)){
     await configure(page,{normalizerEnabled:false,eqEnabled:false,compressorEnabled:false},1,false);
     await call(page,{kind:'signal',frequency:1000,inputDbfs:spec.inputDbfs,pattern:/** @type {import('./audio-processing-probe.mjs').SignalPattern} */(spec.pattern)});
     await configure(page,{normalizerEnabled:true,normalizerTargetDbfs:-20,eqEnabled:false,compressorEnabled:false});
     await call(page,{kind:'reset-events'});await page.waitForTimeout(spec.seconds*1000);
-    const trace=await facts(page),measured=evaluateNormalizerTrace(trace,spec);
+    const trace=await facts(page),row=/** @type {Record<string,unknown>} */({id:spec.id,trace});rows.push(row);
+    const measured=evaluateNormalizerTrace(trace,spec);
     if(trace.buffers!==2||trace.active100msTimers!==1)measured.failures.push('normalizer-buffer-or-timer-bound');
-    rows.push({id:spec.id,trace,measured});
+    row.measured=measured;
     console.log(JSON.stringify({stage:'normalizer',id:spec.id,failures:measured.failures}));
   }
   return rows;
@@ -243,7 +243,8 @@ export async function runAudioProcessing(options){
         row.equalizer=await equalizerProof(page,sampleRate,files,relative+'/captures');
         const transitions=await transitionProof(page,sampleRate);row.transitions=transitions;
         if(transitions.some(row=>row.failures.length))throw new Error('audio-processing-transition-limits');
-        row.normalizer=await normalizerProof(page,sampleRate);row.controls=await controlProof(page);
+        const normalizer=/** @type {Record<string,unknown>[]} */([]);row.normalizer=normalizer;
+        await normalizerProof(page,sampleRate,normalizer);row.controls=await controlProof(page);
         row.lifetime=await lifetimeProof(page,measurement,sampleRate,files,html);
       }finally{row.shutdown=await measurement.close();}
       console.log(JSON.stringify({stage:'rate-complete',sampleRate}));
