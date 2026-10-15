@@ -88,7 +88,10 @@ export function equalizerMeasurementCases(){
 export function evaluateNormalizerTrace(raw,spec){
   const trace=record(raw),bad=()=>new Error('normalizer-trace-invalid');
   if(!trace||trace.sampleRate!==spec.sampleRate||![44100,48000,96000].includes(spec.sampleRate)||
-    !finite(spec.inputDbfs)||!finite(spec.seconds)||spec.seconds<1||!Array.isArray(trace.events)||!Array.isArray(trace.bins)||!trace.bins.length||trace.invalidFrames!==0)throw bad();
+    !finite(spec.inputDbfs)||!finite(spec.seconds)||spec.seconds<1||!Array.isArray(trace.events)||!Array.isArray(trace.bins)||!trace.bins.length||
+    !Array.isArray(trace.powerReads)||trace.powerReads.length<2||trace.invalidFrames!==0)throw bad();
+  const fftSize=2**Math.ceil(Math.log2(spec.sampleRate*.25)),window=fftSize/spec.sampleRate;
+  for(const raw of trace.powerReads){const read=record(raw);if(!read||!finite(read.time)||!finite(read.power)||read.power<0||!Number.isSafeInteger(read.index)||read.size!==fftSize)throw bad();}
   /** @type {AutomationEvent[]} */const events=[];
   for(const value of trace.events){
     const event=record(value);if(!event||![event.node,event.from,event.to,event.start,event.end,event.observed].every(finite)||
@@ -110,6 +113,8 @@ export function evaluateNormalizerTrace(raw,spec){
   if(seconds<spec.seconds-.4)failures.push('normalizer-duration');
   for(let index=1;index<bins.length;index++)if(bins[index]?.start!==bins[index-1]?.end)failures.push('normalizer-output-gap');
   if(!events.length)failures.push('normalizer-missing-automation');
+  const firstRead=record(trace.powerReads[0]);
+  if(events[0]&&events[0].start-Number(firstRead?.time)<window-.02)failures.push('normalizer-window-warmup');
   let maxUpDbPerSecond=0,maxDownDbPerSecond=0,maxGap=0,previous;
   for(const event of events){
     const fromDb=20*Math.log10(event.from),toDb=20*Math.log10(event.to),slope=(toDb-fromDb)/(event.end-event.start);
@@ -129,7 +134,7 @@ export function evaluateNormalizerTrace(raw,spec){
     const silent=spec.pattern==='left'&&channel===1||spec.pattern==='right'&&channel===0;
     if(silent?db!==null&&db> -90:db===null||Math.abs(db-expectedDbfs)>1)failures.push(`normalizer-target-channel-${channel}`);
   }
-  return {seconds,outputDbfs,expectedDbfs,targetReachable:targetDelta===-20-spec.inputDbfs,maxUpDbPerSecond,maxDownDbPerSecond,maxGap,automationEvents:events.length,completeBins:bins.length,failures:[...new Set(failures)]};
+  return {seconds,outputDbfs,expectedDbfs,targetReachable:targetDelta===-20-spec.inputDbfs,maxUpDbPerSecond,maxDownDbPerSecond,maxGap,automationEvents:events.length,completeBins:bins.length,fftSize,windowSeconds:window,powerReads:trace.powerReads.length,failures:[...new Set(failures)]};
 }
 
 /** @returns {(NormalizerCase & {id:string})[]} */
@@ -137,6 +142,37 @@ export function normalizerMeasurementCases(){
   return [44100,48000,96000].flatMap(sampleRate=>[-36,-24,-12,-6].flatMap(inputDbfs=>['mono','stereo','antiphase','left','right'].map(pattern=>({
     id:`${sampleRate}/normalizer/${inputDbfs}/${pattern}`,sampleRate,inputDbfs,pattern,seconds:inputDbfs===-24?15:inputDbfs===-36?10:4,
   }))));
+}
+
+/** @param {unknown} before @param {unknown} change @param {unknown} after */
+export function evaluateProcessingTransition(before,change,after){
+  const summaries=[before,change,after].map(record);
+  if(summaries.some(row=>!row||!Array.isArray(row.channels)||row.channels.length!==2))throw new Error('audio-transition-invalid');
+  const failures=[];
+  for(const index of [0,1]){
+    const channels=summaries.map(row=>record(/** @type {unknown[]} */(row?.channels)[index]));
+    for(const row of channels)if(!row||![row.rms,row.peak,row.maxAdjacentStep,record(row.envelope8ms)?.min].every(value=>finite(value)&&value>=0)||!Number.isSafeInteger(row.overFullScaleSamples))throw new Error('audio-transition-invalid');
+    const [first,middle,last]=/** @type {[Record<string,unknown>,Record<string,unknown>,Record<string,unknown>]} */(channels);
+    const minimum=Math.min(Number(record(first.envelope8ms)?.min),Number(record(last.envelope8ms)?.min));
+    if(minimum<1e-4||Number(record(middle.envelope8ms)?.min)<minimum*.95)failures.push(`transition-channel-${index}/dip`);
+    if(Number(middle.maxAdjacentStep)>Math.max(Number(first.maxAdjacentStep),Number(last.maxAdjacentStep))+1e-6)failures.push(`transition-channel-${index}/step`);
+    if(channels.some(row=>row?.overFullScaleSamples!==0||Number(row?.peak)>1))failures.push(`transition-channel-${index}/fullscale`);
+  }
+  return failures;
+}
+
+/** @param {unknown} raw */
+export function complementaryAudioRamps(raw){
+  if(!Array.isArray(raw))return false;
+  const pair=raw.map(record).filter(row=>row?.node===0||row?.node===1);
+  if(pair.length!==2||pair[0]?.node===pair[1]?.node)return false;
+  for(const row of pair)if(!row||![row.from,row.to,row.start,row.end].every(finite)||Number(row.end)<=Number(row.start))return false;
+  const times=pair.flatMap(row=>[Number(row?.start),Number(row?.end)]);
+  for(const time of times){
+    const sum=pair.reduce((sum,row)=>{const progress=Math.max(0,Math.min(1,(time-Number(row?.start))/(Number(row?.end)-Number(row?.start))));return sum+Number(row?.from)+(Number(row?.to)-Number(row?.from))*progress;},0);
+    if(Math.abs(sum-1)>1e-6)return false;
+  }
+  return true;
 }
 
 /** @param {unknown} value */
@@ -175,6 +211,13 @@ export function processingReportFailures(raw,expectedSource){
       }
     }
     const expectedNorm=normalizerMeasurementCases().filter(row=>row.sampleRate===sampleRate);
+    const transitions=rate.transitions;
+    if(!Array.isArray(transitions)||transitions.length!==24)failures.push(`rate-${sampleRate}/transitions-missing`);
+    else for(const frequency of [250,750,1000])for(const name of ['eq-on','eq-off','compressor-on','compressor-off','normalizer-on','normalizer-off','master-off','master-on']){
+      const id=`${sampleRate}/${frequency}/${name}`,matches=transitions.filter(value=>record(value)?.id===id),row=record(matches[0]);
+      try{if(matches.length!==1||!row||evaluateProcessingTransition(row.before,row.change,row.after).length||name.startsWith('master-')&&!complementaryAudioRamps(row.linearEvents))failures.push(id+'/transition');}
+      catch{failures.push(id+'/incomplete');}
+    }
     if(!Array.isArray(rate.normalizer)||rate.normalizer.length!==expectedNorm.length)failures.push(`rate-${sampleRate}/normalizer-missing`);
     else for(const spec of expectedNorm){
       const rows=rate.normalizer.filter(row=>record(row)?.id===spec.id),row=record(rows[0]);
@@ -182,9 +225,12 @@ export function processingReportFailures(raw,expectedSource){
       catch{failures.push(spec.id+'/incomplete');}
     }
     const lifetime=record(rate.lifetime);
-    for(const key of ['sourceOne','gainZero','muteVolumePreserved','oldCallbacksZero','metersOffAfterDisable','hiddenObserved','hiddenHold','visibleRestored','independentWindows','oneWindowClosed','remainingSourceOne'])if(lifetime?.[key]!==true)failures.push(`rate-${sampleRate}/lifetime-${key}`);
+    for(const key of ['sourceOne','gainZero','gainZeroHold','muteVolumePreserved','oldCallbacksZero','metersOffAfterDisable','hiddenObserved','hiddenHold','visibleRestored','independentWindows','oneWindowClosed','remainingSourceOne'])if(lifetime?.[key]!==true)failures.push(`rate-${sampleRate}/lifetime-${key}`);
+    const evidence=record(lifetime?.evidence),windows=evidence?.windowIds,targets=evidence?.targetIds;
+    if(!Array.isArray(windows)||windows.length!==2||windows[0]===windows[1]||!windows.every(value=>Number.isSafeInteger(value)&&value>=0)||
+      !Array.isArray(targets)||targets.length!==2||targets[0]===targets[1]||!targets.every(value=>typeof value==='string'&&/^[A-Fa-f0-9]{32}$/.test(value)))failures.push(`rate-${sampleRate}/native-window-identity`);
     const controls=record(rate.controls);
-    for(const key of ['dryUnity','dry99','wetPeak','extreme48db','silenceNoBoost','noiseNoBoost','burstFinite','stallHold','analysisErrorUnity'])if(controls?.[key]!==true)failures.push(`rate-${sampleRate}/control-${key}`);
+    for(const key of ['dryUnity','dry99','wetPeak','extreme48db','silenceNoBoost','noiseNoBoost','silenceReturnUnity','burstFinite','stallHold','analysisErrorUnity'])if(controls?.[key]!==true)failures.push(`rate-${sampleRate}/control-${key}`);
   }
   return failures;
 }

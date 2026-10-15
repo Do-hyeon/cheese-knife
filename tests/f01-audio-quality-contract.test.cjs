@@ -55,7 +55,8 @@ test('normalizer trace gate checks real output target stereo polarity and automa
   const {evaluateNormalizerTrace}=await metrics();
   const bins=Array.from({length:150},(_,index)=>({start:index*4800,end:(index+1)*4800,count:[4800,4800],squares:[48,48],peaks:[.15,.15],over:[0,0]}));
   const events=Array.from({length:145},(_,index)=>({node:7,from:10**(Math.min(index*.1,4)/20),to:10**(Math.min((index+1)*.1,4)/20),start:.5+index*.1,end:.6+index*.1,observed:.5+index*.1}));
-  const trace={sampleRate:48000,events,bins,invalidFrames:0};
+  const powerReads=Array.from({length:150},(_,index)=>[0,1].map(channel=>({index:channel,time:index/10,power:10**(-24/10),size:16384}))).flat();
+  const trace={sampleRate:48000,events,bins,powerReads,invalidFrames:0};
   const spec={sampleRate:48000,inputDbfs:-24,pattern:'antiphase',seconds:15};
   assert.deepEqual(evaluateNormalizerTrace(trace,spec).failures,[]);
   assert.ok(evaluateNormalizerTrace({...trace,events:[{...events[0],to:2},...events.slice(1)]},spec).failures.includes('normalizer-rate'));
@@ -65,6 +66,8 @@ test('normalizer trace gate checks real output target stereo polarity and automa
   assert.ok(evaluateNormalizerTrace(oneChannel,spec).failures.includes('normalizer-target-channel-1'));
   assert.throws(()=>evaluateNormalizerTrace({...trace,events:[{...trace.events[0],to:NaN}]},spec),/normalizer-trace-invalid/);
   assert.throws(()=>evaluateNormalizerTrace({...trace,bins:[]},spec),/normalizer-trace-invalid/);
+  assert.throws(()=>evaluateNormalizerTrace({...trace,powerReads:[]},spec),/normalizer-trace-invalid/);
+  assert.ok(evaluateNormalizerTrace({...trace,events:[{...events[0],start:.1,end:.2},...events.slice(1)]},spec).failures.includes('normalizer-window-warmup'));
 });
 
 test('report gate cannot label missing partial failed native exception or wrong-source evidence as PASS',async()=>{
@@ -80,4 +83,36 @@ test('Native audio runner requires one bounded run ID before opening any browser
   const {parseAudioProcessingArgs}=await import('../scripts/check-audio-processing.mjs');
   assert.deepEqual(parseAudioProcessingArgs(['--run-id=F01audio']),{runId:'F01audio'});
   for(const args of [[],['--run-id=../profile'],['--run-id='],['--run-id=a','--run-id=b'],['--chrome'],['--run-id='+'a'.repeat(65)]])assert.throws(()=>parseAudioProcessingArgs(args),/audio-processing-args/);
+});
+
+test('measurement window binds the actual new native target, not a pre-existing blank tab',async()=>{
+  const {openAudioMeasurementWindow}=await import('../scripts/audio-native-browser.mjs');
+  for(const targetId of ['new-target','old-blank']){
+    const page={name:targetId};
+    const context=/** @type {import('playwright').BrowserContext} */(/** @type {unknown} */({
+      waitForEvent:async()=>page,newCDPSession:async()=>({send:async()=>({targetInfo:{targetId}}),detach:async()=>{}}),
+    }));
+    const session=/** @type {import('playwright').CDPSession} */(/** @type {unknown} */({send:/** @param {string} method */async(method)=>method==='Target.createTarget'?{targetId:'new-target'}:{windowId:77}}));
+    if(targetId==='old-blank')await assert.rejects(openAudioMeasurementWindow(context,session),/audio-browser-window-target/);
+    else{const result=await openAudioMeasurementWindow(context,session);assert.equal(result.page,page);assert.equal(result.targetId,'new-target');assert.equal(result.windowId,77);}
+  }
+});
+
+test('processing transitions retain the original dip and continuity limits on both channels',async()=>{
+  const {evaluateProcessingTransition}=await metrics();
+  const channel={rms:.2,peak:.3,overFullScaleSamples:0,maxAdjacentStep:.03,envelope8ms:{min:.2}},summary={channels:[channel,channel]};
+  assert.deepEqual(evaluateProcessingTransition(summary,summary,summary),[]);
+  assert.ok(evaluateProcessingTransition(summary,{channels:[channel,{...channel,envelope8ms:{min:.18}}]},summary).includes('transition-channel-1/dip'));
+  assert.ok(evaluateProcessingTransition(summary,{channels:[{...channel,maxAdjacentStep:.031},channel]},summary).includes('transition-channel-0/step'));
+  assert.throws(()=>evaluateProcessingTransition(summary,{channels:[channel]},summary),/audio-transition-invalid/);
+  assert.throws(()=>evaluateProcessingTransition(summary,{channels:[{...channel,peak:NaN},channel]},summary),/audio-transition-invalid/);
+});
+
+test('native dry/wet automation must be complementary for the whole crossfade, not just endpoints',async()=>{
+  const {complementaryAudioRamps}=await metrics();
+  const ramps=[{node:0,from:0,to:1,start:1,end:1.01},{node:1,from:1,to:0,start:1,end:1.01}];
+  assert.equal(complementaryAudioRamps(ramps),true);
+  assert.equal(complementaryAudioRamps([ramps[0],{...ramps[1],start:1.002,end:1.012}]),false);
+  assert.equal(complementaryAudioRamps([ramps[0]]),false);
+  assert.equal(complementaryAudioRamps([{...ramps[0],to:NaN},ramps[1]]),false);
 });

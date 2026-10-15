@@ -87,7 +87,15 @@ export async function launchVisibilityBrowser(options){
       const match=worker?.url().match(/^chrome-extension:\/\/([a-p]{32})\/background\.js$/);
       if(!worker||!match?.[1])throw fail('visibility-worker-invalid');extensionId=match[1];
     }
-    ready=true;return {context,worker,extensionId};
+    /** @type {import('playwright').CDPSession|null} */let browserSession=null;
+    if(extensionPath===undefined){
+      const openSession=Reflect.get(loaded,'openMediaBrowserSession');
+      if(typeof openSession!=='function')throw fail('visibility-provider-invalid');
+      /** @type {unknown} */const session=await Reflect.apply(openSession,undefined,[context]);
+      if(!session||typeof session!=='object'||typeof Reflect.get(session,'send')!=='function')throw fail('visibility-provider-invalid');
+      browserSession=/** @type {import('playwright').CDPSession} */(session);
+    }
+    ready=true;return {browser,context,worker,extensionId,browserSession};
   }finally{
     if(!ready){
       child.kill();

@@ -268,6 +268,16 @@ BE의9번째 launch(legacy-null seed)는 browser-unavailable로 실패했다.8�
 
 마지막 task-done은 격리 후보의 전체1578개 중1577통과/실패0/기존private감사1skip(60.919초)을 실행하고 T7 완료를 원장에 기록했다. T8 정밀 출력/수명 및 T9 종합/독립 최종 검토는 미완료다. root dist58·제품2.13.3·기존 Chrome/P09·ZIP/CRX·모든 실패 증거를 보존하며 공개 작업은 하지 않았다.
 
+#### T8 중간 실제 관측과 측정 도구 보완 — 2026-10-15
+
+로컬9e77f03에서 기존 객관 검사의14 steady/12 alignment/18 transition/stress가 실제 bundled151.0.7922.34·source1·qualityFailures0으로 통과했다. 별도 F01audio20261015A는 mt.exe 준비 실패로 브라우저 측정에 진입하지 못했다. Windows 내부 원인은 미확정이며 원본 실패 보고서/복사본을 보존했다. 같은 입력의 새 F01audio20261015B는44.1kHz에서 EQ36·RMS20/역상/한쪽 채널이 모두 통과했으나 후속 수명 검사에서 graph-not-ready로 전체 실패했다. B의 source/after5필드 동일·pageErrors0·종료3증명true를 확인했다. B의 보조 wet/extreme48/silence/noise/burst/stall/error는 통과지만 dry RMS와 전체 수명/나머지 두 rate는 미완료이며 새 입력의 증거로 재사용하지 않는다.
+
+실패와 코드 대조로 표시 복귀의 실제 revalidation을 한 번만 응답하는 합성 드라이버가 처리하지 못한 것을 확인했다. 드라이버에만 같은 origin의 현재 request 응답과 의도한 설정 유지를 보완했다. float DC의 peak1/.99는 보존됐지만 1초 WAV의 decoder loop 경계가 RMS0.99495/0.985로 측정되어, 모든 창이 반복 경계 전에 끝나는20초 입력으로 변경한다. 원래 RMS 허용치는 그대로다. 새 창 선택도 기존 blank tab을 선택하지 않도록 생성 이벤트/실제 CDP targetId/windowId를 교차 검증한다. 별도 RED→GREEN을 남겼고 이 중간 실행을 전체 PASS로 올리지 않았다.
+
+후속 게이트는 각 rate에서 EQ/comp/normalizer/master의250/750/1000Hz 전환24개를 기존 dip0.95·step+1e-6 기준으로 양쪽 채널에서 검사한다. dry/wet는 native scheduling의 전체 구간 합1도 확인한다. 실제 FFT/power 읽기와 warmup·반복 위상 burst·무음 unity 복귀·mute/volume/Gain0/hidden hold를 보강한다. 새 도구 입력 전체를 다시 checkpoint하고 재검증하며 제품 DSP/허용치·사용자 프로필·권한 변경은 하지 않았다.
+
+후속 도구 입력은 격리 전체1591개 중1590통과/실패0/기존private감사1skip(60.961초)·집중11/11·9개 기반/build/package를 확인했다. 실제로 평가하는6개 산출물과 HTML helper도 source attestation의 필수 tracked 입력에 포함했다. 다음 새 Native는 전환 수치 위반을 발견하면 장시간 RMS의 진행 전에 실패로 보존하며, 허용치를 넓히지 않는다. T8/T9는 계속 미완료다.
+
 #### T8 측정 도구 구현·Native 실행 전 게이트 — 2026-10-15
 
 기존 CLI의 parser/정규화된 전체 calibration 본문 hash와14 steady·12 alignment·18 transition·stress 수치/허용치를 유지했다. 변경 허용 부분은 protocol3 완전 기본값 주입, 같은 기존 Windows bundled 준비/익명 pipe/noDefaults/정확한 자기 프로필 종료 경로 재사용뿐이다. `--chrome`의 기존 의미는 유지한다. synthetic MAIN Gain 호출은 영속 저장 권위 검사나 실제 사용자 동작 증명이 아니다.
