@@ -95,6 +95,10 @@ assert.equal(assessObserverRunSet(withMissingReport).transportComplete, false);
 
 **실행 승인 전에는 아래 경로 생성/Chrome 실행을 하지 않는다.** 고정 implementation commit을 C라 하며, root가 아닌 새 물리 clone을 사용한다. 새 의존성/브라우저 설치가 필요하면 중지한다.
 
+> **실행 중 STOP(2026-10-16):** C=`4eb1d2d`에서 base/MAIN 대조는 통과했지만 일반전환 A는 child 결과 누락으로 실패했다. module-eval 옵션 상속의 독립 재현과 동일 Astra max 검토를 기록했다. [실행 정정안](../validation/2026-10-16-f01-observer-implementation-validation.md)의 `node -e` 동적 import·새 정상전환 ID `F01ObsB2Positive20261016B`1회는 **사용자 확인 대기**다. 아래 원래 A 명령/실패를 삭제·덮어쓰기·성공으로 교체하지 않는다. 확인 전에는 나머지 Native/Task5도 진행하지 않는다.
+
+> **후속 사용자 승인(2026-10-16):** 위 최소 교정안과 B1회·기존 미실행 잔여의 순차 실행을 승인받아 Task4를 재개한다. source C/F·판정 기준은 그대로이며, 기존 A 실패/자료를 보존한다. 필수 실패/불완전 시 STOP 및 Task5 조건부 공개 경계는 유지한다.
+
 - [ ] **clean 준비:** 새 `output/f01-observer-native-20261016a/source`는 C, sibling `output/f01-observer-native-20261016a/frozen`은 고정 F다. `git clone --no-hardlinks --no-checkout`와 detached checkout을 사용하며 기존 node_modules만 연결한다. 양 사본 tracked clean·전체 attestation/동일 lock/실제 Node/browser bytes를 기록한다. 기존 ZIP을 복사해 SHA256 `67ae9c1512fef7e0ca651c150e3b4e3052a73e7d96b7ed988adc85114cdb1d51`을 확인한다. 기존 source/프로필/출력은 보존한다.
 - [ ] **자료 보존 base/negative:** 현재 source에서 programmatic import로 각각 `runInstalledExtensionE2E({runId:'F01ObsBase20261016A',retainEvidence:true})`, `runInstalledExtensionNegative({runId:'F01ObsNegative20261016A',retainEvidence:true})`. 정상 base 전체 시나리오/정확한 `main-runtime-missing` 검출과 실제 보존·close 계약을 확인한다.
 - [ ] **일반 전환:** programmatic import로 `runInstalledTransition({runId:'F01ObsB2Positive20261016A',retainEvidence:true})`와 `runInstalledTransition({runId:'F01ObsB2Loss20261016A',control:'storage-loss',retainEvidence:true})`. 정확한 전체 보존/원래 loss oracle·모든 정상 종료·secondary 없음과 roots/candidates 실제 보존이 필요하다. 기본 CLI는 사용하지 않는다.

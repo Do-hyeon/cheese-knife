@@ -53,3 +53,62 @@
 `0e868d0`의 잔여 I2를 동일 Astra max가 다시 확인했다. 실제 자식 종료 정보 보존·만료 후 읽기 금지·후속 STOP을 확인하고 deadline5/5를 직접 실행했다. **검토 범위 잔여 Critical/Important 없음, Task4 준비 가능** 판정이다. Native/OS I/O hang/Linux CI는 이 판정에서 제외됐으며, 해당 미확인 범위는 실제 Task4/5가 소유한다. metadata의 정확한 wall-clock 종료 불보장과 JSON 단독 완료 증명 금지는 수용한 한계로 계속 고지한다.
 
 최신 실제 감사는 `output/tool-audit/run-2026-10-15T23-11-15-146Z-PqkLQY`다. 입력 snapshot 일치·npm0/Gitleaks 디렉터리0/Git0·정적62/raw exit1을 확인했다. root dist58/hash도 이전과 같고315개 비Markdown 추적 입력이 실행 사본과 같다. Task3 최종 집중171/171 및 strict를 계획의 task-done으로 다시 확인했다. 이 문서 단계까지 새 Native/push는 미실행이다.
+
+## Task4 실제 부분 실행과 STOP
+
+이하가 위의 이전 미실행 상태 이후 수행한 최신 사실이다. clean Native 입력 C는 `4eb1d2d98ae7536c066c1796772c007b5d682625`, 원본 F는 고정 `c5d45b8`이며, 새 물리 사본은 `output/f01-observer-native-20261016a/{source,frozen}`이다. 기존 의존성만 junction으로 연결했다. tracked clean·원본 runner의 Git blob bytes 일치·동일 lock·기존 ZIP pin을 확인했고 다운로드하지 않았다.
+
+- Node24.19.0 실행 파일 SHA256: `3602f2bb1a10f2cbab4c36886218a33c1ab3db87290e73b033c46c77147d0237`.
+- Playwright1.62.1 번들 browser SHA256: `409805a16d6416087e6b2f778df1cf8f7bbb267d6b99f6b5bb0a618eace234f2`.
+- 양 사본 LF lock SHA256: `539785dbfba59012079cfc56e9dda7a335fa1531e8cb699bebecc9ca8a7f14c7`. root working-file의 CRLF hash와 혼동하지 않는다.
+- source466개 입력 hash `fcad8c071105e90fe23ed273e2bcc21d64f800705badb7a2476aee01a53b00e0`, F457개 hash `71759b75c7c5445d81bad08366bf3d3c7ebc000d01fbfc7d5e4730885b45c108`.
+- 최초 sandbox 사전검사는 격리 AppData의 없는 browser cache 때문에 ENOENT였다. Chrome 실행 전 실패이며 `native-preflight.log`에 보존했다. 승인된 escalated Native 환경의 기존 browser로 동일 사전검사가 통과했다(`native-preflight-escalated.log`). 캐시 override나 설치는 하지 않았다.
+
+| 실제 실행 | 결과 | 보존·종료 확인 |
+| --- | --- | --- |
+| `F01ObsBase20261016A` | base PASS,최상위 키20개/시나리오16개·65,690ms | profile/candidate 실제 존재, 해당 Chrome root0 |
+| `F01ObsNegative20261016A` | 정확한 `main-runtime-missing` 대조 PASS, secondary 없음 | profile/원후보/변형 패키지 실제 존재, 해당 Chrome root0 |
+| `F01ObsB2Positive20261016A` | **FAIL**, `transition-child-result-missing`, secondary `transition-child-exit` | result 없음, 부모가 만든5work roots/2candidate roots는 빈 채 보존, 해당 Chrome roots 모두0 |
+
+base의 정상 context 종료와 사후 root0 조회를 media 전용3종료증명으로 표현하지 않는다. negative 내부 base report의 `ok:false/main-runtime-missing`은 예상된 실제 실패이며, 외부 negative-summary의 정확한 대조 성공과 구분한다. 자료는 같은 Native root의 `native-base.log`, `native-negative.log`, `native-base-negative-check.log`, `native-b2-positive.log`, `native-b2-failure-retention-check.log`와 source 아래 각 원본 summary/profile/candidate에 남겼다.
+
+### 실행 방식 원인 조사
+
+author가 programmatic 부모를 `node --input-type=module -e`로 실행했다. 기존 `forkChild`는 `execArgv`를 상속하고 자식 stdout/stderr는 ignore한다. 부작용 없는 기존 `scripts/audio-metrics.mjs`를 fork하는 독립 재현에서 같은 module-eval 방식은 `ERR_INPUT_TYPE_NOT_ALLOWED`/exit1, 일반 `node -e` 방식은 exit0/stderr없음이었다. `launcher-module-diagnostic.log`와 `launcher-commonjs-diagnostic.log`를 보존했다. 최초의 존재하지 않는 CJS 경로 조회는 MODULE_NOT_FOUND일 뿐 인자 상속 가설의 증거로 채택하지 않았다.
+
+이 재현은 launcher의 결함 근거이며, 실제 실패 run 자식의 stderr가 없으므로 그 원래 예외를 직접 회수했다는 뜻은 아니다. 과거 CI의 font8/reload 실패 원인이나 제품 전환 결함을 해결했다는 근거로 사용하지 않는다.
+
+### 최소 정정안 — 사용자 확인 대기
+
+- 제품/검사 source·C/F·DSP·의존성·browser flag는 변경하지 않는다. programmatic 호출만 `node -e`의 동적 import로 실행해 `--input-type` 상속을 피한다. process.execArgv를 임의로 수정하지 않는다.
+- 실패한 A 자료를 덮거나 삭제하지 않는다. base/negative는 반복하지 않는다.
+- 일반 정상 전환을 **새 ID `F01ObsB2Positive20261016B`로1회** 실행하는 변경을 확인받는다. 이후 아직 실행하지 않은 원래 `F01ObsB2Loss20261016A`, `F01ObsCold20261016A`, `F01ObsColdLoss20261016A`, `f01obs-win-a`를 같은 안전한 launcher로 순차 진행한다.
+- 계획의 기존 ID 충돌·누락/불완전 STOP을 준수하여 **현재 Task4 중지, Task5 조사push/CI 미실행**이다. 새 ID 승인과 검토 없이 재시도하지 않는다. 입력·종료가 다시 불완전하면 재실행을 반복하지 않는다.
+
+동일 Astra max가 이 실행 교정안과 실제 자료를 읽고, 추가 소스 변경이 필요한 Important를 확인하지 못했다고 판단했다. `node -e`/동일 C/F/실패 A 보존/base·negative 반복 금지/새 B1회 사용자 확인/실패 시 STOP을 지지했다. 실제 새 launcher 전환·cold·오디오 검증은 수행하지 않았다. 교정 뒤 전환 자체가 실패할 위험과 A의 직접 자식 예외가 복원되지 않는 한계는 남는다.
+
+### 교정안 승인 이후
+
+2026-10-16 사용자가 위 교정안과 후속 순차 작업을 승인했다. Native source C는 `4eb1d2d` clean 그대로이며, 새 B artifact가 없는 것을 확인한 뒤 `node -e` 동적 import로 `F01ObsB2Positive20261016B`1회 실행을 시작했다. A 실패와 base/MAIN 대조 성공은 대체하지 않는다. B 결과와 아직 실행하지 않은 나머지 검사는 이후 실제 근거로 갱신한다.
+
+- 일반 정상 전환 B: **PASS**,5seed/15phase·cleanup/secondary0. 실제5개 보존 root와2후보가 존재하며 각 소유 Chrome root0, source/after C 및 전체 입력 hash 일치다. `native-b2-positive-b.log`, `native-b2-positive-b-check.log`에 보존했다.
+- 일반 저장 손실 A: **PASS**, 정확한 `transition-storage-preservation/new/startup/candidate-init`와 config 누락·기존 settingsRevision8을 확인했다. 1seed/1phase·cleanup/secondary0·실제 보존/소유 Chrome0·source/after C를 확인했다(`native-b2-loss.log`, `native-b2-loss-check.log`). readiness 실패를 손실 성공으로 대신하지 않았다.
+- F01 cold 정상 A를 이어서 실행 중이며, cold 손실/Windows9회와 공개 CI는 아직 실행하지 않았다. 일반 전환 B 성공이 과거 공개 CI의 직접 인과 증명이나 실패 A의 삭제 근거는 아니다.
+
+## Task4 완료 결과
+
+위 진행 기록 이후 cold와 Windows9회가 완료됐다. 모두 **동일 clean C=`4eb1d2d`**에서 실행했으며 root 제품 코드를 수정하지 않았다.
+
+| 검사 | 최종 결과 | 별도 확인 |
+| --- | --- | --- |
+| F01 cold 정상 A | PASS,11seed/28phase |39회 모두 정상 exit 및 close ack/disconnect/own root closed,11개 보존 root의 Chrome0 |
+| F01 cold 손실 A | PASS,5seed/9phase |5개 정확한 손실 case/phase/startup,19회3종료증명,5개 보존 root의 Chrome0 |
+| Windows F/U/T9회 | transportComplete=true / qualityPass=true / failures=[] |9개 exit0·closeConfirmed=true·signal없음·timeout/overflow없음, 정확35개 파일/34해시 재계산 일치 |
+
+cold 손실은 `valid-ui/new`의 config 손실과 `loss-owned-gain`, `loss-inherit-bit`, `loss-eq-band`, `loss-preset-id`의 rollback 보존 실패를 정확히 검출했다. cold 두 검사 모두 cleanup/secondary0, source/after 전체 attestation 일치, 두 후보 실제 보존이다. payload inventory는 published58=`a7a23d74...`, F0059=`9715087a...`, F0162=`5d5784f5...`다. 전환 payload의2.13.4는 검사 내 업데이트 구분용이며 root/공개 버전을 바꾼 것이 아니다.
+
+Windows9회 순서는 F1,U1,T1,U2,T2,F2,T3,F3,U3 그대로다. Node24.19.0/Playwright1.62.1/Chromium151.0.7922.34/48000Hz이며 기존 실행 파일 hash와 C/F 전체 입력 hash가 같다. F는 원래 report/로그만 있고 raw PCM·구조화 진단이 없다. U/T6개 진단은 원 PCM→요약·출처/설정/종료를 재검산했다. F를 U/T와 같은 증거 수준으로 표현하지 않는다.
+
+원 report에서 기존 literal 수치 기준도 별도 재계산했다. 모든 run의 최저 전환 dip ratio는 약1.0(기준0.95), 최소 step 여유는 약1e-6, stress peak는0.9800000190734863(상한0.9801), full-scale 초과 sample0이다. 각 run의14case/18transition/12alignment를 확인했고 실제 오디오9개 보존 profile의 소유 Chrome root도 모두0이었다. 이는 **이번 Windows 조건의 미재현**이지 과거 Linux250Hz ON 원인/해결 또는 모든 설정 조합 인증이 아니다.
+
+추가 원자료는 `native-f01-cold*.log`, `native-observer.log`, `native-observer-check.log`, `native-observer-metrics.log`와 C/F의 원 report/진단/프로필에 보존했다. 실패 A도 그대로다. 원자료를 새로 실행하지 않는 Task4 증거 assertion을 통과했고, 양 source tracked clean 및 root dist58/hash`b29c25e5...` 불변을 확인했다. 공개 CI는 아직 실행하지 않았으며, 다음 승인 범위는 기존 PR45의 조사push1회뿐이다.

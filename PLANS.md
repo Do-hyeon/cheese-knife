@@ -2,7 +2,7 @@
 
 > **For agentic workers:** 현재 커서·미완료 체크리스트·승인/중지 조건만 관리한다. 완료 이력은 [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md), [유지보수 기반·타입 강화·AF05-B 준비 아카이브](docs/superpowers/archive/2026-10-14-foundation-maintenance-completed.md), [F00 완료 단계](docs/superpowers/archive/2026-10-14-f00-completed-stages.md), 결과는 docs/superpowers/validation/에서 확인한다. 아카이브의 과거 승인이나 개별 DONE을 새 단계 실행 권한으로 사용하지 않는다.
 
-최신화: 2026-10-16 / Asia-Seoul. 현재 커서: **추가 관측 분리 계획 Task4 새 격리 Native 준비**. [승인 계획](docs/superpowers/plans/2026-10-16-f01-observer-isolation.md) Tasks1–3 구현·Astra max 필수 보완/최종targeted를 마쳤다. 최신 전체1726통과/실패0/기존제외1·9기반·build62/check22·실제 감사 입력일치/npm0/Gitleaks0/정적62(raw exit1)이며 [구현 검증 기록](docs/superpowers/validation/2026-10-16-f01-observer-implementation-validation.md)에 한계를 구분했다. 다음은 새 전용 Windows 검증이며, 완전한 입력/종료가 확보돼야 기존PR45 조사push1회/Linux총15오디오로 진행한다. **기존250Hz ON 인과STOP·최종push/병합/릴리즈 금지는 유지한다.** DSP·버전2.13.3·root dist58·시청Chrome/P09·스토어·기존증거는 변경하지 않는다.
+최신화: 2026-10-16 / Asia-Seoul. 현재 커서: **추가 관측 분리 계획 Task5 조사push 전 gate**. Tasks1–3 구현·전체1726통과/기반·감사·Astra max 필수 지적 해소 및 [Task4 Native](docs/superpowers/validation/2026-10-16-f01-observer-implementation-validation.md)를 마쳤다. clean C=`4eb1d2d`의 base/MAIN·사용자 승인 교정 B·일반 손실·cold11seed/28phase/39종료·정확5손실/19종료·Windows9회가 통과했다. A 준비 실패는 보존하며 Windows 결과는 이번 조건 미재현이다. 다음은 승인된 기존PR45 조사push1회/Linux총15오디오·원자료 재평가다. **기존250Hz ON 인과STOP·최종push/병합/릴리즈 금지 유지.** DSP·버전2.13.3·root dist58·시청Chrome/P09·스토어·기존증거는 보존한다.
 
 ## 1. 고정 결정과 공개 경계
 
@@ -52,7 +52,7 @@
 | ID | 작업 묶음 | 상태 | 다음 게이트 |
 | --- | --- | --- | --- |
 | F00 | 채널별 미디어 저장·프리셋 | DONE (통합) | PR #44 공개 CI 통과·병합·해당 브랜치 정리 완료; 릴리즈 없음 |
-| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | DOING (추가 조사 계획 Task4) | Task1–3 구현/회귀·감사·Astra max 필수 지적 해소. 새 격리 Native 후 조사push1회만 조건부 허용. 기존 인과STOP 유지 |
+| F01 | Gain 연결·EQ·노멀라이저·오디오 프리셋 | DOING (Task5 공개 조사) | Task4 Native/Windows9회 통과·A 실패 보존. 승인된 PR45 조사push1회와 Linux15회 확인 후 인과 판정 STOP |
 | AF05-B 실제 수용 / AF05 종료 | 차기 게시본 설치·업데이트 | WAITING-DEPENDENCY | 차기 게시와 실제 검사 별도 승인 후 수행; F00/F01과 독립 |
 | DT02 | 선택 파일의 native TS 실행 | DEFERRED | 실제 유지보수 이득과 검사/실행 경계 보존이 증명되면 재설계 |
 | F02–F05 | 후속 기능 | BACKLOG-BLOCKED | F00/F01 검증과 각 범위 승인 |
@@ -122,7 +122,7 @@
 - [x] 사용자 추가 계획/Native 실행 묶음 승인. 새 도구·보존/실패 보완·격리Windows9회·전환/cold/손실·Astra max 구현 검토 뒤 기존PR45 조사push1회/Linux9회(+기존6회)까지다. 최종push·병합·배포는 제외한다.
 - [x] 추가 계획 Task1/2 구현·RED→GREEN·집중57/57·strict·최신 격리 전체1675통과/실패0/기존제외1. 새 F/U/T host와 원본 F/제품/기존6gate는 분리하며 정적 신규 파일 I/O7경고는 기존55와 별도 대조한다.
 - [x] 추가 계획 Task3 보존 전파/복합 오류·전체/9기반/build/check/실제 도구 감사·Astra max 구현 검토. 최초0Critical/3Important/1Minor(보존 표시를 author Important 재등급), 첫targeted 잔여Important1까지 보완하고 최종targeted 잔여0. 실제 Native/CI 효과는 아직 미검증이며 [구현 검증 기록](docs/superpowers/validation/2026-10-16-f01-observer-implementation-validation.md)을 보존한다.
-- [ ] 추가 계획 Task4 새 격리 Native/Windows9회·설치/전환/cold·정확한손실/보존·종료. 자료 불완전이면 조사push도 하지 않는다.
+- [x] 추가 계획 Task4 새 격리 Native: base/MAIN·승인된 교정 B 정상전환/일반 손실·cold11/28/39·정확5손실/19종료·Windows9회/35파일·실제 보존/Chrome0 통과. A child 준비 실패는 보존하며 B로 덮지 않았다. 이번 조건 미재현, 과거 인과 해결 아님.
 - [ ] 추가 계획 Task5 기존PR45 조사push1회·정확한head 공개CI/원자료 재평가·근거targeted 검토·원인/한계 기록 후STOP. 결과를 최종 수용으로 확대하지 않는다.
 - [ ] Task4 새source 전체/점검도구·설치/전환/정확한손실/F01cold·조건부DSP전량Native·Astra max최종검토·최종CI. 기존허용치와실패기록유지.
 - [ ] 모든게이트충족한PR45 정확한head병합·F01브랜치만정리. 릴리즈/스토어/버전변경없음. 그뒤F02설계를시작한다.
