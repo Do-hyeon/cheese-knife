@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>F01 격리 오디오 조작 검사</title>
+  <style>
+    body { margin: 24px; background: #181a20; color: #eee; font: 16px sans-serif; }
+    .pzp-pc { width: 800px; background: #222630; }
+    video { width: 800px; height: 340px; }
+    .pzp-pc__bottom-buttons-left { height: 72px; display: flex; align-items: center; gap: 12px; padding: 0 20px; }
+    .pzp-pc__volume-control { display: inline-flex; align-items: center; }
+    button { min-width: 32px; min-height: 32px; }
+  </style>
+  <script src="https://chzzk.naver.com/__knife_fixture__/audio-site.js" defer></script>
+</head>
+<body>
+  <main id="layout-body"><section id="live_player_layout"><div class="pzp-pc">
+    <div class="pzp-pc__video"><video muted loop playsinline></video></div>
+    <div class="pzp-pc__bottom-buttons-left"><button class="pzp-pc__playback-switch">재생</button>
+      <div class="pzp-pc__volume-control"><button class="pzp-pc__volume-button">음량</button></div>
+    </div>
+  </div></section></main>
+</body>
+</html>

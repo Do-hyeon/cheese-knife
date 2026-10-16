@@ -59,6 +59,46 @@ test('media owner requires public close ACK disconnection and exact owned roots 
   }
 });
 
+test('media close failures retain their exact phase and original error without inventing close proofs',async()=>{
+  const {closeInstalledMediaBrowser}=await harnessModule(),{EventEmitter}=require('node:events');
+  for(const mode of ['ack','disconnect','query-pending','query-error','root']){
+    const browser=new EventEmitter();let connected=true;
+    browser.isConnected=()=>connected;
+    const original=Object.assign(new Error('query refused'),{code:'EACCES'});
+    const session={send:async()=>{
+      if(mode==='ack')return new Promise(()=>{});
+      if(mode!=='disconnect'){connected=false;browser.emit('disconnected');}return {};
+    }};
+    await assert.rejects(()=>closeInstalledMediaBrowser({context:{browser:()=>browser},browserSession:session,
+      profilePath:path.resolve('output/owned-media-profile'),timeoutMs:35,queryProcesses:async()=>{
+        if(mode==='query-error')throw original;
+        if(mode==='query-pending')return new Promise(()=>{});
+        return [{ProcessId:123}];
+      }}),error=>{
+      if(mode==='query-error')assert.equal(error,original);
+      const detail=error.closeDiagnostic;assert.ok(detail);
+      assert.equal(detail.stage,mode==='ack'?'close-ack':mode==='disconnect'?'disconnect':'owned-roots');
+      assert.equal(detail.browserCloseAcknowledged,mode!=='ack');
+      assert.equal(detail.browserDisconnected,!['ack','disconnect'].includes(mode));
+      assert.equal(detail.queryPending,mode==='query-pending');
+      assert.equal(detail.lastRootCount,mode==='root'?1:null);
+      assert.equal(typeof detail.elapsedMs,'number');assert.ok(detail.elapsedMs>=0);
+      assert.equal(detail.ownedRootClosed,undefined);
+      return true;
+    });
+    assert.equal(browser.listenerCount('disconnected'),0);
+  }
+});
+
+test('manifest subprocess preserves native exit information on the original error',async()=>{
+  const {embedChromiumManifest}=await harnessModule();assert.equal(typeof embedChromiumManifest,'function');
+  await assert.rejects(()=>embedChromiumManifest(process.execPath,'unused.manifest','unused.dll'),error=>{
+    assert.equal(typeof error.code,'number');assert.notEqual(error.code,0);
+    assert.equal(error.killed,false);assert.equal(error.signal,null);
+    assert.match(error.stderr,/bad option|unknown|unrecognized/i);return true;
+  });
+});
+
 test('extension worker URL accepts only the exact MV3 background worker form', async () => {
   const { extensionIdFromWorkerURL } = await harnessModule();
   assert.equal(extensionIdFromWorkerURL(workerURL), extensionId);
@@ -120,6 +160,19 @@ test('launch closes every created context when worker validation fails', async (
     }), { code: item.code });
     assert.equal(closed, 1, item.code);
   }
+});
+
+test('worker startup failure retains bounded native extension-manager diagnostics without changing the failure', async () => {
+  const { launchInstalledExtension } = await harnessModule();
+  const visits=[];let closed=0;
+  const context={serviceWorkers:()=>[],waitForEvent:async()=>{throw new Error('timeout');},close:async()=>{closed++;},
+    newPage:async()=>({goto:async(url,options)=>{visits.push([url,options.timeout]);},
+      evaluate:async()=> 'Load error: invalid message key'.repeat(300)})};
+  await assert.rejects(launchInstalledExtension({chromiumApi:{launchPersistentContext:async()=>context},
+    extensionPath:path.resolve('output/candidate'),profilePath:path.resolve('output/profile'),artifactPath:path.resolve('output/artifacts'),headed:false}),error=>{
+    assert.equal(error.code,'extension-worker-timeout');assert.equal(error.startupDiagnostic.length,4096);return true;
+  });
+  assert.deepEqual(visits,[['chrome://extensions',3000]]);assert.equal(closed,1);
 });
 
 test('launch maps browser startup failures and returns a validated worker', async () => {

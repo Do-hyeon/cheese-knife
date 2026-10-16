@@ -62,7 +62,7 @@ try {
       const deadline = performance.now() + 5000;
       while (performance.now() < deadline) {
         const runtime = window[Symbol.for('cheese-knife.runtime.v1')];
-        if (runtime?.ownerProtocol === 2 && runtime.media.phase !== 'pending' &&
+        if (runtime?.ownerProtocol === 3 && runtime.media.phase !== 'pending' &&
             runtime.media.context.routePath === location.pathname && runtime.media.version.globalRevision === revision) return;
         await new Promise(resolve => setTimeout(resolve, 10));
       }

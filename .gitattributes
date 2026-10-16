@@ -1,8 +1,10 @@
 vendor/hls.light.private.js text eol=lf
 src/settings/*.ts text eol=lf
 /media-profiles.js text eol=lf linguist-generated=true
+/gain-authority.js text eol=lf linguist-generated=true
 /settings-contract.js text eol=lf linguist-generated=true
 /settings-client.js text eol=lf linguist-generated=true
+/audio-settings-ui.js text eol=lf linguist-generated=true
 /settings-broker.js text eol=lf linguist-generated=true
 build-proof/*.ts text eol=lf
 src/main/**/*.ts text eol=lf
@@ -19,3 +21,4 @@ web/inject.js text eol=lf linguist-generated=true
 /popup.js text eol=lf linguist-generated=true
 /styles.js text eol=lf linguist-generated=true
 web/main.js text eol=lf linguist-generated=true
+web/player-gain.js text eol=lf linguist-generated=true

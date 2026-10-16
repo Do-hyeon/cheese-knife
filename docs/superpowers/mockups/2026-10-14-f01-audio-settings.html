@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'">
+<title>F01 미디어 설정 · 조작 중심 목업</title>
+<style>body{margin:0;padding:20px;background:transparent}@media(max-width:650px){body{padding:8px}}</style>
+</head>
+<body>
+<div id="f01-compact-mockup" lang="ko">
+<style>
+#f01-compact-mockup{--ck-bg:light-dark(#f5f5f5,#181b20);--ck-panel:light-dark(#ffffff,#232830);--ck-text:light-dark(#262b32,#edf0f5);--ck-sub:light-dark(#59616c,#bac2ce);--ck-line:light-dark(#d9dde3,#454e5c);--ck-control:light-dark(#f7f8fa,#2d3541);--ck-blue:light-dark(#2868e5,#81adff);--ck-soft:light-dark(#eaf1ff,#2d4164);color-scheme:light dark;color:var(--ck-text);font:14px/1.5 system-ui,sans-serif;width:100%;background:transparent}
+#f01-compact-mockup *{box-sizing:border-box}
+#f01-compact-mockup .ck-window{background:var(--ck-bg);border:1px solid var(--ck-line);border-radius:12px;overflow:hidden;max-width:680px;margin:0 auto}
+#f01-compact-mockup .ck-header{padding:20px 24px 16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;border-bottom:1px solid var(--ck-line)}
+#f01-compact-mockup h1{font-size:19px;font-weight:500;margin:0}#f01-compact-mockup h2{font-size:16px;font-weight:500;margin:0}#f01-compact-mockup p{margin:0}
+#f01-compact-mockup button,#f01-compact-mockup select,#f01-compact-mockup input{font:inherit;color:inherit}
+#f01-compact-mockup button,#f01-compact-mockup select,#f01-compact-mockup input[type=number],#f01-compact-mockup input[type=text]{border:1px solid var(--ck-line);background:var(--ck-panel);border-radius:6px;min-height:34px;padding:5px 9px;max-width:100%}
+#f01-compact-mockup button{white-space:normal}#f01-compact-mockup button:disabled{color:var(--ck-sub)}#f01-compact-mockup input{accent-color:var(--ck-blue)}
+#f01-compact-mockup input[type=number]{width:72px;font-variant-numeric:tabular-nums}#f01-compact-mockup label{font-weight:400}
+#f01-compact-mockup .ck-scope{display:flex;align-items:center;gap:9px;margin-left:auto}#f01-compact-mockup .ck-scope select{min-width:150px}
+#f01-compact-mockup .ck-nav{display:flex;gap:4px;padding:0 24px;border-bottom:1px solid var(--ck-line)}
+#f01-compact-mockup .ck-nav button{background:transparent;border:0;border-radius:0;padding:12px 18px;min-height:44px;border-bottom:2px solid transparent}
+#f01-compact-mockup .ck-nav button[aria-selected=true]{border-bottom-color:var(--ck-blue);color:var(--ck-blue)}
+#f01-compact-mockup .ck-content{padding:20px 24px}#f01-compact-mockup [hidden]{display:none!important}
+#f01-compact-mockup .ck-topline,#f01-compact-mockup .ck-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#f01-compact-mockup .ck-topline{justify-content:space-between;margin-bottom:14px}#f01-compact-mockup .ck-sub{color:var(--ck-sub);font-size:12px}
+#f01-compact-mockup .ck-panel{background:var(--ck-panel);border:1px solid var(--ck-line);border-radius:9px;padding:16px 20px}
+#f01-compact-mockup .ck-section{padding:14px 0;border-bottom:1px solid var(--ck-line)}#f01-compact-mockup .ck-section:first-child{padding-top:0}#f01-compact-mockup .ck-section:last-child{border-bottom:0;padding-bottom:0}
+#f01-compact-mockup .ck-section-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+#f01-compact-mockup .ck-check{display:inline-flex;align-items:center;gap:7px;min-height:30px}#f01-compact-mockup .ck-check input{width:16px;height:16px;margin:0}
+#f01-compact-mockup .ck-gain{display:grid;grid-template-columns:55px minmax(80px,1fr) 80px;gap:12px;align-items:center;margin-bottom:10px}
+#f01-compact-mockup .ck-gain input[type=range]{width:100%;min-width:0;margin:0}#f01-compact-mockup .ck-value{font-variant-numeric:tabular-nums;font-weight:500}
+#f01-compact-mockup .ck-chip{display:inline-block;background:var(--ck-soft);color:var(--ck-blue);padding:3px 8px;border-radius:5px;font-size:12px}
+#f01-compact-mockup .ck-preset-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}#f01-compact-mockup .ck-preset-row select{flex:1;min-width:160px}
+#f01-compact-mockup details>summary{color:var(--ck-sub);font-size:12px;min-height:28px;line-height:28px}
+#f01-compact-mockup .ck-eq-section{width:100%;max-width:580px}
+#f01-compact-mockup .ck-eq-scroll{width:100%;overflow-x:auto}
+#f01-compact-mockup .ck-graphs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+#f01-compact-mockup .ck-response{min-width:0}
+#f01-compact-mockup .ck-response-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px}
+#f01-compact-mockup .ck-response-head>span{font-size:12px;color:var(--ck-sub)}
+#f01-compact-mockup .ck-response svg{display:block;width:100%;height:168px}
+#f01-compact-mockup .ck-response text{fill:var(--ck-sub);font-size:12px}
+#f01-compact-mockup .ck-response-guide{stroke:var(--ck-line);stroke-width:1;fill:none}
+#f01-compact-mockup .ck-response-zero{stroke:var(--ck-sub);stroke-width:1;fill:none}
+#f01-compact-mockup #ck-response-line,#f01-compact-mockup .ck-response-active{stroke:var(--ck-blue);stroke-width:2;fill:none}
+#f01-compact-mockup .ck-response-identity{stroke:var(--ck-sub);stroke-width:1;stroke-dasharray:4 3;fill:none}
+#f01-compact-mockup #ck-response-fill{fill:var(--ck-blue);fill-opacity:.14;stroke:none}
+#f01-compact-mockup .ck-dials{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+#f01-compact-mockup .ck-dial-control{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
+#f01-compact-mockup .ck-dial-control>label{font-size:12px}
+#f01-compact-mockup .ck-dial-face{--ck-angle:0deg;display:block;position:relative;width:72px;height:72px;border-radius:50%;background:conic-gradient(from 225deg,var(--ck-blue) 0deg var(--ck-angle),var(--ck-line) var(--ck-angle) 270deg,transparent 270deg)}
+#f01-compact-mockup .ck-dial-face:before{content:"";position:absolute;inset:6px;border-radius:50%;background:var(--ck-control)}
+#f01-compact-mockup .ck-dial-face:after{content:"";position:absolute;left:35px;top:8px;width:2px;height:14px;background:var(--ck-text);transform-origin:1px 28px;transform:rotate(calc(var(--ck-angle) - 135deg));pointer-events:none}
+#f01-compact-mockup .ck-dial-face:focus-within{outline:2px solid var(--ck-blue);outline-offset:3px}
+#f01-compact-mockup .ck-dial-input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;touch-action:pan-x}
+#f01-compact-mockup .ck-dial-value{display:flex;align-items:center;gap:4px;width:100%;font-size:12px}
+#f01-compact-mockup .ck-dial-value input{width:100%;min-width:0;text-align:center;padding:4px;font-size:13px}
+#f01-compact-mockup .ck-dial-hint{margin-top:10px}
+#f01-compact-mockup .ck-dials.ck-eq-muted .ck-dial-face{--ck-blue:var(--ck-sub)}
+#f01-compact-mockup .ck-eq-shell{display:flex;gap:0;align-items:start;width:580px;min-width:580px}
+#f01-compact-mockup .ck-axis{width:44px;flex-shrink:0;height:160px;position:relative;font-size:12px;color:var(--ck-sub)}
+#f01-compact-mockup .ck-axis span{position:absolute;left:0;right:6px;top:calc(6px + 148px * var(--ck-tick) / 12);transform:translateY(-50%);text-align:right}
+#f01-compact-mockup .ck-bands{position:relative;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));flex:1;min-width:0;gap:0}
+#f01-compact-mockup .ck-grid{position:absolute;top:6px;left:0;right:0;height:148px;pointer-events:none}
+#f01-compact-mockup .ck-grid span{position:absolute;left:0;right:0;top:calc(100% * var(--ck-tick) / 12);height:1px;background:var(--ck-line);opacity:.5}
+#f01-compact-mockup .ck-grid .ck-major{opacity:1}
+#f01-compact-mockup .ck-grid .ck-zero{background:var(--ck-sub)}
+#f01-compact-mockup .ck-band{position:relative;min-width:0;text-align:center;display:flex;flex-direction:column;align-items:center;gap:7px}
+#f01-compact-mockup .ck-rail{height:160px;width:100%;position:relative;display:flex;align-items:center;justify-content:center}
+#f01-compact-mockup .ck-rail input{position:relative;width:44px;height:160px;margin:0;writing-mode:vertical-lr;direction:rtl;appearance:none;-webkit-appearance:none;background:transparent}
+#f01-compact-mockup .ck-rail input::-webkit-slider-runnable-track{width:44px;height:160px;background:linear-gradient(var(--ck-line),var(--ck-line)) center/4px 148px no-repeat}
+#f01-compact-mockup .ck-rail input::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:12px;margin-left:10px;border:1px solid var(--ck-sub);border-radius:2px;background:linear-gradient(var(--ck-sub),var(--ck-sub)) center/16px 1px no-repeat,var(--ck-control)}
+#f01-compact-mockup .ck-band input[type=number]{width:64px;max-width:calc(100% - 4px);padding:4px 2px;text-align:center;min-height:30px}
+#f01-compact-mockup .ck-band label{font-size:12px;white-space:nowrap}#f01-compact-mockup .ck-eq-muted{opacity:.6}
+#f01-compact-mockup .ck-eq-key{display:flex;justify-content:space-between;gap:12px;width:580px;padding:10px 0 0 44px;font-size:12px;color:var(--ck-sub)}
+#f01-compact-mockup .ck-help{margin-top:12px}#f01-compact-mockup .ck-help p{font-size:12px;color:var(--ck-sub);margin:8px 0}
+#f01-compact-mockup .ck-master[aria-pressed=true]{background:var(--ck-soft);color:var(--ck-blue)}
+#f01-compact-mockup .ck-master-status{margin:-5px 0 14px}
+#f01-compact-mockup .ck-bottom{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}
+#f01-compact-mockup .ck-banner{background:var(--ck-soft);padding:12px;border-radius:6px;margin-bottom:12px}#f01-compact-mockup .ck-banner .ck-row{margin-top:8px}
+#f01-compact-mockup .ck-video-row{padding:14px 0;border-bottom:1px solid var(--ck-line)}#f01-compact-mockup .ck-video-row:first-child{padding-top:0}#f01-compact-mockup .ck-video-row:last-child{padding-bottom:0;border-bottom:0}
+#f01-compact-mockup .ck-video-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+#f01-compact-mockup .ck-video-heading input{width:80px;text-align:right}
+#f01-compact-mockup .ck-video-track{position:relative;padding-bottom:8px}
+#f01-compact-mockup .ck-video-track input{display:block;appearance:none;-webkit-appearance:none;width:100%;height:24px;min-width:0;margin:0;background:transparent}
+#f01-compact-mockup .ck-video-track input::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:var(--ck-line)}
+#f01-compact-mockup .ck-video-track input::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:14px;height:14px;margin-top:-5px;border-radius:50%;border:1px solid var(--ck-sub);background:var(--ck-blue)}
+#f01-compact-mockup .ck-video-neutral{position:absolute;left:7px;right:7px;bottom:2px;height:6px;pointer-events:none}
+#f01-compact-mockup .ck-video-neutral:after{content:"";position:absolute;left:var(--ck-neutral);top:0;width:1px;height:6px;background:var(--ck-sub)}
+#f01-compact-mockup .ck-field{display:flex;flex-direction:column;gap:6px;margin-top:12px;min-width:0}
+#f01-compact-mockup .ck-field input,#f01-compact-mockup .ck-field select{width:100%;min-width:0}
+#f01-compact-mockup .ck-name-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:12px;margin-top:12px}
+#f01-compact-mockup .ck-name-row .ck-field{margin-top:0}
+#f01-compact-mockup .ck-preset-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:12px}
+#f01-compact-mockup .ck-create{padding-top:14px}
+#f01-compact-mockup .ck-create>summary{color:var(--ck-text);font-size:14px;font-weight:500}
+#f01-compact-mockup .ck-create[open]>summary{margin-bottom:12px}
+#f01-compact-mockup .ck-preference{margin-top:12px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+#f01-compact-mockup .ck-review{border-top:1px solid var(--ck-line);padding:10px 24px;background:var(--ck-control)}
+#f01-compact-mockup .ck-review>summary{font-size:12px;color:var(--ck-sub)}#f01-compact-mockup .ck-review .ck-row{padding-top:8px}
+@media(max-width:650px){#f01-compact-mockup .ck-header{padding:16px;gap:10px}#f01-compact-mockup .ck-scope{margin-left:0;width:100%}#f01-compact-mockup .ck-scope select{flex:1;min-width:0}#f01-compact-mockup .ck-content{padding:14px}#f01-compact-mockup .ck-nav{padding:0 8px}#f01-compact-mockup .ck-nav button{padding:10px 14px}#f01-compact-mockup .ck-panel{padding:14px}#f01-compact-mockup .ck-gain{grid-template-columns:44px minmax(50px,1fr) 80px}#f01-compact-mockup .ck-topline{align-items:start}#f01-compact-mockup .ck-review{padding:10px 14px}#f01-compact-mockup .ck-graphs{grid-template-columns:1fr}#f01-compact-mockup .ck-dials{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(pointer:coarse){#f01-compact-mockup .ck-dials{grid-template-columns:repeat(3,minmax(0,1fr))}#f01-compact-mockup button,#f01-compact-mockup select{min-height:44px}#f01-compact-mockup input[type=number],#f01-compact-mockup input[type=text]{font-size:16px;min-height:40px}#f01-compact-mockup .ck-check{min-height:44px}}
+@media(max-width:420px){#f01-compact-mockup .ck-dials{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+<section class="ck-window" aria-label="치즈 나이프 미디어 설정 목업">
+<header class="ck-header"><h1>치즈 나이프 · 미디어 설정</h1><div class="ck-scope"><label for="ck-scope">적용 범위</label><select id="ck-scope"><option value="global">전역</option><option value="channel" selected>현재 채널 · 예시 A</option><option value="saved">저장된 채널 관리</option></select></div></header>
+<nav class="ck-nav" role="tablist" aria-label="미디어 설정"><button type="button" id="ck-audio-tab" role="tab" aria-selected="true" aria-controls="ck-audio-panel">오디오</button><button type="button" id="ck-video-tab" role="tab" aria-selected="false" aria-controls="ck-video-panel">영상</button><button type="button" id="ck-presets-tab" role="tab" aria-selected="false" aria-controls="ck-presets-panel">프리셋 관리</button></nav>
+<div class="ck-content">
+<div id="ck-case-banner" class="ck-banner" role="status" aria-live="polite" hidden><span id="ck-case-text"></span><div class="ck-row" id="ck-case-actions"></div></div>
+<section id="ck-audio-panel" role="tabpanel" aria-labelledby="ck-audio-tab">
+<div class="ck-topline"><h2>오디오 보정</h2><button type="button" class="ck-master" id="ck-audio-master" aria-pressed="true" aria-describedby="ck-current-state">전체 ON</button></div>
+<p class="ck-sub ck-master-status" id="ck-current-state" role="status" aria-live="polite">현재 방송 보정 ON · 설정 Gain 150% · 예시</p>
+<div class="ck-preset-row" style="margin-bottom:12px"><label for="ck-recipe">프리셋</label><select id="ck-recipe"><option value="none">선택 없음</option><optgroup label="내장"><option value="compressor">기존 컴프레서</option><option value="voice">음성 EQ</option></optgroup><optgroup label="내 프리셋"><option value="user-audio">내 오디오 · 예시</option></optgroup></select><button id="ck-recipe-apply" type="button" disabled>적용</button><button id="ck-audio-save" type="button">프리셋으로 저장</button></div>
+<div class="ck-panel">
+<section class="ck-section" aria-label="오디오 참고 그래프"><div class="ck-graphs">
+<div class="ck-response" id="ck-compressor-response"><div class="ck-response-head"><h2>압축 특성</h2><span id="ck-compressor-state">ON</span></div><span class="ck-sub">정적 참고 모형 · 시간 반응·자동 보상 제외</span>
+<svg id="ck-compressor-graph" viewBox="0 0 282 168" role="img" aria-labelledby="ck-compressor-title ck-compressor-desc">
+<title id="ck-compressor-title">컴프레서 입력·출력 정적 참고 모형</title><desc id="ck-compressor-desc">일반적인 soft-knee 참고 모형입니다. 실제 Chrome 출력이나 Attack·Release 반응을 계산하지 않습니다.</desc>
+<g id="ck-compressor-axes"></g><path id="ck-compressor-identity" class="ck-response-identity"></path><path id="ck-compressor-line" class="ck-response-active"></path>
+</svg></div>
+<div class="ck-response" id="ck-response"><div class="ck-response-head"><h2>EQ 응답</h2><span id="ck-response-state">OFF</span></div><span class="ck-sub">48 kHz 예시 · Gain·안전 감쇠 제외</span>
+<svg id="ck-response-graph" viewBox="0 0 282 168" role="img" aria-labelledby="ck-response-title ck-response-desc">
+<title id="ck-response-title">설정 기반 EQ 필터 응답</title><desc id="ck-response-desc">48kHz·Q1 계산 예시. 실제 방송 측정이 아닙니다.</desc>
+<g id="ck-response-axes"></g><path id="ck-response-fill"></path><path id="ck-response-line"></path>
+</svg></div>
+</div></section>
+<section class="ck-section" aria-labelledby="ck-gain-heading"><div class="ck-gain"><h2 id="ck-gain-heading">Gain</h2><input id="ck-gain" type="range" min="0" max="200" step="any" value="150" aria-label="Gain 백분율"><output class="ck-value" id="ck-gain-value" for="ck-gain">150.00%</output></div><div class="ck-preference"><div class="ck-row"><span class="ck-chip" id="ck-gain-source">전역 상속</span><label class="ck-check"><input id="ck-inherit" type="checkbox" checked><span id="ck-inherit-label">전역 Gain 사용</span></label></div><label class="ck-check"><input id="ck-auto" type="checkbox">새 영상에서 보정 자동 켜기</label></div></section>
+<section class="ck-section" aria-labelledby="ck-compressor-heading">
+<div class="ck-section-head"><h2 id="ck-compressor-heading">컴프레서</h2><div class="ck-row"><button type="button" id="ck-comp-reset">기본값</button><label class="ck-check"><input id="ck-compressor" type="checkbox" checked>사용</label></div></div>
+<div class="ck-dials" aria-label="컴프레서 파라미터">
+<div class="ck-dial-control"><label for="ck-threshold-number">Threshold</label><span class="ck-dial-face"><input class="ck-dial-input" data-comp-range="threshold" type="range" min="-100" max="0" step="any" value="-50" aria-label="Threshold dB · 위아래 드래그"></span><div class="ck-dial-value"><input id="ck-threshold-number" data-comp-number="threshold" type="number" min="-100" max="0" step="any" value="-50.00"><span>dB</span></div></div>
+<div class="ck-dial-control"><label for="ck-knee-number">Knee</label><span class="ck-dial-face"><input class="ck-dial-input" data-comp-range="knee" type="range" min="0" max="40" step="any" value="40" aria-label="Knee dB · 위아래 드래그"></span><div class="ck-dial-value"><input id="ck-knee-number" data-comp-number="knee" type="number" min="0" max="40" step="any" value="40.00"><span>dB</span></div></div>
+<div class="ck-dial-control"><label for="ck-ratio-number">Ratio</label><span class="ck-dial-face"><input class="ck-dial-input" data-comp-range="ratio" type="range" min="1" max="20" step="any" value="12" aria-label="Ratio · 위아래 드래그"></span><div class="ck-dial-value"><input id="ck-ratio-number" data-comp-number="ratio" type="number" min="1" max="20" step="any" value="12.00"><span>:1</span></div></div>
+<div class="ck-dial-control"><label for="ck-attack-number">Attack</label><span class="ck-dial-face"><input class="ck-dial-input" data-comp-range="attack" type="range" min="0" max="1000" step="any" value="0" aria-label="Attack ms · 위아래 드래그"></span><div class="ck-dial-value"><input id="ck-attack-number" data-comp-number="attack" type="number" min="0" max="1000" step="any" value="0.00"><span>ms</span></div></div>
+<div class="ck-dial-control"><label for="ck-release-number">Release</label><span class="ck-dial-face"><input class="ck-dial-input" data-comp-range="release" type="range" min="0" max="1000" step="any" value="250" aria-label="Release ms · 위아래 드래그"></span><div class="ck-dial-value"><input id="ck-release-number" data-comp-number="release" type="number" min="0" max="1000" step="any" value="250.00"><span>ms</span></div></div>
+</div>
+<div class="ck-sub ck-dial-hint">위아래 드래그 · 더블클릭 기본값 · 숫자 입력/방향키</div>
+</section>
+<section class="ck-section ck-eq-section" aria-labelledby="ck-eq-heading"><div class="ck-section-head"><h2 id="ck-eq-heading">이퀄라이저 <span class="ck-sub">8대역 · ±6 dB</span></h2><div class="ck-row"><button type="button" id="ck-eq-reset">중립으로</button><label class="ck-check"><input id="ck-eq" type="checkbox">사용</label></div></div>
+<div class="ck-eq-scroll" role="group" aria-label="8대역 이퀄라이저 · 좁은 화면에서는 좌우 스크롤">
+<div class="ck-eq-shell ck-eq-muted" id="ck-eq-controls">
+<div class="ck-axis" aria-hidden="true"><span style="--ck-tick:0">+6</span><span style="--ck-tick:2">+4</span><span style="--ck-tick:4">+2</span><span style="--ck-tick:6">0 dB</span><span style="--ck-tick:8">−2</span><span style="--ck-tick:10">−4</span><span style="--ck-tick:12">−6</span></div>
+<div class="ck-bands">
+<div class="ck-grid" aria-hidden="true"><span class="ck-major" style="--ck-tick:0"></span><span style="--ck-tick:1"></span><span class="ck-major" style="--ck-tick:2"></span><span style="--ck-tick:3"></span><span class="ck-major" style="--ck-tick:4"></span><span style="--ck-tick:5"></span><span class="ck-major ck-zero" style="--ck-tick:6"></span><span style="--ck-tick:7"></span><span class="ck-major" style="--ck-tick:8"></span><span style="--ck-tick:9"></span><span class="ck-major" style="--ck-tick:10"></span><span style="--ck-tick:11"></span><span class="ck-major" style="--ck-tick:12"></span></div>
+<div class="ck-band"><div class="ck-rail"><input id="ck-eq63-range" data-eq-band="63" type="range" min="-6" max="6" step="any" value="0" aria-label="63 Hz 보정 dB" disabled></div><input data-eq-number="63" type="number" min="-6" max="6" step="any" value="0" aria-label="63 Hz dB 숫자" disabled><label for="ck-eq63-range">63 Hz</label></div>
+<div class="ck-band"><div class="ck-rail"><input id="ck-eq125-range" data-eq-band="125" type="range" min="-6" max="6" step="any" value="0" aria-label="125 Hz 보정 dB" disabled></div><input data-eq-number="125" type="number" min="-6" max="6" step="any" value="0" aria-label="125 Hz dB 숫자" disabled><label for="ck-eq125-range">125 Hz</label></div>
+<div class="ck-band"><div class="ck-rail"><input id="ck-eq250-range" data-eq-band="250" type="range" min="-6" max="6" step="any" value="0" aria-label="250 Hz 보정 dB" disabled></div><input data-eq-number="250" type="number" min="-6" max="6" step="any" value="0" aria-label="250 Hz dB 숫자" disabled><label for="ck-eq250-range">250 Hz</label></div>
+<div class="ck-band"><div class="ck-rail"><input id="ck-eq500-range" data-eq-band="500" type="range" min="-6" max="6" step="any" value="0" aria-label="500 Hz 보정 dB" disabled></div><input data-eq-number="500" type="number" min="-6" max="6" step="any" value="0" aria-label="500 Hz dB 숫자" disabled><label for="ck-eq500-range">500 Hz</label></div>
+<div class="ck-band"><div class="ck-rail"><input id="ck-eq1000-range" data-eq-band="1000" type="range" min="-6" max="6" step="any" value="0" aria-label="1 kHz 보정 dB" disabled></div><input data-eq-number="1000" type="number" min="-6" max="6" step="any" value="0" aria-label="1 kHz dB 숫자" disabled><label for="ck-eq1000-range">1 kHz</label></div>
+<div class="ck-band"><div class="ck-rail"><input id="ck-eq2000-range" data-eq-band="2000" type="range" min="-6" max="6" step="any" value="0" aria-label="2 kHz 보정 dB" disabled></div><input data-eq-number="2000" type="number" min="-6" max="6" step="any" value="0" aria-label="2 kHz dB 숫자" disabled><label for="ck-eq2000-range">2 kHz</label></div>
+<div class="ck-band"><div class="ck-rail"><input id="ck-eq4000-range" data-eq-band="4000" type="range" min="-6" max="6" step="any" value="0" aria-label="4 kHz 보정 dB" disabled></div><input data-eq-number="4000" type="number" min="-6" max="6" step="any" value="0" aria-label="4 kHz dB 숫자" disabled><label for="ck-eq4000-range">4 kHz</label></div>
+<div class="ck-band"><div class="ck-rail"><input id="ck-eq8000-range" data-eq-band="8000" type="range" min="-6" max="6" step="any" value="0" aria-label="8 kHz 보정 dB" disabled></div><input data-eq-number="8000" type="number" min="-6" max="6" step="any" value="0" aria-label="8 kHz dB 숫자" disabled><label for="ck-eq8000-range">8 kHz</label></div>
+</div></div><div class="ck-eq-key"><span>저음</span><span>고음</span></div></div>
+</section>
+<section class="ck-section" aria-labelledby="ck-normalizer-heading"><div class="ck-section-head"><h2 id="ck-normalizer-heading">노멀라이저</h2><label class="ck-check"><input id="ck-normalizer" type="checkbox">사용</label></div><div class="ck-row"><label for="ck-target">목표 RMS</label><input id="ck-target" type="number" min="-30" max="-12" step="any" value="-20" disabled><span class="ck-sub">dBFS</span></div></section></div>
+<div class="ck-bottom" style="justify-content:flex-end"><button type="button" id="ck-global-reset">오디오 전체 전역 사용</button></div>
+<details class="ck-help"><summary>도움말</summary><p>Gain 직접 조작은 해당 저장 범위에 유지됩니다. 상속 중 직접 조절하면 소유값으로 바뀝니다. 전체 보정이 켜져 있을 때 최종 리미터를 유지합니다.</p><p>EQ boost는 안전 여유 때문에 음량을 낮출 수 있습니다. 노멀라이저는 RMS 보정이며 LUFS 인증 기능이 아닙니다.</p></details>
+</section>
+<section id="ck-video-panel" role="tabpanel" aria-labelledby="ck-video-tab" hidden>
+<div class="ck-topline"><h2>영상 필터</h2><span class="ck-sub">짧은 눈금: 중립값</span></div>
+<div class="ck-preset-row" style="margin-bottom:12px"><label for="ck-video-preset">프리셋</label><select id="ck-video-preset"><option value="none">선택 없음</option><optgroup label="내 프리셋"><option value="user-video">내 영상 · 예시</option></optgroup></select><button id="ck-video-preset-apply" type="button" disabled>적용</button><button id="ck-video-save" type="button">프리셋으로 저장</button></div>
+<div class="ck-panel">
+<div class="ck-video-row"><div class="ck-video-heading"><label for="ck-brightness-number">밝기</label><input id="ck-brightness-number" data-video-number="ck-brightness" type="number" min="0" max="3" step="any" value="1.00"></div><div class="ck-video-track"><input id="ck-brightness" data-video="true" type="range" min="0" max="3" step="any" value="1" aria-label="밝기 조절" aria-description="중립값 1"><span class="ck-video-neutral" style="--ck-neutral:33.333333%" aria-hidden="true"></span></div></div>
+<div class="ck-video-row"><div class="ck-video-heading"><label for="ck-contrast-number">대비</label><input id="ck-contrast-number" data-video-number="ck-contrast" type="number" min="0" max="3" step="any" value="1.00"></div><div class="ck-video-track"><input id="ck-contrast" data-video="true" type="range" min="0" max="3" step="any" value="1" aria-label="대비 조절" aria-description="중립값 1"><span class="ck-video-neutral" style="--ck-neutral:33.333333%" aria-hidden="true"></span></div></div>
+<div class="ck-video-row"><div class="ck-video-heading"><label for="ck-saturation-number">채도</label><input id="ck-saturation-number" data-video-number="ck-saturation" type="number" min="0" max="3" step="any" value="1.00"></div><div class="ck-video-track"><input id="ck-saturation" data-video="true" type="range" min="0" max="3" step="any" value="1" aria-label="채도 조절" aria-description="중립값 1"><span class="ck-video-neutral" style="--ck-neutral:33.333333%" aria-hidden="true"></span></div></div>
+<div class="ck-video-row"><div class="ck-video-heading"><label for="ck-gamma-number">감마</label><input id="ck-gamma-number" data-video-number="ck-gamma" type="number" min="0" max="3" step="any" value="1.00"></div><div class="ck-video-track"><input id="ck-gamma" data-video="true" type="range" min="0" max="3" step="any" value="1" aria-label="감마 조절" aria-description="중립값 1"><span class="ck-video-neutral" style="--ck-neutral:33.333333%" aria-hidden="true"></span></div></div>
+<div class="ck-video-row"><div class="ck-video-heading"><label for="ck-sharpness-number">선명도</label><input id="ck-sharpness-number" data-video-number="ck-sharpness" type="number" min="0" max="10" step="any" value="0.00"></div><div class="ck-video-track"><input id="ck-sharpness" data-video="true" type="range" min="0" max="10" step="any" value="0" aria-label="선명도 조절" aria-description="중립값 0"><span class="ck-video-neutral" style="--ck-neutral:0%" aria-hidden="true"></span></div></div>
+</div><div class="ck-bottom"><span class="ck-sub">채팅·사이드바·미리보기 설정은 전역으로 유지</span><button type="button" data-demo-action="영상 전체 전역 사용">영상 전체 전역 사용</button></div></section>
+<section id="ck-presets-panel" role="tabpanel" aria-labelledby="ck-presets-tab" hidden>
+<div class="ck-topline"><h2>프리셋 관리</h2><span class="ck-sub">적용은 오디오·영상 탭에서</span></div>
+<div class="ck-panel">
+<section class="ck-section" id="ck-preset-manage" aria-labelledby="ck-preset-manage-title">
+<h2 id="ck-preset-manage-title">내 프리셋</h2>
+<div class="ck-field"><label for="ck-user-preset">목록</label><select id="ck-user-preset"><option value="user-audio">오디오 · 내 오디오 · 예시</option><option value="user-video">영상 · 내 영상 · 예시</option></select></div>
+<p class="ck-sub" id="ck-presets-empty" hidden>저장된 프리셋이 없습니다.</p>
+<div class="ck-name-row"><div class="ck-field"><label for="ck-preset-rename-name">이름</label><input id="ck-preset-rename-name" type="text" maxlength="96" value="내 오디오"></div><button type="button" id="ck-preset-rename" data-demo-action="프리셋 이름 변경">이름 변경</button></div>
+<div class="ck-preset-actions"><button type="button" id="ck-preset-delete" data-demo-action="프리셋 삭제">삭제</button></div>
+</section>
+<details class="ck-create" id="ck-preset-create">
+<summary>새 프리셋 만들기</summary>
+<p class="ck-sub" id="ck-preset-source">저장할 설정: 오디오 · 예시</p>
+<div class="ck-row" style="margin-top:12px"><label for="ck-preset-domain">종류</label><select id="ck-preset-domain"><option value="audio">오디오</option><option value="video">영상</option></select></div>
+<div class="ck-field"><label for="ck-preset-name">새 이름</label><input id="ck-preset-name" type="text" maxlength="96" placeholder="새 프리셋 이름"></div>
+<div class="ck-preset-actions"><button type="button" data-demo-action="확정값으로 프리셋 생성">새 프리셋 저장</button></div>
+</details>
+</div></section>
+<p class="ck-sub" role="status" aria-live="polite" id="ck-demo-status" style="margin-top:12px">목업 예시 · 실제 저장 없음</p>
+</div>
+<details class="ck-review"><summary>검토 상태 보기 · 실제 설정과 연결되지 않은 목업</summary><div class="ck-row"><label for="ck-example">화면 상태</label><select id="ck-example"><option value="normal">정상</option><option value="unknown">저장 결과 불명</option><option value="legacy">기존 Gain 확인 필요</option><option value="upgrade">저장 형식 전환 필요</option><option value="targetless">현재 대상 없음</option></select></div></details>
+</section>
+<script>
+(()=>{
+const root=document.getElementById('f01-compact-mockup');if(!root)return;
+const byId=id=>root.querySelector('#'+id);
+const master=byId('ck-audio-master');
+const effectState=enabled=>'설정 '+(enabled?'ON':'OFF')+(master.disabled?' · 대상 없음':master.getAttribute('aria-pressed')==='true'?'':' · 미적용');
+function renderAudioState(){
+  const on=master.getAttribute('aria-pressed')==='true';
+  master.textContent=master.disabled?'대상 없음':'전체 '+(on?'ON':'OFF');
+  byId('ck-current-state').textContent=(master.disabled?'현재 방송 대상 없음':on?'현재 방송 보정 ON':'보정 OFF · 소리에 적용되지 않음')+' · 설정 Gain '+fixed2(Number(byId('ck-gain').value))+'% · 예시';
+  renderEqCurve();renderCompressor();
+}
+const demoStatus=text=>{byId('ck-demo-status').textContent='목업: '+text+' · 실제 저장 없음';};
+const fixed2=value=>{const text=Number(value).toFixed(2);return text==='-0.00'?'0.00':text;};
+function setEqBand(band,value,editing=false){
+  const range=root.querySelector('[data-eq-band="'+band+'"]'),number=root.querySelector('[data-eq-number="'+band+'"]');
+  if(!range||!number||!Number.isFinite(value)||value< -6||value>6)return false;
+  range.value=String(value);number.setCustomValidity('');
+  if(!editing)number.value=fixed2(value);
+  number.dataset.tooltip='원값 '+value+' dB';number.setAttribute('aria-description','표시는 소수 둘째 자리, 원값 '+value+' dB');
+  return true;
+}
+function setVideoValue(id,value,editing=false){
+  const range=byId(id),number=root.querySelector('[data-video-number="'+id+'"]');
+  if(!range||!range.dataset.video||!number||!Number.isFinite(value)||value<Number(range.min)||value>Number(range.max))return false;
+  range.value=String(value);number.setCustomValidity('');
+  if(!editing)number.value=fixed2(value);
+  number.dataset.tooltip='원값 '+value;number.setAttribute('aria-description','표시는 소수 둘째 자리, 원값 '+value);
+  return true;
+}
+const compDefaults={threshold:-50,knee:40,ratio:12,attack:0,release:.25},compValues={...compDefaults};
+const compScale={threshold:1,knee:1,ratio:1,attack:1000,release:1000};
+const compUnits={threshold:'dB',knee:'dB',ratio:':1',attack:'ms',release:'ms'};
+function setComp(key,displayValue,editing=false){
+  if(!Object.hasOwn(compValues,key))return false;
+  const range=root.querySelector('[data-comp-range="'+key+'"]'),number=root.querySelector('[data-comp-number="'+key+'"]');
+  if(!Number.isFinite(displayValue)||displayValue<Number(range.min)||displayValue>Number(range.max))return false;
+  if(displayValue!==compValues[key]*compScale[key])compValues[key]=displayValue/compScale[key];
+  range.value=String(displayValue);number.setCustomValidity('');
+  if(!editing)number.value=fixed2(displayValue);
+  number.dataset.tooltip='원값 '+displayValue+' '+compUnits[key];
+  number.setAttribute('aria-description','원값 '+displayValue+' '+compUnits[key]+'. Attack·Release는 시간 반응이며 위의 정적 곡선에서는 제외됩니다.');
+  range.setAttribute('aria-valuetext',fixed2(displayValue)+' '+compUnits[key]);
+  const angle=(displayValue-Number(range.min))/(Number(range.max)-Number(range.min))*270;
+  range.parentElement.style.setProperty('--ck-angle',angle+'deg');
+  return true;
+}
+function resetCompressor(){Object.keys(compDefaults).forEach(key=>setComp(key,compDefaults[key]*compScale[key]));renderCompressor();}
+function svgNode(parent,name,attributes,text){
+  const node=document.createElementNS('http://www.w3.org/2000/svg',name);
+  Object.entries(attributes).forEach(([key,value])=>node.setAttribute(key,String(value)));
+  if(text!==undefined)node.textContent=text;parent.append(node);return node;
+}
+function drawAxes(group,width,xTicks,yTicks,xCaption,yCaption){
+  group.replaceChildren();
+  yTicks.forEach(([position,label,zero])=>{
+    svgNode(group,'path',{d:'M64 '+position+'H'+(width-8),class:zero?'ck-response-zero':'ck-response-guide'});
+    svgNode(group,'text',{x:58,y:position+4,'text-anchor':'end'},label);
+  });
+  xTicks.forEach(([position,label,anchor])=>svgNode(group,'text',{x:position,y:136,'text-anchor':anchor||'middle'},label));
+  svgNode(group,'text',{x:(64+width-8)/2,y:163,'text-anchor':'middle'},xCaption);
+  svgNode(group,'text',{x:13,y:66,'text-anchor':'middle',transform:'rotate(-90 13 66)'},yCaption);
+}
+const eqFrequencies=[63,125,250,500,1000,2000,4000,8000];
+// Mockup-only W3C Audio EQ Cookbook peaking response: 48kHz/Q1, not measured player output.
+function eqResponseDb(frequency,gains){
+  const w=2*Math.PI*frequency/48000,c=Math.cos(w),s=Math.sin(w),c2=Math.cos(2*w),s2=Math.sin(2*w);
+  return eqFrequencies.reduce((sum,center,i)=>{
+    if(gains[i]===0)return sum;
+    const A=10**(gains[i]/40),w0=2*Math.PI*center/48000,alpha=Math.sin(w0)/2,b1=-2*Math.cos(w0);
+    const b0=1+alpha*A,b2=1-alpha*A,a0=1+alpha/A,a2=1-alpha/A;
+    const numerator=Math.hypot(b0+b1*c+b2*c2,b1*s+b2*s2);
+    const denominator=Math.hypot(a0+b1*c+a2*c2,b1*s+a2*s2);
+    return sum+20*Math.log10(numerator/denominator);
+  },0);
+}
+function renderEqCurve(){
+  const enabled=byId('ck-eq').checked,gains=eqFrequencies.map(f=>enabled?Number(root.querySelector('[data-eq-band="'+f+'"]').value):0);
+  if(gains.some(v=>!Number.isFinite(v)||v< -6||v>6))return;
+  const frequencies=[...new Set([...Array.from({length:257},(_,i)=>20*1000**(i/256)),...eqFrequencies])].sort((a,b)=>a-b);
+  const samples=frequencies.map(f=>[f,eqResponseDb(f,gains)]);
+  if(samples.some(([,v])=>!Number.isFinite(v)))return;
+  const limit=Math.max(6,Math.ceil((Math.max(...samples.map(([,v])=>Math.abs(v)))+.25)/2)*2);
+  const graph=byId('ck-response-graph'),width=graph.parentElement.clientWidth||282,right=width-8,x=f=>64+Math.log10(f/20)/3*(right-64);
+  graph.setAttribute('viewBox','0 0 '+width+' 168');
+  const points=samples.map(([f,v])=>[x(f).toFixed(2),(66-v/limit*50).toFixed(2)]);
+  const line='M'+points.map(p=>p.join(' ')).join(' L');
+  byId('ck-response-line').setAttribute('d',line);
+  byId('ck-response-fill').setAttribute('d',line+' L'+right+' 66 L64 66 Z');
+  drawAxes(byId('ck-response-axes'),width,[[64,'20','start'],[x(1000),'1k'],[right,'20k','end']],[[16,'+'+limit],[66,'0',true],[116,'−'+limit]],'주파수 (Hz)','보정 (dB)');
+  byId('ck-response').dataset.dbLimit=String(limit);byId('ck-response-state').textContent=effectState(enabled);
+  byId('ck-response-desc').textContent='48kHz·고정8대역·Q1 계산 예시. Gain·안전 감쇠 제외, 실제 방송 측정 아님. '+effectState(enabled)+'. 그래프 범위 ±'+limit+'dB.';
+}
+function compressorModelDb(input,threshold,knee,ratio){
+  // Illustrative centered soft knee, not Chromium's compressor curve or automatic makeup.
+  if(knee===0)return input<=threshold?input:threshold+(input-threshold)/ratio;
+  if(input<threshold-knee/2)return input;
+  if(input>threshold+knee/2)return threshold+(input-threshold)/ratio;
+  return input+(1/ratio-1)*(input-threshold+knee/2)**2/(2*knee);
+}
+function renderCompressor(){
+  const enabled=byId('ck-compressor').checked,graph=byId('ck-compressor-graph'),width=graph.parentElement.clientWidth||282,right=width-8;
+  const samples=Array.from({length:101},(_,i)=>{const input=-100+i;return [input,enabled?compressorModelDb(input,compValues.threshold,compValues.knee,compValues.ratio):input];});
+  const floor=Math.min(-100,Math.floor(Math.min(...samples.map(([,output])=>output))/20)*20),x=v=>64+(v+100)/100*(right-64),y=v=>16+v/floor*100;
+  graph.setAttribute('viewBox','0 0 '+width+' 168');
+  byId('ck-compressor-line').setAttribute('d','M'+samples.map(([input,output])=>x(input).toFixed(2)+' '+y(output).toFixed(2)).join(' L'));
+  byId('ck-compressor-identity').setAttribute('d','M'+x(-100).toFixed(2)+' '+y(-100).toFixed(2)+' L'+x(0).toFixed(2)+' '+y(0).toFixed(2));
+  drawAxes(byId('ck-compressor-axes'),width,[[64,'−100','start'],[x(-50),'−50'],[right,'0','end']],[[16,'0'],[66,String(floor/2)],[116,String(floor)]],'입력 (dB)','출력 (dB)');
+  byId('ck-compressor-state').textContent=effectState(enabled);
+  byId('ck-compressor-desc').textContent='일반적인 soft-knee 설정 참고 모형. 실제 Chrome 출력이나 Attack·Release 반응을 계산하지 않습니다. '+effectState(enabled)+'.';
+}
+let dialDrag=null;
+function compressorEnabled(){
+  const enabled=byId('ck-compressor').checked;root.querySelector('.ck-dials').classList.toggle('ck-eq-muted',!enabled);
+  root.querySelectorAll('[data-comp-range],[data-comp-number]').forEach(input=>input.disabled=!enabled);
+  if(!enabled)dialDrag=null;renderCompressor();
+}
+const eqEnabled=()=>{const on=byId('ck-eq').checked;byId('ck-eq-controls').classList.toggle('ck-eq-muted',!on);root.querySelectorAll('[data-eq-band],[data-eq-number]').forEach(el=>el.disabled=!on);renderEqCurve();};
+const setGain=(value,direct)=>{if(!Number.isFinite(value)||value<0||value>200)return;byId('ck-gain').value=String(value);byId('ck-gain-value').textContent=fixed2(value)+'%';byId('ck-gain-value').dataset.tooltip='원값 '+value+'%';byId('ck-gain').setAttribute('aria-valuetext',fixed2(value)+'%');if(direct)byId('ck-inherit').checked=false;byId('ck-gain-source').textContent=byId('ck-inherit').checked?(byId('ck-scope').value==='global'?'기존 사이트값':'전역 상속'):byId('ck-scope').value==='global'?'전역 소유':'채널 소유';renderAudioState();};
+root.querySelectorAll('[role=tab]').forEach(tab=>tab.addEventListener('click',()=>{root.querySelectorAll('[role=tab]').forEach(peer=>{const active=peer===tab;peer.setAttribute('aria-selected',String(active));byId(peer.getAttribute('aria-controls')).hidden=!active;});renderEqCurve();renderCompressor();}));
+root.addEventListener('input',event=>{
+  const el=event.target;if(!(el instanceof HTMLInputElement))return;
+  if(el.id==='ck-gain'){setGain(Number(el.value),true);demoStatus('Gain 조작 미리보기');}
+  const band=el.dataset.eqBand||el.dataset.eqNumber;
+  if(band){
+    const value=Number(el.value);
+    if(el.value===''||!Number.isFinite(value)||value< -6||value>6){el.setCustomValidity('−6~+6 dB 범위');return;}
+    el.setCustomValidity('');setEqBand(band,value,!!el.dataset.eqNumber);renderEqCurve();demoStatus('EQ 조작 미리보기');
+  }
+  const key=el.dataset.compRange||el.dataset.compNumber;
+  if(key){
+    if(el.disabled)return;
+    if(el.value===''||!setComp(key,Number(el.value),!!el.dataset.compNumber)){el.setCustomValidity('표시 범위 안의 유한 수치를 입력하세요.');return;}
+    el.setCustomValidity('');renderCompressor();demoStatus('컴프레서 조작 미리보기');
+  }
+  const video=el.dataset.videoNumber||(el.dataset.video?el.id:null);
+  if(video){
+    if(el.value===''||!setVideoValue(video,Number(el.value),!!el.dataset.videoNumber)){el.setCustomValidity('표시 범위 안의 유한 수치를 입력하세요.');return;}
+    demoStatus('영상 필터 조작 미리보기');
+  }
+});
+root.addEventListener('focusin',event=>{
+  const el=event.target;
+  if(el.dataset.eqNumber)el.value=root.querySelector('[data-eq-band="'+el.dataset.eqNumber+'"]').value;
+  if(el.dataset.compNumber)el.value=String(compValues[el.dataset.compNumber]*compScale[el.dataset.compNumber]);
+  if(el.dataset.videoNumber)el.value=byId(el.dataset.videoNumber).value;
+});
+root.addEventListener('focusout',event=>{
+  const el=event.target;if(!el.dataset.eqNumber&&!el.dataset.compNumber&&!el.dataset.videoNumber)return;
+  if(el.value===''||!el.validity.valid)return;
+  if(el.dataset.eqNumber)el.value=fixed2(Number(root.querySelector('[data-eq-band="'+el.dataset.eqNumber+'"]').value));
+  if(el.dataset.compNumber)el.value=fixed2(compValues[el.dataset.compNumber]*compScale[el.dataset.compNumber]);
+  if(el.dataset.videoNumber)el.value=fixed2(Number(byId(el.dataset.videoNumber).value));
+});
+root.addEventListener('pointerdown',event=>{
+  const input=event.target,key=input.dataset.compRange;if(!key||input.disabled||event.button!==0)return;
+  event.preventDefault();input.focus();
+  dialDrag={key,id:event.pointerId,y:event.clientY,input};
+  if(typeof input.setPointerCapture==='function'){
+    try{input.setPointerCapture(event.pointerId);}
+    catch{dialDrag=null;demoStatus('드래그 시작 실패 · 숫자 입력 사용');}
+  }
+});
+window.addEventListener('pointermove',event=>{
+  if(!dialDrag||event.pointerId!==dialDrag.id||!Number.isFinite(event.clientY))return;
+  const input=dialDrag.input,span=Number(input.max)-Number(input.min);
+  const value=Math.min(Number(input.max),Math.max(Number(input.min),compValues[dialDrag.key]*compScale[dialDrag.key]+(dialDrag.y-event.clientY)*span/160));
+  dialDrag.y=event.clientY;
+  setComp(dialDrag.key,value);renderCompressor();demoStatus('컴프레서 다이얼 조작 미리보기');
+});
+const endDrag=event=>{if(dialDrag&&event.pointerId===dialDrag.id)dialDrag=null;};
+window.addEventListener('pointerup',endDrag);window.addEventListener('pointercancel',endDrag);
+root.addEventListener('lostpointercapture',endDrag);window.addEventListener('blur',()=>{dialDrag=null;});
+root.addEventListener('keydown',event=>{
+  const input=event.target,key=input.dataset.compRange;if(!key||input.disabled)return;
+  const steps={threshold:.1,knee:.1,ratio:.1,attack:1,release:1},delta=steps[key];
+  let value=compValues[key]*compScale[key];
+  if(event.key==='ArrowUp'||event.key==='ArrowRight')value+=delta;
+  else if(event.key==='ArrowDown'||event.key==='ArrowLeft')value-=delta;
+  else if(event.key==='Home')value=Number(input.min);else if(event.key==='End')value=Number(input.max);else return;
+  event.preventDefault();setComp(key,Math.min(Number(input.max),Math.max(Number(input.min),value)));renderCompressor();
+});
+root.addEventListener('dblclick',event=>{
+  const el=event.target;if(!(el instanceof HTMLInputElement)||el.disabled)return;
+  if(el.id==='ck-gain')setGain(100,true);
+  else if(el.dataset.compRange){setComp(el.dataset.compRange,compDefaults[el.dataset.compRange]*compScale[el.dataset.compRange]);renderCompressor();}
+  else if(el.dataset.eqBand){setEqBand(el.dataset.eqBand,0);renderEqCurve();}
+  else return;
+  demoStatus('해당 항목 기본값 복귀');
+});
+byId('ck-comp-reset').addEventListener('click',()=>{resetCompressor();demoStatus('컴프레서 파라미터 기본값 복귀');});
+byId('ck-eq-reset').addEventListener('click',()=>{eqFrequencies.forEach(f=>setEqBand(f,0));renderEqCurve();demoStatus('EQ 8대역 중립 복귀');});
+byId('ck-eq').addEventListener('change',eqEnabled);byId('ck-normalizer').addEventListener('change',()=>byId('ck-target').disabled=!byId('ck-normalizer').checked);
+byId('ck-inherit').addEventListener('change',()=>{setGain(150,false);demoStatus('Gain 출처 전환 미리보기');});
+byId('ck-scope').addEventListener('change',()=>{const global=byId('ck-scope').value==='global';byId('ck-inherit-label').textContent=global?'기존 사이트 Gain 사용':'전역 Gain 사용';setGain(Number(byId('ck-gain').value),false);describePresetSource();demoStatus('적용 범위 선택 미리보기');});
+master.addEventListener('click',()=>{master.setAttribute('aria-pressed',String(master.getAttribute('aria-pressed')!=='true'));renderAudioState();demoStatus('현재 방송 전체 보정 전환');});
+byId('ck-recipe-apply').addEventListener('click',()=>{
+  const kind=byId('ck-recipe').value;if(!['voice','compressor','user-audio'].includes(kind))return;
+  if(kind==='voice'){byId('ck-eq').checked=true;[-2,-1,-1,0,1,2,1,0].forEach((value,i)=>setEqBand(eqFrequencies[i],value));}
+  else if(kind==='compressor'){
+    resetCompressor();byId('ck-compressor').checked=true;byId('ck-eq').checked=false;byId('ck-normalizer').checked=false;byId('ck-target').disabled=true;
+  }else{
+    // shortcut: Fixed synthetic user preset; real catalogue/confirmation belongs to F01 implementation.
+    const values={threshold:-35,knee:20,ratio:4,attack:.005,release:.25};
+    Object.keys(values).forEach(key=>setComp(key,values[key]*compScale[key]));
+    [-2,-1,-1,0,1,2,1,0].forEach((value,i)=>setEqBand(eqFrequencies[i],value));
+    byId('ck-compressor').checked=true;byId('ck-eq').checked=true;byId('ck-normalizer').checked=false;byId('ck-target').disabled=true;byId('ck-auto').checked=false;setGain(128,true);
+  }
+  eqEnabled();compressorEnabled();demoStatus('오디오 프리셋 설정값 복사 · '+byId('ck-scope').selectedOptions[0].textContent);
+});
+byId('ck-video-preset-apply').addEventListener('click',()=>{
+  if(byId('ck-video-preset').value!=='user-video')return;
+  ['brightness','contrast','saturation','gamma','sharpness'].forEach((key,i)=>setVideoValue('ck-'+key,[1.1,1.05,1.1,1,.2][i]));
+  demoStatus('영상 프리셋 설정값 복사 · '+byId('ck-scope').selectedOptions[0].textContent);
+});
+[['ck-recipe','ck-recipe-apply'],['ck-video-preset','ck-video-preset-apply']].forEach(([select,button])=>byId(select).addEventListener('change',()=>byId(button).disabled=byId(select).value==='none'));
+const describePresetSource=()=>{byId('ck-preset-source').textContent='저장할 설정: '+byId('ck-scope').selectedOptions[0].textContent+' · '+(byId('ck-preset-domain').value==='audio'?'오디오':'영상')+' · 예시';};
+['audio','video'].forEach(domain=>byId('ck-'+domain+'-save').addEventListener('click',()=>{byId('ck-preset-domain').value=domain;describePresetSource();byId('ck-presets-tab').click();byId('ck-preset-create').open=true;byId('ck-preset-name').focus();demoStatus('확정 설정값의 프리셋 생성 준비');}));
+byId('ck-preset-domain').addEventListener('change',describePresetSource);
+function syncManagedPreset(){
+  const names={'user-audio':'내 오디오','user-video':'내 영상'},value=byId('ck-user-preset').value,selected=Object.hasOwn(names,value);
+  byId('ck-preset-rename-name').value=selected?names[value]:'';
+  ['ck-preset-rename-name','ck-preset-rename','ck-preset-delete'].forEach(id=>byId(id).disabled=!selected);
+  byId('ck-presets-empty').hidden=selected;
+  if(!selected)byId('ck-preset-create').open=true;
+}
+byId('ck-user-preset').addEventListener('change',syncManagedPreset);
+byId('ck-global-reset').addEventListener('click',()=>demoStatus('전역 복귀 영향 확인 단계'));root.querySelectorAll('[data-demo-action]').forEach(el=>el.addEventListener('click',()=>demoStatus(el.dataset.demoAction+' 확인 단계')));
+const cases={unknown:['저장 결과 불명 · 마지막 확정 Gain 150%',['최신 저장값 확인','보류 조작 폐기']],legacy:['기존 사이트 Gain · 확인 필요',['기존 Gain 확인','확인값 가져오기']],upgrade:['기존 채널·프리셋은 읽기 전용입니다.',['영향 확인 후 저장 형식 전환']],targetless:['현재 방송 대상 없음 · 전역/저장된 채널 관리 가능',[]]};
+byId('ck-example').addEventListener('change',()=>{const value=byId('ck-example').value,entry=cases[value];byId('ck-case-banner').hidden=!entry;byId('ck-case-actions').replaceChildren();if(entry){byId('ck-case-text').textContent=entry[0];entry[1].forEach(label=>{const button=document.createElement('button');button.type='button';button.textContent=label;button.addEventListener('click',()=>demoStatus(label+' 미리보기'));byId('ck-case-actions').append(button);});}master.disabled=value==='targetless';renderAudioState();});
+eqFrequencies.forEach(f=>setEqBand(f,Number(root.querySelector('[data-eq-band="'+f+'"]').value)));
+Object.keys(compValues).forEach(key=>setComp(key,compValues[key]*compScale[key]));
+root.querySelectorAll('[data-video]').forEach(range=>setVideoValue(range.id,Number(range.value)));
+byId('ck-compressor').addEventListener('change',compressorEnabled);
+eqEnabled();compressorEnabled();setGain(Number(byId('ck-gain').value),false);describePresetSource();syncManagedPreset();byId('ck-presets-tab').click();
+if(typeof ResizeObserver==='function'){const observer=new ResizeObserver(()=>{renderEqCurve();renderCompressor();});root.querySelectorAll('.ck-response').forEach(el=>observer.observe(el));}
+})();
+</script>
+</div>
+</body>
+</html>

@@ -2,6 +2,8 @@ export const FIXTURE_LIVE_URL = 'https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaa
 export const FIXTURE_CHANNEL_URL = 'https://chzzk.naver.com/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 export const FIXTURE_VOD_URL = 'https://chzzk.naver.com/video/12345';
 export const FIXTURE_SITE_SCRIPT_URL = 'https://chzzk.naver.com/__knife_fixture__/site.js';
+export const FIXTURE_AUDIO_URL = 'https://chzzk.naver.com/live/cccccccccccccccccccccccccccccccc';
+export const FIXTURE_AUDIO_SCRIPT_URL = 'https://chzzk.naver.com/__knife_fixture__/audio-site.js';
 
 const definitions = Object.freeze([
   Object.freeze({ url: FIXTURE_LIVE_URL, file: 'tests/fixtures/installed-extension/live.html', contentType: 'text/html; charset=utf-8' }),
@@ -34,6 +36,16 @@ export async function loadFixtureResponses(files) {
     contentType: definition.contentType,
     body: await files.readFile(definition.file, 'utf8'),
   })));
+  responseIndex(responses);
+  return Object.freeze(responses);
+}
+
+export async function loadAudioFixtureResponses(files) {
+  const responses = await Promise.all([
+    { url: FIXTURE_AUDIO_URL, file: 'tests/fixtures/installed-extension/audio-live.html', contentType: 'text/html; charset=utf-8' },
+    { url: FIXTURE_AUDIO_SCRIPT_URL, file: 'tests/fixtures/installed-extension/audio-site.js', contentType: 'text/javascript; charset=utf-8' },
+  ].map(async definition => Object.freeze({ url: definition.url, status: 200, contentType: definition.contentType,
+    body: await files.readFile(definition.file, 'utf8') })));
   responseIndex(responses);
   return Object.freeze(responses);
 }

@@ -7,6 +7,9 @@ import {audioQualityReportFailures as audioQualityFailures} from './audio-metric
 import {summarizeCapture} from './audio-signal.mjs';
 import {openOwnedRoot} from './owned-files.mjs';
 import {AUDIO_ARTIFACT_FILES,describeAudioArtifact,parseAudioQualityArgs} from './audio-artifacts.mjs';
+import {openAudioMeasurementBrowser} from './audio-native-browser.mjs';
+import {execFileSync} from 'node:child_process';
+import {prepareQualityRun,installQualityTrace,writeQualityDiagnostic} from './audio-quality-diagnostics.mjs';
 const require=createRequire(import.meta.url);
 const {playerHTML}=require('../tests/helpers.cjs');
 const repositoryRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
@@ -15,11 +18,23 @@ const {chromium}=await import('playwright');
 const files=await openOwnedRoot(repositoryRoot);
 const targetFiles=await openOwnedRoot(options.root);
 const artifact=await describeAudioArtifact(options.root,options.label);
-const browser=await chromium.launch({headless:true,...(options.chrome?{channel:'chrome'}:{})});
+const diagnosticRun=await prepareQualityRun(files,options.label,process.env.KNIFE_AUDIO_QUALITY_TRACE);
+const diagnosticEvidence={artifact,sourceCommit:execFileSync('git',['rev-parse','HEAD'],{cwd:repositoryRoot,encoding:'utf8'}).trim(),
+  pullRequestHead:process.env.GITHUB_HEAD_SHA??null,platform:process.platform,nodeVersion:process.version,browserVersion:'unavailable',
+  sampleRate:0,audioConfig:{},wanted:false,state:'unavailable',trace:null,shutdown:null};
+let diagnosticFailure=null;
+const diagnosticSecondary=[];
+const diagnosticError=(stage,error)=>{if(diagnosticFailure===null)diagnosticFailure=error;else diagnosticSecondary.push(stage+':'+String(error?.message??error).slice(0,2048));};
+try {
+const measurement=options.chrome||process.platform!=='win32'?null:await openAudioMeasurementBrowser(chromium,files);
+const browser=measurement?.browser??await chromium.launch({headless:true,...(options.chrome?{channel:'chrome'}:{})});
 const output='output/audio-quality';
 const reportPath=options.label==='source'?`${output}/report.json`:`${output}/report-${options.label}.json`;
+let diagnosticPage;
+diagnosticEvidence.browserVersion=browser.version();
 try {
   const page=await browser.newPage();
+  diagnosticPage=page;
   await page.route('https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',route=>route.fulfill({contentType:'text/html',body:playerHTML}));
   await page.goto('https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
   await page.evaluate(async()=>{
@@ -50,13 +65,15 @@ try {
     context.createGain=()=>{const node=gain();probe.gains.push(node);return node;};
     window.AudioContext=class {constructor(){return context;}};
   });
+  await page.evaluate(()=>{window.__quality.masterFrames=new Float64Array(12);window.__quality.masterFrameCount=0;});
+  if(diagnosticRun.trace)await page.evaluate(installQualityTrace);
   for(const file of AUDIO_ARTIFACT_FILES) await page.evaluate(await targetFiles.readFile(file,'utf8'));
   await page.evaluate(()=>{
     const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
-    const config=normalizeConfig({});
-    window.postMessage({namespace:'cheese-knife',protocol:2,type:'config',requestId:runtime.mediaRequestId,context:{...runtime.media.context},
+    const config={...normalizeConfig({}),...KnifeMediaProfiles.projectGlobalAudio({})};
+    window.postMessage({namespace:'cheese-knife',protocol:3,type:'config',requestId:runtime.mediaRequestId,context:{...runtime.media.context},
       deliverySequence:100,baseConfig:config,effectiveConfig:config,i18n:{},version:{globalRevision:0,mediaRevision:0},
-      profileState:'global',revisionStatus:'ready',mediaPhase:'ready',audioBindingGeneration:1,audioKind:'global',videoKind:'global'},location.origin);
+      profileState:'global',revisionStatus:'ready',mediaPhase:'ready',audioBindingGeneration:1,audioKind:'global',videoKind:'global',gainOrigin:'site-legacy'},location.origin);
   });
   await page.locator('.knife-comp').waitFor();
   const signal=async({frequency=1000,amplitude=0.5,stereo='identical',bursts=false}={})=>{
@@ -95,6 +112,7 @@ try {
     const channels=[new Float32Array(end-start),new Float32Array(end-start)],covered=new Uint8Array(end-start);
     for(const chunk of chunks){
       const a=Math.max(start,chunk.frame),b=Math.min(end,chunk.frame+(chunk.samples[0]?.length||0));if(a>=b)continue;
+      if(chunk.samples.length!==2||!chunk.samples[0]||!chunk.samples[1]||chunk.samples[0].length!==chunk.samples[1].length)throw new Error('Incomplete stereo audio capture window');
       covered.fill(1,a-start,b-start);
       for(let channel=0;channel<2;channel++){
         const samples=chunk.samples.at(channel),target=channels.at(channel);
@@ -125,14 +143,17 @@ try {
         const runtime=window[Symbol.for('cheese-knife.runtime.v1')],video=document.querySelector('video');
         const frame=Math.round(window.__quality.context.currentTime*window.__quality.context.sampleRate);
         if(kind==='gain')runtime.audio.setGain(video,value);else await runtime.audio.setEnabled(video,value);
+        if(kind==='enabled'){const probe=window.__quality,index=probe.masterFrameCount++*2;
+          probe.masterFrames.fill(frame,index,index+1);probe.masterFrames[index+1]=Math.round(probe.context.currentTime*probe.context.sampleRate);}
         return frame;
       },{kind,value});
       await page.waitForTimeout(300);
       const rate=await page.evaluate(()=>window.__quality.context.sampleRate);
+      const diagnosticCapture=(capture,phase)=>kind==='enabled'?diagnosticRun.collector.retainCapture(capture,{frequency,value,frame},phase):capture;
       transitions.push({frequency,kind,value,
-        before:summarizeCapture(await windowSamples(frame-Math.round(rate*0.08),frame-Math.round(rate*0.04))),
-        change:summarizeCapture(await windowSamples(frame-Math.round(rate*0.02),frame+Math.round(rate*0.04))),
-        after:summarizeCapture(await windowSamples(frame+Math.round(rate*0.1),frame+Math.round(rate*0.14)))});
+        before:summarizeCapture(diagnosticCapture(await windowSamples(frame-Math.round(rate*0.08),frame-Math.round(rate*0.04)),'before')),
+        change:summarizeCapture(diagnosticCapture(await windowSamples(frame-Math.round(rate*0.02),frame+Math.round(rate*0.04)),'change')),
+        after:summarizeCapture(diagnosticCapture(await windowSamples(frame+Math.round(rate*0.1),frame+Math.round(rate*0.14)),'after'))});
     }
   }
   const alignments=await page.evaluate(async()=>{
@@ -175,9 +196,30 @@ try {
   if(nodes.sources!==1||cases[0].channels[0].rms<0.34||cases[0].channels[0].rms>0.36)throw new Error('Capture calibration failed');
   const qualityFailures=audioQualityFailures(report);
   report.qualityFailures=qualityFailures;
-  await files.ensureDirectory(output);await files.writeFile(reportPath,JSON.stringify(report,null,2));
+  await files.ensureDirectory(output);await files.writeFile(reportPath,JSON.stringify(report,null,2),{flag:'wx'});
   console.log(JSON.stringify({browser:report.browser,artifact,nodes,report:reportPath,cases:cases.map(item=>({frequency:item.frequency,amplitude:item.inputAmplitude,gain:item.gain,enabled:item.enabled,stereo:item.stereo,bursts:item.bursts,peak:item.channels[0].peak,rms:item.channels[0].rms,overFullScaleSamples:item.channels[0].overFullScaleSamples,thdPercent:item.channels[0].thdPercent})),
     stress:{profile:stress.profile,peak:stress.channels[0].peak,overFullScaleSamples:stress.channels[0].overFullScaleSamples},alignments,
     transitions:transitions.map(item=>({frequency:item.frequency,kind:item.kind,value:item.value,maxAdjacentStep:item.change.channels[0].maxAdjacentStep,baselineAdjacentStep:Math.max(item.before.channels[0].maxAdjacentStep,item.after.channels[0].maxAdjacentStep),peak:item.change.channels[0].peak,min8msRms:item.change.channels[0].envelope8ms.min,baselineMin8msRms:Math.min(item.before.channels[0].envelope8ms.min,item.after.channels[0].envelope8ms.min)}))},null,2));
   if(qualityFailures.length)throw new Error(`Audio quality failed: ${qualityFailures.join(', ')}`);
-}finally{await browser.close();}
+}catch(error){diagnosticError('quality',error);}
+finally{
+  if(diagnosticPage)try{
+    Object.assign(diagnosticEvidence,await diagnosticPage.evaluate(()=>{
+      const runtime=window[Symbol.for('cheese-knife.runtime.v1')],probe=window.__quality,video=document.querySelector('video');
+      const readback=runtime.audio.getReadback(video),wrapped=window[Symbol.for('cheese-knife.quality-trace')];
+      return {sampleRate:probe.context.sampleRate,audioConfig:Object.fromEntries(KnifeMediaProfiles.audioFieldsV2.map(({id})=>[id,Reflect.get(runtime.config,id)])),
+        wanted:readback.wanted,state:readback.state,actions:Array.from({length:probe.masterFrameCount},(_,index)=>({frame:probe.masterFrames[index*2],afterFrame:probe.masterFrames[index*2+1]})),
+        trace:wrapped?wrapped.snapshot():{complete:probe.gains.length===8,truncated:false,error:null,nodeCount:probe.gains.length,gains:probe.gains.map(node=>node.gain.value),events:[]}};
+    }));
+  }catch(error){diagnosticError('snapshot',error);}
+  try{
+    if(measurement)diagnosticEvidence.shutdown={kind:'windows-native',...await measurement.close()};
+    else{await browser.close();diagnosticEvidence.shutdown={kind:'playwright',browserCloseAcknowledged:true,browserDisconnected:!browser.isConnected()};}
+  }catch(error){diagnosticError('close',error);}
+}
+}catch(error){diagnosticError('launch',error);}
+const diagnostic=diagnosticRun.collector.buildReport({...diagnosticEvidence,error:diagnosticFailure,secondaryErrors:diagnosticSecondary});
+try{await files.ensureDirectory('output/audio-quality');await writeQualityDiagnostic(files,diagnosticRun.paths.diagnostic,diagnostic);}
+catch(error){diagnosticError('diagnostic-write',error);}
+if(diagnosticFailure!==null){console.error(JSON.stringify({diagnosticComplete:diagnostic.complete,secondaryErrors:diagnosticSecondary}));throw diagnosticFailure;}
+if(!diagnostic.complete)throw new Error('Audio diagnostic incomplete: '+diagnostic.validationErrors.join(', '));

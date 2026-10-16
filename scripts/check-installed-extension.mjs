@@ -4,12 +4,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { checkPackage } from './check-package.mjs';
-import { FIXTURE_LIVE_URL, FIXTURE_VOD_URL, fixtureDecision, loadFixtureResponses } from './extension-e2e/fixture-router.mjs';
+import { FIXTURE_LIVE_URL, FIXTURE_VOD_URL, fixtureDecision, loadFixtureResponses, loadAudioFixtureResponses } from './extension-e2e/fixture-router.mjs';
 import { launchInstalledExtension, parseInstalledE2EArgs, reacquireExtensionWorker, openInstalledMediaSettings,
   openMediaBrowserSession, closeInstalledMediaBrowser } from './extension-e2e/harness.mjs';
 import { refreshTransitionWorker } from './extension-e2e/transition-preparation.mjs';
 import { openOwnedRoot } from './owned-files.mjs';
+import { nativeFailureDetails } from './audio-native-browser.mjs';
 import { removeCandidate, verifyCandidate } from './verify-candidate.mjs';
+import { observeInstalledProtocol, sendInstalledEnvelopeControl } from './extension-e2e/installed-protocol.mjs';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const slash = value => value.split(path.sep).join('/');
@@ -33,8 +35,8 @@ const waitUntil = async (read, accept, code, timeoutMs = 15000) => {
 
 const storageSnapshot = worker => worker.evaluate(() => chrome.storage.local.get(null));
 
-export async function runBaseInstalledScenario({ context, worker, extensionId, responses, restartSession, captureState, expectedProtocol = 2 }) {
-  assertCondition(expectedProtocol === 1 || expectedProtocol === 2,'installed-protocol-invalid');
+export async function runBaseInstalledScenario({ context, worker, extensionId, responses, restartSession, captureState, expectedProtocol = 3 }) {
+  assertCondition([1,2,3].includes(expectedProtocol),'installed-protocol-invalid');
   const pageErrors = [];
   const routeErrors = [];
   const fulfilled = [];
@@ -88,14 +90,11 @@ export async function runBaseInstalledScenario({ context, worker, extensionId, r
     'storage-setting-missing',
   );
   const main = await waitUntil(
-    () => page.evaluate(protocol => {
-      const runtime = window[Symbol.for('cheese-knife.runtime.v1')];
-      return runtime ? { ready: runtime.configReady && (protocol === 1 || runtime.ownerProtocol === 2 && runtime.media.phase !== 'pending'), arrowSeek: runtime.config.arrowSeek } : null;
-    },expectedProtocol),
-    value => value?.ready && value.arrowSeek === false,
+    () => page.evaluate(observeInstalledProtocol,expectedProtocol),
+    value => value?.config.arrowSeek === false,
     'main-setting-missing',
   );
-  const envelope = await page.evaluate(protocol => protocol === 1 ? window.__knifeFixture?.lastConfigEnvelopeV1 : window.__knifeFixture?.lastConfigEnvelopeV2,expectedProtocol);
+  const envelope = main.metadata;
   assertCondition(envelope && typeof envelope.requestId === 'string' && Number.isSafeInteger(expectedProtocol === 1 ? envelope.revision : envelope.deliverySequence), 'isolated-bridge-metadata-missing');
 
   const beforeInvalid = await storageSnapshot(worker);
@@ -106,32 +105,25 @@ export async function runBaseInstalledScenario({ context, worker, extensionId, r
   assertCondition(invalidReply?.ok === false && invalidReply.code === 'invalid-request', 'invalid-message-accepted');
   assertCondition(JSON.stringify(beforeInvalid) === JSON.stringify(afterInvalid), 'invalid-message-mutated-storage');
 
-  await page.evaluate(({metadata,protocol}) => {
-    const runtime = window[Symbol.for('cheese-knife.runtime.v1')];
-    const message = protocol === 1 ? {
-      namespace: 'cheese-knife', protocol: 1, type: 'config', requestId: metadata.requestId,
-      revision: metadata.revision - 1, config: { ...runtime.config, arrowSeek: true }, i18n: {},
-    } : { ...metadata,namespace:'cheese-knife',protocol:2,type:'config',deliverySequence:metadata.deliverySequence-1,
-      baseConfig:{...runtime.baseConfig,arrowSeek:true},effectiveConfig:{...runtime.config,arrowSeek:true},i18n:{...runtime.i18n} };
-    window.postMessage(message,location.origin);
-  }, {metadata:envelope,protocol:expectedProtocol});
-  await page.waitForTimeout(100);
-  assertCondition(await page.evaluate(() => window[Symbol.for('cheese-knife.runtime.v1')].config.arrowSeek === false), 'stale-revision-accepted');
-  if(expectedProtocol===2){
+  for (const mode of expectedProtocol===1?['accepted','stale']:['accepted','stale','context']) {
+    const control=await context.newPage();
+    try {
+      await control.goto(FIXTURE_LIVE_URL,{waitUntil:'domcontentloaded'});
+      const canonical=await waitUntil(()=>control.evaluate(observeInstalledProtocol,expectedProtocol),value=>value?.config.arrowSeek===false,'control-handshake-missing');
+      await control.evaluate(sendInstalledEnvelopeControl,{metadata:canonical.metadata,protocol:expectedProtocol,mode});
+      await control.waitForTimeout(100);
+      assertCondition(await control.evaluate(()=>window[Symbol.for('cheese-knife.runtime.v1')].config.arrowSeek) === (mode==='accepted'),mode==='accepted'?'positive-envelope-not-applied':mode==='stale'?'stale-revision-accepted':'retired-channel-envelope-accepted');
+      assertCondition(isDeepStrictEqual(await storageSnapshot(worker),afterInvalid),'envelope-control-mutated-storage');
+    } finally { await control.close(); }
+  }
+  // Start ordinary route checks with a fresh handshake, never the injected fixture slot.
+  await page.reload({waitUntil:'domcontentloaded'});
+  await waitUntil(()=>page.evaluate(observeInstalledProtocol,expectedProtocol),Boolean,'fresh-handshake-missing');
+  if(expectedProtocol!==1){
     await page.evaluate(()=>{history.pushState(null,'','/live/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');window.dispatchEvent(new PopStateEvent('popstate'));});
-    await page.waitForFunction(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
-      return runtime?.ownerProtocol===2&&runtime.media.phase==='ready'&&runtime.media.context.channelId==='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';},null,{timeout:15000});
-    const beforeReplay=await page.evaluate(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];return JSON.stringify({context:runtime.media.context,config:runtime.config});});
-    await page.evaluate(metadata=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
-      window.postMessage({...metadata,namespace:'cheese-knife',protocol:2,type:'config',deliverySequence:metadata.deliverySequence+100,
-        baseConfig:{...runtime.baseConfig,arrowSeek:true},effectiveConfig:{...runtime.config,arrowSeek:true},i18n:{...runtime.i18n}},location.origin);
-    },envelope);
-    await page.waitForTimeout(100);
-    assertCondition(await page.evaluate(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
-      return JSON.stringify({context:runtime.media.context,config:runtime.config});})===beforeReplay,'retired-channel-envelope-accepted');
+    await waitUntil(()=>page.evaluate(observeInstalledProtocol,expectedProtocol),value=>value?.metadata.context.channelId==='bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb','route-handshake-missing');
     await page.evaluate(()=>{history.pushState(null,'','/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');window.dispatchEvent(new PopStateEvent('popstate'));});
-    await page.waitForFunction(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
-      return runtime?.media.phase==='ready'&&runtime.media.context.channelId==='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';},null,{timeout:15000});
+    await waitUntil(()=>page.evaluate(observeInstalledProtocol,expectedProtocol),value=>value?.metadata.context.channelId==='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','return-handshake-missing');
   }
 
   const validSnapshot = await storageSnapshot(worker);
@@ -166,7 +158,7 @@ export async function runBaseInstalledScenario({ context, worker, extensionId, r
     popup: passed({ phase: 'ready' }),
     storage: passed({ revision: validSnapshot.settingsRevision, arrowSeek: stored.config.arrowSeek }),
     isolatedBridge: passed({ requestIdObserved: true, revisionObserved: true }),
-    mainRuntime: passed({ arrowSeek: main.arrowSeek }),
+    mainRuntime: passed({ arrowSeek: main.config.arrowSeek }),
     invalidMessage: passed({ code: invalidReply.code }),
     staleRevision: passed({ preserved: true }),
     damagedStorage: passed({ repairPhase: 'repair-required', restored: true }),
@@ -573,7 +565,7 @@ const defaultDependencies = {
   mediaScenario: runInstalledMediaTabScenario,
   refreshTransitionWorker, openMediaBrowserSession, closeInstalledMediaBrowser,
   platform: process.platform,
-  sourceAttestation: async files => (await import('./check-installed-transition.mjs')).sourceAttestation(files),
+  sourceAttestation: async (files, required) => (await import('./check-installed-transition.mjs')).sourceAttestation(files, required),
   expectedMediaFiles: async files => {
     const { validatePayloadMetadata } = await import('./extension-e2e/published-payload.mjs');
     const rows = validatePayloadMetadata(JSON.parse(await files.readFile('tests/fixtures/installed-extension/published-payload.json','utf8')));
@@ -581,17 +573,30 @@ const defaultDependencies = {
   },
 };
 
+export async function expectedF01MediaFiles(files) {
+  const { validatePayloadMetadata } = await import('./extension-e2e/published-payload.mjs');
+  const rows = validatePayloadMetadata(JSON.parse(await files.readFile('tests/fixtures/installed-extension/published-payload.json','utf8')));
+  return [...rows.map(row=>`dist/${row.name}`),'dist/media-profiles.js','dist/gain-authority.js','dist/web/player-gain.js','dist/audio-settings-ui.js'].sort();
+}
+
 const relativeOwnedPath = (root, absolute) => {
   const relative = path.relative(root, absolute);
   if (!relative || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) throw runnerError('owned-cleanup-path-invalid');
   return slash(relative);
 };
 
-export async function runInstalledExtensionE2E({ headed = false, runId, qualification, dependencies = {} } = {}) {
+export async function runInstalledExtensionE2E({ headed = false, runId, qualification, retainEvidence = false, dependencies = {} } = {}) {
+  if (typeof retainEvidence !== 'boolean') throw runnerError('installed-e2e-retention-invalid');
   if (!/^[A-Za-z0-9]{1,64}$/.test(runId || '')) throw runnerError('installed-e2e-run-id-invalid');
-  if (qualification !== undefined && qualification !== 'media-tab') throw runnerError('installed-e2e-qualification-invalid');
+  if (qualification !== undefined && !['media-tab', 'player-gain', 'audio-settings'].includes(qualification)) throw runnerError('installed-e2e-qualification-invalid');
+  if (qualification === 'player-gain' && (typeof dependencies.mediaScenario !== 'function' || typeof dependencies.expectedMediaFiles !== 'function')) throw runnerError('player-gain-scenario-required');
+  if (qualification === 'audio-settings' && typeof dependencies.mediaScenario !== 'function') throw runnerError('audio-settings-scenario-required');
+  const nativeQualification = qualification !== undefined;
   const startedAt = Date.now();
-  const deps = { ...defaultDependencies, ...dependencies };
+  const deps = { ...defaultDependencies, ...qualification === 'audio-settings' ? {loadFixtureResponses:loadAudioFixtureResponses,expectedMediaFiles:expectedF01MediaFiles} : {}, ...dependencies };
+  const requiredInputs = qualification === 'audio-settings' ? ['scripts/check-installed-audio-settings.mjs','tests/installed-audio-settings.test.cjs',
+    'scripts/extension-e2e/visibility-browser.mjs','tests/visibility-browser.test.cjs',
+    'src/settings/audio-settings-ui.ts','audio-settings-ui.js','tests/fixtures/f01-runtime-executable.json','tests/fixtures/f01-runtime-js.json'] : [];
   const files = await deps.openRepository();
   const artifactRelative = `output/playwright/installed-extension-${runId}`;
   let candidateBuilt = false;
@@ -602,22 +607,31 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
   let traceStopped = false;
   let report;
   let primaryError;
+  let candidatePath;
+  const secondaryErrors = [];
   let browserSession, shutdownProof, source, after;
 
-  const remember = error => { if (!primaryError) primaryError = error; };
-  try {
-    if (qualification === 'media-tab') {
-      if (deps.platform !== 'win32') throw runnerError('media-qualification-platform-unsupported');
-      source = await deps.sourceAttestation(files);
-    }
-    const candidate = await deps.verifyCandidate(runId);
-    candidateBuilt = true;
-    if (qualification === 'media-tab' && !isDeepStrictEqual(candidate.files, await deps.expectedMediaFiles(files))) throw runnerError('media-candidate-assets-invalid');
-    await deps.checkPackage(candidate.dist);
+  const remember = error => {
+    if (!primaryError) primaryError = error;
+    else if (error !== primaryError && secondaryErrors.length < 32) secondaryErrors.push({code:String(error?.code || 'installed-e2e-secondary').slice(0,80),message:String(error?.message || error).slice(0,240)});
+  };
+  const claimArtifact = async () => {
     await files.ensureDirectory('output/playwright');
-    if (await files.lstat(artifactRelative, { optional: true })) throw runnerError('installed-artifact-exists');
-    await files.ensureDirectory(artifactRelative);
-    artifactCreated = true;
+    if (await files.lstat(artifactRelative, {optional:true})) throw runnerError('installed-artifact-exists');
+    await files.ensureDirectory(artifactRelative); artifactCreated = true;
+  };
+  try {
+    if (nativeQualification) {
+      if (deps.platform !== 'win32') throw runnerError('media-qualification-platform-unsupported');
+      source = await deps.sourceAttestation(files, requiredInputs);
+    }
+    if (retainEvidence) await claimArtifact();
+    const candidate = await deps.verifyCandidate(runId,files.root,{retainEvidence});
+    candidateBuilt = true;
+    candidatePath = candidate.root || path.dirname(candidate.dist);
+    if (nativeQualification && !isDeepStrictEqual(candidate.files, await deps.expectedMediaFiles(files))) throw runnerError('media-candidate-assets-invalid');
+    await deps.checkPackage(candidate.dist);
+    if (!artifactCreated) await claimArtifact();
     const artifactPath = await files.resolve(artifactRelative, { type: 'directory' });
     profilePath = await files.makeTempDirectory('output/playwright/installed-profile-');
     const responses = await deps.loadFixtureResponses(files);
@@ -630,7 +644,7 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
     };
     let launched = await deps.launchInstalledExtension(launchOptions);
     context = launched.context;
-    if (qualification === 'media-tab') {
+    if (nativeQualification) {
       launched = await deps.refreshTransitionWorker(launched);context = launched.context;
       browserSession = await deps.openMediaBrowserSession(context);
       if (!browserSession || typeof browserSession.send !== 'function' || typeof browserSession.on !== 'function' || typeof browserSession.off !== 'function') throw runnerError('media-browser-session-unavailable');
@@ -650,15 +664,24 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
       traceStopped = false;
       return launched;
     };
-    const sections = qualification === 'media-tab'
-      ? await deps.mediaScenario({ ...launched, responses, artifactPath, browserSession })
+    const writeZoomCapture = async (name, bytes) => {
+      if (qualification !== 'audio-settings' || !['audio-zoom200.png','audio-zoom200-controls.png','audio-zoom200-eq.png'].includes(name) ||
+        !(bytes instanceof Uint8Array) || bytes.length < 24 || bytes.length > 8388608 ||
+        !Buffer.from(bytes.subarray(0,8)).equals(Buffer.from('89504e470d0a1a0a','hex'))) throw runnerError('media-zoom-capture-invalid');
+      await files.writeFile(`${artifactRelative}/${name}`,bytes,{flag:'wx'});
+    };
+    const sections = nativeQualification
+      ? await deps.mediaScenario({ ...launched, responses, artifactPath, browserSession, writeZoomCapture })
       : await deps.scenario({ ...launched, responses, artifactPath, restartSession });
     await context.tracing.stop();
     traceStopped = true;
     report = { ok: true, runId, ...sections };
   } catch (error) {
+    const partial = path.join(files.root,'output','tool-audit',`p02-candidate-${runId}`,'chrome-candidate');
+    if (retainEvidence && error?.retainedCandidatePath === partial) candidatePath = partial;
     remember(error);
-    report = { ok: false, runId, error: { code: error?.code || 'installed-e2e-failed' } };
+    report = { ok: false, runId, error: { code: error?.code || 'installed-e2e-failed',native:nativeFailureDetails(error),
+      ...(typeof error?.startupDiagnostic === 'string' ? {startupDiagnostic:error.startupDiagnostic.slice(0,4096)} : {}) } };
     if (context) {
       const page = context.pages().at(-1);
       if (page) {
@@ -668,34 +691,46 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
         try {
           await context.tracing.stop({ path: path.join(files.root, ...artifactRelative.split('/'), 'trace.zip') });
           traceStopped = true;
-        } catch {}
+        } catch (error) { remember(error); }
       }
     }
   } finally {
-    if (qualification === 'media-tab' && context) {
+    if (nativeQualification && context) {
       try {
         shutdownProof = await deps.closeInstalledMediaBrowser({ context, browserSession, profilePath });
         if (!shutdownProof || shutdownProof.browserCloseAcknowledged !== true || shutdownProof.browserDisconnected !== true || shutdownProof.ownedRootClosed !== true) throw runnerError('media-close-unconfirmed');
       } catch (error) { remember(error); }
     }
-    if (context && (qualification !== 'media-tab' || shutdownProof?.browserCloseAcknowledged && shutdownProof?.browserDisconnected && shutdownProof?.ownedRootClosed)) {
+    if (context && (!nativeQualification || shutdownProof?.browserCloseAcknowledged && shutdownProof?.browserDisconnected && shutdownProof?.ownedRootClosed)) {
       try { await context.close(); } catch (error) { remember(error); }
     }
-    if (profilePath && qualification !== 'media-tab') {
+    if (profilePath && !nativeQualification && !retainEvidence) {
       try { await files.removeTree(relativeOwnedPath(files.root, profilePath)); } catch (error) { remember(error); }
     }
-    if (candidateBuilt && qualification !== 'media-tab') {
+    if (candidateBuilt && !nativeQualification && !retainEvidence) {
       try { await deps.removeCandidate(runId); } catch (error) { remember(error); }
     }
   }
 
-  if (qualification === 'media-tab' && source) {
-    try { after = await deps.sourceAttestation(files);if (!isDeepStrictEqual(source, after)) throw runnerError('media-source-changed'); }
+  if (nativeQualification && source) {
+    try { after = await deps.sourceAttestation(files, requiredInputs);if (!isDeepStrictEqual(source, after)) throw runnerError('media-source-changed'); }
     catch (error) { remember(error); }
   }
-  if (primaryError && report?.ok) report = { ok: false, runId, error: { code: primaryError?.code || 'installed-e2e-cleanup-failed' } };
-  if (qualification === 'media-tab' && report) report = { ...report, qualification, shutdown: shutdownProof ?? null,
+  if (nativeQualification && report) report = { ...report, qualification, shutdown: shutdownProof ?? null,
     profileRetained: !!profilePath, candidateRetained: candidateBuilt, source, after };
+  if (retainEvidence && report) {
+    const evidence = {profilePath:null,candidatePath:null,retained:false};
+    for (const [key,value] of [['profilePath',profilePath],['candidatePath',candidatePath]]) if (value) {
+      try {
+        const relative = relativeOwnedPath(files.root,value),stat = await files.lstat(relative,{optional:true});
+        if (!stat?.isDirectory()) throw runnerError('installed-e2e-evidence-missing');
+        Reflect.set(evidence,key,value);
+      } catch (error) { remember(error); }
+    }
+    evidence.retained = !!(evidence.profilePath || evidence.candidatePath); report.evidence = evidence;
+  }
+  if (primaryError && report?.ok) report = {...report,ok:false,error:{code:primaryError?.code || 'installed-e2e-cleanup-failed',native:nativeFailureDetails(primaryError)}};
+  if (secondaryErrors.length && report) report = {...report,ok:false,secondaryErrors};
   if (report) report.durationMs = Date.now() - startedAt;
   if (artifactCreated) {
     try {
@@ -704,7 +739,11 @@ export async function runInstalledExtensionE2E({ headed = false, runId, qualific
       remember(error);
     }
   }
-  if (primaryError) throw primaryError;
+  if (primaryError) {
+    if (secondaryErrors.length) throw Object.assign(runnerError('installed-e2e-incomplete',primaryError),{secondaryErrors,...retainEvidence?{evidence:report?.evidence}:{}});
+    if (retainEvidence && Object.isExtensible(primaryError)) primaryError.evidence = report?.evidence;
+    throw primaryError;
+  }
   return report;
 }
 

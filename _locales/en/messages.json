@@ -1,4 +1,143 @@
 {
+  "audio_ui_audio": {"message":"Audio"},
+  "audio_ui_video": {"message":"Video"},
+  "audio_ui_off_note": {"message":"Processing is OFF: settings can be edited and saved, but are not applied to the sound."},
+  "audio_ui_inherit_site": {"message":"Use existing site Gain"},
+  "audio_ui_inherit_global": {"message":"Use global Gain"},
+  "audio_ui_source_site_read": {"message":"Read and confirmed site Gain"},
+  "audio_ui_source_global_inherited": {"message":"Inherited global Gain"},
+  "audio_ui_master": {
+    "message": "Audio processing"
+  },
+  "audio_ui_comp_graph": {
+    "message": "Compressor reference curve"
+  },
+  "audio_ui_comp_reference": {
+    "message": "Static input/output dB, not measured loudness"
+  },
+  "audio_ui_eq_graph": {
+    "message": "EQ frequency response"
+  },
+  "audio_ui_eq_reference": {
+    "message": "48 kHz · Q=1 · Reference excludes Gain and safety attenuation"
+  },
+  "audio_ui_inherit": {
+    "message": "Inherit global/site Gain"
+  },
+  "audio_ui_default": {
+    "message": "Enable processing automatically for new videos"
+  },
+  "audio_ui_compressor": {
+    "message": "Compressor"
+  },
+  "audio_ui_use": {
+    "message": "Enable"
+  },
+  "audio_ui_reset": {
+    "message": "Reset"
+  },
+  "audio_ui_dial_hint": {
+    "message": "Drag vertically · double-click to reset · numbers/arrow keys"
+  },
+  "audio_ui_eq": {
+    "message": "Equalizer · 8 bands"
+  },
+  "audio_ui_normalizer": {
+    "message": "Loudness normalizer"
+  },
+  "audio_ui_target": {
+    "message": "Target level (dBFS)"
+  },
+  "audio_ui_source_site_legacy": {
+    "message": "Site Gain not confirmed"
+  },
+  "audio_ui_source_global_owned": {
+    "message": "Stored global Gain"
+  },
+  "audio_ui_source_channel_owned": {
+    "message": "Stored channel Gain"
+  },
+  "audio_ui_on": {
+    "message": "Audio processing ON"
+  },
+  "audio_ui_off": {
+    "message": "Audio processing OFF"
+  },
+  "audio_ui_target_missing": {
+    "message": "Reopen settings from the intended broadcast."
+  },
+  "audio_ui_resume_hint": {
+    "message": "Use the processing button in the broadcast. The settings tab cannot transfer playback activation."
+  },
+  "audio_ui_advisory": {
+    "message": "Current broadcast advisory status, not a measurement of audio output."
+  },
+  "audio_ui_target_changed": {
+    "message": "The original broadcast document changed or is unavailable. Read again explicitly; no automatic retry."
+  },
+  "audio_ui_create_expired": {
+    "message": "The source settings changed. The name is kept. Reopen the creation section to capture a new source."
+  },
+  "audio_ui_create_ready": {
+    "message": "Create from the confirmed settings captured on entry."
+  },
+  "audio_ui_gain_unconfirmed": {
+    "message": "Site Gain is unconfirmed. Store Gain explicitly or read/import it before preparing this preset."
+  },
+  "audio_ui_recipe_compressor": {
+    "message": "Original compressor"
+  },
+  "audio_ui_recipe_voice": {
+    "message": "Voice EQ"
+  },
+  "audio_ui_upgrade_note": {
+    "message": "Only upgrades stored data; does not turn on processing in the current broadcast."
+  },
+  "audio_ui_upgrade": {
+    "message": "Upgrade storage format"
+  },
+  "audio_ui_audio_presets": {
+    "message": "Audio presets"
+  },
+  "audio_ui_video_presets": {
+    "message": "Video presets"
+  },
+  "audio_ui_apply": {
+    "message": "Apply"
+  },
+  "audio_ui_save_preset": {
+    "message": "Save as preset"
+  },
+  "audio_ui_legacy_read": {
+    "message": "Read site Gain"
+  },
+  "audio_ui_legacy_limited": {
+    "message": "Reading/importing site Gain requires a verified live channel. For VOD, save Gain directly."
+  },
+  "audio_ui_legacy_import": {
+    "message": "Import as global Gain"
+  },
+  "audio_ui_manage": {
+    "message": "Manage presets"
+  },
+  "audio_ui_create": {
+    "message": "Create preset"
+  },
+  "audio_ui_name": {
+    "message": "Name"
+  },
+  "media_confirm_apply": {
+    "message": "Apply this preset and replace the stored settings?"
+  },
+  "media_confirm_upgrade": {
+    "message": "Upgrade existing channel and preset data to the new format?"
+  },
+  "media_confirm_gain_inherit": {
+    "message": "Use inherited global/site Gain instead of this stored Gain?"
+  },
+  "media_confirm_gain_import": {
+    "message": "Store the read site Gain globally? Channels inheriting global Gain will also use it."
+  },
   "media_open": { "message": "Open channel settings and presets ↗" },
   "media_entry_guide": { "message": "Edit channel-specific audio and video in a separate tab. Other settings remain global." },
   "media_global_guide": { "message": "Only the audio compressor and video filters are channel-specific. Other controls are global." },

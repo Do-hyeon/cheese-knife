@@ -50,6 +50,20 @@ export function readConfigEnvelope(event: MessageEvent, expected: BridgeExpectat
   } catch { return null; }
 }
 
+export function readGainPreviewEnvelope(event: MessageEvent<unknown>, expected: KnifeScopedContext):
+    { requestId: string; context: KnifeScopedContext; audioBindingGeneration: number; value: number } | null {
+  const keys = ['namespace', 'protocol', 'type', 'requestId', 'context', 'audioBindingGeneration', 'value'];
+  const raw = event.data;
+  if (!ordinaryRecord(raw) || Reflect.ownKeys(raw).length !== keys.length || !keys.every(key => Object.hasOwn(raw, key))) return null;
+  const data = copyRecord(raw, false), context = data && copyRecord(data.context, false);
+  if (!data || !context || Reflect.ownKeys(context).length !== 4 || !['documentGeneration', 'routePath', 'channelId', 'playerGeneration'].every(key =>
+      Object.hasOwn(context, key) && ownValue(context, key) === Object.getOwnPropertyDescriptor(expected, key)?.value) ||
+      data.namespace !== 'cheese-knife' || data.protocol !== 3 || data.type !== 'gain-preview' ||
+      typeof data.requestId !== 'string' || !data.requestId.length || data.requestId.length > 128 ||
+      !KnifeMediaProfiles.isCounter(data.audioBindingGeneration) || typeof data.value !== 'number' || !Number.isFinite(data.value) || data.value < 0 || data.value > 2) return null;
+  return { requestId: data.requestId, context: context as KnifeScopedContext, audioBindingGeneration: data.audioBindingGeneration, value: data.value };
+}
+
 export function readScopedConfigEnvelope(event: MessageEvent<unknown>, expected: KnifeScopedContext): ScopedEnvelope | null {
   const exact = (value: unknown, keys: string[]): UnknownRecord | null => {
     if (!ordinaryRecord(value) || Reflect.ownKeys(value).length !== keys.length || !keys.every(key => Object.hasOwn(value,key))) return null;
@@ -57,8 +71,8 @@ export function readScopedConfigEnvelope(event: MessageEvent<unknown>, expected:
   };
   try {
     const data = exact(event.data,['namespace','protocol','type','requestId','context','deliverySequence','baseConfig','effectiveConfig',
-      'i18n','version','profileState','revisionStatus','mediaPhase','audioBindingGeneration','audioKind','videoKind']);
-    if (!data || data.namespace !== 'cheese-knife' || data.protocol !== 2 || data.type !== 'config' ||
+      'i18n','version','profileState','revisionStatus','mediaPhase','audioBindingGeneration','audioKind','videoKind','gainOrigin']);
+    if (!data || data.namespace !== 'cheese-knife' || data.protocol !== 3 || data.type !== 'config' ||
       typeof data.requestId !== 'string' || !data.requestId.length || data.requestId.length > 128 ||
       !KnifeMediaProfiles.isCounter(data.deliverySequence) || !KnifeMediaProfiles.isCounter(data.audioBindingGeneration)) return null;
     const context = exact(data.context,['documentGeneration','routePath','channelId','playerGeneration']);
@@ -72,10 +86,11 @@ export function readScopedConfigEnvelope(event: MessageEvent<unknown>, expected:
     const scalars = (record: UnknownRecord | null): record is UnknownRecord => !!record && Reflect.ownKeys(record).length <= 128 &&
       Object.values(record).every(value => typeof value === 'boolean' || typeof value === 'number' && Number.isFinite(value));
     if (!scalars(baseConfig) || !scalars(effectiveConfig)) return null;
-    const mediaFields = new Set([...KnifeMediaProfiles.audioFields,...KnifeMediaProfiles.videoFields].map(field => field.id));
+    const mediaFields = new Set([...KnifeMediaProfiles.audioFieldsV2,...KnifeMediaProfiles.videoFields].map(field => field.id));
     for (const config of [baseConfig,effectiveConfig]) for (const domain of ['audio','video'] as const) {
-      const fields = domain === 'audio' ? KnifeMediaProfiles.audioFields : KnifeMediaProfiles.videoFields;
-      if (!KnifeMediaProfiles.validateValues(domain,Object.fromEntries(fields.map(field => [field.id,ownValue(config,field.id)]))).ok) return null;
+      const fields = domain === 'audio' ? KnifeMediaProfiles.audioFieldsV2 : KnifeMediaProfiles.videoFields;
+      const values = Object.fromEntries(fields.map(field => [field.id,ownValue(config,field.id)]));
+      if (!(domain === 'audio' ? KnifeMediaProfiles.validateAudioV2(values) : KnifeMediaProfiles.validateValues('video',values)).ok) return null;
     }
     if (Object.keys(baseConfig).length !== Object.keys(effectiveConfig).length ||
       !Object.entries(baseConfig).every(([key,value]) => Object.hasOwn(effectiveConfig,key) && (mediaFields.has(key) || Object.is(value,ownValue(effectiveConfig,key))))) return null;
@@ -86,7 +101,10 @@ export function readScopedConfigEnvelope(event: MessageEvent<unknown>, expected:
       (version.globalRevision === null) !== (data.revisionStatus === 'repair-required') ||
       !['global','scoped','repair-required'].includes(data.profileState as string) ||
       !['pending','ready','limited'].includes(data.mediaPhase as string) ||
-      !['global','channel'].includes(data.audioKind as string) || !['global','channel'].includes(data.videoKind as string)) return null;
+      !['global','channel'].includes(data.audioKind as string) || !['global','channel'].includes(data.videoKind as string) ||
+      !['site-legacy','global-owned','channel-owned'].includes(data.gainOrigin as string) ||
+      data.gainOrigin === 'channel-owned' && data.audioKind !== 'channel' ||
+      (data.gainOrigin === 'site-legacy') !== (effectiveConfig.gainInherited === true)) return null;
     const scoped = data.audioKind === 'channel' || data.videoKind === 'channel';
     if (scoped && !context.channelId || (data.profileState === 'scoped') !== scoped ||
       data.profileState === 'repair-required' && data.mediaPhase !== 'limited' ||
@@ -97,6 +115,6 @@ export function readScopedConfigEnvelope(event: MessageEvent<unknown>, expected:
       baseConfig,effectiveConfig,i18n:i18n as Record<string,string>,version:version as KnifeMediaVersion,
       profileState:data.profileState as ScopedEnvelope['profileState'],revisionStatus:data.revisionStatus as ScopedEnvelope['revisionStatus'],
       mediaPhase:data.mediaPhase as ScopedEnvelope['mediaPhase'],audioBindingGeneration:data.audioBindingGeneration,
-      audioKind:data.audioKind as ScopedEnvelope['audioKind'],videoKind:data.videoKind as ScopedEnvelope['videoKind'] };
+      audioKind:data.audioKind as ScopedEnvelope['audioKind'],videoKind:data.videoKind as ScopedEnvelope['videoKind'],gainOrigin:data.gainOrigin as ScopedEnvelope['gainOrigin'] };
   } catch { return null; }
 }

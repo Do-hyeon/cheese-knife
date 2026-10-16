@@ -59,6 +59,9 @@ jobs:
       - name: Fetch pinned published settings baseline
         run: git fetch --no-tags --depth=1 origin fb15f9675f9ea910e98363635155bc4ff9eb1d2f
 
+      - name: Fetch pinned F00 transition baseline
+        run: git fetch --no-tags --depth=1 origin ae9f8e50a22dae9d549f1e476d302549ecc03b4a
+
       - name: Prepare pinned published payload
         run: node scripts/extension-e2e/published-payload.mjs --prepare
 
@@ -69,22 +72,60 @@ jobs:
         run: npm run build
 
       - name: Check package
+        id: package
         run: npm run check
 
       - name: Check audio quality
-        run: node scripts/check-audio-quality.mjs
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
+        env:
+          GITHUB_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import {runQualityRunSet} from './scripts/audio-quality-diagnostics.mjs';
+          import {openOwnedRoot} from './scripts/owned-files.mjs';
+          if(!/^\d+$/.test(process.env.GITHUB_RUN_ID??'')||!/^\d+$/.test(process.env.GITHUB_RUN_ATTEMPT??''))throw new Error('quality-ci-identity');
+          const prefix=`f01ci-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}`;
+          const result=await runQualityRunSet({files:await openOwnedRoot(process.cwd()),prefix});
+          console.log(JSON.stringify({complete:result.complete,failures:result.failures,paths:result.paths,exits:result.records.map(({label,exitCode})=>({label,exitCode}))}));
+          if(!result.complete)process.exitCode=1;
+          NODE
 
       - name: Run installed-extension E2E
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
         run: npm run test:e2e
 
       - name: Run installed-extension negative control
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
         run: npm run test:e2e:negative
 
       - name: Run installed old-new-old transition
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
         run: node scripts/check-installed-transition.mjs --run-id=B2positive
 
       - name: Run installed storage-loss control
+        if: ${{ !cancelled() && steps.package.outcome == 'success' }}
         run: node scripts/check-installed-transition.mjs --run-id=B2negative --control=storage-loss
+
+      - name: Upload exact synthetic audio evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: f01-audio-quality-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-u1.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-u1-diagnostic.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-t1.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-t1-diagnostic.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-u2.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-u2-diagnostic.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-t2.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-t2-diagnostic.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-u3.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-u3-diagnostic.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-t3.json
+            output/audio-quality/report-f01ci-${{ github.run_id }}-${{ github.run_attempt }}-t3-diagnostic.json
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload E2E failure artifacts
         if: failure()
@@ -95,4 +136,58 @@ jobs:
             output/playwright/installed-extension-*/
             !output/playwright/installed-profile-*/
           if-no-files-found: ignore
+          retention-days: 7
+
+  observer-isolation:
+    if: github.event_name == 'pull_request' && github.event.number == 45
+    needs: foundation
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      F01_OBSERVER_FROZEN: ${{ runner.temp }}/f01-observer-frozen/source
+      GITHUB_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install exact dependencies without scripts
+        run: npm ci --ignore-scripts
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Prepare immutable original runner outside current checkout
+        run: |
+          git fetch --no-tags --depth=1 origin c5d45b8a7abf30450d3f1bbff45afbb8cd020cb5
+          git clone --no-hardlinks --no-checkout --config core.autocrlf=false "$GITHUB_WORKSPACE" "$F01_OBSERVER_FROZEN"
+          git -C "$F01_OBSERVER_FROZEN" checkout --detach c5d45b8a7abf30450d3f1bbff45afbb8cd020cb5
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$F01_OBSERVER_FROZEN/node_modules"
+
+      - name: Observe fixed original and current runner set
+        id: observer_evidence
+        run: |
+          node --input-type=module <<'OBSERVER_NODE'
+          import {appendFileSync} from 'node:fs';
+          import {observerEvidencePaths,runObserverIsolation} from './scripts/audio-observer-isolation.mjs';
+          if(!/^\d+$/.test(process.env.GITHUB_RUN_ID??'')||!/^\d+$/.test(process.env.GITHUB_RUN_ATTEMPT??''))throw new Error('observer-ci-identity');
+          const prefix=`f01obs-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}`;
+          appendFileSync(process.env.GITHUB_OUTPUT,`paths<<F01_OBSERVER_PATHS\n${observerEvidencePaths(prefix).join('\n')}\nF01_OBSERVER_PATHS\n`);
+          const result=await runObserverIsolation({frozenRoot:process.env.F01_OBSERVER_FROZEN,prefix});
+          console.log(JSON.stringify(result));
+          if(!result.transportComplete||!result.qualityPass)process.exitCode=1;
+          OBSERVER_NODE
+
+      - name: Upload exact observer evidence only
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: f01-observer-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.observer_evidence.outputs.paths }}
+          if-no-files-found: warn
           retention-days: 7

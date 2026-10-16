@@ -25,17 +25,36 @@
       <pre id="media-draft" hidden></pre>
       <button id="media-refresh" type="button"></button>
       <button id="media-discard" type="button" hidden></button>
+      <button id="media-upgrade" type="button" data-audio-label="upgrade" hidden>저장 형식 전환</button>
+      <nav class="f01-tabs" role="tablist" aria-label="Media settings">
+        <button id="media-audio-tab" type="button" role="tab" data-media-panel="audio" data-audio-label="audio" aria-controls="media-audio-tab-panel" aria-selected="true">오디오</button>
+        <button id="media-video-tab" type="button" role="tab" data-media-panel="video" data-audio-label="video" aria-controls="media-video-tab-panel" aria-selected="false" tabindex="-1">영상</button>
+        <button id="media-presets-tab" type="button" role="tab" data-media-panel="presets" data-audio-label="manage" aria-controls="media-presets" aria-selected="false" tabindex="-1">프리셋 관리</button>
+      </nav>
+      <section id="media-audio-tab-panel" role="tabpanel" aria-labelledby="media-audio-tab">
+      <div id="media-audio-panel"></div>
       <div class="media-actions"><button id="media-audio-enable" type="button"></button><button id="media-audio-global" type="button"></button></div>
+      <div class="media-actions" id="media-audio-preset-row"><label for="media-audio-preset" data-audio-label="audio_presets">오디오 프리셋</label><select id="media-audio-preset"></select><button id="media-audio-preset-apply" type="button" data-audio-label="apply">적용</button><button id="media-audio-save-preset" type="button" data-audio-label="save_preset">프리셋으로 저장</button></div>
+      <div class="media-actions"><button id="media-legacy-read" type="button" data-audio-label="legacy_read" aria-describedby="media-legacy-status">사이트 Gain 읽기</button><button id="media-legacy-import" type="button" data-audio-label="legacy_import" aria-describedby="media-legacy-status" disabled>전역 Gain으로 가져오기</button><span id="media-legacy-status" role="status"></span></div>
+      </section>
+      <section id="media-video-tab-panel" role="tabpanel" aria-labelledby="media-video-tab" hidden>
       <div class="media-actions"><button id="media-video-enable" type="button"></button><button id="media-video-global" type="button"></button></div>
       <div id="media-fields"></div>
-      <div id="media-presets">
-      <label for="media-preset-name" id="media-preset-name-label"></label><input id="media-preset-name" type="text" maxlength="96" />
-      <label for="media-preset-domain" id="media-preset-domain-label"></label><select id="media-preset-domain"><option value="audio">Audio</option><option value="video">Video</option></select>
-      <button id="media-preset-create" type="button"></button>
+      <div class="media-actions" id="media-video-preset-row"><label for="media-video-preset" data-audio-label="video_presets">영상 프리셋</label><select id="media-video-preset"></select><button id="media-video-preset-apply" type="button" data-audio-label="apply">적용</button><button id="media-video-save-preset" type="button" data-audio-label="save_preset">프리셋으로 저장</button></div>
+      </section>
+      <section id="media-presets" role="tabpanel" aria-labelledby="media-presets-tab" hidden>
+      <h2 data-audio-label="manage">프리셋 관리</h2>
       <label for="media-preset" id="media-preset-label"></label><select id="media-preset"></select>
-      <div class="media-actions"><button id="media-preset-apply" type="button"></button><button id="media-preset-rename" type="button"></button><button id="media-preset-delete" type="button"></button></div>
+      <label for="media-preset-name" id="media-preset-name-label"></label><input id="media-preset-name" type="text" maxlength="96" />
+      <div class="media-actions"><button id="media-preset-rename" type="button"></button><button id="media-preset-delete" type="button"></button></div>
+      <details id="media-preset-new"><summary data-audio-label="create">새 프리셋 만들기</summary>
+      <label for="media-preset-domain" id="media-preset-domain-label"></label><select id="media-preset-domain"><option value="audio">Audio</option><option value="video">Video</option></select>
+      <label for="media-preset-create-name" data-audio-label="name">이름</label><input id="media-preset-create-name" type="text" maxlength="96" />
+      <p id="media-create-status" role="status"></p>
+      <button id="media-preset-create" type="button"></button>
+      </details>
       <button id="media-channel-delete" type="button"></button>
-      </div>
+      </section>
     </section>
     <div id="list"></div>
     <div class="box">
@@ -59,6 +78,7 @@
     <script src="style-schema.js"></script>
     <script src="settings-contract.js"></script>
     <script src="settings-client.js"></script>
+    <script src="audio-settings-ui.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

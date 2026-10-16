@@ -152,7 +152,9 @@ async function getConfig(includeStyleParameters) {
 }
 async function readScopedConfig(context) {
   const stored = await chrome.storage.local.get(["config", "styles", "styleParameters", "settingsRevision", "mediaProfiles"]);
-  const baseConfig = normalizeConfig(stored.config), read = KnifeMediaProfiles.readStore(stored.mediaProfiles);
+  const normalized = normalizeConfig(stored.config);
+  const baseConfig = { ...normalized, ...KnifeMediaProfiles.projectGlobalAudio(stored.config ?? {}) };
+  const read = KnifeMediaProfiles.readStore(stored.mediaProfiles);
   const resolved = KnifeMediaProfiles.resolveMediaSettings(baseConfig, read, {
     channelId: context.channelId,
     topFrame: window.top === window,
@@ -169,6 +171,7 @@ async function readScopedConfig(context) {
     profileState: resolved.profileState,
     audioBindingKey: resolved.audioBindingKey,
     audioKind: resolved.audioKind,
-    videoKind: resolved.videoKind
+    videoKind: resolved.videoKind,
+    gainOrigin: resolved.gainOrigin
   };
 }

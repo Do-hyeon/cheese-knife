@@ -1,0 +1,18 @@
+{
+  "config": {"futureFlag":"keep","brightness":1.25,"compressorDefault":true},
+  "styles": ["future-style"],
+  "styleParameters": {"future":9},
+  "settingsRevision": 4,
+  "futureTop": {"runNonce":"__RUN_NONCE__","untouched":true},
+  "mediaProfiles": {
+    "schema":1,"revision":7,
+    "channels":[
+      {"channelId":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","createdRevision":1,"revision":2,
+        "audio":{"createdRevision":1,"values":{"compressorDefault":true,"compressorThreshold":-35,"compressorKnee":40,"compressorRatio":12,"compressorAttack":0,"compressorRelease":0.25}}},
+      {"channelId":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","createdRevision":4,"revision":1,
+        "video":{"createdRevision":4,"values":{"brightness":1.75,"contrast":1,"saturation":1,"gamma":1,"sharpness":0}}}
+    ],
+    "presets":[{"id":"11111111-1111-4111-8111-111111111111","createdRevision":6,"revision":1,"name":"F00 retained","domain":"audio",
+      "values":{"compressorDefault":false,"compressorThreshold":-20,"compressorKnee":40,"compressorRatio":12,"compressorAttack":0,"compressorRelease":0.25}}]
+  }
+}

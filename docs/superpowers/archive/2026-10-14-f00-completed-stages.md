@@ -88,3 +88,16 @@ generated client/popup와 active pin만 갱신했다. 실제 Chrome/TAB 저장·
 - [x] 제공된 Native task-done은 BASE189db36→08bd528의 마감 집중117/117 성공 뒤 Task6 완료를 기록했다. 완료 체크리스트/상태를 일치시키고 F01·공개·실제 수용은 active PLANS의 별도 승인 단계로 남겼다.
 
 최종 근거: [전체 독립 검토·보완·게이트](../validation/2026-10-14-f00-final-review.md). 모든 private 자료/프로필/trace는 보존하고 커밋하지 않았다. 실제 BFCache·자연 worker suspension·in-place runtime.reload·실제 Chrome/store 업데이트/rollback은 미검증이며 기존8경고/skip1과 함께 유지한다. **F00 local implementation complete**, F01/Gain·push/PR/병합·버전/릴리즈/스토어 변경 없음.
+
+## 2026-10-14 — F00 전체 PR 통합과 브랜치 정리
+
+사용자가 F01 최신 목업 승인과 별도로 F00 전체 PR·병합·해당 브랜치 정리를 지시했다. 위 공개 미실행 문구는 로컬 마감 당시 이력이다.
+
+- [x] [한글 PR #44](https://github.com/Do-hyeon/cheese-knife/pull/44): F00 전체25커밋·140파일, F01 문서/목업·비공개 output/dist 제외.
+- [x] [공개 CI](https://github.com/Do-hyeon/cheese-knife/actions/runs/38576687431): Windows/Ubuntu foundation 및 verify 모두 success. verify에는 전체 단위·빌드/패키지·객관 오디오·설치 positive/negative·old-new-old·storage-loss 대조 포함.
+- [x] [병합 후 main CI](https://github.com/Do-hyeon/cheese-knife/actions/runs/38577614043)도 ae9f8e5 입력으로 success 확인.
+- [x] 검증한 head eab54e7에 고정하여 merge commit ae9f8e50a22dae9d549f1e476d302549ecc03b4a로 main 통합. local main도 fast-forward.
+- [x] main 포함·열린 PR 없음·worktree 미사용·문서 URL 의존 없음 확인 후 `codex/f00-channel-media-settings` 원격/로컬만 삭제. 커밋은 main/PR에 보존되며 다른 브랜치는 유지.
+- [x] F01 7개 파일을 복구 가능한 stash에서 복원하고 수정 전 Git blob 일치를 확인했다. 별도 로컬 `codex/f01-audio-processing`에 보존하며 원래 stash도 남겼다. 계획 충돌은 최신 F00 통합/릴리즈 경계와 F01 체크리스트를 합쳐 해결했다.
+
+[PR 사전검증](../validation/2026-10-14-f00-pr-preflight.md)의 기존8경고·root private 원장 해시 불일치 제한은 그대로다. 제품2.13.3·root dist58·시청 Chrome/P09·스토어·릴리즈는 변경하지 않았다. **차기 릴리즈는 F00·F01·F02와 최종 통합 게이트 완료 후**이며 F00 병합을 배포 완료로 세지 않는다.

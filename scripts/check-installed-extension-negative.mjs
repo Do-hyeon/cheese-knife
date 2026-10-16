@@ -35,15 +35,20 @@ export function withoutMainContentScript(manifest) {
   };
 }
 
-async function prepareNegativeCandidate(runId) {
+async function prepareNegativeCandidate(runId,{retainEvidence = false} = {}) {
   const files = await openOwnedRoot(repositoryRoot);
-  const candidate = await verifyCandidate(runId);
+  const candidate = await verifyCandidate(runId,repositoryRoot,{retainEvidence});
   const negativeRelative = `output/playwright/installed-negative-package-${runId}`;
   let copied = false;
   let cleaned = false;
   const cleanup = async () => {
     if (cleaned) return;
     cleaned = true;
+    if (retainEvidence) {
+      if (!(await files.lstat(ownedRelative(files.root,candidate.root),{optional:true}))?.isDirectory() ||
+        copied && !(await files.lstat(negativeRelative,{optional:true}))?.isDirectory()) throw negativeError('negative-evidence-missing');
+      return;
+    }
     if (copied) await files.removeTree(negativeRelative);
     await removeCandidate(runId);
   };
@@ -51,15 +56,16 @@ async function prepareNegativeCandidate(runId) {
     await files.ensureDirectory('output/playwright');
     if (await files.lstat(negativeRelative, { optional: true })) throw negativeError('negative-candidate-exists');
     const sourceRelative = ownedRelative(files.root, candidate.dist);
-    const negativePath = await files.copyTree(sourceRelative, negativeRelative);
     copied = true;
+    const negativePath = await files.copyTree(sourceRelative, negativeRelative);
     const manifestRelative = `${negativeRelative}/manifest.json`;
     const manifest = JSON.parse(await files.readFile(manifestRelative, 'utf8'));
     const mutated = withoutMainContentScript(manifest);
     await files.writeFile(manifestRelative, `${JSON.stringify(mutated, null, 2)}\n`, 'utf8');
-    return { candidate: { ...candidate, dist: negativePath }, cleanup };
+    return { candidate: { ...candidate, dist: negativePath }, cleanup,
+      ...(retainEvidence?{evidence:{candidatePath:candidate.root,negativePath,retained:true}}:{}) };
   } catch (error) {
-    await cleanup();
+    try { await cleanup(); } catch (secondary) { throw Object.assign(negativeError('negative-preparation-incomplete',error),{secondaryErrors:[String(secondary?.message||secondary).slice(0,240)]}); }
     throw error;
   }
 }
@@ -78,10 +84,11 @@ const defaults = {
   writeReport: writeNegativeReport,
 };
 
-export async function runInstalledExtensionNegative({ runId, headed = false, dependencies = {} } = {}) {
+export async function runInstalledExtensionNegative({ runId, headed = false, retainEvidence = false, dependencies = {} } = {}) {
+  if (typeof retainEvidence !== 'boolean') throw negativeError('installed-e2e-retention-invalid');
   validateRunId(runId);
   const deps = { ...defaults, ...dependencies };
-  const prepared = await deps.prepareCandidate(runId);
+  const prepared = await deps.prepareCandidate(runId,{retainEvidence});
   let cleaned = false;
   const cleanup = async () => {
     if (cleaned) return;
@@ -94,6 +101,7 @@ export async function runInstalledExtensionNegative({ runId, headed = false, dep
       await deps.runInstalled({
         runId,
         headed,
+        retainEvidence,
         dependencies: {
           verifyCandidate: async () => prepared.candidate,
           removeCandidate: cleanup,
@@ -105,14 +113,19 @@ export async function runInstalledExtensionNegative({ runId, headed = false, dep
       observed = error;
     }
   } finally {
-    await cleanup();
+    try { await cleanup(); } catch (error) { throw Object.assign(negativeError('negative-control-unexpected-failure',observed||error),{secondaryErrors:[String(error?.message||error).slice(0,240)]}); }
   }
-  if (observed?.code !== 'main-runtime-missing') {
+  if (observed?.code !== 'main-runtime-missing' || observed?.secondaryErrors?.length) {
     if (observed?.code === 'negative-control-unexpected-pass') throw observed;
     throw negativeError('negative-control-unexpected-failure', observed);
   }
-  const report = { ok: true, runId, observedFailure: observed.code };
-  await deps.writeReport(report);
+  const report = { ok: true, runId, observedFailure: observed.code,
+    ...(retainEvidence?{evidence:{...prepared.evidence,...observed.evidence}}:{}) };
+  try { await deps.writeReport(report); }
+  catch (error) {
+    const secondaryErrors=[{code:String(error?.code||'negative-report-failed').slice(0,240),message:String(error?.message||error).slice(0,240)}];
+    throw Object.assign(negativeError('negative-control-unexpected-failure',observed),{report:{...report,ok:false,secondaryErrors},secondaryErrors});
+  }
   return report;
 }
 

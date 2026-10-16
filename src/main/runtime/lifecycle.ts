@@ -1,4 +1,4 @@
-import { readScopedConfigEnvelope } from './bridge';
+import { readScopedConfigEnvelope, readGainPreviewEnvelope } from './bridge';
 import type { KnifeRuntime, RuntimeEnvironment, RuntimeLifecycle } from './contracts';
 
 const interesting = 'video, button, section, aside, [role="tablist"]';
@@ -7,6 +7,7 @@ export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvir
   const cleanups: (() => void)[] = [];
   let observer: MutationObserver | null = null;
   let revision = -1, attempts = 0, frame: number | null = null, pulse: number | null = null, requestTimer: number | null = null;
+  let reconcileTimer: number | null = null, reconcileEpoch = 0;
   let started = false, suspended = false, disposed = false;
 
   const clearRequest = () => {
@@ -17,9 +18,11 @@ export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvir
     if (pulse !== null) environment.clearInterval(pulse);
     pulse = null;
   };
-  const clearFrame = () => {
+  const clearScheduled = () => {
+    reconcileEpoch++;
     if (frame !== null) environment.cancelAnimationFrame(frame);
-    frame = null;
+    if (reconcileTimer !== null) environment.clearTimeout(reconcileTimer);
+    frame = null;reconcileTimer = null;
   };
   const on = (target: EventTarget, type: string, listener: EventListener) => {
     target.addEventListener(type, listener);
@@ -33,12 +36,12 @@ export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvir
       runtime.setStatus('mediaSettings','limited',runtime.configReady ? 'scoped-config-unavailable' : 'reload-required');
       if (runtime.configReady) {
         runtime.media = {...runtime.media,phase:'limited',version:{globalRevision:null,mediaRevision:null},profileState:'global',
-          revisionStatus:'repair-required',audioBindingGeneration:0,audioKind:'global',videoKind:'global'};
+          revisionStatus:'repair-required',audioBindingGeneration:0,audioKind:'global',videoKind:'global',gainOrigin:'site-legacy'};
         runtime.config = {...runtime.baseConfig};runtime.notify();
       }
       return;
     }
-    environment.window.postMessage({ namespace:'cheese-knife',protocol:2,type:'config-request',requestId:runtime.mediaRequestId,
+    environment.window.postMessage({ namespace:'cheese-knife',protocol:3,type:'config-request',requestId:runtime.mediaRequestId,
       context:{...runtime.media.context} },environment.location.origin);
     requestTimer = environment.setTimeout(() => { requestTimer = null; requestConfig(); }, 100);
   };
@@ -50,7 +53,7 @@ export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvir
   };
   const freeze = () => {
     suspended = true;
-    clearPulse(); clearRequest(); clearFrame();
+    clearPulse(); clearRequest(); clearScheduled();
   };
   const dispose = () => {
     if (disposed) return;
@@ -61,15 +64,30 @@ export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvir
     observer = null;
   };
   const schedule = () => {
-    if (disposed || suspended || frame !== null) return;
-    frame = environment.requestAnimationFrame(() => { frame = null; if (!disposed && !suspended) runtime.reconcile(); });
+    if (disposed || suspended || frame !== null || reconcileTimer !== null) return;
+    const epoch = ++reconcileEpoch;
+    const run = () => {
+      if (epoch !== reconcileEpoch) return;
+      frame = null;reconcileTimer = null;reconcileEpoch++;
+      if (!disposed && !suspended) runtime.reconcile();
+    };
+    // Hidden documents may never receive animation frames, but their player can still be replaced.
+    if (environment.document.hidden) reconcileTimer = environment.setTimeout(run,100);
+    else frame = environment.requestAnimationFrame(run);
   };
   const onMessage = (event: Event) => {
     const message = event as MessageEvent<unknown>;
     if (disposed || suspended || message.source !== environment.window || message.origin !== environment.location.origin) return;
+    const preview = readGainPreviewEnvelope(message, runtime.media.context);
+    if (preview) {
+      const video = runtime.state.player?.video;
+      if (video && preview.requestId === runtime.mediaRequestId && preview.audioBindingGeneration === runtime.media.audioBindingGeneration)
+        runtime.audio?.applyPreviewGain(video, preview.value, preview.context);
+      return;
+    }
     try {
       if (!message.data || typeof message.data !== 'object' ||
-        Object.getOwnPropertyDescriptor(message.data,'protocol')?.value !== 2 ||
+        Object.getOwnPropertyDescriptor(message.data,'protocol')?.value !== 3 ||
         Object.getOwnPropertyDescriptor(message.data,'type')?.value !== 'config') return;
     } catch { return; }
     runtime.reconcile();
@@ -78,7 +96,7 @@ export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvir
     revision = envelope.deliverySequence;
     runtime.baseConfig = envelope.baseConfig;runtime.config = envelope.effectiveConfig;
     runtime.media = { context:envelope.context,phase:envelope.mediaPhase,version:envelope.version,profileState:envelope.profileState,
-      revisionStatus:envelope.revisionStatus,audioBindingGeneration:envelope.audioBindingGeneration,audioKind:envelope.audioKind,videoKind:envelope.videoKind };
+      revisionStatus:envelope.revisionStatus,audioBindingGeneration:envelope.audioBindingGeneration,audioKind:envelope.audioKind,videoKind:envelope.videoKind,gainOrigin:envelope.gainOrigin };
     runtime.i18n = envelope.i18n;
     runtime.configReady = true;
     if (runtime.media.phase !== 'pending') clearRequest();
@@ -111,10 +129,15 @@ export function createLifecycle(runtime: KnifeRuntime, environment: RuntimeEnvir
       observer = new environment.MutationObserver(onMutations);
       cleanups.push(() => observer?.disconnect());
       on(environment.window, 'message', onMessage);
-      on(environment.document, 'visibilitychange', () => { startPulse();runtime.reconcile();if (!environment.document.hidden) { runtime.revalidateMedia();runtime.notify(); } });
+      on(environment.document, 'visibilitychange', () => {
+        if (disposed || suspended) return;
+        clearScheduled();startPulse();runtime.reconcile();
+        if (!environment.document.hidden) { runtime.revalidateMedia();runtime.notify(); }
+      });
       on(environment.window, 'popstate', () => runtime.reconcile());
       on(environment.window, 'pageshow', () => {
         if (disposed) return;
+        clearScheduled();
         suspended = false;
         startPulse();runtime.reconcile();runtime.revalidateMedia();runtime.notify();
       });

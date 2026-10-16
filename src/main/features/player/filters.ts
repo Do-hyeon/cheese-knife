@@ -4,7 +4,7 @@ import type { VideoFilterController } from './contracts';
 export function installVideoFilters(target: Window): VideoFilterController | null {
   const browser = target as Window & typeof globalThis;
   const runtime = Object.getOwnPropertyDescriptor(target, browser.Symbol.for('cheese-knife.runtime.v1'))?.value as KnifeRuntime | undefined;
-  if (runtime?.ownerProtocol !== 2 || runtime.filters) return null;
+  if (runtime?.ownerProtocol !== 3 || runtime.filters) return null;
   const document = target.document;
   type Renderer = { svg: SVGSVGElement; filter: SVGFilterElement };
   let global: Renderer | null = null, channel: Renderer | null = null, disposed = false;

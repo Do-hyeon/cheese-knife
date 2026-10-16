@@ -54,8 +54,8 @@ export async function runtimeExecutableHashes(root, runtimeFiles) {
 
 export async function checkRuntimeInventory(
   root = process.cwd(),
-  inventoryFile = 'tests/fixtures/f00-runtime-js.json',
-  executableFile = 'tests/fixtures/f00-runtime-executable.json',
+  inventoryFile = 'tests/fixtures/f01-runtime-js.json',
+  executableFile = 'tests/fixtures/f01-runtime-executable.json',
 ) {
   const owned = await openOwnedRoot(root);
   const approvedFiles = JSON.parse(await owned.readFile(inventoryFile, 'utf8'));

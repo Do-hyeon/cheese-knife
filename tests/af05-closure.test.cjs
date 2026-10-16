@@ -3,12 +3,21 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+function noAnyType(source, file) {
+  assert.doesNotMatch(source.replace(/(['"])any\1/g, ''), /\bany\b/, file);
+}
+test('type policy distinguishes native step strings from prohibited any types', () => {
+  noAnyType("input.step = 'any';", 'native-input.ts');
+  assert.throws(() => noAnyType('let value: any;', 'bad.ts'), assert.AssertionError);
+  assert.throws(() => noAnyType('type Value = Promise<any>;', 'bad.ts'), assert.AssertionError);
+  assert.throws(() => noAnyType("type Value = { 'any': any };", 'bad.ts'), assert.AssertionError);
+});
 
 test('every first-party runtime file has a checked TypeScript generation entry', async () => {
   const settings = await import(pathToFileURL(path.resolve('scripts/settings-runtime.mjs')));
   const main = await import(pathToFileURL(path.resolve('scripts/main-runtime.mjs')));
   const entries = [...settings.SETTINGS_RUNTIME_ENTRIES, ...main.MAIN_RUNTIME_ENTRIES];
-  const inventory = JSON.parse(await fs.readFile('tests/fixtures/f00-runtime-js.json', 'utf8'));
+  const inventory = JSON.parse(await fs.readFile('tests/fixtures/f01-runtime-js.json', 'utf8'));
   assert.deepEqual(entries.map(entry => entry.output).sort(), inventory);
   for (const entry of entries) {
     assert.ok(entry.source.endsWith('.ts'));
@@ -24,7 +33,8 @@ test('product TypeScript source graph has no any or type-check suppression', asy
       if (item.isDirectory()) await visit(file);
       else if (item.name.endsWith('.ts')) {
         const source = await fs.readFile(file, 'utf8');
-        assert.doesNotMatch(source, /@ts-(?:ignore|nocheck|expect-error)|\bany\b/, file);
+        assert.doesNotMatch(source, /@ts-(?:ignore|nocheck|expect-error)/, file);
+        noAnyType(source, file);
       }
     }
   }

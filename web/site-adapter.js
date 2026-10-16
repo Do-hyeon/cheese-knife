@@ -591,7 +591,7 @@
 
   // src/main/site-adapter/entry.ts
   var runtime = window[/* @__PURE__ */ Symbol.for("cheese-knife.runtime.v1")];
-  if (runtime?.ownerProtocol === 2 && !runtime.adapter) {
+  if (runtime?.ownerProtocol === 3 && !runtime.adapter) {
     runtime.adapter = createSiteCapabilities(createReactReader());
     runtime.reconcile();
   }

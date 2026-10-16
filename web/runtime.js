@@ -18,6 +18,17 @@
       { id: "gamma", type: "range", min: 0, max: 3, step: 0.05, digits: 2, defaultValue: 1 },
       { id: "sharpness", type: "range", min: 0, max: 10, step: 0.1, digits: 1, defaultValue: 0 }
     ]);
+    const audioFieldsV2 = Object.freeze([
+      { id: "audioDefault", defaultValue: false },
+      { id: "compressorEnabled", defaultValue: true },
+      ...audioFields.filter((field) => field.id !== "compressorDefault"),
+      { id: "audioGain", type: "range", min: 0, max: 2, step: 0.05, defaultValue: 1 },
+      { id: "gainInherited", defaultValue: true },
+      { id: "eqEnabled", defaultValue: false },
+      ...[63, 125, 250, 500, 1e3, 2e3, 4e3, 8e3].map((hz) => ({ id: `eq${hz}`, type: "range", min: -6, max: 6, step: 0.1, defaultValue: 0 })),
+      { id: "normalizerEnabled", defaultValue: false },
+      { id: "normalizerTargetDbfs", type: "range", min: -30, max: -12, step: 1, defaultValue: -20 }
+    ]);
     const encoder = new TextEncoder();
     const channelId = (value) => typeof value === "string" && /^[a-f0-9]{32}$/.test(value);
     const presetId = (value) => typeof value === "string" && /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(value);
@@ -70,7 +81,7 @@
       if (!checked.ok) throw new Error("media-descriptor-contract");
       return checked.values;
     }
-    function readStore(raw) {
+    function readLegacyStore(raw) {
       if (raw === void 0) return { state: "absent", store: empty() };
       const record = ownRecord(raw, ["schema", "revision", "channels", "presets"]);
       const invalid = () => ({ state: "invalid", code: "invalid-media-store" });
@@ -115,7 +126,7 @@
       if (encoder.encode("mediaProfiles").byteLength + encoder.encode(JSON.stringify(store)).byteLength > 262144) return invalid();
       return { state: "valid", store };
     }
-    function resolveMediaSettings(base, read, context) {
+    function resolveLegacyMediaSettings(base, read, context) {
       const effectiveConfig = { ...base, ...project("audio", base), ...project("video", base) };
       const result = { effectiveConfig, profileState: "global", audioBindingKey: "global", audioKind: "global", videoKind: "global" };
       if (read.state === "invalid" || read.state === "unsupported") {
@@ -136,18 +147,25 @@
       if (channel) result.profileState = "scoped";
       return result;
     }
-    function patchValues(domain, values, patch) {
-      const descriptors = fields(domain);
-      if (!descriptors) return failure("invalid-domain");
-      const checked = ownRecord(patch, descriptors.map((field) => field.id), []);
-      return checked ? validateValues(domain, { ...values, ...checked }) : failure("invalid-patch");
-    }
     const equalValues = (a, b) => Object.keys(a).every((key) => Object.getOwnPropertyDescriptor(a, key)?.value === Object.getOwnPropertyDescriptor(b, key)?.value);
-    function mergeMediaOperation(input, request, global) {
-      const read = readStore(input);
+    function mergeStoreOperation(input, request, global) {
+      const modern = input.schema === 2;
+      const read = modern ? readStore(input) : readLegacyStore(input);
       if (read.state !== "valid" && read.state !== "absent") return failure(read.code);
       if (!counter(global.revision)) return failure("invalid-global-revision");
       const store = read.store;
+      const validate = (domain, value) => {
+        if (!modern || domain === "video") return validateValues(domain, value);
+        const result = validateAudioV2(value);
+        return result.ok ? { ...result, domain: "audio" } : result;
+      };
+      const projected = (domain) => modern && domain === "audio" ? projectGlobalAudio(global.config) : project(domain, global.config);
+      const patched = (domain, values2, patch) => {
+        const descriptors = modern && domain === "audio" ? audioFieldsV2 : fields(domain);
+        const checked = ownRecord(patch, descriptors.map((field) => field.id), []);
+        if (!checked) return failure("invalid-patch");
+        return validate(domain, { ...values2, ...checked, ...modern && domain === "audio" && Object.hasOwn(checked, "audioGain") ? { gainInherited: false } : {} });
+      };
       const nextRevision = store.revision + 1;
       const success = (changed, extra = {}) => {
         if (changed) {
@@ -155,7 +173,7 @@
           store.revision = nextRevision;
           store.channels.sort((a, b) => a.channelId.localeCompare(b.channelId));
           store.presets.sort((a, b) => a.id.localeCompare(b.id));
-          if (readStore(store).state !== "valid") return failure("media-limit");
+          if ((modern ? readStore(store) : readLegacyStore(store)).state !== "valid") return failure("media-limit");
         }
         return { ok: true, changed, nextStore: store, ...extra };
       };
@@ -168,11 +186,15 @@
       if (request.action === "apply-preset-global") {
         const preset = sourcePreset(request.presetToken);
         if (!preset || request.expectedGlobalRevision !== global.revision) return failure("conflict");
+        if (modern) {
+          const values2 = preset.domain === "audio" ? copyAudioPreset(preset.values, projectGlobalAudio(global.config)) : preset.values;
+          return success(false, { globalValues: values2, domain: preset.domain });
+        }
         const globalOperations = Object.entries(preset.values).map(([id2, value]) => ({ type: "config", id: id2, value }));
         return success(false, { globalOperations });
       }
       if (request.action === "create-preset") {
-        const values2 = validateValues(request.domain, request.values);
+        const values2 = validate(request.domain, request.values);
         if (!presetId(request.id) || !label(request.name) || !values2.ok) return failure("invalid-preset");
         const existing = store.presets.find((preset2) => preset2.id === request.id);
         if (existing) return existing.createdRevision === request.expectedMediaRevision + 1 && existing.revision === 1 && existing.domain === values2.domain && existing.name === request.name && equalValues(existing.values, values2.values) ? success(false, { presetToken: { id: existing.id, createdRevision: existing.createdRevision, revision: 1 } }) : failure("conflict");
@@ -201,10 +223,10 @@
         let values2 = { ok: true, ...{ domain: preset.domain, values: preset.values } };
         if ("values" in request && request.values !== void 0) {
           if (request.expectedPresetRevision !== preset.revision || request.domain !== preset.domain) return failure("conflict");
-          values2 = validateValues(preset.domain, request.values);
+          values2 = validate(preset.domain, request.values);
         } else if ("patch" in request && request.patch !== void 0) {
           if (request.domain !== preset.domain) return failure("conflict");
-          values2 = patchValues(preset.domain, preset.values, request.patch);
+          values2 = patched(preset.domain, preset.values, request.patch);
         }
         if (!values2.ok) return failure(values2.code);
         if (preset.name === name && equalValues(preset.values, values2.values)) return success(false);
@@ -218,7 +240,7 @@
       let channel = store.channels.find((item) => item.channelId === id);
       if (request.action === "enable-channel-domain") {
         if (request.expectedGlobalRevision !== global.revision) return failure("conflict");
-        const values2 = validateValues(request.domain, project(request.domain, global.config));
+        const values2 = validate(request.domain, projected(request.domain));
         if (!values2.ok) return values2;
         if (request.expectedMediaRevision !== store.revision) {
           const existing = channel?.[request.domain];
@@ -255,14 +277,14 @@
       const binding = channel[request.domain];
       if (!binding || request.channelToken.channelId !== id || request.channelToken.recordCreatedRevision !== channel.createdRevision || request.channelToken.domainCreatedRevision !== binding.createdRevision) return failure("conflict");
       let values;
-      if (request.action === "patch-channel-fields") values = patchValues(request.domain, binding.values, request.patch);
+      if (request.action === "patch-channel-fields") values = patched(request.domain, binding.values, request.patch);
       else {
         if (request.expectedRecordRevision !== channel.revision) return failure("conflict");
         if ("presetToken" in request) {
           const preset = sourcePreset(request.presetToken);
           if (!preset || preset.domain !== request.domain) return failure("conflict");
-          values = validateValues(request.domain, preset.values);
-        } else values = validateValues(request.domain, request.values);
+          values = validate(request.domain, modern && preset.domain === "audio" ? copyAudioPreset(preset.values, binding.values) : preset.values);
+        } else values = validate(request.domain, request.values);
       }
       if (!values.ok) return values;
       if (equalValues(binding.values, values.values)) return success(false);
@@ -271,13 +293,173 @@
       else channel.video = { createdRevision: binding.createdRevision, values: values.values };
       return success(true, { channelToken: { channelId: id, recordCreatedRevision: channel.createdRevision, domainCreatedRevision: binding.createdRevision }, recordRevision: channel.revision });
     }
+    function mergeMediaOperation(input, request, global) {
+      const read = readLegacyStore(input);
+      if (read.state !== "valid") return failure(read.state === "absent" ? "invalid-media-store" : read.code);
+      const result = mergeStoreOperation(read.store, request, global);
+      return result;
+    }
+    function mergeMediaOperationV2(input, request, global) {
+      const read = readStore(input);
+      if (read.state !== "valid" || read.store.schema !== 2) return failure("media-upgrade-required");
+      return mergeStoreOperation(read.store, request, global);
+    }
+    function validateAudioV2(raw) {
+      const values = ownRecord(raw, audioFieldsV2.map((field) => field.id));
+      if (!values || audioFieldsV2.some((field) => !scalar(values[field.id], field))) return failure("invalid-values");
+      return { ok: true, values };
+    }
+    function projectAudioV2(legacy) {
+      const checked = validateValues("audio", legacy);
+      if (!checked.ok || checked.domain !== "audio") throw new Error("invalid-legacy-audio");
+      const values = Object.fromEntries(audioFieldsV2.map((field) => [
+        field.id,
+        field.id === "audioDefault" ? checked.values.compressorDefault : Object.getOwnPropertyDescriptor(checked.values, field.id)?.value ?? field.defaultValue
+      ]));
+      const result = validateAudioV2(values);
+      if (!result.ok) throw new Error("media-descriptor-contract");
+      return result.values;
+    }
+    function projectGlobalAudio(config) {
+      const values = Object.fromEntries(audioFieldsV2.map((field) => {
+        const raw = Object.getOwnPropertyDescriptor(config, field.id === "audioDefault" ? "compressorDefault" : field.id)?.value;
+        return [field.id, scalar(raw, field) ? raw : field.defaultValue];
+      }));
+      const checked = validateAudioV2(values);
+      if (!checked.ok) throw new Error("media-descriptor-contract");
+      return checked.values;
+    }
+    function readStore(raw) {
+      if (raw === void 0) return { state: "absent", store: { schema: 2, revision: 0, channels: [], presets: [] } };
+      const record = ownRecord(raw, ["schema", "revision", "channels", "presets"]);
+      const invalid = () => ({ state: "invalid", code: "invalid-media-store" });
+      if (!record) return invalid();
+      if (record.schema === 1) {
+        const legacy = readLegacyStore(raw);
+        return legacy.state === "absent" ? invalid() : legacy;
+      }
+      if (record.schema !== 2) return counter(record.schema) && record.schema > 2 ? { state: "unsupported", code: "unsupported-media-schema" } : invalid();
+      if (!counter(record.revision)) return invalid();
+      const channels = ownArray(record.channels, 128), presets = ownArray(record.presets, 64);
+      if (!channels || !presets) return invalid();
+      const store = { schema: 2, revision: record.revision, channels: [], presets: [] };
+      const ids = /* @__PURE__ */ new Set();
+      for (const row of channels) {
+        const item = ownRecord(row, ["channelId", "createdRevision", "revision", "audio", "video"], ["channelId", "createdRevision", "revision"]);
+        if (!item || !channelId(item.channelId) || ids.has(item.channelId) || !creation(item.createdRevision, store.revision) || !creation(item.revision, store.revision)) return invalid();
+        const channel = { channelId: item.channelId, createdRevision: item.createdRevision, revision: item.revision };
+        for (const domain of ["audio", "video"]) {
+          if (!Object.hasOwn(item, domain)) continue;
+          const binding = ownRecord(domain === "audio" ? item.audio : item.video, ["createdRevision", "values"]);
+          if (!binding || !creation(binding.createdRevision, store.revision) || binding.createdRevision < channel.createdRevision) return invalid();
+          if (domain === "audio") {
+            const checked = validateAudioV2(binding.values);
+            if (!checked.ok) return invalid();
+            channel.audio = { createdRevision: binding.createdRevision, values: checked.values };
+          } else {
+            const checked = validateValues("video", binding.values);
+            if (!checked.ok || checked.domain !== "video") return invalid();
+            channel.video = { createdRevision: binding.createdRevision, values: checked.values };
+          }
+        }
+        if (!channel.audio && !channel.video) return invalid();
+        ids.add(channel.channelId);
+        store.channels.push(channel);
+      }
+      ids.clear();
+      for (const row of presets) {
+        const item = ownRecord(row, ["id", "createdRevision", "revision", "domain", "name", "values"]);
+        if (!item || !presetId(item.id) || ids.has(item.id) || !label(item.name) || !creation(item.createdRevision, store.revision) || !creation(item.revision, store.revision)) return invalid();
+        const common = { id: item.id, name: item.name, createdRevision: item.createdRevision, revision: item.revision };
+        if (item.domain === "audio") {
+          const checked = validateAudioV2(item.values);
+          if (!checked.ok) return invalid();
+          store.presets.push({ ...common, domain: "audio", values: checked.values });
+        } else if (item.domain === "video") {
+          const checked = validateValues("video", item.values);
+          if (!checked.ok || checked.domain !== "video") return invalid();
+          store.presets.push({ ...common, domain: "video", values: checked.values });
+        } else return invalid();
+        ids.add(item.id);
+      }
+      if (encoder.encode("mediaProfiles").byteLength + encoder.encode(JSON.stringify(store)).byteLength > 262144) return invalid();
+      return { state: "valid", store };
+    }
+    function upgradeMediaStore(raw, expectedRevision) {
+      const read = readLegacyStore(raw);
+      if (read.state !== "valid" || !counter(expectedRevision) || read.store.revision !== expectedRevision) return failure("conflict");
+      if (!counter(read.store.revision + 1) || read.store.channels.some((item) => !counter(item.revision + 1)) || read.store.presets.some((item) => !counter(item.revision + 1))) return failure("revision-exhausted");
+      const channels = read.store.channels.map((item) => {
+        const { audio, ...rest } = item;
+        return {
+          ...rest,
+          revision: item.revision + 1,
+          ...audio ? { audio: { createdRevision: audio.createdRevision, values: projectAudioV2(audio.values) } } : {}
+        };
+      });
+      const presets = read.store.presets.map((item) => ({
+        ...item,
+        revision: item.revision + 1,
+        ...item.domain === "audio" ? { domain: "audio", values: projectAudioV2(item.values) } : { domain: "video", values: item.values }
+      }));
+      const nextStore = { schema: 2, revision: read.store.revision + 1, channels, presets };
+      if (readStore(nextStore).state !== "valid") return failure("media-limit");
+      return { ok: true, changed: true, nextStore };
+    }
+    function copyAudioPreset(preset, destination) {
+      const a = validateAudioV2(preset), b = validateAudioV2(destination);
+      if (!a.ok || !b.ok) throw new Error("invalid-values");
+      return { ...a.values, ...a.values.gainInherited ? { audioGain: b.values.audioGain, gainInherited: b.values.gainInherited } : {} };
+    }
+    function resolveMediaSettings(base, read, context) {
+      const global = projectGlobalAudio(base), effectiveConfig = { ...base, ...global, ...project("video", base) };
+      const result = {
+        effectiveConfig,
+        profileState: "global",
+        audioBindingKey: "global",
+        audioKind: "global",
+        videoKind: "global",
+        gainOrigin: global.gainInherited ? "site-legacy" : "global-owned"
+      };
+      if (read.state === "invalid" || read.state === "unsupported") {
+        result.profileState = "repair-required";
+        return result;
+      }
+      if (!context.topFrame || context.incognito || !channelId(context.channelId)) return result;
+      const channel = read.store.channels.find((item) => item.channelId === context.channelId);
+      if (channel?.audio) {
+        const values = read.store.schema === 1 ? projectAudioV2(channel.audio.values) : channel.audio.values;
+        Object.assign(effectiveConfig, values);
+        if (values.gainInherited) {
+          effectiveConfig.audioGain = global.audioGain;
+          effectiveConfig.gainInherited = global.gainInherited;
+        } else result.gainOrigin = "channel-owned";
+        result.audioKind = "channel";
+        result.audioBindingKey = `${channel.channelId}:${channel.createdRevision}:${channel.audio.createdRevision}`;
+      }
+      if (channel?.video) {
+        Object.assign(effectiveConfig, channel.video.values);
+        result.videoKind = "channel";
+      }
+      if (channel) result.profileState = "scoped";
+      return result;
+    }
     return Object.freeze({
       audioFields,
+      audioFieldsV2,
       videoFields,
       readStore,
+      readLegacyStore,
       validateValues,
+      validateAudioV2,
+      projectAudioV2,
+      projectGlobalAudio,
+      upgradeMediaStore,
+      copyAudioPreset,
       resolveMediaSettings,
+      resolveLegacyMediaSettings,
       mergeMediaOperation,
+      mergeMediaOperationV2,
       isChannelId: channelId,
       isPresetId: presetId,
       isPresetName: label,
@@ -318,6 +500,14 @@
     }
     return output;
   }
+  function readGainPreviewEnvelope(event, expected) {
+    const keys = ["namespace", "protocol", "type", "requestId", "context", "audioBindingGeneration", "value"];
+    const raw = event.data;
+    if (!ordinaryRecord(raw) || Reflect.ownKeys(raw).length !== keys.length || !keys.every((key) => Object.hasOwn(raw, key))) return null;
+    const data = copyRecord(raw, false), context = data && copyRecord(data.context, false);
+    if (!data || !context || Reflect.ownKeys(context).length !== 4 || !["documentGeneration", "routePath", "channelId", "playerGeneration"].every((key) => Object.hasOwn(context, key) && ownValue(context, key) === Object.getOwnPropertyDescriptor(expected, key)?.value) || data.namespace !== "cheese-knife" || data.protocol !== 3 || data.type !== "gain-preview" || typeof data.requestId !== "string" || !data.requestId.length || data.requestId.length > 128 || !KnifeMediaProfiles.isCounter(data.audioBindingGeneration) || typeof data.value !== "number" || !Number.isFinite(data.value) || data.value < 0 || data.value > 2) return null;
+    return { requestId: data.requestId, context, audioBindingGeneration: data.audioBindingGeneration, value: data.value };
+  }
   function readScopedConfigEnvelope(event, expected) {
     const exact = (value, keys) => {
       if (!ordinaryRecord(value) || Reflect.ownKeys(value).length !== keys.length || !keys.every((key) => Object.hasOwn(value, key))) return null;
@@ -340,22 +530,24 @@
         "mediaPhase",
         "audioBindingGeneration",
         "audioKind",
-        "videoKind"
+        "videoKind",
+        "gainOrigin"
       ]);
-      if (!data || data.namespace !== "cheese-knife" || data.protocol !== 2 || data.type !== "config" || typeof data.requestId !== "string" || !data.requestId.length || data.requestId.length > 128 || !KnifeMediaProfiles.isCounter(data.deliverySequence) || !KnifeMediaProfiles.isCounter(data.audioBindingGeneration)) return null;
+      if (!data || data.namespace !== "cheese-knife" || data.protocol !== 3 || data.type !== "config" || typeof data.requestId !== "string" || !data.requestId.length || data.requestId.length > 128 || !KnifeMediaProfiles.isCounter(data.deliverySequence) || !KnifeMediaProfiles.isCounter(data.audioBindingGeneration)) return null;
       const context = exact(data.context, ["documentGeneration", "routePath", "channelId", "playerGeneration"]);
       if (!context || !KnifeMediaProfiles.isCounter(context.documentGeneration) || context.documentGeneration < 1 || !KnifeMediaProfiles.isCounter(context.playerGeneration) || typeof context.routePath !== "string" || context.routePath.charCodeAt(0) !== 47 || context.routePath.length > 2048 || context.channelId !== null && !KnifeMediaProfiles.isChannelId(context.channelId) || context.documentGeneration !== expected.documentGeneration || context.routePath !== expected.routePath || context.channelId !== expected.channelId || context.playerGeneration !== expected.playerGeneration) return null;
       const baseConfig = copyRecord(data.baseConfig, false), effectiveConfig = copyRecord(data.effectiveConfig, false);
       const scalars = (record) => !!record && Reflect.ownKeys(record).length <= 128 && Object.values(record).every((value) => typeof value === "boolean" || typeof value === "number" && Number.isFinite(value));
       if (!scalars(baseConfig) || !scalars(effectiveConfig)) return null;
-      const mediaFields = new Set([...KnifeMediaProfiles.audioFields, ...KnifeMediaProfiles.videoFields].map((field) => field.id));
+      const mediaFields = new Set([...KnifeMediaProfiles.audioFieldsV2, ...KnifeMediaProfiles.videoFields].map((field) => field.id));
       for (const config of [baseConfig, effectiveConfig]) for (const domain of ["audio", "video"]) {
-        const fields = domain === "audio" ? KnifeMediaProfiles.audioFields : KnifeMediaProfiles.videoFields;
-        if (!KnifeMediaProfiles.validateValues(domain, Object.fromEntries(fields.map((field) => [field.id, ownValue(config, field.id)]))).ok) return null;
+        const fields = domain === "audio" ? KnifeMediaProfiles.audioFieldsV2 : KnifeMediaProfiles.videoFields;
+        const values = Object.fromEntries(fields.map((field) => [field.id, ownValue(config, field.id)]));
+        if (!(domain === "audio" ? KnifeMediaProfiles.validateAudioV2(values) : KnifeMediaProfiles.validateValues("video", values)).ok) return null;
       }
       if (Object.keys(baseConfig).length !== Object.keys(effectiveConfig).length || !Object.entries(baseConfig).every(([key, value]) => Object.hasOwn(effectiveConfig, key) && (mediaFields.has(key) || Object.is(value, ownValue(effectiveConfig, key))))) return null;
       const version = exact(data.version, ["globalRevision", "mediaRevision"]);
-      if (!version || version.globalRevision !== null && !(KnifeMediaProfiles.isCounter(version.globalRevision) && version.globalRevision < Number.MAX_SAFE_INTEGER) || version.mediaRevision !== null && !KnifeMediaProfiles.isCounter(version.mediaRevision) || !["ready", "repair-required"].includes(data.revisionStatus) || version.globalRevision === null !== (data.revisionStatus === "repair-required") || !["global", "scoped", "repair-required"].includes(data.profileState) || !["pending", "ready", "limited"].includes(data.mediaPhase) || !["global", "channel"].includes(data.audioKind) || !["global", "channel"].includes(data.videoKind)) return null;
+      if (!version || version.globalRevision !== null && !(KnifeMediaProfiles.isCounter(version.globalRevision) && version.globalRevision < Number.MAX_SAFE_INTEGER) || version.mediaRevision !== null && !KnifeMediaProfiles.isCounter(version.mediaRevision) || !["ready", "repair-required"].includes(data.revisionStatus) || version.globalRevision === null !== (data.revisionStatus === "repair-required") || !["global", "scoped", "repair-required"].includes(data.profileState) || !["pending", "ready", "limited"].includes(data.mediaPhase) || !["global", "channel"].includes(data.audioKind) || !["global", "channel"].includes(data.videoKind) || !["site-legacy", "global-owned", "channel-owned"].includes(data.gainOrigin) || data.gainOrigin === "channel-owned" && data.audioKind !== "channel" || data.gainOrigin === "site-legacy" !== (effectiveConfig.gainInherited === true)) return null;
       const scoped = data.audioKind === "channel" || data.videoKind === "channel";
       if (scoped && !context.channelId || data.profileState === "scoped" !== scoped || data.profileState === "repair-required" && data.mediaPhase !== "limited" || data.mediaPhase === "ready" && version.mediaRevision === null || data.mediaPhase === "pending" && (scoped || !Object.entries(baseConfig).every(([key, value]) => Object.is(value, ownValue(effectiveConfig, key))))) return null;
       const i18n = copyRecord(data.i18n, true);
@@ -373,7 +565,8 @@
         mediaPhase: data.mediaPhase,
         audioBindingGeneration: data.audioBindingGeneration,
         audioKind: data.audioKind,
-        videoKind: data.videoKind
+        videoKind: data.videoKind,
+        gainOrigin: data.gainOrigin
       };
     } catch {
       return null;
@@ -386,6 +579,7 @@
     const cleanups = [];
     let observer = null;
     let revision = -1, attempts = 0, frame = null, pulse = null, requestTimer = null;
+    let reconcileTimer = null, reconcileEpoch = 0;
     let started = false, suspended = false, disposed = false;
     const clearRequest = () => {
       if (requestTimer !== null) environment.clearTimeout(requestTimer);
@@ -395,9 +589,12 @@
       if (pulse !== null) environment.clearInterval(pulse);
       pulse = null;
     };
-    const clearFrame = () => {
+    const clearScheduled = () => {
+      reconcileEpoch++;
       if (frame !== null) environment.cancelAnimationFrame(frame);
+      if (reconcileTimer !== null) environment.clearTimeout(reconcileTimer);
       frame = null;
+      reconcileTimer = null;
     };
     const on = (target, type, listener) => {
       target.addEventListener(type, listener);
@@ -421,7 +618,8 @@
             revisionStatus: "repair-required",
             audioBindingGeneration: 0,
             audioKind: "global",
-            videoKind: "global"
+            videoKind: "global",
+            gainOrigin: "site-legacy"
           };
           runtime.config = { ...runtime.baseConfig };
           runtime.notify();
@@ -430,7 +628,7 @@
       }
       environment.window.postMessage({
         namespace: "cheese-knife",
-        protocol: 2,
+        protocol: 3,
         type: "config-request",
         requestId: runtime.mediaRequestId,
         context: { ...runtime.media.context }
@@ -450,7 +648,7 @@
       suspended = true;
       clearPulse();
       clearRequest();
-      clearFrame();
+      clearScheduled();
     };
     const dispose = () => {
       if (disposed) return;
@@ -466,17 +664,30 @@
       observer = null;
     };
     const schedule = () => {
-      if (disposed || suspended || frame !== null) return;
-      frame = environment.requestAnimationFrame(() => {
+      if (disposed || suspended || frame !== null || reconcileTimer !== null) return;
+      const epoch = ++reconcileEpoch;
+      const run = () => {
+        if (epoch !== reconcileEpoch) return;
         frame = null;
+        reconcileTimer = null;
+        reconcileEpoch++;
         if (!disposed && !suspended) runtime.reconcile();
-      });
+      };
+      if (environment.document.hidden) reconcileTimer = environment.setTimeout(run, 100);
+      else frame = environment.requestAnimationFrame(run);
     };
     const onMessage = (event) => {
       const message = event;
       if (disposed || suspended || message.source !== environment.window || message.origin !== environment.location.origin) return;
+      const preview = readGainPreviewEnvelope(message, runtime.media.context);
+      if (preview) {
+        const video = runtime.state.player?.video;
+        if (video && preview.requestId === runtime.mediaRequestId && preview.audioBindingGeneration === runtime.media.audioBindingGeneration)
+          runtime.audio?.applyPreviewGain(video, preview.value, preview.context);
+        return;
+      }
       try {
-        if (!message.data || typeof message.data !== "object" || Object.getOwnPropertyDescriptor(message.data, "protocol")?.value !== 2 || Object.getOwnPropertyDescriptor(message.data, "type")?.value !== "config") return;
+        if (!message.data || typeof message.data !== "object" || Object.getOwnPropertyDescriptor(message.data, "protocol")?.value !== 3 || Object.getOwnPropertyDescriptor(message.data, "type")?.value !== "config") return;
       } catch {
         return;
       }
@@ -494,7 +705,8 @@
         revisionStatus: envelope.revisionStatus,
         audioBindingGeneration: envelope.audioBindingGeneration,
         audioKind: envelope.audioKind,
-        videoKind: envelope.videoKind
+        videoKind: envelope.videoKind,
+        gainOrigin: envelope.gainOrigin
       };
       runtime.i18n = envelope.i18n;
       runtime.configReady = true;
@@ -540,6 +752,8 @@
         cleanups.push(() => observer?.disconnect());
         on(environment.window, "message", onMessage);
         on(environment.document, "visibilitychange", () => {
+          if (disposed || suspended) return;
+          clearScheduled();
           startPulse();
           runtime.reconcile();
           if (!environment.document.hidden) {
@@ -550,6 +764,7 @@
         on(environment.window, "popstate", () => runtime.reconcile());
         on(environment.window, "pageshow", () => {
           if (disposed) return;
+          clearScheduled();
           suspended = false;
           startPulse();
           runtime.reconcile();
@@ -700,7 +915,7 @@
       () => runtime.diagnostics()
     );
     runtime = {
-      ownerProtocol: 2,
+      ownerProtocol: 3,
       requestId: `knife-${Date.now().toString(36)}`,
       config: {},
       baseConfig: {},
@@ -713,7 +928,8 @@
         revisionStatus: "repair-required",
         audioBindingGeneration: 0,
         audioKind: "global",
-        videoKind: "global"
+        videoKind: "global",
+        gainOrigin: "site-legacy"
       },
       i18n: {},
       configReady: false,

@@ -85,3 +85,29 @@ test('fixture independently witnesses published v1 and current v2 metadata witho
     {context:{...current.context,routePath:'x'.repeat(2049)}},{version:{globalRevision:'bad',mediaRevision:0}},{mediaPhase:'wrong'}])send({...current,...change});
   assert.equal(JSON.stringify(state.lastConfigEnvelopeV2),before);
 });
+
+test('fixture witnesses V3 gain origin and drops previous-document envelopes without losing lifecycle history',async t=>{
+  const fs=require('node:fs'),script=fs.readFileSync('tests/fixtures/installed-extension/site.js','utf8');
+  const dom=page();t.after(()=>dom.window.close());
+  dom.window.sessionStorage.setItem('cheese-knife-fixture-state-v1',JSON.stringify({loads:4,pageshowPersisted:2,pagehidePersisted:1,
+    routeHistory:['previous'],lastConfigEnvelopeV1:{requestId:'old',revision:4},lastConfigEnvelopeV2:{requestId:'old-scoped'}}));
+  dom.window.eval(script);
+  const state=dom.window.__knifeFixture;
+  assert.equal(state.lastConfigEnvelopeV1,null);assert.equal(state.lastConfigEnvelopeV2,null);assert.equal(state.lastConfigEnvelopeV3,null);
+  assert.equal(state.loads,5);assert.equal(state.pageshowPersisted,2);assert.equal(state.pagehidePersisted,1);assert.equal(state.routeHistory[0],'previous');
+  const current={namespace:'cheese-knife',protocol:3,type:'config',requestId:'current',deliverySequence:4,
+    context:{documentGeneration:1,routePath:'/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',channelId:'a'.repeat(32),playerGeneration:2},
+    version:{globalRevision:3,mediaRevision:1},audioBindingGeneration:2,mediaPhase:'ready',audioKind:'global',videoKind:'global',
+    profileState:'global',revisionStatus:'ready',gainOrigin:'site-legacy',baseConfig:{gainInherited:true},effectiveConfig:{gainInherited:true},presets:['SECRET']};
+  const send=data=>dom.window.dispatchEvent(new dom.window.MessageEvent('message',{source:dom.window,origin:dom.window.location.origin,data}));
+  send(current);assert.equal(state.lastConfigEnvelopeV3?.gainOrigin,'site-legacy');assert.equal(state.lastConfigEnvelopeV3?.load,5);
+  const before=JSON.stringify(state.lastConfigEnvelopeV3);
+  for(const change of [{protocol:4},{gainOrigin:'wrong'},{gainOrigin:'channel-owned'},{gainOrigin:'global-owned'},
+    {context:{...current.context,routePath:'relative'}},{context:{...current.context,playerGeneration:-1}}])send({...current,...change});
+  assert.equal(JSON.stringify(state.lastConfigEnvelopeV3),before);
+  for(const [gainOrigin,audioKind,profileState] of [['global-owned','global','global'],['channel-owned','channel','scoped']]){
+    send({...current,gainOrigin,audioKind,profileState,effectiveConfig:{gainInherited:false}});
+    assert.equal(state.lastConfigEnvelopeV3.gainOrigin,gainOrigin);
+  }
+  assert.equal(JSON.stringify(state).includes('SECRET'),false);assert.equal(JSON.stringify(state.lastConfigEnvelopeV3).includes('gainInherited'),false);
+});

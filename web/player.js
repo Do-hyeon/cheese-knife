@@ -259,34 +259,19 @@
         const box = mount.track(document.createElement("div"));
         box.className = "pzp-pc__volume-control knife-comp knife-owned";
         const button = ownedButton(document, "pzp-pc__volume-button", label(runtime, "enableCompressor", "Enable compressor"), "compressor");
-        const slider = document.createElement("input");
-        slider.type = "range";
-        slider.min = "0";
-        slider.max = "2";
-        slider.step = "0.05";
-        slider.className = "knife-gain-slider";
-        slider.setAttribute("aria-label", "Gain");
-        box.append(button, slider);
+        box.append(button);
         volume.after(box);
         scope.on(button, "click", (event) => {
           event.stopPropagation();
-          const intent2 = audioIntent(runtime, video);
-          intent2.manual = true;
-          intent2.automatic = false;
-          intent2.needsResume = !runtime.mediaCurrent() || !audio.eligible(video);
-          void audio.setEnabled(video, !["on", "pending"].includes(audio.getState(video)));
+          if (runtime.state.player?.video !== video || runtime.state.player.pzp !== pzp) return;
+          void runtime.player?.setAudioWanted(!["on", "pending"].includes(audio.getState(video)), { ...runtime.media.context });
         });
-        scope.on(slider, "input", () => audio.setGain(video, Number(slider.value)));
-        scope.on(slider, "keydown", (event) => event.stopPropagation());
-        scope.add(audio.subscribe(video, (status, gain) => {
+        scope.add(audio.subscribe(video, (status) => {
           box.dataset.state = status;
           button.setAttribute("aria-pressed", String(status === "on"));
           const text = label(runtime, status === "on" || status === "pending" ? "disableCompressor" : "enableCompressor", "Compressor");
           button.title = text;
           button.setAttribute("aria-label", text);
-          slider.value = String(gain);
-          slider.hidden = status !== "on";
-          slider.title = `${Math.round(gain * 100)}%`;
         }));
       }
       const intent = audioIntent(runtime, video);
@@ -308,7 +293,7 @@
           intent.needsResume = false;
           void audio.resumeWanted(video);
         }
-        if (runtime.config.compressorDefault === true && !intent.requested && !intent.manual && audio.eligible(video)) {
+        if (runtime.config.audioDefault === true && !intent.requested && !intent.manual && audio.eligible(video)) {
           intent.requested = true;
           intent.automatic = true;
           void audio.setEnabled(video, true);
@@ -363,7 +348,7 @@
     const browser = target;
     const key = browser.Symbol.for("cheese-knife.runtime.v1");
     const runtime = Object.getOwnPropertyDescriptor(target, key)?.value;
-    if (runtime?.ownerProtocol !== 2 || runtime.player) return null;
+    if (runtime?.ownerProtocol !== 3 || runtime.player) return null;
     if (!runtime.adapter) runtime.setStatus("player", "pending", "site-adapter-unavailable");
     let current = null;
     let unsubscribe = null;
@@ -372,7 +357,25 @@
       current?.scope.dispose();
       current = null;
     };
+    const currentContext = (context) => !!context && Object.keys(context).length === 4 && ["documentGeneration", "routePath", "channelId", "playerGeneration"].every((key2) => Object.getOwnPropertyDescriptor(context, key2)?.value === Object.getOwnPropertyDescriptor(runtime.media.context, key2)?.value);
     const controller = {
+      getAudioWanted(context) {
+        const video = runtime.state.player?.video;
+        if (!currentContext(context) || !video || !runtime.audio) return { ok: false, wanted: false, state: null, context: { ...runtime.media.context } };
+        const intent = audioIntent(runtime, video);
+        return { ok: true, wanted: intent.requested, state: runtime.audio.getState(video), context: { ...runtime.media.context } };
+      },
+      async setAudioWanted(enabled, context) {
+        const video = runtime.state.player?.video;
+        if (typeof enabled !== "boolean" || !currentContext(context) || !video || !runtime.audio) return { ok: false, wanted: false, state: null, context: { ...runtime.media.context } };
+        const intent = audioIntent(runtime, video);
+        intent.manual = true;
+        intent.automatic = false;
+        intent.requested = enabled;
+        intent.needsResume = !runtime.mediaCurrent() || !runtime.audio.eligible(video);
+        await runtime.audio.setEnabled(video, enabled);
+        return controller.getAudioWanted(context);
+      },
       seek(backward) {
         const video = runtime.state.player?.video;
         if (runtime.state.route?.kind !== "live" || runtime.config.arrowSeek !== true || !video) return false;
@@ -448,10 +451,10 @@
       }
     };
     try {
+      runtime.player = controller;
       unsubscribe = runtime.subscribe(onState);
       target.addEventListener("keydown", onKeyDown);
       target.addEventListener("pagehide", onPageHide);
-      runtime.player = controller;
       return controller;
     } catch {
       dispose();
@@ -463,7 +466,7 @@
   function installVideoFilters(target) {
     const browser = target;
     const runtime = Object.getOwnPropertyDescriptor(target, browser.Symbol.for("cheese-knife.runtime.v1"))?.value;
-    if (runtime?.ownerProtocol !== 2 || runtime.filters) return null;
+    if (runtime?.ownerProtocol !== 3 || runtime.filters) return null;
     const document = target.document;
     let global = null, channel = null, disposed = false;
     let element = null, slot = null, body = null, ownsBodyClass = false;

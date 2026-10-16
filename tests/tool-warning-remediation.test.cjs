@@ -9,6 +9,11 @@ test('media client uses fixed domain property access without object-injection fi
   const results=await lint.lintFiles(['settings-client.js']);
   assert.deepEqual(results.flatMap(file=>file.messages),[]);
 });
+test('Native audio settings runner and its typed popup helper have no static-tool observations',async()=>{
+  const lint=new ESLint({overrideConfigFile:'eslint.security.config.mjs'});
+  const results=await lint.lintFiles(['scripts/check-installed-audio-settings.mjs','scripts/extension-e2e/popup-cdp.mjs','scripts/extension-e2e/f01-transition.mjs']);
+  assert.deepEqual(results.flatMap(file=>file.messages),[]);
+});
 
 test('scoped pixel proof reads selected resources through the owned filesystem boundary', async () => {
   const lint=new ESLint({overrideConfigFile:'eslint.security.config.mjs'});
@@ -72,7 +77,7 @@ test('site adapter removes webpack injection without a Node dynamic-require warn
 
 test('runtime dictionary boundaries have no generic object-injection observation', async () => {
   const lint = new ESLint({ overrideConfigFile: 'eslint.security.config.mjs' });
-  const result = await lint.lintFiles(['popup.js', 'web/main.js', 'web/player.js', 'web/runtime.js']);
+  const result = await lint.lintFiles(['popup.js', 'audio-settings-ui.js', 'web/main.js', 'web/player.js', 'web/runtime.js']);
   const findings = result.flatMap(file => file.messages)
     .filter(message => message.ruleId === 'security/detect-object-injection');
   assert.deepEqual(findings.map(message => `${message.line}:${message.column}`), []);

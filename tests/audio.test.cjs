@@ -2,58 +2,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { page, load, runtime, deliverScoped: deliver, playerHTML, flush, clock } = require('./helpers.cjs');
 
-function setup(t, suspended = false, manualClock = false, suppliedConfig = { compressorAttack: 0 }, failures = {}) {
-  const dom = page(playerHTML);
-  const time=failures.clock?clock(dom):undefined;
-  t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
-  const video = dom.window.document.querySelector('video');
-  Object.defineProperty(video, 'currentSrc', { value: 'blob:https://chzzk.naver.com/test-media', configurable: true });
-  const parameter = value => ({ value, events: [], setValueAtTime(next, at) { this.events.push(['set', next, at]); this.value = next; }, cancelScheduledValues(at) { this.events.push(['cancel', at]); }, linearRampToValueAtTime(next, at) { this.events.push(['ramp', next, at]); this.value = next; } });
-  const nodes = [];
-  const node = type => { const value = { type, outputs: new Set(), connect(dest) { this.outputs.add(dest); }, disconnect() { this.outputs.clear(); } }; nodes.push(value); return value; };
-  let resolveResume;
-  let context;
-  let sources = 0;
-  let gains = 0;
-  dom.window.AudioContext = class {
-    constructor() { this.state = suspended ? 'suspended' : 'running'; this.destination = node('destination'); this.currentTime = 0; this.sampleRate = failures.sampleRate || 48000; context = this; }
-    resume() {
-      if (failures.resumeReject) return Promise.reject(new Error('resume unavailable'));
-      return new Promise(resolve => { resolveResume = () => { this.state = 'running'; resolve(); }; });
-    }
-    createMediaElementSource(element) { if(failures.sourceVideos)assert.ok(failures.sourceVideos.has(element));else assert.equal(element, video);sources++;failures.onSource?.(dom);return node('source'); }
-    createGain() {
-      gains++;
-      if (failures.gainAt === gains) throw new Error('gain unavailable');
-      return Object.assign(node('gain'), { gain: parameter(1) });
-    }
-    createDelay(maxDelayTime) {
-      if (failures.delay) throw new Error('delay unavailable');
-      return Object.assign(node('delay'), { maxDelayTime, delayTime: parameter(0) });
-    }
-    createWaveShaper() {
-      if (failures.limiter) throw new Error('limiter unavailable');
-      return Object.assign(node('limiter'), { curve: null, oversample: 'none' });
-    }
-    createDynamicsCompressor() {
-      if (failures.compressor) throw new Error('compressor unavailable');
-      const compressor = Object.assign(node('compressor'), Object.fromEntries(['threshold','knee','ratio','attack','release'].map(key => [key, parameter(0)])));
-      Object.defineProperty(compressor, 'foreignParameter', { enumerable: true, value: parameter(77) });
-      return compressor;
-    }
-  };
-  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom, suppliedConfig);
-  // Exercise the controller's own numeric clamps, independently of the v2 projection decoder.
-  if (!runtime(dom).configReady) deliver(dom, {});
-  runtime(dom).config = suppliedConfig;
-  const statusChanges = [];
-  const setStatus = runtime(dom).setStatus;
-  runtime(dom).setStatus = (...args) => { statusChanges.push(args); return setStatus(...args); };
-  if (failures.storage) Object.defineProperty(dom.window, 'localStorage', { configurable: true, get() { throw new Error('storage unavailable'); } });
-  let tick;
-  if (manualClock) dom.window.setInterval = callback => { tick = callback; return 9001; };
-  load(dom, 'web/audio.js');
-  return { dom, video, audio: runtime(dom).audio, nodes, statusChanges, time, tick: () => tick(), sources: () => sources, resume: () => resolveResume(), context: () => context };
+const { setup } = require('./audio-fixture.cjs');
+const audioFeatures = ['audioProcessing', 'compressor', 'equalizer', 'normalizer'];
+function masterGain(nodes) {
+  const limiter = nodes.findLast(node => node.type === 'limiter');
+  return nodes.find(node => node.type === 'gain' && node.outputs.has(limiter));
 }
 
 test('compressor applies only five explicit parameters with zero, bounds, and fallbacks', async t => {
@@ -110,11 +63,13 @@ test('location change during source creation never engages the previous channel 
   const gains=nodes.filter(node=>node.type==='gain');assert.equal(gains[0].gain.value,1);assert.equal(gains[1].gain.value,0);
 });
 function scopedAudioFrame(dom,base,effective,{phase='ready',binding=1,sequence=2,channel=false}={}) {
+  const canonicalBase={...base,audioDefault:base.compressorDefault};
+  const canonicalEffective={...effective,audioDefault:effective.compressorDefault,compressorDefault:base.compressorDefault};
   const api=runtime(dom);dom.window.dispatchEvent(new dom.window.MessageEvent('message',{source:dom.window,origin:dom.window.location.origin,
-    data:{namespace:'cheese-knife',protocol:2,type:'config',requestId:api.mediaRequestId,context:{...api.media.context},deliverySequence:sequence,
-      baseConfig:base,effectiveConfig:effective,i18n:api.i18n,version:phase==='pending'?{globalRevision:null,mediaRevision:null}:{globalRevision:0,mediaRevision:channel?1:0},
+    data:{namespace:'cheese-knife',protocol:3,type:'config',requestId:api.mediaRequestId,context:{...api.media.context},deliverySequence:sequence,
+      baseConfig:canonicalBase,effectiveConfig:canonicalEffective,i18n:api.i18n,version:phase==='pending'?{globalRevision:null,mediaRevision:null}:{globalRevision:0,mediaRevision:channel?1:0},
       profileState:channel?'scoped':'global',revisionStatus:phase==='pending'?'repair-required':'ready',mediaPhase:phase,
-      audioBindingGeneration:binding,audioKind:channel?'channel':'global',videoKind:'global'}}));
+      audioBindingGeneration:binding,audioKind:channel?'channel':'global',videoKind:'global',gainOrigin:canonicalEffective.gainInherited===false?'global-owned':'site-legacy'}}));
 }
 for(const manual of ['none','on','off'])test('limited fallback to confirmed default OFF preserves '+manual+' intent',async t=>{
   const {dom,audio,video,sources,nodes,time}=setup(t,false,false,{}, {clock:true}),api=runtime(dom);
@@ -181,7 +136,7 @@ test('inactive audio graphs cannot overwrite the selected ON player status',asyn
   const other=video.cloneNode();Object.defineProperty(other,'currentSrc',{value:'blob:https://chzzk.naver.com/other',configurable:true});
   sourceVideos.add(other);video.replaceWith(other);api.reconcile();deliver(dom,{compressorDefault:true});await flush();
   assert.equal(audio.getState(video),'off');assert.equal(audio.getState(other),'on');assert.equal(sources(),2);
-  api.notify();assert.equal(nodes.filter(node=>node.type==='gain')[4].gain.value,1);
+  api.notify();assert.equal([...nodes.findLast(node=>node.type==='limiter').outputs][0].gain.value,1);
   assert.equal(audio.getState(other),'on');assert.equal(api.statuses.compressor.state,'ready');
 });
 test('fallback without any new bridge frame uses unconfirmed authority rather than the previous channel binding',async t=>{
@@ -235,7 +190,7 @@ test('dry bypass matches the Chromium compressor pre-delay at 48kHz', async t =>
   assert.ok(delay, 'the dry branch must own a delay node');
   assert.equal(delay.maxDelayTime, 0.02);
   assert.equal(delay.delayTime.value, 0.006);
-  assert.deepEqual([...source.outputs].map(value => value.type).sort(), ['compressor', 'delay']);
+  assert.deepEqual([...source.outputs].map(value => value.type).sort(), ['delay', 'gain']);
   const [dry] = [...delay.outputs];
   assert.equal(dry.type, 'gain');
   assert.equal([...dry.outputs][0].type, 'destination');
@@ -262,7 +217,7 @@ test('wet limiter is identity below point nine and bounded by point nine eight',
   const { audio, video, nodes } = setup(t);
   await audio.setEnabled(video, true);
   const compressor = nodes.find(value => value.type === 'compressor');
-  const [userGain] = [...compressor.outputs];
+  const userGain = masterGain(nodes);
   const [limiter] = [...userGain.outputs];
   assert.equal(limiter.type, 'limiter');
   assert.equal(limiter.oversample, 'none');
@@ -293,7 +248,7 @@ test('audio preparation failure before source creation preserves the native path
       const { audio, video, sources, statusChanges } = setup(child, false, false, { compressorAttack: 0 }, failures);
       assert.equal(await audio.setEnabled(video, true), 'unavailable');
       assert.equal(sources(), 0);
-      assert.equal(statusChanges.every(([feature]) => feature === 'compressor'), true);
+      assert.equal(statusChanges.every(([feature]) => audioFeatures.includes(feature)), true);
     });
   }
 });
@@ -304,7 +259,7 @@ test('invalid or inaccessible gain storage falls back without blocking audio', a
       const { audio, video, dom, nodes } = setup(child, false, false, { compressorAttack: 0 }, { storage: storage === 'inaccessible' });
       if (storage === 'invalid') dom.window.localStorage.setItem('knifeGain', 'not-a-number');
       assert.equal(await audio.setEnabled(video, true), 'on');
-      assert.equal([...nodes.find(value => value.type === 'compressor').outputs][0].gain.value, 1);
+      assert.equal(masterGain(nodes).gain.value, 1);
     });
   }
 });
@@ -341,7 +296,7 @@ test('selected-video replacement during pending resume never intercepts the old 
   assert.equal(await enabling, 'off');
   assert.equal(sources(), 0);
   assert.equal(statusChanges.filter(([feature]) => feature === 'mediaSettings').length,1);
-  assert.equal(statusChanges.every(([feature]) => feature === 'compressor' || feature === 'mediaSettings'), true);
+  assert.equal(statusChanges.every(([feature]) => audioFeatures.includes(feature) || feature === 'mediaSettings'), true);
 });
 
 test('one throwing audio subscriber cannot block another subscriber', async t => {
@@ -355,7 +310,7 @@ test('one throwing audio subscriber cannot block another subscriber', async t =>
   audio.subscribe(video, state => received.push(state));
   assert.equal(await audio.setEnabled(video, true), 'on');
   assert.deepEqual(received, ['off', 'pending', 'on']);
-  assert.equal(statusChanges.every(([feature]) => feature === 'compressor'), true);
+  assert.equal(statusChanges.every(([feature]) => audioFeatures.includes(feature)), true);
 });
 
 test('final pagehide is idempotent and a late retirement callback is inert', async t => {
@@ -371,7 +326,7 @@ test('final pagehide is idempotent and a late retirement callback is inert', asy
   assert.equal(source.outputs.size, 2);
   assert.equal(audio.getState(video), 'off');
   assert.equal(statusChanges.filter(([feature, state]) => feature === 'compressor' && state === 'disabled').length, 1);
-  assert.equal(statusChanges.every(([feature]) => feature === 'compressor'), true);
+  assert.equal(statusChanges.every(([feature]) => audioFeatures.includes(feature)), true);
 });
 
 test('final pagehide blocks a pending resume and later enable calls', async t => {
@@ -447,21 +402,21 @@ test('sidebar identity changes and player UI reparenting preserve compression', 
   assert.equal(dom.window.document.querySelectorAll('.knife-comp').length, 1);
 });
 
-test('Gain changes schedule a short transition while UI and stored target update immediately', async t => {
+test('Gain previews schedule a short transition without writing the legacy site target', async t => {
   const { audio, video, nodes, context, dom } = setup(t);
   await audio.setEnabled(video, true);
   const compressor = nodes.find(node => node.type === 'compressor');
-  const parameter = [...compressor.outputs][0].gain;
+  const parameter = masterGain(nodes).gain;
   context().currentTime = 1;
   assert.equal(audio.setGain(video, 1.5), 1.5);
-  assert.equal(dom.window.localStorage.getItem('knifeGain'), '1.5');
+  assert.equal(dom.window.localStorage.getItem('knifeGain'), null);
   assert.deepEqual(parameter.events.slice(-3), [['cancel',1],['set',1,1],['ramp',1.5,1.01]]);
 });
 
 test('rapid Gain retargeting continues from the in-flight value instead of jumping to the previous target', async t => {
   const { audio, video, nodes, context } = setup(t);
   await audio.setEnabled(video, true);
-  const parameter = [...nodes.find(node => node.type === 'compressor').outputs][0].gain;
+  const parameter = masterGain(nodes).gain;
   context().currentTime = 2; audio.setGain(video, 2);
   context().currentTime = 2.005; audio.setGain(video, 0);
   const [cancel,anchor,end] = parameter.events.slice(-3);
@@ -474,7 +429,7 @@ test('rapid Gain retargeting continues from the in-flight value instead of jumpi
 test('unchanged Gain during configuration or repeated enable does not restart its transition', async t => {
   const { audio, video, nodes, context } = setup(t);
   await audio.setEnabled(video, true);
-  const parameter = [...nodes.find(node => node.type === 'compressor').outputs][0].gain;
+  const parameter = masterGain(nodes).gain;
   context().currentTime = 3; audio.setGain(video, 1.5);
   const count = parameter.events.length;
   context().currentTime = 3.002; audio.configure(); await audio.setEnabled(video, true);
@@ -483,8 +438,8 @@ test('unchanged Gain during configuration or repeated enable does not restart it
   assert.deepEqual(parameter.events.slice(-3),[['cancel',3.1],['set',1.5,3.1],['ramp',0,3.11]]);
 });
 
-test('source-creation retry initializes the replacement Gain node at the stored target', async t => {
-  const { dom, audio, video, nodes, context } = setup(t);
+test('source-creation retry initializes the replacement Gain node at the confirmed global target', async t => {
+  const { dom, audio, video, nodes, context } = setup(t, false, false, { audioGain: 1.5, gainInherited: false });
   audio.setGain(video, 1.5);
   // First attempt creates the context but fails before intercepting the video.
   const original = video.currentSrc;
@@ -493,7 +448,7 @@ test('source-creation retry initializes the replacement Gain node at the stored 
   const second = video.cloneNode(); video.replaceWith(second);
   Object.defineProperty(second,'currentSrc',{value:original});
   runtime({window:second.ownerDocument.defaultView}).reconcile();
-  deliver(dom,{});
+  deliver(dom,{audioGain:1.5,gainInherited:false});
   const createSource = context().createMediaElementSource;
   context().createMediaElementSource = () => { throw new Error('temporary source failure'); };
   await audio.setEnabled(second,true);
@@ -502,6 +457,6 @@ test('source-creation retry initializes the replacement Gain node at the stored 
   await audio.setEnabled(second,true);
   assert.equal(audio.getState(second),'on');
   const lastCompressor = nodes.filter(node=>node.type==='compressor').at(-1);
-  assert.equal([...lastCompressor.outputs][0].gain.value,1.5);
+  assert.equal(masterGain(nodes).gain.value,1.5);
   context().createMediaElementSource = createSource;
 });

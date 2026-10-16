@@ -100,6 +100,7 @@ test('audio graphs and mute remain page-local across settings updates and closin
       createDelay() { return Object.assign(node('delay'), { delayTime: parameter(0) }); }
       createDynamicsCompressor() { return Object.assign(node('compressor'), Object.fromEntries(['threshold', 'knee', 'ratio', 'attack', 'release'].map(id => [id, parameter(0)]))); }
       createWaveShaper() { return Object.assign(node('waveshaper'), { curve: null, oversample: 'none' }); }
+      createBiquadFilter() { return Object.assign(node('biquad'), { frequency: parameter(350), Q: parameter(1), gain: parameter(0) }); }
       createMediaElementSource(element) { assert.equal(element, video); sourceCount++; return node('source'); }
     };
     load(dom, 'web/audio.js'); return { video, nodes, api: runtime(dom).audio, sourceCount: () => sourceCount };

@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
+import { observeInstalledProtocol } from './installed-protocol.mjs';
 import { FIXTURE_LIVE_URL, FIXTURE_CHANNEL_URL, fixtureDecision } from './fixture-router.mjs';
 
 export const TRANSITION_CASES = Object.freeze(['valid-ui', 'legacy-valid', 'legacy-null', 'legacy-invalid', 'damaged-revision']);
@@ -131,9 +132,13 @@ export function expectedTransitionRaw(caseId, phase, step, runNonce) {
   return raw;
 }
 
-export function expectedTransitionState(caseId, phase, step, runNonce, extensionId, { reloaded = false, reloads = [0, 0] } = {}) {
+export function expectedTransitionState(caseId, phase, step, runNonce, extensionId, { reloaded = false, reloads = [0, 0], expectedProtocol = phase==='new'?3:1 } = {}) {
+  if (![1,2,3].includes(expectedProtocol)) throw fail('installed-protocol-invalid');
   const raw = expectedTransitionRaw(caseId, phase, step, runNonce), repair = caseId === 'damaged-revision';
   const known = { ...defaults, brightness: 1.25 };
+  if (expectedProtocol===3) Object.assign(known,{audioDefault:false,compressorEnabled:true,audioGain:1,gainInherited:true,
+    eqEnabled:false,eq63:0,eq125:0,eq250:0,eq500:0,eq1000:0,eq2000:0,eq4000:0,eq8000:0,
+    normalizerEnabled:false,normalizerTargetDbfs:-20});
   if (Object.hasOwn(raw.config, 'arrowSeek')) known.arrowSeek = raw.config.arrowSeek;
   if (Object.hasOwn(raw.config, 'previewVolume')) known.previewVolume = raw.config.previewVolume;
   const font = raw.styleParameters['chat-font-size'], ranking = raw.styles.includes('hide-ranking');
@@ -180,7 +185,8 @@ export function brokerFunctionSource(source) {
 }
 
 /** Observes packaged UI and worker only; the runner owns seed and context lifetime. */
-export async function runTransitionPhase({ context, worker, extensionId, responses, caseId, phase, runNonce, expectedBrokerSource }) {
+export async function runTransitionPhase({ context, worker, extensionId, responses, caseId, phase, runNonce, expectedBrokerSource, expectedProtocol }) {
+  if (![1,2,3].includes(expectedProtocol)) throw fail('installed-protocol-invalid');
   let step = 'startup', observation;
   try {
     expectedTransitionRaw(caseId, phase, step, runNonce);
@@ -219,12 +225,7 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
     const repair = caseId === 'damaged-revision';
     await Promise.all([popupA, popupB, styles].map(ui => ui.locator(`#settings-status[data-phase="${repair ? 'repair-required' : 'ready'}"]`).waitFor({ timeout: 15000 })));
     // Ready waits are value-independent: lost raw config must reach the oracle, not a timeout.
-    const expectedProtocol = phase === 'new' ? 2 : 1;
-    await Promise.all([page, second].map(current => current.waitForFunction(protocol => {
-      const runtime = window[Symbol.for('cheese-knife.runtime.v1')],fixture = window.__knifeFixture;
-      return !!runtime?.configReady && (protocol === 1 ? !!fixture?.lastConfigEnvelopeV1 :
-        runtime.ownerProtocol === 2 && runtime.media.phase !== 'pending' && !!fixture?.lastConfigEnvelopeV2);
-    },expectedProtocol,{timeout:15000})));
+    await Promise.all([page, second].map(current => waitTransition(()=>current.evaluate(observeInstalledProtocol,expectedProtocol),Boolean,'transition-handshake-timeout')));
     const initialLoads = await Promise.all([page, second].map(current => current.evaluate(() => window.__knifeFixture.loads)));
     let reloaded = false, reloads = [0, 0];
     const capture = async () => {
@@ -243,17 +244,18 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
           stylesRankingDisabled: document.querySelector('#hide-ranking').disabled, stylesFontDisabled: document.querySelector('#chat-font-size').disabled })),
         page.evaluate(() => ({ font: [1, 2, 10, 20].map(divisor => getComputedStyle(document.documentElement).getPropertyValue(`--knife-chat-size-${divisor}`).trim()),
           ranking: getComputedStyle(document.querySelector('[class^="live_chatting_ranking_container__"]')).display })),
-        page.evaluate(protocol => { const runtime = window[Symbol.for('cheese-knife.runtime.v1')], envelope = protocol === 1 ? window.__knifeFixture.lastConfigEnvelopeV1 : window.__knifeFixture.lastConfigEnvelopeV2;
-          const ids = [...document.querySelectorAll('.knife-owned[id]')].map(item => item.id);
-          return { ready: runtime.configReady, config: { ...runtime.config }, requestIdObserved: typeof envelope?.requestId === 'string',
-            revisionObserved: Number.isSafeInteger(protocol === 1 ? envelope?.revision : envelope?.deliverySequence), duplicatedControls: new Set(ids).size !== ids.length }; },expectedProtocol),
+        (async()=>{
+          const observed=await page.evaluate(observeInstalledProtocol,expectedProtocol);
+          const duplicatedControls=await page.evaluate(()=>{const ids=[...document.querySelectorAll('.knife-owned[id]')].map(item=>item.id);return new Set(ids).size!==ids.length;});
+          return {ready:!!observed,config:observed?.config??null,requestIdObserved:!!observed,revisionObserved:!!observed,duplicatedControls};
+        })(),
       ]);
       reloads = await Promise.all([page, second].map(async (current, i) => await current.evaluate(() => window.__knifeFixture.loads) - initialLoads.at(i)));
       return { raw, execution, ui: { ...uiA, ...uiB, ...styleUI }, css: { registrations, ...styleView, reloads }, runtime: main };
     };
     const check = async () => {
       observation = await capture();
-      assertTransitionState(observation, expectedTransitionState(caseId, phase, step, runNonce, extensionId, { reloaded, reloads: reloaded ? [1, 0] : [0, 0] }));
+      assertTransitionState(observation, expectedTransitionState(caseId, phase, step, runNonce, extensionId, { reloaded, reloads: reloaded ? [1, 0] : [0, 0],expectedProtocol }));
       if (pageErrors.length || routeErrors.length) throw fail('transition-page-error');
     };
     await check();
@@ -271,22 +273,23 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
         const wanted = expectedTransitionRaw(caseId, phase, step, runNonce);
         await waitTransition(() => worker.evaluate(() => chrome.storage.local.get(null)), raw => isDeepStrictEqual(raw, wanted), 'transition-action-timeout');
         // Storage completion alone is insufficient; both real clients and MAIN must catch up.
-        await waitTransition(capture, value => isDeepStrictEqual(value.ui, expectedTransitionState(caseId, phase, step, runNonce, extensionId).ui) &&
-          isDeepStrictEqual(value.runtime.config, expectedTransitionState(caseId, phase, step, runNonce, extensionId).runtime.config), 'transition-ui-timeout');
+        await waitTransition(capture, value => isDeepStrictEqual(value.ui, expectedTransitionState(caseId, phase, step, runNonce, extensionId,{expectedProtocol}).ui) &&
+          isDeepStrictEqual(value.runtime.config, expectedTransitionState(caseId, phase, step, runNonce, extensionId,{expectedProtocol}).runtime.config), 'transition-ui-timeout');
         await styles.locator('#settings-status[data-phase="ready"]').waitFor({ timeout: 15000 });
         await check(); records.push({ step, observation });
         if (step === 'font8' || step === 'font0' || step === 'rollback-font8') {
-          await styles.locator('#reload').click({ timeout: 15000 });
-          await page.waitForFunction(({before,protocol}) => window.__knifeFixture?.loads === before+1 &&
-            !!window[Symbol.for('cheese-knife.runtime.v1')]?.configReady &&
-            (protocol === 1 ? !!window.__knifeFixture.lastConfigEnvelopeV1 : !!window.__knifeFixture.lastConfigEnvelopeV2),
-            {before:initialLoads[0],protocol:expectedProtocol},{timeout:15000});
+          await Promise.all([
+            page.waitForNavigation({waitUntil:'domcontentloaded',timeout:15000}),
+            styles.locator('#reload').click({timeout:15000}),
+          ]);
+          await waitTransition(()=>page.evaluate(observeInstalledProtocol,expectedProtocol),value=>value?.load===initialLoads[0]+1,'transition-reload-handshake-timeout');
           reloaded = true; await check(); records.push({ step, reloaded: true, observation });
         }
       }
     }
     return { caseId, phase, records, final: observation };
   } catch (error) {
+    if(!error.code)error.diagnostic={name:String(error.name||'Error').slice(0,80),message:String(error.message||error).slice(0,240)};
     error.code ||= 'transition-phase-failed';
     error.failure = { code: String(error.code).slice(0, 240), caseId, phase, step,
       stage: step === 'startup' ? stageFor(phase) : 'phase-action', ...(observation ? { observation } : {}), ...(error.diagnostic ? { diagnostic: error.diagnostic } : {}), cleanupErrors: [] };

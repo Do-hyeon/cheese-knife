@@ -1,13 +1,18 @@
 // Generated from src/settings/background.ts by scripts/settings-runtime.mjs. Do not edit.
 (() => {
   if (typeof importScripts === "function") {
-    importScripts("media-profiles.js", "config.js", "style-schema.js", "settings-contract.js", "settings-broker.js");
+    importScripts("media-profiles.js", "gain-authority.js", "config.js", "style-schema.js", "settings-contract.js", "settings-broker.js");
   }
   const settingsBroker = createSettingsBroker(chrome);
   chrome.runtime.onMessage.addListener(settingsBroker.listener);
   chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local") settingsBroker.observeGainChanges(changes);
     if (area === "local" && ["styles", "styleParameters", "settingsRevision"].some((id) => Object.hasOwn(changes, id))) settingsBroker.invalidateStyles();
   });
+  chrome.tabs.onUpdated.addListener((tabId, changes) => {
+    if (changes.url !== void 0) settingsBroker.retireGainTab(tabId);
+  });
+  chrome.tabs.onRemoved.addListener((tabId) => settingsBroker.retireGainTab(tabId));
   void settingsBroker.initialize().catch(() => {
   });
   async function checkPermission() {
@@ -26,10 +31,12 @@
   chrome.runtime.onInstalled.addListener(onWake);
   chrome.runtime.onStartup.addListener(onWake);
   chrome.permissions.onAdded.addListener(() => {
+    settingsBroker.retireGainActors();
     void retryStylesAfterPermissionGrant().catch(() => {
     });
   });
   chrome.permissions.onRemoved.addListener(() => {
+    settingsBroker.retireGainActors();
     void checkPermission().catch(() => {
     });
   });

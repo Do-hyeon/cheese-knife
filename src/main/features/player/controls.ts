@@ -225,22 +225,17 @@ export function syncControls(mount: PlayerMount): void {
       const box = mount.track(document.createElement('div'));
       box.className = 'pzp-pc__volume-control knife-comp knife-owned';
       const button = ownedButton(document, 'pzp-pc__volume-button', label(runtime, 'enableCompressor', 'Enable compressor'), 'compressor');
-      const slider = document.createElement('input');
-      slider.type = 'range'; slider.min = '0'; slider.max = '2'; slider.step = '0.05';
-      slider.className = 'knife-gain-slider'; slider.setAttribute('aria-label', 'Gain');
-      box.append(button, slider); volume.after(box);
+      box.append(button); volume.after(box);
       scope.on(button, 'click', event => {
-        event.stopPropagation();const intent = audioIntent(runtime,video);intent.manual = true;intent.automatic = false;intent.needsResume = !runtime.mediaCurrent() || !audio.eligible(video);
-        void audio.setEnabled(video, !['on', 'pending'].includes(audio.getState(video)));
+        event.stopPropagation();
+        if (runtime.state.player?.video !== video || runtime.state.player.pzp !== pzp) return;
+        void runtime.player?.setAudioWanted(!['on', 'pending'].includes(audio.getState(video)), { ...runtime.media.context });
       });
-      scope.on(slider, 'input', () => audio.setGain(video, Number(slider.value)));
-      scope.on(slider, 'keydown', event => event.stopPropagation());
-      scope.add(audio.subscribe(video, (status, gain) => {
+      scope.add(audio.subscribe(video, status => {
         box.dataset.state = status;
         button.setAttribute('aria-pressed', String(status === 'on'));
         const text = label(runtime, status === 'on' || status === 'pending' ? 'disableCompressor' : 'enableCompressor', 'Compressor');
         button.title = text; button.setAttribute('aria-label', text);
-        slider.value = String(gain); slider.hidden = status !== 'on'; slider.title = `${Math.round(gain * 100)}%`;
       }));
     }
     const intent = audioIntent(runtime,video);
@@ -254,7 +249,7 @@ export function syncControls(mount: PlayerMount): void {
       }
       audio.configure();
       if (intent.needsResume) { intent.needsResume = false;void audio.resumeWanted(video); }
-      if (runtime.config.compressorDefault === true && !intent.requested && !intent.manual && audio.eligible(video)) {
+      if (runtime.config.audioDefault === true && !intent.requested && !intent.manual && audio.eligible(video)) {
         intent.requested = true;intent.automatic = true;void audio.setEnabled(video,true);
       }
     }
@@ -293,13 +288,31 @@ export function installPlayer(target: Window): PlayerController | null {
   const browser = target as BrowserWindow;
   const key = browser.Symbol.for('cheese-knife.runtime.v1');
   const runtime = Object.getOwnPropertyDescriptor(target, key)?.value as KnifeRuntime | undefined;
-  if (runtime?.ownerProtocol !== 2 || runtime.player) return null;
+  if (runtime?.ownerProtocol !== 3 || runtime.player) return null;
   if (!runtime.adapter) runtime.setStatus('player', 'pending', 'site-adapter-unavailable');
   let current: PlayerMount | null = null;
   let unsubscribe: (() => boolean) | null = null;
   let disposed = false;
   const disposeCurrent = () => { current?.scope.dispose(); current = null; };
+  const currentContext = (context: import('../../../shared/media-contracts').ScopedContext) => !!context && Object.keys(context).length === 4 &&
+    ['documentGeneration', 'routePath', 'channelId', 'playerGeneration'].every(key =>
+      Object.getOwnPropertyDescriptor(context, key)?.value === Object.getOwnPropertyDescriptor(runtime.media.context, key)?.value);
   const controller: PlayerController = {
+    getAudioWanted(context) {
+      const video = runtime.state.player?.video;
+      if (!currentContext(context) || !video || !runtime.audio) return { ok: false, wanted: false, state: null, context: { ...runtime.media.context } };
+      const intent = audioIntent(runtime, video);
+      return { ok: true, wanted: intent.requested, state: runtime.audio.getState(video), context: { ...runtime.media.context } };
+    },
+    async setAudioWanted(enabled, context) {
+      const video = runtime.state.player?.video;
+      if (typeof enabled !== 'boolean' || !currentContext(context) || !video || !runtime.audio) return { ok: false, wanted: false, state: null, context: { ...runtime.media.context } };
+      const intent = audioIntent(runtime, video);
+      intent.manual = true; intent.automatic = false; intent.requested = enabled;
+      intent.needsResume = !runtime.mediaCurrent() || !runtime.audio.eligible(video);
+      await runtime.audio.setEnabled(video, enabled);
+      return controller.getAudioWanted(context);
+    },
     seek(backward) {
       const video = runtime.state.player?.video;
       if (runtime.state.route?.kind !== 'live' || runtime.config.arrowSeek !== true || !video) return false;
@@ -368,10 +381,10 @@ export function installPlayer(target: Window): PlayerController | null {
     }
   };
   try {
+    runtime.player = controller;
     unsubscribe = runtime.subscribe(onState);
     target.addEventListener('keydown', onKeyDown);
     target.addEventListener('pagehide', onPageHide);
-    runtime.player = controller;
     return controller;
   } catch {
     dispose();

@@ -31,6 +31,7 @@ async function fixture(t, fault, scenario) {
         const target = `${name}/${entry.name}`; await files.ensureDirectory(path.posix.dirname(target)); await files.writeFile(target, entry.bytes);
       }
       if(fault!=='missing-media-module')await files.writeFile(`${name}/media-profiles.js`,'var KnifeMediaProfiles = {};');
+      for(const asset of ['gain-authority.js','audio-settings-ui.js','web/player-gain.js'])if(fault!=='missing-'+asset)await files.writeFile(`${name}/${asset}`,'var fixture = true;');
       if(fault==='extra-media-module')await files.writeFile(`${name}/unexpected.js`,'var unexpected = true;');
       return { dist: await files.resolve(name, { type: 'directory' }) };
     },
@@ -50,6 +51,8 @@ async function fixture(t, fault, scenario) {
       const phase = (scenario ? ['seed','old','new','rollback','new'] : ['seed', 'old', 'new', 'rollback'])[launchIndex++]; events.push(`launch:${phase}`);
       paths.push([args.profilePath, args.extensionPath]);
       if (fault === 'launch' && phase === 'old') throw faultError('test-launch');
+      if (fault === 'launch-native' && phase === 'old') throw Object.assign(Error('browser-unavailable'),{code:'browser-unavailable',cause:
+        Object.assign(Error('manifest failed'),{code:5,killed:false,signal:null,stderr:'denied',preparationDiagnostic:{stage:'manifest-tool',elapsedMs:32,profilePath:args.profilePath}})});
       const manifest = JSON.parse(await fs.readFile(path.join(args.extensionPath, 'manifest.json')));
       assert.equal(manifest.version, { seed: '2.13.3', old: '2.13.3', new: '2.13.4', rollback: '2.13.5' }[phase]);
       const pages = [];
@@ -69,6 +72,7 @@ async function fixture(t, fault, scenario) {
     refreshTransitionWorker: async ({ fixtureVersion, ...launched }) => ({ ...launched,
       preparation: { developerMode: true, workerClosed: true, extensionId: launched.extensionId, version: fixtureVersion, state: 'ENABLED' } }),
     runTransitionPhase: async args => {
+      assert.equal(args.expectedProtocol,args.phase==='new'?3:1,'payload role must supply the protocol');
       events.push(`scenario:${args.phase}`);
       if (['loss', 'postclose-inventory'].includes(fault) && args.phase === 'new') throw Object.assign(faultError('transition-storage-preservation'), {
         failure: { code: 'transition-storage-preservation', caseId: 'valid-ui', phase: 'new', step: 'startup', stage: 'candidate-init', cleanupErrors: [], observation: { raw: {}, execution: { extensionId: id, version: '2.13.4', brokerMatches: true } } },
@@ -102,6 +106,20 @@ test('child workflow seeds once, preserves path identity and closes before each 
   assert.deepEqual(result.phases.map(value => value.preparation.version), ['2.13.3', '2.13.4', '2.13.5']);
 });
 
+for(const mediaSchema of [undefined,'f01'])for(const control of [undefined,'storage-loss'])test(`retention reaches both candidate preparations for ${mediaSchema||'general'}/${control||'normal'}`,async t=>{
+  const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t),calls=[];
+  f.options={...f.options,retainEvidence:true,...(mediaSchema?{mediaSchema}:{}),...(control?{control}:{})};
+  const verify=f.deps.verifyCandidate;f.deps.verifyCandidate=async(...args)=>{calls.push(args[2]);return verify(...args);};
+  await executeTransitionChild(f.options,f.deps);
+  assert.equal(calls.length,2);assert.deepEqual(calls,[{retainEvidence:true},{retainEvidence:true}]);
+});
+
+for(const invalid of ['yes',null,0])test(`child rejects invalid retention ${JSON.stringify(invalid)} before preparing a candidate`,async t=>{
+  const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t);f.options.retainEvidence=invalid;
+  f.deps.sourceAttestation=async()=>{throw Error('must-not-attest');};await executeTransitionChild(f.options,f.deps);
+  assert.equal(f.messages.at(-1).result.failure.code,'transition-retention-invalid');
+});
+
 for (const [fault, code] of [['prepare', 'test-prepare'], ['second-build', 'test-second-build'], ['partial-install', 'test-partial-install'],
   ['launch', 'test-launch'], ['trace', 'test-trace'], ['close', 'cleanup-unconfirmed'], ['identity', 'transition-execution'], ['source-change', 'transition-source-changed']]) {
   test(`child ${fault} fails without continuing or replacing an unclosed extension`, async t => {
@@ -123,6 +141,18 @@ test('postclose inventory error cannot disappear behind the expected storage-los
   assert.ok(result.secondaryErrors.some(error => error.code === 'transition-inventory'));
   assert.equal(f.events.includes('launch:rollback'), false);
 });
+
+test('cold child failure IPC retains bounded native cause and preparation stage, never a successful close',async t=>{
+  const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t,'launch-native');
+  await executeTransitionChild(f.options,f.deps);
+  const failure=f.messages.find(message=>message.type==='failure').failure;
+  assert.equal(failure.code,'browser-unavailable');assert.equal(failure.stage,'launch');
+  assert.ok(failure.diagnostic.native,'IPC failure must include the native failure chain');
+  assert.equal(failure.diagnostic.native.cause.code,5);assert.equal(failure.diagnostic.native.cause.stderr,'denied');
+  assert.equal(failure.diagnostic.native.cause.preparationDiagnostic.stage,'manifest-tool');
+  assert.equal(f.messages.filter(message=>message.type==='close-success').length,1);
+  assert.equal(f.events.includes('launch:new'),false);
+});
 test('media child keeps the same root for seed and four observations, creating only first-new',async t=>{
   const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t,undefined,'media-preservation');await executeTransitionChild(f.options,f.deps);
   const result=f.messages.at(-1).result;assert.equal(result.failure,undefined);assert.equal(result.scenario,'media-preservation');assert.equal(f.writes(),1);
@@ -136,7 +166,7 @@ test('media child never replaces or relaunches after an unproven owned root clos
   assert.ok(f.messages.at(-1).result.failure);assert.equal(f.events.includes('launch:new'),false);
   assert.equal(f.messages.filter(value=>value.type==='close-success').length,1);
 });
-for(const fault of ['missing-media-module','extra-media-module'])test('child rejects current asset '+fault+' before launching',async t=>{
+for(const fault of ['missing-media-module','extra-media-module','missing-gain-authority.js','missing-audio-settings-ui.js','missing-web/player-gain.js'])test('child rejects current asset '+fault+' before launching',async t=>{
   const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t,fault);await executeTransitionChild(f.options,f.deps);
   assert.equal(f.paths.length,0);assert.equal(f.messages.at(-1).result.failure.code,'transition-inventory');
 });

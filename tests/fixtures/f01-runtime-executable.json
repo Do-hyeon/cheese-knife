@@ -1,0 +1,22 @@
+{
+  "audio-settings-ui.js": "9aea6d46d2b548fa110299bb599db09847a67ba05ad70a21476e0749d3e5de1d",
+  "background.js": "dd7955b5950378f7c1b2963297fafec71c11737047736ac2b76448cf2b09a7d2",
+  "config.js": "2b80e0d0dfd2a157513b6be521969922c1dcf18f8d5328bb40253801b0e5ae6f",
+  "gain-authority.js": "586bd0853c5529868ee419dc83925cceeb010d027bd0d38deff535a03641da5b",
+  "media-profiles.js": "8d5bd780be8b699adf817ad8a205c791ca6c1b2ef20de3c987c1cc1652f71fc5",
+  "permission.js": "fb2ad721eefb5d30c4a3803a957b7f8681bba6614efaabd23094f31c49924cc5",
+  "popup.js": "7072ad16cf3f8949e04542778149c07d2b5b54e2a5013b5006c4b6022d679ab9",
+  "settings-broker.js": "806db897e4b9155a2270238f2cff32c4274c8ba315a520f45f9f151e7f28e7b3",
+  "settings-client.js": "6e66d5254b5c55ba908b0b51b393e8203d0fa286ba27a0b1141b7e524de98d87",
+  "settings-contract.js": "544acac3b34c8dd21e4c7e8d1b89e4e29e39169c945041996d16c8d4a9e2e88c",
+  "style-schema.js": "2eca52b03d282f97d21f143f267f86af86fcbb3ddb2c452edd7d2149df010ccc",
+  "styles.js": "206efcc1a5e15db9574e290b70a7f022f081906c23e96362dd19332ce1e0c33d",
+  "web/audio.js": "29140a9c26f65a9c960b3a44fa181273822b811b1d188d8ba5186b0f6a5ff2a6",
+  "web/inject.js": "06391885a4e39e0b2c39b2f7b8ceb8bea3fa2468df60871b4d262e10cc211767",
+  "web/main.js": "f3bb30433b7ba6caefae274718b2a0ca7e88761d46c3ac1a8e4cc2308c4c496e",
+  "web/player-gain.js": "f92863ab9cb8107238525e8c9ccc9278d813789c8bd7c9a746273ac6292eb9ec",
+  "web/player.js": "9f577209996220759d0af40b4cca3c0aacddfed8fdcb6d3ee23f1c5ecf41feb4",
+  "web/preview.js": "e4a03ce36e1d755beccb1bf488e53456d77c35620ec2eb7a31597bc4b66cabf8",
+  "web/runtime.js": "598655caeae0f06c1dce9a8ab65300483c3f84fdc67f223a95e8cd3948ec3c8c",
+  "web/site-adapter.js": "324c22c8c26eace6ff5d7defdd0663516d6c273d2b93bf757f9665c63e0e9c80"
+}

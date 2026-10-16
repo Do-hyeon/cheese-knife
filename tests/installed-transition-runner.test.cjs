@@ -19,6 +19,26 @@ const close = () => ({ ...intent(), type: 'close-success' });
 const roots = [{ caseId: 'valid-ui', root }];
 function exit(child, code = 0) { child.exitCode = code; child.emit('exit', code, null); }
 
+test('F01 supervisor checks occurrence plus assigned payload role and all three shutdown facts',async()=>{
+  const {superviseTransitionChild}=await subject();const child=childFixture(),assigned=[{caseId:'valid-v1',kind:'f01',mediaCase:'valid-v1',root}];
+  const pending=superviseTransitionChild({child,nonce,roots:assigned,mediaSchema:'f01',deadlineMs:500});
+  for(const [launchOccurrence,[phase,payload]]of [['seed','published'],['old','f00'],['new','f01'],['rollback','f00'],['new','f01'],['rollback','published'],['new','f01'],['rollback','published'],['new','f01']].entries()){
+    const request={type:'launch-intent',nonce,caseId:'valid-v1',phase,payload,launchOccurrence,launchId:`valid-v1:${launchOccurrence}:${phase}`,root};
+    child.emit('message',request);assert.deepEqual(child.sent.at(-1),{...request,type:'launch-ack'});
+    child.emit('message',{...request,type:'close-success',shutdown:{browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:true}});
+  }
+  child.emit('message',{type:'result',nonce,result:{mediaSchema:'f01'}});exit(child);const result=await pending;
+  assert.equal(result.failure,null);assert.equal(result.launches.length,9);assert.equal(result.launches[5].payload,'published');
+});
+for(const fault of ['payload','occurrence','close-payload','close-proof'])test('F01 supervisor rejects wrong '+fault,async()=>{
+  const {superviseTransitionChild}=await subject(),child=childFixture(),assigned=[{caseId:'absent',kind:'f01',mediaCase:'absent',root}];
+  const pending=superviseTransitionChild({child,nonce,roots:assigned,mediaSchema:'f01',deadlineMs:500});
+  const request={...intent(),caseId:'absent',payload:'published',launchOccurrence:0,launchId:'absent:0:seed'};
+  child.emit('message',fault==='payload'?{...request,payload:'f01'}:fault==='occurrence'?{...request,launchOccurrence:1,launchId:'absent:1:seed'}:request);
+  if(fault.startsWith('close'))child.emit('message',{...request,type:'close-success',...(fault==='close-payload'?{payload:'f00'}:{}),shutdown:{browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:fault!=='close-proof'}});
+  exit(child);assert.ok((await pending).failure);
+});
+
 test('media supervisor accepts exact seed plus four occurrences and requires three close facts',async()=>{
   const {superviseTransitionChild}=await subject(),child=childFixture();
   const pending=superviseTransitionChild({child,nonce,roots,scenario:'media-preservation',deadlineMs:500});
@@ -234,15 +254,16 @@ test('parent revalidates every action observation identity hash and no-reseed se
 
 function parentFixture(fault) {
   const events = [], child = childFixture(); let serial = 0;
+  const directories = new Set();
   const files = {
     root: path.resolve('.'),
-    async ensureDirectory(name) { events.push(`ensure:${name}`); return path.join(this.root, name); },
+    async ensureDirectory(name) { events.push(`ensure:${name}`); directories.add(name);return path.join(this.root, name); },
     async lstat(name) { return (fault === 'artifact-exists' && name.includes('installed-extension-transition')) ||
-      (fault === 'candidate-exists' && name.includes('p02-candidate')) ? {} : null; },
+      (fault === 'candidate-exists' && name.includes('p02-candidate')) ? {} : fault==='retention-missing'&&name.includes('installed-transition-work-')?null:directories.has(name)?{isDirectory:()=>true}:null; },
     async writeFile(name) { events.push(`write:${name}`); if ((fault === 'summary' && name.endsWith('summary.json')) ||
       (fault === 'claim' && name.endsWith('.lock'))) throw Object.assign(Error(fault), { code: `test-${fault}` }); },
     async makeTempDirectory() { events.push('root-create'); if (fault === 'root') throw Object.assign(Error('root'), { code: 'test-root' });
-      return path.join(this.root, `output/playwright/installed-transition-work-fixture${serial++}`); },
+      const relative=`output/playwright/installed-transition-work-fixture${serial++}`;directories.add(relative);return path.join(this.root, relative); },
     async removeTree(name) { events.push(`remove:${name}`); if (fault === 'cleanup' && name.includes('installed-transition-work')) throw Object.assign(Error('cleanup'), { code: 'test-cleanup' }); },
   };
   const dependencies = {
@@ -257,6 +278,67 @@ function parentFixture(fault) {
   };
   return { events, dependencies };
 }
+
+test('general transition retention reaches child and preserves confirmed roots and candidates on failure',async()=>{
+  const {runInstalledTransition}=await subject(),f=parentFixture('phase');let sent;
+  const fork=f.dependencies.forkChild;f.dependencies.forkChild=()=>{const child=fork(),send=child.send;child.send=(message,callback)=>{sent=message;send(message,callback);};return child;};
+  await assert.rejects(runInstalledTransition({runId:'Retained',retainEvidence:true,dependencies:f.dependencies}),error=>{
+    assert.equal(sent.retainEvidence,true);assert.ok(error.report.retainedRoots.length>0);assert.equal(error.report.candidatesRetained,true);return true;
+  });
+  assert.equal(f.events.some(x=>x.startsWith('candidate-remove:')||x.startsWith('remove:output/playwright/installed-transition-work-')),false);
+  assert.ok(f.events.some(x=>x.endsWith('.lock')&&x.startsWith('remove:')));
+});
+
+test('transition rejects invalid retention before opening a repository',async()=>{
+  const {runInstalledTransition}=await subject();
+  await assert.rejects(runInstalledTransition({runId:'Retained',retainEvidence:'yes',dependencies:{openRepository:async()=>{throw Error('must-not-open');}}}),{code:'transition-retention-invalid'});
+});
+
+test('retention cannot claim a root which disappeared after normal closure',async()=>{
+  const {runInstalledTransition}=await subject(),f=parentFixture('retention-missing');
+  await assert.rejects(runInstalledTransition({runId:'RetainedMissing',retainEvidence:true,dependencies:f.dependencies}),error=>{
+    assert.equal(error.report.retainedRoots.length,0);assert.ok(error.report.cleanupErrors.some(x=>x.code==='transition-evidence-missing'));return true;
+  });
+});
+
+test('F01 retention cannot claim disappeared candidates as retained',async()=>{
+  const {runInstalledTransition}=await subject(),fixture=parentFixture('phase'),open=fixture.dependencies.openRepository;
+  fixture.dependencies.openRepository=async()=>{const files=await open(),stat=files.lstat;files.lstat=async(name,options)=>
+    name.includes('p02-candidate')&&fixture.events.includes('fork')?null:stat(name,options);return files;};
+  await assert.rejects(runInstalledTransition({runId:'F01MissingCandidates',mediaSchema:'f01',retainEvidence:true,dependencies:fixture.dependencies}),error=>{
+    assert.equal(error.report.candidatesRetained,false);assert.deepEqual(error.report.retainedCandidates,[]);
+    assert.equal(error.report.cleanupErrors.filter(row=>row.code==='transition-evidence-missing').length,2);return true;
+  });
+});
+
+for(const retainEvidence of [false,true])test(`transition final writer preserves original phase and evidence when retention=${retainEvidence}`,async()=>{
+  const {runInstalledTransition}=await subject(),fixture=parentFixture('summary');
+  await assert.rejects(runInstalledTransition({runId:'TransitionWriter',retainEvidence,dependencies:fixture.dependencies}),error=>{
+    assert.equal(error.code,'test-phase');assert.equal(error.cause.code,'test-phase');assert.equal(error.report.ok,false);
+    assert.equal(error.report.failure.caseId,'valid-ui');assert.equal(error.report.secondaryErrors.at(-1).code,'test-summary');
+    if(retainEvidence)assert.ok(error.report.retainedRoots.length>0);return true;
+  });
+});
+
+test('transition writer failure remains visible at the secondary-error bound',async()=>{
+  const {runInstalledTransition}=await subject(),fixture=parentFixture('summary'),supervise=fixture.dependencies.supervise;
+  fixture.dependencies.supervise=async options=>({...await supervise(options),secondaryErrors:Array.from({length:32},(_,index)=>({code:'earlier-'+index}))});
+  await assert.rejects(runInstalledTransition({runId:'BoundedWriter',dependencies:fixture.dependencies}),error=>{
+    assert.equal(error.report.secondaryErrors.length,32);assert.equal(error.report.secondaryErrors[0].code,'earlier-0');
+    assert.equal(error.report.secondaryErrors.at(-1).code,'test-summary');assert.equal(error.cause.code,'test-phase');return true;
+  });
+});
+
+test('F01 parent assigns every fixed case and retains its own roots and candidates after failure',async()=>{
+  const {runInstalledTransition}=await subject(),fixture=parentFixture('phase');
+  await assert.rejects(runInstalledTransition({runId:'F01parent',mediaSchema:'f01',dependencies:fixture.dependencies}),error=>{
+    assert.equal(error.report.retainedRoots.length,11);assert.equal(error.report.mediaSchema,'f01');assert.equal(error.report.candidatesRetained,true);return true;
+  });
+  assert.equal(fixture.events.some(value=>value.startsWith('candidate-remove:')||value.startsWith('remove:output/playwright/installed-transition-work-')),false);
+  for(const options of [{mediaSchema:'unknown'},{mediaSchema:'f01',scenario:'media-preservation'},{mediaSchema:'f01',control:'media-profile-loss'}]){
+    await assert.rejects(runInstalledTransition({runId:'F01bad',...options,dependencies:fixture.dependencies}),/transition-(scenario|control)-invalid/);
+  }
+});
 
 test('parent storage-loss PASS is vetoed by a later protocol or inventory fault', async () => {
   const { runInstalledTransition } = await subject();

@@ -67,15 +67,16 @@ function sendScoped(snapshot) {
     audioBindingKey = snapshot.audioBindingKey;
     audioBindingGeneration++;
   }
+  const base = snapshot?.baseConfig ?? { ...currentConfig, ...KnifeMediaProfiles.projectGlobalAudio(currentConfig) };
   window.postMessage({
     namespace: "cheese-knife",
-    protocol: 2,
+    protocol: 3,
     type: "config",
     requestId: request.requestId,
     context: { ...request.context },
     deliverySequence: deliverySequence++,
-    baseConfig: snapshot?.baseConfig ?? currentConfig,
-    effectiveConfig: snapshot?.effectiveConfig ?? currentConfig,
+    baseConfig: base,
+    effectiveConfig: snapshot?.effectiveConfig ?? base,
     i18n,
     version: snapshot?.version ?? { globalRevision: null, mediaRevision: null },
     profileState: snapshot?.profileState ?? "global",
@@ -83,7 +84,8 @@ function sendScoped(snapshot) {
     mediaPhase: snapshot ? snapshot.profileState === "repair-required" || snapshot.revisionStatus === "repair-required" ? "limited" : "ready" : "pending",
     audioBindingGeneration: snapshot ? audioBindingGeneration : 0,
     audioKind: snapshot?.audioKind ?? "global",
-    videoKind: snapshot?.videoKind ?? "global"
+    videoKind: snapshot?.videoKind ?? "global",
+    gainOrigin: snapshot?.gainOrigin ?? (base.gainInherited === false ? "global-owned" : "site-legacy")
   }, location.origin);
 }
 function requestLatestSettings() {
@@ -154,7 +156,7 @@ const onBridgeMessage = (event) => {
   const data = event.data;
   if (disposed || frozen || event.source !== window || event.origin !== location.origin || own(data, "namespace") !== "cheese-knife") return;
   const protocol = own(data, "protocol"), type = own(data, "type");
-  if (protocol === 2 && type === "config-request") {
+  if (protocol === 3 && type === "config-request") {
     const next = readScopeRequest(data);
     if (!next) return;
     if (!scopeRequest || scopeRequest.requestId !== next.requestId || JSON.stringify(scopeRequest.context) !== JSON.stringify(next.context)) {

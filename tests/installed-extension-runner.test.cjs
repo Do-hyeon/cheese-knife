@@ -5,6 +5,18 @@ const { pathToFileURL } = require('node:url');
 
 const runnerModule = () => import(pathToFileURL(path.resolve('scripts/check-installed-extension.mjs')));
 
+test('installed runner summary preserves original native preparation details through a wrapped launch failure',async()=>{
+  const {runInstalledExtensionE2E}=await runnerModule(),f=runnerFixture(),files=await f.dependencies.openRepository();let summary;
+  const original=Object.assign(Error('browser-unavailable'),{code:'browser-unavailable',cause:Object.assign(Error('sdk failed'),{
+    code:5,signal:null,killed:false,stderr:'denied',secret:'omit',preparationDiagnostic:{stage:'manifest-tool',elapsedMs:17}})});
+  f.dependencies.launchInstalledExtension=async()=>{throw original;};
+  const write=files.writeFile;files.writeFile=async(relative,data)=>{if(relative.endsWith('/summary.json'))summary=JSON.parse(data);return write(relative,data);};
+  await assert.rejects(()=>runInstalledExtensionE2E({runId:'Run1',headed:false,dependencies:f.dependencies}),error=>error===original);
+  assert.ok(summary.error.native,'summary must include the native failure chain');
+  assert.equal(summary.error.native.cause.code,5);assert.equal(summary.error.native.cause.stderr,'denied');
+  assert.equal(summary.error.native.cause.preparationDiagnostic.stage,'manifest-tool');assert.equal(summary.error.native.cause.secret,undefined);
+});
+
 function runnerFixture({ failAt, artifactExists = false } = {}) {
   const events = [];
   const root = path.resolve('.');
@@ -48,6 +60,50 @@ function runnerFixture({ failAt, artifactExists = false } = {}) {
   return { events, dependencies, context };
 }
 
+for(const failAt of [undefined,'scenario','tracing','trace-stop','json'])test(`base retention preserves created evidence after ${failAt||'success'} and still closes`,async()=>{
+  const {runInstalledExtensionE2E}=await runnerModule(),f=runnerFixture({failAt}),files=await f.dependencies.openRepository();
+  const candidateRoot=path.resolve('output/tool-audit/p02-candidate-Run1/chrome-candidate');
+  f.dependencies.verifyCandidate=async(_id,_directory,options)=>{assert.equal(options.retainEvidence,true);return {root:candidateRoot,dist:path.join(candidateRoot,'dist')};};
+  files.lstat=async name=>name.includes('installed-profile-')||name.includes('p02-candidate-')?{isDirectory:()=>true}:null;
+  let report;const write=files.writeFile;files.writeFile=async(name,data,...args)=>{if(name.endsWith('summary.json'))report=JSON.parse(data);return write(name,data,...args);};
+  const pending=runInstalledExtensionE2E({runId:'Run1',retainEvidence:true,dependencies:f.dependencies});
+  if(failAt)await assert.rejects(pending);else await pending;
+  assert.ok(f.events.includes('context-close'));assert.equal(f.events.includes('profile-remove'),false);assert.equal(f.events.includes('candidate-remove'),false);
+  assert.equal(report.evidence.retained,true);assert.equal(report.evidence.candidatePath,candidateRoot);
+});
+
+test('invalid base retention fails before repository or candidate access',async()=>{
+  const {runInstalledExtensionE2E}=await runnerModule();
+  await assert.rejects(runInstalledExtensionE2E({runId:'Run1',retainEvidence:'yes',dependencies:{openRepository:async()=>{throw Error('must-not-open');}}}),{code:'installed-e2e-retention-invalid'});
+});
+
+test('a first retention failure never writes an ok report',async()=>{
+  const {runInstalledExtensionE2E}=await runnerModule(),f=runnerFixture(),files=await f.dependencies.openRepository();let summary;
+  files.lstat=async name=>name.startsWith('candidate/')?{isDirectory:()=>true}:null;
+  const write=files.writeFile;files.writeFile=async(name,bytes,...args)=>{summary=JSON.parse(bytes);return write(name,bytes,...args);};
+  await assert.rejects(runInstalledExtensionE2E({runId:'Run1',retainEvidence:true,dependencies:f.dependencies}),{code:'installed-e2e-evidence-missing'});
+  assert.equal(summary.ok,false);assert.equal(summary.error.code,'installed-e2e-evidence-missing');
+});
+
+for(const retainEvidence of [false,true])for(const fault of ['close','json','evidence'])test(`negative admission rejects MAIN missing plus ${fault} with retention=${retainEvidence}`,async()=>{
+  const {runInstalledExtensionE2E}=await runnerModule(),{runInstalledExtensionNegative}=await import('../scripts/check-installed-extension-negative.mjs'),f=runnerFixture(),files=await f.dependencies.openRepository();
+  const primary=Object.assign(Error('main-runtime-missing'),{code:'main-runtime-missing'}),secondary=Error(fault+'-sentinel');
+  f.dependencies.scenario=async()=>{throw primary;};
+  if(fault==='close')f.context.close=async()=>{throw secondary;};
+  if(fault==='json')files.writeFile=async()=>{throw secondary;};
+  files.lstat=async name=>{
+    if(fault==='evidence'&&retainEvidence&&name.includes('installed-profile-'))throw secondary;
+    return name.includes('installed-profile-')||name.includes('p02-candidate-')?{isDirectory:()=>true}:null;
+  };
+  if(fault==='evidence'&&!retainEvidence)files.removeTree=async()=>{throw secondary;};
+  const candidateRoot=path.resolve('output/tool-audit/p02-candidate-Run1/chrome-candidate');
+  await assert.rejects(runInstalledExtensionNegative({runId:'Run1',retainEvidence,dependencies:{
+    prepareCandidate:async(_id,options)=>{assert.equal(options.retainEvidence,retainEvidence);return {candidate:{root:candidateRoot,dist:path.join(candidateRoot,'dist')},cleanup:async()=>{}};},
+    runInstalled:options=>runInstalledExtensionE2E({...options,dependencies:{...f.dependencies,...options.dependencies,scenario:f.dependencies.scenario}}),
+    writeReport:async()=>{throw Error('must-not-report-success');},
+  }}),error=>{assert.equal(error.code,'negative-control-unexpected-failure');assert.equal(error.cause.code,'installed-e2e-incomplete');assert.equal(error.cause.cause,primary);assert.ok(error.cause.secondaryErrors.length>0);return true;});
+});
+
 test('installed E2E runner orders isolated candidate, browser and cleanup lifecycle', async () => {
   const { runInstalledExtensionE2E } = await runnerModule();
   const fixture = runnerFixture();
@@ -65,7 +121,9 @@ test('installed E2E runner cleans profile and candidate after scenario, tracing 
   for (const failAt of ['scenario', 'tracing', 'trace-stop', 'json']) {
     const fixture = runnerFixture({ failAt });
     await assert.rejects(runInstalledExtensionE2E({ runId: 'Run1', headed: false, dependencies: fixture.dependencies }), error => {
-      assert.equal(error.code, failAt === 'scenario' ? 'scenario-failed' : failAt === 'tracing' ? 'trace-start-failed' : failAt === 'trace-stop' ? 'trace-stop-failed' : 'json-write-failed');
+      if (failAt === 'trace-stop') {
+        assert.equal(error.code,'installed-e2e-incomplete');assert.equal(error.cause.code,'trace-stop-failed');assert.equal(error.secondaryErrors[0].code,'trace-stop-failed');
+      } else assert.equal(error.code, failAt === 'scenario' ? 'scenario-failed' : failAt === 'tracing' ? 'trace-start-failed' : 'json-write-failed');
       return true;
     });
     assert.equal(fixture.events.filter(event => event === 'context-close').length, 1, failAt);
@@ -84,21 +142,33 @@ test('installed E2E runner never overwrites an existing artifact directory', asy
   assert.equal(fixture.events.includes('candidate-remove'), true);
   assert.equal(fixture.events.includes('profile-create'), false);
 });
-for(const mode of ['ok','scenario','close-proof','missing-proof','missing-session','unsupported','dirty-source','changed-source','extra-asset','missing-asset'])test('media runner owns shutdown and preserves failed candidates: '+mode,async()=>{
+for(const qualification of ['media-tab','player-gain','audio-settings']) for(const mode of ['ok','scenario','close-proof','missing-proof','missing-session','unsupported','dirty-source','changed-source','extra-asset','missing-asset'])test(qualification+' runner owns shutdown and preserves failed candidates: '+mode,async()=>{
   const {runInstalledExtensionE2E}=await runnerModule(),f=runnerFixture();
   f.dependencies.platform=mode==='unsupported'?'linux':'win32';
   const buildCandidate=f.dependencies.verifyCandidate;f.dependencies.verifyCandidate=async id=>({...await buildCandidate(id),
     files:mode==='extra-asset'?['dist/media-profiles.js','dist/extra.js']:mode==='missing-asset'?[]:['dist/media-profiles.js']});
   f.dependencies.expectedMediaFiles=async()=>['dist/media-profiles.js'];
-  let attestations=0;f.dependencies.sourceAttestation=async()=>{f.events.push('source-attest');attestations++;
+  let attestations=0;f.dependencies.sourceAttestation=async(_files,required)=>{f.events.push('source-attest');attestations++;
+    if(qualification==='audio-settings')assert.ok(required.includes('scripts/check-installed-audio-settings.mjs'));else assert.deepEqual(required,[]);
     if(mode==='dirty-source')throw Object.assign(Error('dirty'),{code:'transition-source-dirty'});
     return {sourceCommit:'a'.repeat(40),sourceSha256:mode==='changed-source'&&attestations>1?'c'.repeat(64):'b'.repeat(64)};};
   f.dependencies.refreshTransitionWorker=async value=>{f.events.push('worker-refresh');return value;};
   f.dependencies.openMediaBrowserSession=async()=>{f.events.push('session-open');return mode==='missing-session'?null:{send:async()=>({}),on(){},off(){}};};
-  f.dependencies.mediaScenario=async()=>{f.events.push('media-scenario');if(mode==='scenario')throw Object.assign(Error('scenario'),{code:'media-scenario-failed'});return {mediaTab:{passed:true}};};
+  f.dependencies.mediaScenario=async args=>{
+    f.events.push('media-scenario');if(mode==='scenario')throw Object.assign(Error('scenario'),{code:'media-scenario-failed'});
+    if(qualification==='audio-settings'&&mode==='ok'){
+      assert.equal(typeof args.writeZoomCapture,'function');const before=f.events.filter(event=>event==='json-write').length;
+      for(const [name,bytes]of [['../outside.png',new Uint8Array(24)],['audio-zoom200.png',new Uint8Array(24)],
+        ['audio-zoom200.png',new Uint8Array(8388609)]])await assert.rejects(args.writeZoomCapture(name,bytes),{code:'media-zoom-capture-invalid'});
+      assert.equal(f.events.filter(event=>event==='json-write').length,before);
+      const png=Buffer.alloc(24);Buffer.from('89504e470d0a1a0a','hex').copy(png);
+      await args.writeZoomCapture('audio-zoom200-controls.png',png);assert.equal(f.events.filter(event=>event==='json-write').length,before+1);
+    }
+    return {mediaTab:{passed:true}};
+  };
   f.dependencies.closeInstalledMediaBrowser=async()=>{f.events.push('close-proof');if(mode==='close-proof')throw Object.assign(Error('close'),{code:'media-close-failed'});
     return {browserCloseAcknowledged:true,browserDisconnected:mode!=='missing-proof',ownedRootClosed:true};};
-  const pending=runInstalledExtensionE2E({runId:'Run1',qualification:'media-tab',dependencies:f.dependencies});
+  const pending=runInstalledExtensionE2E({runId:'Run1',qualification,dependencies:f.dependencies});
   if(mode==='ok'){
     const report=await pending;assert.equal(report.ok,true);assert.equal(report.mediaTab.passed,true);
     assert.ok(f.events.indexOf('close-proof')<f.events.indexOf('context-close'));assert.equal(report.profileRetained,true);assert.equal(f.events.includes('profile-remove'),false);

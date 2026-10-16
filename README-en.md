@@ -19,13 +19,13 @@ This is an unofficial community recovery of [Cheese Knife](https://github.com/je
 
 Use the extension toolbar icon to enable or disable features. Open Style Settings from the CHZZK tab where the styles should be applied.
 
-### In development: channel media settings (F00)
+### Local development: channel settings and audio processing (F00/F01)
 
-This unpublished local build opens a separate settings tab from the toolbar popup. It starts in global scope; users may explicitly enable and edit the current or a saved channel's six compressor fields and five video-filter fields. Other settings and styles remain global. Preset application copies values; later preset edits/deletion do not change applied copies.
+These features are not published to the store yet. A separate settings tab saves only audio/video-filter settings globally or per channel; other settings remain global. Audio includes Gain, compressor, eight-band EQ and an initially disabled slow RMS normalizer. Current-video processing ON/OFF is separate from the saved automatic-start preference. Player Gain edits automatically save to the displayed owner.
 
-Channel preferences and preset names stay in extension-local storage, with manual channel/domain/preset deletion in the settings tab. Uninstalling removes them; migration between extension IDs is not automatic and the maintainer does not receive them. Open a fresh settings tab after changing the broadcast target. Read back an uncertain save result and review unsent input before discarding it.
+Presets copy applied values; the inherit-Gain option preserves the destination's Gain source. Saved channels, domains and presets can be deleted in the settings tab and are not sent to the maintainer. Legacy settings require an explicit upgrade; existing site Gain remains a distinct compatibility source until checked/imported. Read back uncertain saves, reload pages with mixed old/new code and reopen settings after changing the broadcast target.
 
-Gain remains outside channel storage until F01. Unverified VOD ownership limits current-channel saving and uses global values. Popup-player iframes and previews stay global. Incognito blocks new channel/preset writes; pages with mixed old/new extension code require a reload.
+Audio and temporary analysis buffers stay in the browser; no recordings or RMS histories are saved. The processed path downmixes to stereo; the RMS target is not LUFS or a precision loudness meter. Graphs show settings, not measured output. Browser policy may require a user gesture for audio. Unverified VODs use global values, iframes/previews retain their existing global scope, and incognito blocks new channel/preset writes. See the [Privacy Policy](PRIVACY.md) for storage and deletion details.
 
 ## Installation
 
@@ -66,7 +66,7 @@ Security checks cover specific tools and scopes and are not proof that the produ
 
 ## Development direction
 
-Product runtime sources use strict TypeScript, with checked JavaScript generation for Chrome. AF05 transition closure and deployment acceptance are in progress; the feature roadmap resumes after they complete.
+Product runtime sources use strict TypeScript, with checked JavaScript generation for Chrome. The next release requires the storage foundation (F00), audio (F01), F02 and integration verification, followed by separate release preparation.
 
 [Execution plan](PLANS.md) (Korean) · [AF00 validation record](docs/superpowers/validation/2026-10-11-af00-installed-extension-e2e.md) (Korean) · [Third-party notices](THIRD_PARTY_NOTICES.md)
 
