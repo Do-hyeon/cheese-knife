@@ -33,6 +33,7 @@ test('extension launch options pin bundled Chromium and the isolated candidate',
   assert.deepEqual(extensionLaunchOptions(extensionPath, false), {
     channel: 'chromium',
     headless: true,
+    ignoreDefaultArgs: ['--disable-extensions'],
     args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
   });
   assert.equal(extensionLaunchOptions(extensionPath, true).headless, false);

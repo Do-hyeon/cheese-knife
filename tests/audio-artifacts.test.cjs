@@ -121,9 +121,12 @@ test('public entry hashes actual disk bytes and retains label precedence missing
   await fs.unlink(path.join(root,'web/runtime.js'));
   await assert.rejects(describeAudioArtifact(root,'fixture'),{name:'Error',message:'ENOENT',code:'ENOENT'});
   await fs.writeFile(path.join(root,'web/runtime.js'),'abc');
-  const actual=path.join(root,'actual-web');await fs.rename(path.join(root,'web'),actual);
-  await fs.symlink(actual,path.join(root,'web'),process.platform==='win32'?'junction':'dir');
-  await assert.rejects(describeAudioArtifact(root,'fixture'),{code:'owned-path-link'});
+  // A fresh link destination avoids Windows locks on the just-renamed web directory.
+  const linkedRoot=path.join(root,'linked-artifact');
+  await fs.mkdir(linkedRoot);
+  await fs.copyFile(path.join(root,'config.js'),path.join(linkedRoot,'config.js'));
+  await fs.symlink(path.join(root,'web'),path.join(linkedRoot,'web'),process.platform==='win32'?'junction':'dir');
+  await assert.rejects(describeAudioArtifact(linkedRoot,'fixture'),{code:'owned-path-link'});
 });
 
 async function artifactFixture(t, suffix = '') {

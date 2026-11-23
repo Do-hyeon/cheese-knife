@@ -1,0 +1,524 @@
+[
+  {
+    "name": "LICENSE",
+    "dataOffset": 23756,
+    "compressedBytes": 650,
+    "rawBytes": 1086,
+    "sha256": "30ae78ff701cc0166572e6437c0cc04d4e43d0c9b8716d47b30eb14f280668e7",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "THIRD_PARTY_NOTICES.md",
+    "dataOffset": 50662,
+    "compressedBytes": 1293,
+    "rawBytes": 2450,
+    "sha256": "d610790c704edd87897d0687979b3749584cad306a3dc0817865e55c30b255c4",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "_locales/en/messages.json",
+    "dataOffset": 55,
+    "compressedBytes": 3112,
+    "rawBytes": 12024,
+    "sha256": "e15ef99950f999d187cf8f39bc20288725c73541e107d142a162a05450f1b146",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "_locales/ko/messages.json",
+    "dataOffset": 3222,
+    "compressedBytes": 3786,
+    "rawBytes": 13524,
+    "sha256": "10fde8d0b95bd0adb54f1e1901eafcb552c61107a4e6b977ca4b8af1773f2aa0",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "background.js",
+    "dataOffset": 7051,
+    "compressedBytes": 503,
+    "rawBytes": 1354,
+    "sha256": "efb4279e9ca6c0966c16592e8cdbfcf59b4423835ff6402a7dc899b565b4c9d8",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "config.js",
+    "dataOffset": 7593,
+    "compressedBytes": 1188,
+    "rawBytes": 5716,
+    "sha256": "b29dde24d8a7d0245a1a54a2eb55e08360e42a75e138ca34e072f816bf3730c1",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "icon128.png",
+    "dataOffset": 8822,
+    "compressedBytes": 9770,
+    "rawBytes": 10384,
+    "sha256": "5426f955eea4692a4657c60522f790e9b98c752a07d6dc2da0e2da3bb5d7765c",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "icon16.png",
+    "dataOffset": 18632,
+    "compressedBytes": 1489,
+    "rawBytes": 2177,
+    "sha256": "e628e3cf8576d82edebb572fc2dd1eaf3828e8c13999778da6f1b4f0472739ed",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "icon48.png",
+    "dataOffset": 20161,
+    "compressedBytes": 3558,
+    "rawBytes": 4188,
+    "sha256": "1ab8dfed50dcc6eddd4841855792562108dba0394fa5f352b38e12d920a9bb01",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "manifest.json",
+    "dataOffset": 24449,
+    "compressedBytes": 699,
+    "rawBytes": 3205,
+    "sha256": "afc29067403d4ef7f05a266141459c7a70fc84e86024d72aa009e30e64f0e04d",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "permission.css",
+    "dataOffset": 25192,
+    "compressedBytes": 428,
+    "rawBytes": 942,
+    "sha256": "9b4c5e74b59faecb1fe04c2e1ee43b22b7ae1c0d69347747bedd3fefa75c7c7b",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "permission.html",
+    "dataOffset": 25665,
+    "compressedBytes": 279,
+    "rawBytes": 574,
+    "sha256": "19a365e5a74e49f6809cf5173a28bf14a3bc70f6262f6cc7907f2ae4b742fec2",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "permission.js",
+    "dataOffset": 25987,
+    "compressedBytes": 454,
+    "rawBytes": 1414,
+    "sha256": "7f55cccc06057945b7e49d7b27dad9d37d913d58aec32db69fd3d08cb881752e",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "popup.css",
+    "dataOffset": 26480,
+    "compressedBytes": 780,
+    "rawBytes": 1863,
+    "sha256": "5efed176d7e7ede0260a45132e7a9fdd5ccfeba1a0374e9c1175534971ff9d21",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "popup.html",
+    "dataOffset": 27300,
+    "compressedBytes": 845,
+    "rawBytes": 2029,
+    "sha256": "b98593c84c8beaead448b28c9d2ee352a7be1f828c667a1d0c8770c95dabaf1a",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "popup.js",
+    "dataOffset": 28183,
+    "compressedBytes": 2557,
+    "rawBytes": 7906,
+    "sha256": "9b0f181637ed3d835e0111d4d7bf5a37afc24c88bea7dc324d96a30d4f3f0005",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "settings-broker.js",
+    "dataOffset": 30788,
+    "compressedBytes": 2431,
+    "rawBytes": 7651,
+    "sha256": "83f3b72a9cfd63ad15e85680fa97b71d72972b5d356eea593e7278bbfbd1726e",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "settings-client.js",
+    "dataOffset": 33267,
+    "compressedBytes": 2671,
+    "rawBytes": 8775,
+    "sha256": "7fadac1e1ff98f97e700ce8618015aec51f9bb33eb1549410edcadb1d65491b3",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "settings-contract.js",
+    "dataOffset": 35988,
+    "compressedBytes": 1968,
+    "rawBytes": 6429,
+    "sha256": "5affb77bc67ade7ee48b4a00a84d5839a4bd7fd8bed24db59961db6514c954aa",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "style-schema.js",
+    "dataOffset": 38001,
+    "compressedBytes": 386,
+    "rawBytes": 969,
+    "sha256": "43f37f8231ebac76fcff3ea4630ef958b1781ba53c9cb3c6fbcb2404311280c8",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles.css",
+    "dataOffset": 38427,
+    "compressedBytes": 866,
+    "rawBytes": 2181,
+    "sha256": "f912903e69758c933091b6fbdb8f7d7813337437c026e254f4c87f7a5929aa4f",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles.html",
+    "dataOffset": 39334,
+    "compressedBytes": 585,
+    "rawBytes": 1385,
+    "sha256": "52c001153e6b0eb6c8c63687791e4ac7dd5ec2d2a0750dccee62e8cae142f5a9",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles.js",
+    "dataOffset": 39958,
+    "compressedBytes": 1570,
+    "rawBytes": 4837,
+    "sha256": "94dbe522af36c8e6bdb98e2c6333d86fc692f1a32bc163e0f41c0ad52393fefc",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/auto-hide-toolbar.css",
+    "dataOffset": 41586,
+    "compressedBytes": 433,
+    "rawBytes": 1152,
+    "sha256": "76f3098ee2c1c70e6e88e6f570e2663263e26d9e9c41f1834335107f1f6a9745",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/chat-font-size.css",
+    "dataOffset": 42074,
+    "compressedBytes": 1799,
+    "rawBytes": 11680,
+    "sha256": "e0d61e71845da71af0a0639b9e5c3ae02e47ab06c2037fcfb56d08997dd7bbf3",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/chat-resize.css",
+    "dataOffset": 43925,
+    "compressedBytes": 483,
+    "rawBytes": 1628,
+    "sha256": "f030e9f98194c2e394fff3fb7526f0da7ccd5db08aebd842dc53f4b686a92ed7",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/chat-timestamp.css",
+    "dataOffset": 44463,
+    "compressedBytes": 159,
+    "rawBytes": 253,
+    "sha256": "c088d1a0f6e1787948de36a1edb9b81e491b9841ca43d9f6c98b870039038a36",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/fit-player.css",
+    "dataOffset": 44673,
+    "compressedBytes": 281,
+    "rawBytes": 645,
+    "sha256": "b2a56d16dc93edc057bb059f28bdd7ddc39fa7e69af0f07187c9de4af846ee89",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/hide-blocked.css",
+    "dataOffset": 45007,
+    "compressedBytes": 193,
+    "rawBytes": 464,
+    "sha256": "3980981f2d38de792d524dc9d0f4d1edf820bc349021c232a42666b074e60c38",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/hide-comp.css",
+    "dataOffset": 45250,
+    "compressedBytes": 49,
+    "rawBytes": 47,
+    "sha256": "b3a292b037d2a8e964cba34a63de338a4957b7f0ec651f9bf99b260492fe48f7",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/hide-ff.css",
+    "dataOffset": 45347,
+    "compressedBytes": 47,
+    "rawBytes": 45,
+    "sha256": "e2d389de1264a442804a74912fa28ec5cc5d54da7b1446a26c78255d16331933",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/hide-live-badge.css",
+    "dataOffset": 45450,
+    "compressedBytes": 94,
+    "rawBytes": 118,
+    "sha256": "a00507f62f9d3b97d01b24c3fd10a9df73c227b2d851b2b3515802ad18279226",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/hide-mission.css",
+    "dataOffset": 45597,
+    "compressedBytes": 205,
+    "rawBytes": 461,
+    "sha256": "e139e91bcce10e91d37626a05d6193da32d10c86f064867e35ea36167a15289f",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/hide-offline.css",
+    "dataOffset": 45855,
+    "compressedBytes": 135,
+    "rawBytes": 273,
+    "sha256": "fb894a99140077871d75cfde525ad6e93abaa71923675b2b78359a3d17a77ecd",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/hide-ranking.css",
+    "dataOffset": 46043,
+    "compressedBytes": 110,
+    "rawBytes": 140,
+    "sha256": "cf1b6e173d0f32c32731415901e179916afba08f7b921a24b50b7dda8375f24c",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/hide-recommended-live.css",
+    "dataOffset": 46215,
+    "compressedBytes": 197,
+    "rawBytes": 272,
+    "sha256": "075de712f82e4fa755fce28a0428c6349e971e611faf5e3f86de126fa35e5916",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/hide-recommended.css",
+    "dataOffset": 46469,
+    "compressedBytes": 164,
+    "rawBytes": 192,
+    "sha256": "a6c68b29792c1b856e9d690038ac01c4706026dc8897fcfe6b53cad51d1fc894",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/hide-schedule.css",
+    "dataOffset": 46687,
+    "compressedBytes": 165,
+    "rawBytes": 193,
+    "sha256": "de231c66025b887c60ab06b8d3751855d074d3984b3d65776afcc610847418d6",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/hide-shortcut.css",
+    "dataOffset": 46906,
+    "compressedBytes": 157,
+    "rawBytes": 186,
+    "sha256": "87d97504e26c42159fe3423dd6c66513cce74a4842d6390d775a68be12222b78",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/hide-sidebar-partner.css",
+    "dataOffset": 47124,
+    "compressedBytes": 163,
+    "rawBytes": 192,
+    "sha256": "3d17641e6f40637a8354805fa2ba0373a4c1d9c4bd912912235174b8cf7467a1",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/hide-studio.css",
+    "dataOffset": 47339,
+    "compressedBytes": 112,
+    "rawBytes": 121,
+    "sha256": "443a72f7507cf0eca80c73072dbdf7c02c96851cedf4e0dd990e26703e93d751",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/hide-topics.css",
+    "dataOffset": 47503,
+    "compressedBytes": 139,
+    "rawBytes": 160,
+    "sha256": "bcf9f39ecbafddf1cb72276786341562ce0822d85ba69f205d9f77c105e7c9e6",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/left-chat.css",
+    "dataOffset": 47692,
+    "compressedBytes": 313,
+    "rawBytes": 880,
+    "sha256": "3a17b24efec8e249d7e5abd9bc1df521988dceeedde8d7d27048b33b6145c05f",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/rectangle-profile.css",
+    "dataOffset": 48063,
+    "compressedBytes": 365,
+    "rawBytes": 1334,
+    "sha256": "4e515030f77b12339d8d7a8a7ce48b38fd248275c7c1927aec2fa7022a185edc",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/right-sidebar.css",
+    "dataOffset": 48482,
+    "compressedBytes": 490,
+    "rawBytes": 1637,
+    "sha256": "2f025d26a922c71ef971af803f4ec6f4159f4ac91e45cca029a4a93e29ec69c2",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/static-logo.css",
+    "dataOffset": 49024,
+    "compressedBytes": 520,
+    "rawBytes": 900,
+    "sha256": "dbd8819a9a55dcf4f3109e387ef65062d85cb63ec76d7306932af22435f5b0b4",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/top-explore.css",
+    "dataOffset": 49596,
+    "compressedBytes": 696,
+    "rawBytes": 2125,
+    "sha256": "61a296b6e617a133254cd22a720393c109371d3301337bb7f8ada726e023ccef",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "styles/volume-percentage.css",
+    "dataOffset": 50350,
+    "compressedBytes": 260,
+    "rawBytes": 405,
+    "sha256": "19b30e793973695351995c2d66100b84fb1f0be8e5b102b5c5af45deae238b5b",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "vendor/hls.js.LICENSE",
+    "dataOffset": 52006,
+    "compressedBytes": 791,
+    "rawBytes": 1338,
+    "sha256": "ca8773cf798c7ed997d4dd7c8e23c348699f8d5b7462636694cc14de6cda12db",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "vendor/hls.light.private.js",
+    "dataOffset": 52854,
+    "compressedBytes": 111791,
+    "rawBytes": 359160,
+    "sha256": "0317fbe50587ee7b46e734112ff9ceab96914ff87a0f695f9350214afa9cea92",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "web/audio.js",
+    "dataOffset": 164687,
+    "compressedBytes": 2853,
+    "rawBytes": 9272,
+    "sha256": "bf919f72bbcf270765a2cfa5425108f033bbb069dd9f79d7833938da5061c7ef",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "web/inject.js",
+    "dataOffset": 167583,
+    "compressedBytes": 11432,
+    "rawBytes": 43312,
+    "sha256": "4075c5e92dd0cdb5e4101f7993c27ca5a99619c257f6c73a94a093dda1cae880",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "web/main.css",
+    "dataOffset": 179057,
+    "compressedBytes": 1440,
+    "rawBytes": 4982,
+    "sha256": "86543ed40380e70c90aa461ffcdaadbaecf907314b0657c7a12f24ded94f81cb",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "web/main.js",
+    "dataOffset": 180538,
+    "compressedBytes": 2955,
+    "rawBytes": 8136,
+    "sha256": "4387c2bbe1689e9637de266e1d2e2f1ae56d3ceae2403339307fca9bd1c66efe",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "web/player.js",
+    "dataOffset": 183536,
+    "compressedBytes": 4636,
+    "rawBytes": 15049,
+    "sha256": "a36c5d1d5bc10471b52e9e7a8540647231562b6e6e4afabb9d8692546d0f6cca",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "web/preview.js",
+    "dataOffset": 188216,
+    "compressedBytes": 5425,
+    "rawBytes": 17510,
+    "sha256": "8faf50fa6bb9765997db2e4de3c507ffbe89e64b624eca89bf2d4b4e050a6c8c",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "web/runtime.js",
+    "dataOffset": 193685,
+    "compressedBytes": 3158,
+    "rawBytes": 9432,
+    "sha256": "8b864ab3b26f6003dd47eca70abf72044bb66b2f2c80ba52764bc1fc0acee090",
+    "method": 8,
+    "flags": 0
+  },
+  {
+    "name": "web/site-adapter.js",
+    "dataOffset": 196892,
+    "compressedBytes": 1146,
+    "rawBytes": 3036,
+    "sha256": "d87c09412b9f3d21846168e85b2b61b6925fac8f1a44dc4011be5cf7c876fe9b",
+    "method": 8,
+    "flags": 0
+  }
+]

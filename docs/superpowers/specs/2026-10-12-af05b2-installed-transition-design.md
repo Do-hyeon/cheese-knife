@@ -1,12 +1,13 @@
 # AF05-B2 — 격리 설치본 코드 전환·복귀 상세 설계
 
-2026-10-12 / Asia-Seoul. 상태: **독립 검토 후 주 실행자 보완, 사용자 구현 승인 대기**. 사용자가 이번 설계·계획·Astra max 검토를 함께 요청했다. 따라서 두 문서를 승인용 묶음으로 작성하되 구현을 시작하지 않는다. [상위 AF05-B 설계](2026-10-12-af05b-release-acceptance-design.md)의 과거 업데이트 미검증 수용·플랫폼 롤백 완료 기준 변경은 여전히 별도 승인 대상이다.
+2026-10-12 / Asia-Seoul. **당시 승인 상태:** 독립 설계 검토·보완 후 사용자2026-10-13 B2 설계/Native 구현·격리검증·최종 Astra max 검토 묶음 승인, 구현 중이었다. 후속 B2 실제 전환·native 사전검증과 [준비 범위 종합 마감](../validation/2026-10-14-af05b-prepublication-closure.md)은 완료했다. 승인된 과거 업데이트 미검증 수용·격리 코드 복귀/플랫폼 롤백 미실행 분리는 [상위 설계](2026-10-12-af05b-release-acceptance-design.md)를 따른다. 실제 스토어 업데이트 수용은 별도로 남긴다.
 
 ## 1. 목적·성공 기준·비목표
 
 게시 2.13.3과 AF 후보의 **전체 배포 파일, 실제 background와 구/새 UI, Chrome storage/CSS**를 연결해, 같은 bundled Chromium 프로필·개발용 ID에서 old→new→old 전환 중 값 손실과 혼합 코드가 탐지되는지 검증한다. B1의 모의 저장소 호환성 결과를 설치 검증으로 확대하지 않는다.
 
 - 설계 기준 main: `b38ec388784ec8f32007401d42a8439dddffd0de` / [B1 PR #36](https://github.com/Do-hyeon/cheese-knife/pull/36).
+- 2026-10-13 복귀 대조: 유지보수 PR #42 통합 main `6b919e1c62661ec49a12ce6df2c02e11273af41d`를 구현 기준으로 삼는다. 현재 foundation9와 settings fixture 계약을 유지하고 broker control 연결점은 그대로다. 역사적 설계/검토 결과나 게시 payload 기준을 바꾸는 재검증 PASS는 아니다.
 - 게시 기준: `fb15f9675f9ea910e98363635155bc4ff9eb1d2f`, 제품 version `2.13.3`, 실제 스토어 ID `cgfddiiffponlciljlfbiecmlagflbpe`.
 - 로컬 코드 전환을 실제 CRX 업데이트·서명·스토어 ID·열린 이전 content script 정리·in-place reload·플랫폼 rollback으로 표현하지 않는다. 이번 검사는 정상 종료 후 동일 프로필의 재기동이다.
 - 제품 TS/JS·package/lock/manifest·권한·원래 root dist·제출 ZIP/CRX·시청 프로필·P09 native 기준 프로필·frozen P02 자료를 변경하지 않는다. 새 제품 버전·태그·릴리즈·스토어 제출/게시·F00–F05 구현은 없다.
@@ -47,8 +48,8 @@
 | phase | manifest.version | 나머지 payload |
 | --- | --- | --- |
 | seed + old | 원본 `2.13.3` | 58개 bytes가 frozen 원본과 동일 |
-| new | 가상 T=`2.13.3.1` | AF 후보 58개, manifest의 version/version_name만 예외 |
-| rollback | 가상 R=`2.13.3.2` | 이전 코드 58개, manifest의 version/version_name만 예외 |
+| new | 가상 T=`2.13.4` | AF 후보 58개, manifest의 version/version_name만 예외 |
+| rollback | 가상 R=`2.13.5` | 이전 코드 58개, manifest의 version/version_name만 예외 |
 
 T/R은 **TEST ONLY**이며 제품/출시 번호가 아니다. private 복사본의 version_name은 각각 `AF05-B2 TEST ONLY new`, `AF05-B2 TEST ONLY rollback`이다. manifest는 원본 object를 clone하고 두 값만 바꿔 `JSON.stringify(object,null,2)+'\n'`으로 저장해 기대 hash를 만든다. 다른 key·권한·key/스토어 ID·파일은 바꾸지 않는다. 원본 manifest는 bytes 그대로다. [Chrome version 규칙](https://developer.chrome.com/docs/extensions/reference/manifest/version)에 맞는 로컬 식별값이며 플랫폼 downgrade/rollback을 증명하지 않는다.
 
@@ -57,6 +58,10 @@ T/R은 **TEST ONLY**이며 제품/출시 번호가 아니다. private 복사본�
 새 worker에서 `chrome.runtime.id`, 실제 manifest.version, `createSettingsBroker.toString()`을 관측한다. B1과 같은 고정 `var createSettingsBroker = ` 이후 function expression과 비교하여, 현재 파일을 읽기만 한 것이 아니라 기대 broker 함수가 실행 context에 있음을 확인한다. 임의 실행 sentinel/product 주입은 하지 않는다. 이것만으로 모든58파일의 모든 코드 경로 실행을 주장하지 않는다. 물리 전체 hash + 실제 UI/protocol/storage/CSS/MAIN 동작이 각각 별도 근거다.
 
 ## 5. 연속 저장·UI·CSS oracle
+
+사용자2026-10-13 지시에 따라 private 시험값도 기존 세 자리 `major.minor.patch` 형식을 유지한다. T/R은 현재 제품2.13.3의 변경이나 차기 출시 번호 확정이 아니다. 원본 manifest·원래 dist·스토어·릴리즈의 버전 표기는 그대로다.
+
+2026-10-13 실행 보완: 격리 Chromium은 manifest T를 관측하면서도 이전 imported broker worker를 유지했다(실제7622자/후보7970자, EOL 차이 아님). 각 새 context에서 **시험 확장만** `chrome.runtime.reload()`하고 기존 harness로 이전 worker 재사용 없이 새 worker를 취득한 다음 provenance/seed/UI 검사를 시작한다. 같은 profile/extension 경로·ID·raw storage는 유지하고 직접 저장 보정은 하지 않는다. 이는 시험 준비의 worker 갱신이며 스토어/native 자동 업데이트나 열린 이전 content script의 in-place 정리 성공을 증명하지 않는다. launch/정상 close ACK·실패 보존 규칙은 그대로다.
 
 각 case의 seed phase에서 실제 원본 popup의 ready·get-snapshot 응답을 읽기 전용 fence로 기다려 최초 broker boot 완료를 확인하고 **raw storage가 여전히 빈 것을 재확인한 뒤 초기 seed를 한 번만** `chrome.storage.local.set`으로 넣는다. 이 fence는 UI 저장/repair를 하지 않는다. `futureTop.runNonce`에는 run별 random128bit 값을 넣고 이후 모든 phase에 그 값을 기대한다. 즉시 raw 값 확인→페이지 전부 close→context close→old 재기동으로 startup migration을 관찰한다. 이후 writes는 실제 UI 조작뿐이다. storage 재주입·repair·직접 broker 호출로 저장을 대체하지 않는다. popup UI는 packaged `popup.html`/JS/client, styles는 packaged `styles.html`/JS/client다.
 
@@ -88,6 +93,8 @@ fixture HTTP(S)는 기존3개 고정 URL만 fulfill, 다른 application 요청�
 
 ## 6. 설치 경계의 negative control
 
+2026-10-13 후속 실행 승인: 새 owned fixture 프로필에만 정상 Chrome 관리 UI로 Developer mode를 켠다. read-only 진단에서 command-line 등록의 runtime.reload 후 DISABLED/unsupportedDeveloperExtension=true를 관측했다. 직접 profile 편집·force flag·정책 우회는 하지 않으며 UI가 잠겨 있으면 FAIL이다. B2 준비 helper는 old-worker close를 요청 전에 구독하고, 종료 후 새 management 문서에서 같은 ID/기대 version·ENABLED/제한 없음·Developer mode ON을 관측한 뒤 popup wake/새 worker provenance를 진행한다. seed와 모든 completed phase의 preparation 증거를 parent도 재검증한다. 이전 broker가 남은 상태나 실행 환경 실패는 계속 FAIL이다. 실제 환경 성립은 새 설치 전환 검사로 확인할 때까지 미합격이다.
+
 정상 positive와 다른 새 root/profile/extension에서 valid-ui를 실행한다. new 시험 복사본의 **settings-broker.js**에서 initialize의 기존 `boot = enqueue(async () => {` callback 안, 첫 `const raw = await read(true), revision = contract.readRevision(raw.settingsRevision);` 바로 앞에 `await chromeApi.storage.local.remove('config');` 한 줄만 삽입한다. 정확한 insertion point가 한 개임을 먼저 검사하며 0/복수면 control-preparation 실패다. original background의 동기 importScripts/listener 등록은 그대로다. 삭제 완료 뒤 실제 broker boot가 raw를 읽으므로 삭제와 read의 경쟁을 만들지 않는다. remove 실패도 별도 control 실패다. 정상·원본·제품 파일은 바꾸지 않는다. 이 변형 broker hash/function source는 **negative phase의 별도 기대 inventory/provenance**에만 반영한다.
 
 old raw/revision8 저장 성공과 정상 종료 후 new를 실행하고, 같은 preservation oracle가 candidate-init 단계의 **`transition-storage-preservation`**으로 거부해야 한다. 실제 raw에서 config 손실도 확인한다. inventory 실패·MAIN/worker timeout·브라우저 부재·cleanup 실패를 기대 실패로 인정하지 않는다. negative 보고서의 `ok:true`는 control 탐지 합격이지 positive 전환 합격이 아니다. 정상 positive와 기존 MAIN-missing negative도 각각 실행한다.
@@ -104,9 +111,10 @@ deadline/예상치 못한 child exit 시 소유한 runner만 종료한다. Windo
 
 ## 8. 완료와 승인 경계
 
-- B2 로컬 완료: reader provenance·상한/부재·pure oracle/runner faults·실제5case 전환·실제 저장 손실 negative·strict8·전체 Node·기존 E2E positive/negative·합성 audio·패키지·현재 도구 감사·보호 파일 전후 hash·최종 독립 품질 검토·최종 head 공개 CI가 모두 근거를 남김.
+- B2 로컬 완료: reader provenance·상한/부재·pure oracle/runner faults·실제5case 전환·실제 저장 손실 negative·현재 foundation9·전체 Node·기존 E2E positive/negative·합성 audio·패키지·현재 도구 감사·보호 파일 전후 hash·최종 독립 품질 검토가 모두 근거를 남김. 공개 CI/통합은 AF05-B 전체 완료 후 단일 한글 PR에서 수행하며 로컬 완료와 구분한다.
 - 전체 Node는 clean tracked clone에서 제외 없는 실행. 원래 폴더의 P02 역사 실패와 기존 guarded 도구 경고를 숨기거나 frozen 자료를 변경하지 않음. 새 경고·대상 부재·cleanup/환경 실패는 별도 보완 없이 합격시키지 않음.
 - B2 설계/계획 승인 시 새 bundled fixture 프로필·시험용 T/R payload·negative 복사본·owned cleanup이 필요한 로컬 동작임을 함께 제시한다. 종료 미확인 시 실패/프로필 보존과 private 시험 browser의 수동 종료 필요 가능성도 고지한다. Native 또는 subagent 실행 방식과 구현 후 최종 Astra max 검토도 승인 묶음에 포함해 받는다. 이는 실제 시청/native 프로필·제품 버전·스토어 조작 승인이 아니다.
-- 전체 AF05-B spec의 waiver/rollback 수용 기준, 성공한 native2.13.3 runtime/seeded storage preflight, 공개 버전, 스토어 upload/심사/게시, 실제 update/new install/플랫폼 rollback은 별도 미완료다. B2만으로 P09/AF05-B DONE·F00 동결 해제를 선언하지 않음.
+- 당시 B2 밖에 남겼던 수용 기준 승인은 후속 승인됐고 native2.13.3 runtime/seeded storage preflight도 후속 실제 PASS했다. 공개 버전·스토어 upload/심사/게시·실제 update/new install·플랫폼 rollback 실행은 여전히 별도 게이트다. B2만으로 실제 플랫폼 수용 완료를 선언하지 않는다.
+- 최신 사용자2026-10-14 지시: AF05-B 공개 전 준비 범위 전체를 단일 한글 PR로 묶고 F00·F01은 제외한다. 게시 후 수용은 준비 PR의 선행 조건이 아니다. Task/B2/문서별 PR과 병합·릴리즈·스토어 배포는 하지 않는다.
 
 설계의 플랫폼 근거: [Playwright extension guide](https://playwright.dev/docs/chrome-extensions), [persistent context API](https://playwright.dev/docs/api/class-browsertype#browser-type-launch-persistent-context). bundled Chromium과 persistent profile을 사용하고 시청 Chrome을 연결하지 않는다. 구현·현재 환경 실행으로 실제 성립 여부를 검증할 때까지 예상 동작을 PASS라고 부르지 않는다.

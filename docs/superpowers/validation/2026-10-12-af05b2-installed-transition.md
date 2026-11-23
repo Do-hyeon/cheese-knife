@@ -1,0 +1,139 @@
+# AF05-B2 — 로컬 검증 완료·별도 수용 게이트
+
+실행일2026-10-13 / Asia-Seoul. 기반 main `6b919e1c62661ec49a12ce6df2c02e11273af41d`, 로컬 브랜치 `codex/af05b-acceptance`. **B2 로컬 구현·격리 검증 완료**, 검증 checkpoint `c707af658b37636c4d31be3eb990700cd793c516`. 사용자 후속 승인으로 새 시험 프로필의 정상 Developer mode UI 준비를 보완했다. 아래 현재 결과와 보완 전 실패 이력을 구분한다. 스토어 native 업데이트/플랫폼 롤백·공개 CI·전체 AF05-B 수용은 아니다. push·PR·배포는 하지 않았다.
+
+## 최종 로컬 결과
+
+| 검사 | 결과·근거 |
+| --- | --- |
+| 준비 성립 | 새 Probe7의 정상 관리 UI Developer mode ON·단일 reload·old-worker 종료·새 worker/같은 ID·실제2.13.3·ENABLED 확인. 원본 broker hash/빈 저장소 불변·정리 성공 |
+| 실제 정상 전환 | `B2developerPositive` PASS:5case/15phase, 각 case의 동일 profile/path/ID·실제 old2.13.3→T2.13.4→R2.13.5, raw/UI/CSS/MAIN/실행 출처/준비 증거·whole58 inventory 모두 parent 검증 |
+| 실제 손실 control | `B2developerNegative` PASS: old UI revision8 이후 new startup/candidate-init에서 transition-storage-preservation. raw own config만 손실, nonce/styles/parameter/revision8 유지, 같은 ID·T2.13.4·변형 brokerMatches=true. timeout/환경 오류 대체 아님 |
+| 수명·source | 두 실행 cleanupErrors/secondaryErrors/retainedRoots0, child 정상 종료·모든 launch close ACK 확인. sourceCommit/전체 source/lock/manifest/toolchain attestation 전후 동일 |
+| Task3 최종 연결 | 111/111, 실패/skip0, task-done 기록. 새 준비 DOM·display-version·parent admission·child 수명 검사 포함 |
+| 전체 Node | 기본 명령 `node --test tests/*.test.cjs`,1107개 중1106pass/실패0/기존private 자료 부재skip1. 이번 checkpoint에서는 병렬 명령도 통과. 이전 EPERM 실패를 삭제하지 않음 |
+| foundation9 | toolchain/runtime inventory/settings fixture/product/development/audio typecheck·settings/MAIN 생성 대조·build-proof 모두 성공 |
+| build/package/audio | 검증 clone만 build, 제품2.13.3·58파일/entry resource20·합성14case/18transition/12alignment 품질 gate 성공 |
+| 기존 설치 검사 | `B2devExisting` PASS65.387s, `B2devExistingNegative` main-runtime-missing 탐지 PASS. 기존 기본 E2E의 inPlaceReloadObserved=false 한계는 그대로 |
+| 현재 도구 감사 | npm0·ESLint8·Gitleaks dir0/git0·snapshot matched=true. raw exit1은 아래 검증된 owned boundary8개, 새 준비 module/caller lint0. 보안 인증 아님 |
+| 보존 | 원래 dist/ZIP·package/lock/manifest2.13.3·frozen 자료·보호 브랜치·P09 profile 메타데이터 전후 동일 |
+
+rollback 최종 literal/실제 revision은 valid-ui14(font0), legacy-valid5(t/resizeChat 정리), legacy-null4/legacy-invalid4(t cleanup-only), damaged-revision='invalid-b2'(쓰기 제한)다. 각 nonce/unknown 값은 그대로다. source SHA `7b6093eb21376c0e91cf556434bd3b19403b8eba9ad00a7ea10915ef3b985098`, 후보 ordinal inventory `4762b36ee9d93a54795fdfbf56a7514fb95b2fd7139a97ec20ec2cd80852e748`. private T/R은 시험값이며 공개 제품 번호 결정이 아니다.
+
+현재 감사: `output/af05b2-validation-20261013/output/tool-audit/run-2026-10-13T08-34-56-407Z-qN92CI/summary.json`.8개 모두 scripts/owned-files.mjs의26/27/45/74/79/94/115/125줄 dynamic fs 경계이며125는 배타적 완성 파일 게시다. 이전 원장을 고치거나 스캐너를 완화하지 않았다. 새 module은 실제 감사 source inventory에 포함됐다.
+
+Astra max 최초 whole-branch 판정 **Critical0/Important6/Minor0**은 보존한다. 6건은 작성자 RED→GREEN·현재 전체/실제 설치 gate로 보완·검증했으며, 이를 수정 후 독립0건 판정으로 표현하지 않는다. 이번 국소 준비 보완도 같은 작성자 검증 범위다. 당시 남겨둔 native preflight와 역사 미검증 수용 기준 승인은 후속 완료했다. 최신 [종합 마감](2026-10-14-af05b-prepublication-closure.md)과 별개로 실제 스토어 업데이트/플랫폼 롤백·공개 CI의 실행 근거는 분리하며 F00·F01은 준비 PR의 선행 조건이 아니다.
+
+## 보완 전 구현·독립 기대값 이력
+
+- Task1 commit `21ddb65`: 고정 공개 ZIP58파일 reader/cache preparation·JSON offset metadata·출처/입력/상한/변조/cache/link/redirect/deadline/IO negative·CI prepare. 실제 anonymous 다운로드201802bytes와 SHA를 검사했으며 private 원본 fallback은 없다. 집중96/96 통과, 새 lint 경고0.
+- Task2 commit `9b86487`: 5case seed·정확한 revision4→8→11→14·unknown/nonce·legacy/손상 제한·raw/UI/CSS/MAIN/worker oracle와 packaged phase. 집중99/99 통과. 실제 전체 브라우저 전환의 성공과 구분한다.
+- Task3 감독 구현 checkpoint `b0096de`, 후속 진단/worker 보정/버전 형식 변경을 포함한 현재 기술 checkpoint `4c774ce9af296498b03c2307584df9e7527c07a3`. parent/child launch/close ACK·600s/phase deadline·owned cleanup·실제 UI seed1회·awaited config 삭제 control·종합 증거 admission을 구현했다. 현재 집중79/79지만 아래 실제 전환은 미완료다.
+- 제품/시험값 모두 세 자리 버전 형식 유지(사용자2026-10-13 수정 지시). 원본 제품2.13.3 불변, private T2.13.4/R2.13.5는 TEST ONLY이며 출시 번호 결정이 아니다. 초기 private 실패 보고서의 이전 시험 표기는 역사 기록으로 남긴다.
+
+## 보완 전 확인한 게이트
+
+검증 복제본 `output/af05b2-validation-20261013`은 로컬 immutable checkpoint의 clean checkout과 고정 의존성의 물리 복사본이다. root dist를 빌드/정리하지 않았다.
+
+| 검사 | 근거/결과 | 한계 |
+| --- | --- | --- |
+| foundation9 | 기존 명령9개 모두 성공 | 마지막 제품/도구 계약을 유지; 신규 실제 전환 대체 아님 |
+| 전체 Node | `4c774ce` idle 실행1075개/1074pass/실패0/기존skip1 | 비공개 P02 자료 부재 제외1, 새 skip 없음 |
+| Windows 실패 이력 | 앞선 같은 checkpoint 전체 실행은 MAIN linked-source rename EPERM으로1073pass/실패1/skip1. 해당 파일 그대로 집중8/8 및 idle 전체 통과 | 일시적 동시 실행/파일 잠금 가능성은 있지만 정확한 원인은 확정하지 않음. 실패 로그를 삭제하거나 테스트를 완화하지 않았다 |
+| build/package | clone의2.13.3/58파일·entry resource20 확인 | 원래 root dist/제출 ZIP 아님 |
+| 합성 audio | 이전 기술 checkpoint `5a0dc76`의 동일 제품 코드, 기존14case/18transition/12alignment·quality gate 성공 | 주관 음질/실제 하드웨어 인증 아님 |
+| 기존 설치 positive | 현재 `4c774ce`,67s·실제 packaged 기존 시나리오 성공 | inPlaceReloadObserved=false, 기존 headless unpacked reload 제한 명시 |
+| 기존 MAIN-negative | 별도 실행 main-runtime-missing 탐지 성공 | B2 storage-loss control 성공이 아님 |
+| 도구 감사 | 현재 `4c774ce`, npm0·ESLint7·Gitleaks dir0/git0·snapshot matched | raw exit1은 기존 findings.7개 모두 unchanged owned-files dynamic-FS 관측26/27/45/74/79/94/115줄. 새 보안 인증/경고0 주장 아님 |
+| 보존 | 전후 JSON 동일: root dist58·원본 ZIP·package/lock/manifest2.13.3·frozen 자료·보호 브랜치·P09 profile 생성/수정 시각 | 실제 개인 프로필 내용을 검사하거나 변경하지 않음 |
+
+## 실제 B2 실패·중단 이력
+
+1. `B2positive`/`B2probe1`: old valid-ui 저장/reload 뒤 candidate-init의 `transition-execution`. manifest 시험 T를 읽지만 실제 broker7622자(게시 원본 길이), 후보7970자. EOL 정규화 차이 아님. 실제 실행 출처 대조가 cached old worker를 거부했으며 PASS로 바꾸지 않았다.
+2. 주 실행자가 private 시험 확장 runtime.reload 후 새 worker 취득을 준비 절차로 추가했다. `B2positive2`: worker-reacquire timeout. 실제 시청/native 기준 확장은 대상이 아니다.
+3. 기존 lifecycle harness의 read-only packaged popup wake를 적용했다. `B2positive3`/`B2probe4`: seed/launch에서 extension popup `net::ERR_BLOCKED_BY_CLIENT`. 마지막 실패의 예외 이름/메시지·stage와 이전 관측을 bounded private report에 보존했다.
+4. 모든 위 실행은 context 정상 close와 작업 root/candidate cleanup 완료, retainedRoots0. 종료 미확인 자료를 지우는 fallback이나 storage repair 재주입은 없다.
+5. Astra max가 고정 range `6b919e1..4c774ce`를 독립 검토했다. 판정은 **Critical0·Important6·Minor0, 완료 불가**다. 아래 보완은 작성자의 회귀 검사이며 수정 후 독립0건 판정으로 바꾸지 않는다.
+
+## Important 6건 보완 — 작성자 검증
+
+2026-10-13 사용자 후속 승인. 집중 연결 검사108/108, 실패/skip0. 검증 checkpoint `3458ece180827c5c57a887db27427a85fa95ea25`. 아래 실제 실행에서 I1의 환경 성립은 실패했으므로 6건 전체 최종 수용/Task3 완료는 아니다.
+
+| 항목 | 재현·최소 수정 | 현재 근거 |
+| --- | --- | --- |
+| I1 시험 실행 옵션 충돌 | Playwright 기본 `--disable-extensions`만 제외, 정확한 후보 allowlist와 다른 기본 옵션 유지 | harness 옵션 RED→GREEN. 실제 seed/launch가 여전히 차단되어 **환경 수용 미완료** |
+| I2 후속 오류 누락 | 첫 실패 유지, supervisor/child/parent의 secondaryErrors가 합격을 거부. 같은 예외의 중복 재전파만 제외 | 중복 close ACK 및 손실 이후 실제 post-close 파일 변조 RED→GREEN; parent 양성/두 후속 오류 대조 |
+| I3 잘못된 실행 출처 | UI/저장 접근 전 version/ID/broker 검사, oracle도 execution 우선. 손실 admission에 seeded ID·T version·broker 일치 요구 | wrong-version+loss, raw-only·다른 ID/broker 반례 RED→GREEN |
+| I4 입력 잠금 누락 | 두 popup과 styles의 6개 입력 disabled를 각각 관측 | 손상 상태의 단일 입력 활성화 mutation·6개 literal 기대값 RED→GREEN |
+| I5 손상 최종 캐시 | 같은 owned root의 완료 임시 파일을 배타적 hard link로 게시, 기존 파일을 덮거나 삭제하지 않음 | 17bytes 후 ENOSPC 재현 RED→GREEN; 실제 게시/기존 대상/연결 경로/실패·경쟁 캐시 보존 검사 |
+| I6 child 수명 검사 부족 | 외부 browser/build/IPC 경계만 주입, 실제58파일 install/inventory 유지 | 준비·2차 build·partial install·launch·trace·close·ID·source 변경·post-close 변조10/10 |
+
+hard link는 새 의존성 없는 Node 기본 기능이다. 새 guarded filesystem 관측1개가 추가되며 스캐너를 완화하거나 frozen 경고 원장을 고치지 않는다. hard link를 지원하지 않는 파일시스템은 준비 FAIL이며 copy/overwrite fallback은 없다.
+
+### 보완 checkpoint 재검증
+
+| 검사 | 결과·실제 근거 | 제한 |
+| --- | --- | --- |
+| 새 B2 positive | `B2fixedPositive`, `ok:false`, seed/launch의 `transition-failed`, reload 뒤 popup `ERR_BLOCKED_BY_CLIENT`, seeds/phases0 | 5case 전환 미실행·미합격. 옵션 충돌 보완만으로 해결되지 않음 |
+| 새 B2 storage-loss | `B2fixedNegative`, `ok:false`, 같은 seed/launch 차단, seeds/phases0 | 저장 손실 탐지 성공으로 인정하지 않음 |
+| 위 두 종료·정리 | cleanupErrors/secondaryErrors/retainedRoots 모두 빈 배열 | 각 context 정상 close·작업 root/후보 정리. 개인 Chrome는 대상 아님 |
+| foundation9 | 현재9개 모두 성공 | clone에서 실행, toolchain/runtime/typecheck/build-proof 포함 |
+| Node 기본 병렬 전체 | 1094개 중1092pass/실패1/기존skip1 | `MAIN runtime rejects linked sources and outputs`의 Windows rename EPERM 재발. 실패 이력 보존 |
+| 해당 검사 단독 | 원본 그대로8/8 | 실패 원인이 동시 실행/파일 잠금인지 확정하지 않음 |
+| Node 전체 직렬 | **1094개 중1093pass/실패0/기존skip1**, `node --test --test-concurrency=1 tests/*.test.cjs` | 파일 단위 실행 순서만 직렬, 테스트 변경·제외·새skip 없음. 병렬 성공으로 표현하지 않음 |
+| build/package/audio | 후보2.13.3·58파일·entry resource20 및 기존 합성 품질 gate 성공 | 제품 코드는 변경하지 않음 |
+| 기존 설치 positive | `B2fixExisting`,65.385s, `ok:true` | inPlaceReloadObserved=false, headless unpacked worker 재시작 제한 유지 |
+| 기존 MAIN-negative | `B2fixExistingNegative`, `ok:true`, main-runtime-missing | 새 B2 control 수용 대체 아님 |
+| 도구 감사 | npm0·ESLint8·Gitleaks dir0/git0·snapshot matched=true, raw exit1 | 기존7개 및 새 `owned-files.mjs:125`의 fs.link guarded 관측1개. 아래 대조를 읽고 판단 |
+| 보호 대조 | 시작/종료 JSON 동일, `protectionEqual=True` | root dist·원본 ZIP·package/lock/manifest2.13.3·동결 원장·보호 브랜치·P09 profile 메타데이터 불변 |
+
+도구 보고서 private 경로: `output/af05b2-validation-20261013/output/tool-audit/run-2026-10-13T07-39-50-696Z-F3F8yc/summary.json`. 원래 frozen P02 원장은 변경하지 않았다. 기존26/27/45/74/79/94/115줄7개의 rule/location은 그대로다. 추가125줄은 `publishFile`의 source(file)/destination(missing-or-file)·root operation/overlap·immediate-parent 검사를 통과한 두 경로만 fs.link에 전달한다. 실제 no-overwrite·completed bytes·linked/traversal/overlap 거부 및 ENOSPC/EEXIST 보존 검사가 통과했다. 이를 **검사된 guarded-boundary 관측**으로 남기며 경고0/독립 보안 인증으로 표현하지 않는다.
+
+### 설치 준비 진단 재설계 — 제안·새 실행 미승인
+
+실제 팝업 차단이 반복됐으므로 더 이상의 무작정 재시도·cache/profile 초기화·다른 실행 fallback은 하지 않는다. 다음 단계는 **새 private fixture의 재로드 수명만 제한된 사건 관측으로 진단하는 설계**다.
+
+1. 같은 승인된 bundled Chromium·고정 payload에서 reload 전 packaged popup 접근/ready와 worker ID를 읽기 전용으로 확인한다.
+2. 단 한 번의 reload 요청 전후 worker close/new-worker·popup navigation 실패 시점을 bounded record로 기록해 초기 접근 차단, reload 과도기, 재기동 실패를 구분한다. 고정 sleep/반복 재시도나 기대값 채우기는 하지 않는다.
+3. 근거로 준비 절차 수정안을 작성하고 사용자 승인 후에만 구현·실행한다. ID/profile/저장/whole58 inventory/oracle/종료 증거 요구는 완화하지 않는다. 새 방법도 성립하지 않으면 환경 미지원으로 명시하고 실제 전환 완료를 주장하지 않는다.
+
+사용자 Chrome·native P09·제품·권한·스토어·storage reset/repair·CDP/브라우저 정책 우회는 제외한다. 사용자 후속 승인으로 아래 읽기 전용 진단을 실행했다. 진단 완료를 Task3 완료로 확대하지 않는다.
+
+### 승인된 읽기 전용 진단 결과
+
+2026-10-13, 공개 제품 코드 수정이 아닌 throwaway spike. 기존 Playwright1.62.1/Chromium151.0.7922.34·frozen58파일을 새 owned root에 넣고 parent supervisor60s/phase55s·close10s·worker15s로 실행했다. 각 root에서 runtime.reload 요청1회, 진단 코드의 storage 쓰기0회. 계정·실제 방송·기존 프로필·설정 버튼·정책·새 도구 설치는 사용하지 않았다.
+
+- Probe1: 재로드 전 popup ready/빈 저장소·broker7622자 확인. 요청 후 old worker close, popup ERR_BLOCKED_BY_CLIENT,15s 내 new worker 없음.
+- Probe2: 같은 읽기 진단에 browser DEBUG를 요청했으나 child stderr가 ignore여서 브라우저 로그를 수집하지 못했다. 원인 증거로 채택하지 않음.
+- Probe3: child stderr만 private log에 보존. GCM DEPRECATED_ENDPOINT 로그가 있으나 extension 실패 사유는 없었으며 이를 원인으로 연결하지 않았다.
+- Probe4: 같은 fresh fixture의 Chrome 관리 화면에서 해당 ID의 상태/오류 모델만 읽었다. 재로드 전 ENABLED, 후 DISABLED이며 **unsupportedDeveloperExtension=true**. blockedByPolicy/corruptInstall/unsupportedManifestVersion/updateRequired와 나머지 표시된 사유는 false, runtime/manifest/install warnings는 빈 배열이다.
+
+Probe4 ms 사건: popup ready3099 → 관리 화면 before 읽기3351 → reload 요청3352/return3354 → old worker close3377 → popup 접근 시작3393/차단3404 → new worker timeout18367 → 관리 화면 after 읽기18583 → context close18899. 이는 초기 popup 설치 실패가 아니라 개발용 확장의 재로드/지원 상태 문제를 입증한다. 제한시간 뒤 영구 실패나 다른 플랫폼에서도 같은 원인이라고 단정하지 않는다.
+
+네 실행 모두 child 정상 종료·close ACK·cleanup 확인, 미확인 root/secondary/cleanup 오류0·전체 payload hash 불변. Probe4 종료 후 `probe4-final-protection.json`은 기존 before-protection과 동일하다. private 산출물은 `output/af05b2-validation-20261013/output/playwright/reload-diagnostic-Probe1..4/summary.json`; throwaway script/log는 `output/af05b2-execution-20261013/`에 보존하며 공개 코드/CI에 추가하지 않는다.
+
+공식 [Chromium registrar](https://raw.githubusercontent.com/chromium/chromium/main/extensions/browser/extension_registrar.cc)는 reload 시 DisableExtension 후 delegate load를 호출한다. [delegate](https://raw.githubusercontent.com/chromium/chromium/main/chrome/browser/extensions/chrome_extension_registrar_delegate.cc)는 unpacked path를 재로딩하고, [UnpackedInstaller](https://raw.githubusercontent.com/chromium/chromium/main/extensions/browser/unpacked_installer.cc)는 command-line location과 unpacked location을 다르게 처리한다. 최신 main 참고 코드이며 설치된 정확한 빌드 내부를 독립 인증한 것은 아니다. 이 출처와 UI 관측은 개발자 모드를 쓰는 정상 개발용 설정이 필요하다는 가설을 뒷받침한다. [Chrome 공식 개발용 설치 안내](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world)도 관리 화면의 Developer mode를 사용한다.
+
+### 정상 개발용 국소 준비안 — 승인 후 구현·검증 완료
+
+새 owned fixture 프로필만 `chrome://extensions`의 **정상 UI**로 Developer mode를 켜고 상태를 확인한 뒤 기존 단일 runtime.reload 준비를 수행한다. 사용자 시청 Chrome·P09에는 적용하지 않는다. 직접 Preferences 편집·숨은 privileged API·force-enable flag·CDP/정책 우회·설정 seed 재주입은 없다. UI toggle이 정책으로 잠겨 있거나 대상 ID가 없으면 FAIL이며 강제 활성화하지 않는다.
+
+재로드 요청의 반환을 완료로 보지 않는다. old worker 종료와 관리 화면의 해당 ID 활성/재로드 제한 없음, 같은 ID·기대 version을 제한시간 내 확인한 후에만 popup wake/새 worker provenance/seed/UI 검사로 진행한다. 대기 실패를 재시도·sleep·캐시 초기화로 숨기지 않는다. 변경 범위는 B2 준비 helper·연결 테스트와 문서뿐이며 공용 기본 E2E/제품/권한/버전은 바꾸지 않는다.
+
+별도의 사용자 후속 승인 후 RED→GREEN으로 UI off/on/no-op·잠긴 toggle·잘못된 ID·시간 초과·old worker 종료 없이 ready 가장·popup 접근 실패·정리 실패를 검증했다. Chrome 관리 화면의 version은 실제 manifest.version이 아니라 version_name 표시였다(Probe6 및 Chromium ExtensionInfoGenerator 대조). 표시 문자열은 manifest.version_name||version과 비교하고 실제 세 자리 실행 version은 새 worker에서 따로 재검증한다. 해당 계약 반례도 RED→GREEN이다. Probe5/6의 준비 timeout은 실패 이력으로 보존하고 Probe7 성립 후 정상5case/storage-loss와 현재 전체 gate를 통과했다. 읽기 전용 승인만으로 UI 설정 변경을 추정하지 않았다.
+
+검토자가 판정하지 않은 범위의 처리: 실제 스토어 업데이트/서명/스토어 ID/과거2.13.2/P09/native 롤백은 별도 게이트로 보류; 실행 옵션의 실제 환경 성립은 작성자 설치 검사로 확인; broker+inventory를 모든 코드 경로 실행 증명으로 확대하지 않음; 실제 방송/인증/OS 네트워크 격리·보안 인증/Daybreak/HLS 검토는 범위 밖; 보호 파일/빌드/audio는 작성자 별도 검사; 동시 악의적 filesystem 교체/엄격 임시 trace quota·다중 사용자 부하는 owned 로컬/CI 계약 밖으로 남긴다.
+
+보완 전 checkpoint의 positive/control 실패는 위 이력으로 보존한다. c707af6 당시 실제5case/control은 통과했지만 공개 CI와 native 실행은 아직 남아 있었다. 이후 native 사전검증은 별도 승인·실제 PASS했고 최신 준비 상태/공개 CI는 [종합 기록](2026-10-14-af05b-prepublication-closure.md)을 따른다. CRX/스토어 업데이트의 ID 연속성·열린 old content script 정리·플랫폼 rollback·차기 배포는 별도 미완료이며 F00·F01은 준비 PR의 선행 조건이 아니다.
+
+## 구현 과정의 판단·비용
+
+- 사용자 기존 선호대로 현재 폴더의 로컬 feature branch, 실제 빌드는 immutable clone에서만 실행. 비용: 공유 branch 상태를 정확히 점검해야 함.
+- 전체 AF05-B 종료 전 private 원장/log를 보존. 비용: ignored 디스크 사용량.
+- Windows cache 링크 거부 시험은 권한이 필요 없는 junction, Unix는 file symlink. skip 없음. 비용: Windows 파일-symlink 생성 권한 자체는 시험하지 않음.
+- font0은 네 변수0px, 손상 UI는 snapshot 없는 기본 brightness1/MAIN은 실제 normalized brightness1.25로 대조. 제품을 잘못된 oracle에 맞추지 않음. 비용: 실제 설치 gate의 재확인 필요.
+- 전체 fake browser를 만들지 않고 순수 상태 mutation/polling/오류 단위와 실제 packaged phase를 분리. 당시 비용: UI/concurrency 완전 실행은 막힌 Task3에 남아 있었다. 후속 실제5case/control PASS로 해당 대기를 해소했으며 실사용 모든 조합의 인증은 아니다.
+- parent는 새 root/candidate 컨테이너를 먼저 소유하고 preparation/build도 supervised child600s 안에서 실행. 비용: build 전 생성한 미사용 root 정리와 비정상 child 종료 시 보수적 보존.
+- worker runtime.reload는 정상 Developer mode UI와 수명/출처 대조를 포함한 private 준비다. 보완 전 실패와 후속 성립을 구분하며 native/in-place 성공 증거로 확대하지 않는다.
+
+원문 실행 원장·RED/GREEN·보고서는 `.superpowers/sdd/2026-10-12-af05b2-installed-transition/` 및 `output/af05b2-execution-20261013/`에 private 보존한다. 보존 경로/개인 자료는 공개 artifact 대상이 아니다.
