@@ -372,10 +372,18 @@ test('distribution rejects proof, type, config, TypeScript and source-map develo
 });
 
 test('production build preserves first-party runtime bytes and excludes developer files', async t => {
-  const { buildChecked } = await import(pathToFileURL(path.resolve('scripts/build.mjs')));
+  const { verifyCandidate, removeCandidate } = await import(pathToFileURL(path.resolve('scripts/verify-candidate.mjs')));
   const baseline = require('./fixtures/runtime-js-baseline.json');
-  const target = await buildChecked(path.resolve('.'), path.resolve('dist'));
-  t.after(() => fs.rm(target, { recursive: true, force: true }));
+  const id = `production${process.pid}${Date.now()}`;
+  const { root, dist: target } = await verifyCandidate(id);
+  t.after(() => removeCandidate(id));
+  // Candidate staging filters developers' inputs; the real builder must reject leaks too.
+  for (const file of ['build-proof/main.js', 'types/knife-settings.d.ts', 'tsconfig.json', 'source.js.map', 'src/settings/contract.ts', 'nested/source.ts']) {
+    await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true });
+    await fs.writeFile(path.join(root, file), 'development-only input');
+  }
+  const { build } = await import(pathToFileURL(path.resolve('scripts/build.mjs')));
+  await build(root, target);
   for (const file of baseline) assert.deepEqual(await fs.readFile(path.join(target, file)), await fs.readFile(file), file);
   const { files } = await (await import(pathToFileURL(path.resolve('scripts/check-package.mjs')))).checkDistributionFiles(target);
   assert.equal(files.some(file => file.endsWith('.map') || file.endsWith('.ts') || file.startsWith('src/') || file.startsWith('build-proof/') || file.startsWith('types/') || /^tsconfig.*\.json$/.test(file)), false);
