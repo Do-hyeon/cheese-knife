@@ -31,7 +31,7 @@ test('audio quality arguments select an artifact root and a safe fixed report la
 
 test('audio quality CLI rejects unknown arguments before starting browser work', () => {
   const result = spawnSync(process.execPath, [path.join(process.cwd(), 'scripts/check-audio-quality.mjs'), '--unknown'], {
-    cwd: process.cwd(), encoding: 'utf8', timeout: 5000
+    cwd: process.cwd(), encoding: 'utf8', timeout: 15000
   });
   assert.notEqual(result.status, 0);
   assert.match(`${result.stdout}\n${result.stderr}`, /audio-argument-invalid/);

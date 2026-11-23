@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const fs = require('node:fs/promises');
+const { existsSync } = require('node:fs');
 const os = require('node:os');
 const { createHash } = require('node:crypto');
 
@@ -195,8 +196,14 @@ test('warning inventory never copies Gitleaks secret or author values', async ()
   assert.equal(JSON.stringify(rows).includes('private fixture'), false);
 });
 
-test('P02 warning ledger closes every baseline row and preserves every latest guarded observation', async () => {
-  const backlog = path.resolve('output', 'tool-audit', 'recovery-backlog');
+const privateBacklog = path.resolve('output', 'tool-audit', 'recovery-backlog');
+const privateLedgerAvailable = ['p02-static-boundaries-baseline-2026-10-11.json', 'warning-ledger.json']
+  .every(file => existsSync(path.join(privateBacklog, file)));
+
+test('P02 warning ledger closes every baseline row and preserves every latest guarded observation', {
+  skip: privateLedgerAvailable ? false : 'private audit evidence is intentionally absent from a public checkout',
+}, async () => {
+  const backlog = privateBacklog;
   const baseline = JSON.parse(await fs.readFile(path.join(backlog, 'p02-static-boundaries-baseline-2026-10-11.json'), 'utf8'));
   const ledger = JSON.parse(await fs.readFile(path.join(backlog, 'warning-ledger.json'), 'utf8'));
   assert.equal(typeof ledger.latestReport, 'string');

@@ -104,6 +104,8 @@ test('filesystem consumers delegate all dynamic paths to the owned capability', 
     'scripts/build.mjs', 'scripts/check-package.mjs', 'scripts/check-audio-quality.mjs',
     'scripts/check-preview-autoplay.mjs', 'scripts/check-store-popup.mjs', 'scripts/check-styles.mjs',
     'scripts/smoke-browser.mjs', 'scripts/tool-audit.mjs', 'scripts/verify-candidate.mjs',
+    'scripts/check-installed-extension-negative.mjs', 'scripts/check-installed-extension.mjs',
+    'scripts/extension-e2e/harness.mjs',
   ]);
   const findings = result.flatMap(file => file.messages)
     .filter(message => message.ruleId === 'security/detect-non-literal-fs-filename');

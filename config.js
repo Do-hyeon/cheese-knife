@@ -2,6 +2,7 @@ var KnifeHostPolicy = Object.freeze({
   origins: Object.freeze(["https://chzzk.naver.com/*"]),
 });
 
+/** @type {KnifeConfigGroup[]} */
 var CONFIGS = [
   {
     id: "preview",
@@ -205,6 +206,7 @@ var CONFIGS = [
   },
 ];
 
+/** @type {Record<string, KnifeScalar>} */
 const DEFAULT_CONFIGS = {};
 for (const { configs } of CONFIGS) {
   for (const c of configs) {
@@ -218,6 +220,10 @@ for (const { configs } of CONFIGS) {
   }
 }
 
+/**
+ * @param {unknown} value
+ * @returns {Record<string, KnifeScalar>}
+ */
 function normalizeConfig(value) {
   const result = { ...DEFAULT_CONFIGS };
   if (value == null || typeof value !== "object" || Array.isArray(value)) {
@@ -226,7 +232,7 @@ function normalizeConfig(value) {
   for (const category of CONFIGS) {
     for (const item of category.configs) {
       for (const field of item.type === "details" ? item.configs : [item]) {
-        const stored = value[field.id];
+        const stored = /** @type {KnifeUnknownRecord} */ (value)[field.id];
         if (field.type === "range") {
           if (typeof stored === "number" && Number.isFinite(stored) && stored >= field.min && stored <= field.max) {
             result[field.id] = stored;
@@ -240,15 +246,17 @@ function normalizeConfig(value) {
   return result;
 }
 
+/** @param {boolean} includeStyleParameters */
 async function getConfig(includeStyleParameters) {
   const stored = await chrome.storage.local.get({
     config: DEFAULT_CONFIGS,
     ...(includeStyleParameters ? { styleParameters: {} } : {}),
   });
+  /** @type {{ config: Record<string, KnifeScalar>, styleParameters?: KnifeUnknownRecord }} */
   const result = { config: normalizeConfig(stored.config) };
   if (includeStyleParameters) {
     result.styleParameters = stored.styleParameters != null && typeof stored.styleParameters === "object" && !Array.isArray(stored.styleParameters)
-      ? stored.styleParameters : {};
+      ? /** @type {KnifeUnknownRecord} */ (stored.styleParameters) : {};
   }
   return result;
 }

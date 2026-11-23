@@ -1,0 +1,18 @@
+[
+  "background.js",
+  "config.js",
+  "permission.js",
+  "popup.js",
+  "settings-broker.js",
+  "settings-client.js",
+  "settings-contract.js",
+  "style-schema.js",
+  "styles.js",
+  "web/audio.js",
+  "web/inject.js",
+  "web/main.js",
+  "web/player.js",
+  "web/preview.js",
+  "web/runtime.js",
+  "web/site-adapter.js"
+]

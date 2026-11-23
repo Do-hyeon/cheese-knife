@@ -96,6 +96,18 @@ test('real verifier reproduces twice and binds all four test groups to generatio
   assert.equal(JSON.parse(fs.readFileSync(paths.reportPath, 'utf8')).status, 'complete-pass');
 });
 
+test('verification treats an absent root dist as protected unchanged state', { timeout: 20000 }, async t => {
+  const { runHlsVerification } = await loadVerifier();
+  const repository = fixture(t);
+  fs.rmSync(path.join(repository, 'dist'), { recursive: true, force: true });
+  const report = await runHlsVerification(repository, runId('nodist'));
+  assert.equal(report.status, 'complete-pass', JSON.stringify(report.errors));
+  assert.equal(report.snapshots.rootDistMatched, true);
+  assert.deepEqual(report.snapshots.rootDistBefore, [{ path: 'dist', missing: true }]);
+  assert.deepEqual(report.snapshots.rootDistAfter, [{ path: 'dist', missing: true }]);
+  assert.equal(fs.existsSync(path.join(repository, 'dist')), false);
+});
+
 test('different generation bytes are complete findings rather than a pass', { timeout: 20000 }, async t => {
   const { runHlsVerification, hlsValidationPaths } = await loadVerifier();
   const repository = fixture(t);
