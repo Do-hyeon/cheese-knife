@@ -86,6 +86,16 @@ for (const rightClick of [true, false]) test('policy denial preserves video thro
   if (rightClick) { f.toggle(); await f.advance(0); assert.equal(f.video().muted, false); assert.equal(f.notice().hidden, true); }
 });
 
+test('native DOMException policy denial preserves video through one muted fallback', async t => {
+  const f = fixture(t, { play: (video, n) => n === 1
+    ? Promise.reject(new video.ownerDocument.defaultView.DOMException('Autoplay denied', 'NotAllowedError'))
+    : Promise.resolve() });
+  await f.show(); f.ready(); await f.advance(1000);
+  assert.deepEqual(f.calls.map(call => call.muted), [false, true]);
+  assert.equal(f.instances[0].destroyed, 0);
+  assert.equal(runtime(f.dom).statuses.livePreview.state, 'ready');
+});
+
 test('fallback budget is spent before awaiting and survives repeated readiness/recovery', async t => {
   const fallback = deferred(), f = fixture(t, { play: (_v, n) => n === 1 ? Promise.reject(Object.assign(new Error(), { name: 'NotAllowedError' })) : fallback.promise });
   await f.show(); f.ready(); await f.advance(1000); f.ready(); f.ready(); await f.advance(0);

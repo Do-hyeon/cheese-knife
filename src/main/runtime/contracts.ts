@@ -1,4 +1,7 @@
 import type { SiteAdapter } from '../site-adapter/contracts';
+import type { AudioController } from '../features/audio/contracts';
+import type { PlayerController } from '../features/player/contracts';
+import type { PreviewController } from '../features/preview/contracts';
 
 export type RouteKind = 'excluded' | 'live' | 'vod' | 'channel' | 'explore';
 
@@ -88,9 +91,9 @@ export interface KnifeRuntime {
   features: Record<string, unknown>;
   generation: number;
   adapter?: SiteAdapter;
-  audio?: unknown;
-  player?: unknown;
-  preview?: unknown;
+  audio?: AudioController;
+  player?: PlayerController;
+  preview?: PreviewController;
   coordinatorStarted?: boolean;
   route(): Route;
   selectPlayer(): PlayerSnapshot | null;

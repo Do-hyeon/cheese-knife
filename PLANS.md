@@ -4,9 +4,11 @@
 
 **Goal:** 게시된 Chrome 커뮤니티 복구판을 유지하면서, 설치된 MV3 산출물 E2E와 명시적 계약·타입·모듈 경계를 먼저 확립한 뒤 기능 로드맵을 재개한다.
 
-**Current stack:** Chrome MV3, JavaScript 제품 런타임, Node 24.19.0, Node test runner, Playwright 1.62.1, ESLint, npm audit, Gitleaks. TypeScript 7.0.2와 esbuild 0.28.2로 설정 및 MAIN runtime·site adapter의 수기 원본을 strict TypeScript에 두고, 저장소 생성 JavaScript를 검증한 뒤 기존 `dist` 파일명으로 복사한다.
+**Current stack:** Chrome MV3, JavaScript 제품 런타임, Node 24.19.0, Node test runner, Playwright 1.62.1, ESLint, npm audit, Gitleaks. TypeScript 7.0.2와 esbuild 0.28.2로 설정, MAIN runtime·site adapter·audio·player·preview·inject의 수기 원본을 strict TypeScript에 두고, 저장소 생성 JavaScript를 검증한 뒤 기존 `dist` 파일명으로 복사한다.
 
 **Core references:** [AI 친화적 유지보수 기반 장기 설계](docs/superpowers/specs/2026-10-11-ai-friendly-foundation-design.md), [AF01 타입·빌드 기반 상세 설계](docs/superpowers/specs/2026-10-12-af01-type-build-foundation-design.md), [AF01 구현 계획](docs/superpowers/plans/2026-10-12-af01-type-build-foundation.md), [AF01 검증 기록](docs/superpowers/validation/2026-10-12-af01-type-build-foundation.md), [AF02 계약 우선 TypeScript 전환 상세 설계](docs/superpowers/specs/2026-10-12-af02-contract-first-migration-design.md), [AF02 구현 계획](docs/superpowers/plans/2026-10-12-af02-contract-first-migration.md), [AF03 runtime·site adapter 상세 설계](docs/superpowers/specs/2026-10-12-af03-runtime-site-adapter-design.md), [AF03 구현 계획](docs/superpowers/plans/2026-10-12-af03-runtime-site-adapter.md), [AF03 검증 기록](docs/superpowers/validation/2026-10-12-af03-runtime-site-adapter.md), [AF00 설치형 E2E 구현 계획](docs/superpowers/plans/2026-10-11-af00-installed-extension-e2e.md), [AF00 검증 기록](docs/superpowers/validation/2026-10-11-af00-installed-extension-e2e.md), [최신 출시 게이트](docs/superpowers/validation/2026-10-11-recovery-release-gates.md), [복구 작업 이력](docs/superpowers/archive/2026-10-11-recovery-worklog.md).
+
+**AF04 references:** [기능 모듈 이전 상세 설계](docs/superpowers/specs/2026-10-12-af04-feature-modules-design.md), [AF04-A 오디오 계획](docs/superpowers/plans/2026-10-12-af04a-audio-module.md), [AF04-A 검증 기록](docs/superpowers/validation/2026-10-12-af04a-audio-module.md), [AF04-B 플레이어 계획](docs/superpowers/plans/2026-10-12-af04b-player-module.md), [AF04-C 미리보기 계획](docs/superpowers/plans/2026-10-12-af04c-preview-module.md), [AF04-C 검증 기록](docs/superpowers/validation/2026-10-12-af04c-preview-module.md), [AF04-D inject 계획](docs/superpowers/plans/2026-10-12-af04d-inject-modules.md), [AF04-D 검증 기록](docs/superpowers/validation/2026-10-12-af04d-inject-modules.md).
 
 작성일: 2026-10-11 / Asia-Seoul.
 
@@ -24,14 +26,14 @@
 
 ## 2. 현재 공개·저장소 상태
 
-- AF03 제품 기준 merge commit: `275b9a679209949b06673f8e309b7dc13f33b2e1`.
-- PR #2 `2.13.3` 복구 변경, PR #3 README 간소화, PR #4 AF00 설치형 E2E 기반, PR #5 AF01 타입·빌드 기반, PR #6 AF02 계약 우선 전환, PR #7 AF02 상태 고정, PR #8 AF03 runtime·site adapter 분리와 PR #9 AF03 상태 고정은 `main`에 병합됐다.
+- AF04-D 제품 기준 merge commit: `5326ff4b86857c331fa45c25acd9207a1888852e`.
+- PR #2 `2.13.3` 복구 변경, PR #3 README 간소화, PR #4 AF00 설치형 E2E 기반, PR #5 AF01 타입·빌드 기반, PR #6 AF02 계약 우선 전환, PR #7 AF02 상태 고정, PR #8 AF03 runtime·site adapter 분리, PR #9 AF03 상태 고정, PR #12 AF04 설계, PR #13 AF04-A audio 이전, PR #14 AF04-A 상태 고정, PR #15 AF04-B player 이전, PR #17 AF04-C preview 이전과 PR #19 AF04-D inject 이전은 `main`에 병합됐다.
 - GitHub prerelease `v2.13.3-community.1`이 공개됐다.
-- Chrome 웹 스토어 2.13.3 교체본은 사용자가 게시 완료를 확인했다. 새 설치·기존 설치 자동 업데이트와 설정 보존은 아직 완료로 가정하지 않는다.
+- Chrome 웹 스토어 2.13.3 교체본은 제출됐으며 2026-10-12 현재 심사 중이다. 공개 페이지는 아직 `2.13.2 community recovery preview`를 제공하므로 게시 완료로 간주하지 않는다.
 - 현재 기준 브랜치: 포크의 `origin/main`. 움직이는 최신 문서 merge SHA나 PR 번호 상한은 기준점으로 기록하지 않는다.
-- AF01은 PR #5로 병합됐고 최종 공개 CI run `38157976040`에서 Windows·Ubuntu foundation과 전체 verify가 통과했다. AF02는 PR #6의 공개 CI run `38161802432`와 PR #7의 공개 CI run `38162135577`를 통과해 `main`에 병합됐다. AF03은 검증 코드 `f125daf`를 PR #8의 공개 CI run `38168282370`에서 검증하고 merge commit `275b9a6`으로 병합했으며, PR #9의 공개 CI run `38168743332`로 상태 문서를 고정했다.
+- AF01은 PR #5로 병합됐고 최종 공개 CI run `38157976040`에서 Windows·Ubuntu foundation과 전체 verify가 통과했다. AF02는 PR #6의 공개 CI run `38161802432`와 PR #7의 공개 CI run `38162135577`를 통과해 `main`에 병합됐다. AF03은 검증 코드 `f125daf`를 PR #8의 공개 CI run `38168282370`에서 검증하고 merge commit `275b9a6`으로 병합했으며, PR #9의 공개 CI run `38168743332`로 상태 문서를 고정했다. AF04-A는 PR #13의 공개 CI run `38185697240`에서 검증하고 merge commit `5d28c48`로 병합했다. AF04-B는 PR #15의 공개 CI run `38187819147`을 통과하고 merge commit `5e6e541`로 병합했다. AF04-C는 PR #17의 공개 CI run `38191280752`를 통과하고 merge commit `c526296`으로 병합했다. AF04-D는 PR #19의 공개 CI run `38195194642`를 통과하고 merge commit `5326ff4`로 병합했다.
 
-GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 상태는 사용자가 보고한 마지막 상태이며 P09에서 게시 후 다시 확인한다.
+GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 공개 상태는 같은 날 직접 확인했고, 개발자 대시보드의 2.13.3 상태는 사용자가 심사 중으로 확인했다.
 
 ## 3. 상태와 실행 규칙
 
@@ -50,27 +52,30 @@ GitHub 상태는 2026-10-12에 공개 API로 재확인했다. 스토어 상태�
 | ID | 작업 묶음 | 선행 조건 | 상태 | 다음 게이트 |
 | --- | --- | --- | --- | --- |
 | P01–P08 | 복구·검증·2.13.3 GitHub 공개 | 기존 승인 | DONE | 상세는 archive/validation 참조 |
-| P09 | 스토어 2.13.3 게시·업데이트 기준 고정 | 외부 심사 통과 | READY | 새 설치·업데이트·설정 보존 확인 |
+| P09 | 스토어 2.13.3 게시·업데이트 기준 고정 | 외부 심사 통과 | WAITING-DEPENDENCY | 심사 통과와 공개 2.13.3 확인 |
 | AF00 | 설치된 MV3 산출물 E2E | 설계 승인 | DONE | 검증 기록과 CI 게이트 유지 |
 | AF01 | 타입·빌드 전환 기반 | AF00 | DONE | strict/build proof와 공개 CI 유지 |
 | AF02 | 계약 우선 TypeScript 전환 | AF01 | DONE | 생성·drift·strict·설치형 E2E 게이트 유지 |
 | AF03 | MAIN runtime·site adapter 분리 | AF02 | DONE | 생성·strict·설치형 E2E·공개 CI 유지 |
-| AF04 | 기능별 모듈 이전 | AF03 | PLAN-REVIEW | 기능 순서·격리 계약을 설계·계획으로 먼저 고정 |
-| AF05 | 이행 종료·공개 게이트 | AF04, P09 | BLOCKED | 설치·업데이트·롤백과 정책 정합성 확인 |
+| AF04 | 기능별 모듈 이전 | AF03 | DONE | 생성·strict·설치형 E2E·공개 CI 유지 |
+| AF05 | 이행 종료·공개 게이트 | AF05-A, AF05-B | WAITING-DEPENDENCY | 내부 완료, 공개 설치 수용 대기 |
+| AF05-A | 내부 원본 종료·검증 | AF04 | DONE | 생성·strict·전체 회귀·공개 CI 유지 |
+| AF05-B | 공개 설치·업데이트·롤백 수용 | P09, 차기 AF 배포 준비 | WAITING-DEPENDENCY | 게시 산출물별 수용과 로드맵 해제 결정 |
 | F00–F05 | 저장 기반과 후속 기능 | AF05 | BACKLOG-BLOCKED | 새 typed contract 기준으로 재설계 |
 
-현재 커서: **AF04 설계·계획 검토**. audio/player/preview/chat/sidebar/style을 한 번에 옮기지 않고, 기능 순서와 공통 `mount`/dispose/status 경계를 먼저 설계·승인한 뒤 구현한다.
+현재 커서: **P09와 AF05-B 공개 설치 수용**. AF05-A 내부 작업은 PR #22·공개 CI run `38198182595`·merge commit `39558c4`로 완료했다. P09는 스토어 심사를 기다리며, 심사 중인2.13.3과 AF 변경 후보의 설치·업데이트 근거를 구분한다. 내부 작업은 완료됐지만 AF05 전체와 기능 로드맵 동결은 유지한다.
 
 ## 5. P09 — 스토어 게시 후 고정
 
 - [x] 2.13.3 소스 PR 병합과 GitHub prerelease 공개.
 - [x] Chrome 웹 스토어 교체본 제출.
-- [x] 사용자가 스토어 공개 페이지의 2.13.3 게시 상태를 확인.
+- [x] 개발자 대시보드에서 2.13.3 심사 중 상태 확인.
+- [ ] 스토어 공개 페이지가 2.13.3을 제공하는지 확인.
 - [ ] 새 설치가 게시 산출물을 받는지 확인.
 - [ ] 기존 2.13.2 설치가 2.13.3으로 업데이트되고 설정이 보존되는지 확인.
 - [ ] 배포 commit, version, ZIP SHA-256, 게시 시각, 검증 범위와 롤백 경로를 validation 문서에 고정.
 
-P09의 게시 뒤 설치·업데이트 수용 검사는 AF02의 내부 계약 전환을 막지 않는다. AF05 공개 게이트 전에는 반드시 완료한다.
+P09는 AF05 내부 작업의 시작 조건이 아니다. AF05 최종 공개 게이트 전에는 반드시 완료한다. 심사 중인 `fb15f967` 기반 2.13.3과 이후 AF 변경을 포함한 후보는 서로 다른 산출물이며, P09 검증으로 AF 후보의 스토어 업데이트까지 검증했다고 간주하지 않는다.
 
 ## 6. AF00 — 설치형 MV3 E2E
 
@@ -155,15 +160,42 @@ P09의 게시 뒤 설치·업데이트 수용 검사는 AF02의 내부 계약 �
 
 ### AF04 — 기능 모듈 이전
 
-- [ ] audio, player, preview, chat, sidebar, style을 한 기능씩 이전.
-- [ ] 각 기능의 `mount`/dispose/status와 실패 격리 검사.
-- [ ] `inject`에는 의존성 조립과 등록만 남김.
+- [x] architectural 단계로 분류하고 대화 설계·접근 방식 사용자 승인.
+- [x] audio → player → preview → inject 순서, 기존 출력 ABI와 별도 PR 경계를 상위 상세 설계로 고정.
+- [x] selector 누출, 생성 authority, 수명주기·실패 격리, 데이터·권한 확대 위험 공격 검토 반영.
+- [x] 상세 설계 문서 사용자 검토·승인.
+- [x] AF04-A 오디오의 정확한 파일·인터페이스·검사·커밋 계획 작성·자체 검토.
+- [x] AF04-B 플레이어의 정확한 파일·인터페이스·검사·커밋 계획 작성·자체 검토.
+- [x] AF04-C 미리보기의 정확한 파일·인터페이스·검사·커밋 계획 작성·자체 검토.
+- [x] AF04-D chat/sidebar/popup/page/coordinator의 정확한 파일·인터페이스·검사·커밋 계획 작성·자체 검토.
+- [x] 네 구현 계획 묶음 사용자 승인과 실행 방식 확정.
+- [x] AF04-A audio typed source graph 로컬 구현·전체 검증·독립 검토 완료.
+- [x] AF04-A audio를 typed source graph로 이전하고 PR #13·공개 CI run `38185697240`·merge commit `5d28c48`로 완료.
+- [x] AF04-B player typed source graph 로컬 구현·전체 검증·Astra max 독립 검토 완료.
+- [x] AF04-B player를 typed source graph로 이전하고 PR #15·공개 CI run `38187819147`·merge commit `5e6e541`로 완료.
+- [x] AF04-C preview typed source graph 로컬 구현·전체 검증·Astra max finding 보완 완료.
+- [x] AF04-C preview를 typed source graph로 이전하고 PR #17·공개 CI run `38191280752`·merge commit `c526296`으로 완료.
+- [x] AF04-D inject typed source graph 로컬 구현·전체 검증·Astra max finding 보완 완료.
+- [x] AF04-D inject를 기능별 module로 이전하고 PR #19·공개 CI run `38195194642`·merge commit `5326ff4`로 완료.
+- [x] 각 기능의 mount/dispose/status, 실패 격리, 다중 창과 설치형 positive/negative E2E 확인.
+- [x] `web/inject.js` entry에는 순차 의존성 조립과 등록만 남기고 AF04 검증 기록 고정.
 
 ### AF05 — 이행 종료
 
-- [ ] 첫 번째 당사자 런타임 JS와 임시 전역 shim 제거.
-- [ ] `any`, ignore와 예외 원장을 0건 또는 승인된 근거로 고정.
-- [ ] source→dist 재현 가능성, CSP, 권한, 라이선스와 스토어 설명 정합성 확인.
+실행 계획: [AF05 내부 종료 계획](docs/superpowers/plans/2026-10-12-af05-internal-closure.md).
+
+검증 기록: [AF05 내부 검증](docs/superpowers/validation/2026-10-12-af05-internal-closure.md).
+
+AF05-A 내부 작업 — P09와 독립:
+
+- [x] 수기 런타임 JS 7개를 TypeScript로 이전. 제품 JS16개 전체 생성 경로와 strict TS-only 검사 확보. 필요한 classic-script 연결은 계약으로 유지.
+- [x] explicit `any`·ignore 0, DOM/검증 경계 단언과 필요한 전역 연결 원장 고정.
+- [x] source→dist 두 격리 build58/58 해시 일치, CSP·권한·라이선스·현재 기능 설명의 로컬 정합성 확인. 실제 스토어 필드는 공개 수용에서 확인.
+- [x] 전체 공개-checkout 회귀800/800, 객관 오디오·pixels·설치형 positive/negative·도구 감사·Astra max 검토.
+- [x] 한글 PR #22·공개 CI run `38198182595`·merge commit `39558c469e6276fa6eded7af629dae93822a8106` 완료.
+
+AF05-B 공개 수용 — P09와 차기 AF 배포에 의존:
+
 - [ ] 새 설치·기존 설치 업데이트·설정 보존·롤백 설치 수용.
 - [ ] F00–F05 동결 해제 여부 사용자 승인.
 
@@ -197,4 +229,4 @@ git -c core.safecrlf=false diff --check
 
 ## 10. 현재 사용자 개입 지점
 
-AF04는 상세 설계와 구현 계획을 먼저 작성·공격 검토하고, 기능 이전 순서와 공통 계약을 사용자에게 한 번에 승인받은 뒤 구현한다. 아직 승인되지 않은 기능 분할·동작 변경은 선행하지 않는다. P09 설치 수용은 AF04와 별도로 재개한다.
+AF05 내부 작업은 완료됐다. P09는 심사 중이며 게시 후 새 설치·기존 설치 업데이트·설정 보존과 배포 증거를 확인한다. AF 변경 후보는 별도 차기 버전으로 설치·업데이트·롤백 수용을 기록한다. 현재는 추가 사용자 조작이 필요 없으며, 실제 공개 설치·차기 배포·로드맵 동결 해제에 필요한 행동이나 결정만 요청한다.

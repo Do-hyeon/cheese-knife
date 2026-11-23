@@ -1,262 +1,422 @@
+// Generated from src/main/features/player/entry.ts by scripts/main-runtime.mjs. Do not edit.
+"use strict";
 (() => {
-  const runtime = window[Symbol.for('cheese-knife.runtime.v1')];
-  if (!runtime || runtime.player) return;
-  if (!runtime.adapter) runtime.setStatus('player', 'pending', 'site-adapter-unavailable');
-  let current;
-  const defaultRequested = new WeakSet();
-  const manuallyToggled = new WeakSet();
-  const labelKeys = new Set(['fastForward', 'stats', 'close', 'unknown', 'resolution', 'bitrate', 'fps',
-    'measured', 'latency', 'codec', 'enableCompressor', 'disableCompressor', 'speed2x']);
-  const label = (key, fallback) => {
-    if (!labelKeys.has(key)) return fallback;
-    const value = Object.getOwnPropertyDescriptor(runtime.i18n || {}, key)?.value;
-    return typeof value === 'string' && value ? value : fallback;
-  };
-  const ranges = video => {
-    const list = video?.seekable?.length ? video.seekable : video?.buffered;
+  // src/main/features/player/seek.ts
+  function ranges(video) {
+    const list = video.seekable?.length ? video.seekable : video.buffered;
     const result = [];
     for (let index = 0; index < (list?.length || 0); index++) {
-      const start = list.start(index), end = list.end(index);
+      const start = list.start(index);
+      const end = list.end(index);
       if (Number.isFinite(start) && Number.isFinite(end) && end > start) result.push([start, end]);
     }
     return result;
-  };
-  const bounded = (value, available, forward) => {
-    for (const [start, end] of available) {
-      const insideEnd = end - Math.min(0.05, (end - start) / 2);
-      if (value >= start && value <= insideEnd) return value;
-      if (value < start) {
-        if (forward) return start;
-        const previous = available[available.findIndex(range => range[0] === start) - 1];
-        return previous ? previous[1] - Math.min(0.05, (previous[1] - previous[0]) / 2) : start;
+  }
+  function bounded(value, available, forward) {
+    let previous;
+    for (const [start2, end2] of available) {
+      const insideEnd = end2 - Math.min(0.05, (end2 - start2) / 2);
+      if (value >= start2 && value <= insideEnd) return value;
+      if (value < start2) {
+        if (forward) return start2;
+        return previous ? previous[1] - Math.min(0.05, (previous[1] - previous[0]) / 2) : start2;
       }
+      previous = [start2, end2];
     }
     const [start, end] = available.at(-1);
     return end - Math.min(0.05, (end - start) / 2);
-  };
-  const seek = backward => {
-    const state = runtime.state;
-    const video = state.player?.video;
-    if (state.route?.kind !== 'live' || runtime.config.arrowSeek !== true || !video) return false;
-    const available = ranges(video);
-    if (!available.length) return false;
-    video.currentTime = bounded(video.currentTime + (backward ? -5 : 5), available, !backward);
-    return true;
-  };
-  const liveEdge = () => {
-    const video = runtime.state.player?.video;
-    const available = ranges(video);
-    if (available.length) video.currentTime = bounded(Infinity, available, true);
-  };
-  const ownedButton = (className, text, iconKind) => {
-    const button = document.createElement('button');
-    button.type = 'button'; button.className = `pzp-button knife-owned ${className}`;
-    button.title = text; button.setAttribute('aria-label', text);
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('viewBox', '0 0 24 24');
-    svg.setAttribute('width', '22'); svg.setAttribute('height', '22');
-    svg.setAttribute('aria-hidden', 'true');
-    const shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    if (iconKind === 'compressor') {
-      shape.setAttribute('stroke', 'currentColor'); shape.setAttribute('stroke-width', '2');
-      shape.setAttribute('d', 'M3 7v10m4-13v16m5-18v20m5-18v16m4-13v10');
-    } else {
-      shape.setAttribute('fill', 'currentColor');
-      shape.setAttribute('d', 'M4 6v12l8-6zm9 0v12l8-6z');
-    }
-    svg.append(shape); button.append(svg);
-    return button;
-  };
-  const mount = player => {
-    const scope = runtime.createScope();
-    const state = { ...player, scope, nodes: new Set(), pointer: null, path: runtime.state.route.path };
-    scope.add(() => {
-      // UI ownership is not audio ownership: React can remount controls/layout
-      // while keeping the very same irreversibly intercepted media element.
-      if (runtime.selectPlayer()?.video !== state.video) runtime.audio?.bypass(state.video);
-      for (const node of state.nodes) node.remove();
-    });
-    const track = node => { state.nodes.add(node); return node; };
-    state.track = track;
-    const clearClick = () => { clearTimeout(state.clickTimer); state.clickTimer = null; state.clickBlock = null; state.cancelledHold = null; };
-    scope.add(clearClick);
-    const blockCompletingClick = hold => {
-      clearClick(); state.clickBlock = { target: hold.target, id: hold.id };
-      state.clickTimer = setTimeout(clearClick, 1000);
+  }
+  function readStats(video, metrics) {
+    return {
+      resolution: video.videoWidth > 0 && video.videoHeight > 0 ? `${video.videoWidth}×${video.videoHeight}` : null,
+      bitrate: null,
+      latency: null,
+      codec: metrics?.codec || null
     };
-    const stopHold = event => {
-      const cancelled = state.cancelledHold;
+  }
+
+  // src/main/features/player/controls.ts
+  var defaultRequested = /* @__PURE__ */ new WeakSet();
+  var manuallyToggled = /* @__PURE__ */ new WeakSet();
+  var labelKeys = /* @__PURE__ */ new Set([
+    "fastForward",
+    "stats",
+    "close",
+    "unknown",
+    "resolution",
+    "bitrate",
+    "fps",
+    "measured",
+    "latency",
+    "codec",
+    "enableCompressor",
+    "disableCompressor",
+    "speed2x"
+  ]);
+  function label(runtime, key, fallback) {
+    if (!labelKeys.has(key)) return fallback;
+    const value = Object.getOwnPropertyDescriptor(runtime.i18n || {}, key)?.value;
+    return typeof value === "string" && value ? value : fallback;
+  }
+  function pointerOf(event) {
+    return event instanceof Event && event.type.startsWith("pointer") ? event : null;
+  }
+  function ownedButton(document, className, text, iconKind) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `pzp-button knife-owned ${className}`;
+    button.title = text;
+    button.setAttribute("aria-label", text);
+    const svgNamespace = ["http:", "", "www.w3.org", "2000", "svg"].join(String.fromCharCode(47));
+    const svg = document.createElementNS(svgNamespace, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("width", "22");
+    svg.setAttribute("height", "22");
+    svg.setAttribute("aria-hidden", "true");
+    const shape = document.createElementNS(svgNamespace, "path");
+    if (iconKind === "compressor") {
+      shape.setAttribute("stroke", "currentColor");
+      shape.setAttribute("stroke-width", "2");
+      shape.setAttribute("d", "M3 7v10m4-13v16m5-18v20m5-18v16m4-13v10");
+    } else {
+      shape.setAttribute("fill", "currentColor");
+      shape.setAttribute("d", "M4 6v12l8-6zm9 0v12l8-6z");
+    }
+    svg.append(shape);
+    button.append(svg);
+    return button;
+  }
+  function mountPlayer(runtime, snapshot) {
+    const target = snapshot.pzp.ownerDocument.defaultView;
+    if (!target) throw new Error("player-window-unavailable");
+    const scope = runtime.createScope();
+    const nodes = /* @__PURE__ */ new Set();
+    const mount = {
+      ...snapshot,
+      runtime,
+      target,
+      scope,
+      nodes,
+      pointer: null,
+      cancelledHold: null,
+      clickBlock: null,
+      clickTimer: null,
+      path: runtime.state.route?.path || "",
+      track(node) {
+        nodes.add(node);
+        return node;
+      },
+      stopHold: (_event) => {
+      }
+    };
+    scope.add(() => {
+      if (runtime.selectPlayer()?.video !== mount.video) runtime.audio?.bypass(mount.video);
+      for (const node of nodes) node.remove();
+    });
+    const clearClick = () => {
+      if (mount.clickTimer !== null) target.clearTimeout(mount.clickTimer);
+      mount.clickTimer = null;
+      mount.clickBlock = null;
+      mount.cancelledHold = null;
+    };
+    scope.add(clearClick);
+    const blockCompletingClick = (hold) => {
+      clearClick();
+      mount.clickBlock = { target: hold.target, id: hold.id };
+      mount.clickTimer = target.setTimeout(clearClick, 1e3);
+    };
+    mount.stopHold = (event) => {
+      const pointer = pointerOf(event);
+      const cancelled = mount.cancelledHold;
       if (cancelled) {
-        if (event?.type?.startsWith('pointer') && event.pointerId != null && cancelled.id != null && event.pointerId !== cancelled.id) return;
-        if (event?.type === 'pointerup') blockCompletingClick(cancelled);
-        else if (event?.type !== 'config-off') state.cancelledHold = null;
+        if (pointer && pointer.pointerId !== cancelled.id) return;
+        if (event?.type === "pointerup") blockCompletingClick(cancelled);
+        else if (event?.type !== "config-off") mount.cancelledHold = null;
       }
-      const hold = state.pointer;
+      const hold = mount.pointer;
       if (!hold) return;
-      if (event?.type?.startsWith('pointer') && event.pointerId != null && hold.id != null && event.pointerId !== hold.id) return;
-      state.pointer = null; clearTimeout(hold.timer);
-      if (hold.active && event?.type === 'pointerup') {
-        // pointerup restores our gesture; its following click must not then
-        // toggle native playback. Bound the token, and clear on the next down.
-        blockCompletingClick(hold);
-      } else if (hold.active && event?.type === 'config-off') {
-        // Restore immediately, but consume this completed hold's native click
-        // only when its physical pointerup arrives, even after a long delay.
-        clearClick(); state.cancelledHold = { target: hold.target, id: hold.id };
+      if (pointer && pointer.pointerId !== hold.id) return;
+      mount.pointer = null;
+      target.clearTimeout(hold.timer);
+      if (hold.active && event?.type === "pointerup") blockCompletingClick(hold);
+      else if (hold.active && event?.type === "config-off") {
+        clearClick();
+        mount.cancelledHold = { target: hold.target, id: hold.id };
       }
-      if (hold.active && state.video.playbackRate === 2) state.video.playbackRate = hold.originalRate;
-      if (hold.active && hold.startedPlaying && !state.video.paused) state.video.pause();
+      if (hold.active && mount.video.playbackRate === 2) mount.video.playbackRate = hold.originalRate;
+      if (hold.active && hold.startedPlaying && !mount.video.paused) mount.video.pause();
       hold.indicator?.remove();
       if (hold.target.hasPointerCapture?.(hold.id)) hold.target.releasePointerCapture(hold.id);
     };
-    state.stopHold = stopHold; scope.add(stopHold);
-    scope.on(window, 'pointerdown', clearClick, true);
-    scope.on(window, 'click', event => {
-      const block = state.clickBlock;
-      if (!block || event.detail === 0 || (event.pointerId != null && block.id != null && event.pointerId !== block.id) ||
-        !(block.target.contains(event.target) || event.target === state.pzp)) return;
-      clearClick(); event.preventDefault(); event.stopImmediatePropagation();
+    scope.add(mount.stopHold);
+    scope.on(target, "pointerdown", clearClick, true);
+    scope.on(target, "click", (event) => {
+      const block = mount.clickBlock;
+      const click = event;
+      const eventTarget = event.target;
+      if (!block || click.detail === 0 || "pointerId" in click && typeof click.pointerId === "number" && click.pointerId !== block.id || !(eventTarget instanceof target.Node) || !(block.target.contains(eventTarget) || eventTarget === mount.pzp)) return;
+      clearClick();
+      event.preventDefault();
+      event.stopImmediatePropagation();
     }, true);
-    scope.on(window, 'blur', stopHold);
-    scope.on(window, 'pagehide', stopHold);
-    scope.on(window, 'pointerup', stopHold, true);
-    scope.on(window, 'pointercancel', stopHold, true);
-    scope.on(window, 'pointermove', event => {
-      const hold = state.pointer;
-      if (hold && !hold.active && (Math.abs(event.clientX - hold.x) > 10 || Math.abs(event.clientY - hold.y) > 10)) stopHold();
+    scope.on(target, "blur", mount.stopHold);
+    scope.on(target, "pagehide", mount.stopHold);
+    scope.on(target, "pointerup", mount.stopHold, true);
+    scope.on(target, "pointercancel", mount.stopHold, true);
+    scope.on(target, "pointermove", (event) => {
+      const hold = mount.pointer;
+      const pointer = event;
+      if (hold && !hold.active && (Math.abs(pointer.clientX - hold.x) > 10 || Math.abs(pointer.clientY - hold.y) > 10)) mount.stopHold();
     }, true);
-    return state;
-  };
-  const controls = state => {
-    const { pzp, video, scope, track } = state;
-    if (runtime.config.pressToFastForward !== true) state.stopHold({ type: 'config-off' });
-    if (runtime.state.route.kind === 'live') {
-      const play = pzp.querySelector('.pzp-pc__playback-switch');
-      if (play && !pzp.querySelector('.knife-ff')) {
-        const button = track(ownedButton('pzp-pc__playback-switch knife-ff', label('fastForward', 'Live edge'),
-          'live-edge'));
-        scope.on(button, 'click', event => { event.stopPropagation(); liveEdge(); });
+    return mount;
+  }
+  function syncControls(mount) {
+    const { runtime, target, pzp, video, scope } = mount;
+    const document = target.document;
+    if (runtime.config.pressToFastForward !== true) mount.stopHold({ type: "config-off" });
+    if (runtime.state.route?.kind === "live") {
+      const play = pzp.querySelector(".pzp-pc__playback-switch");
+      if (play && !pzp.querySelector(".knife-ff")) {
+        const button = mount.track(ownedButton(document, "pzp-pc__playback-switch knife-ff", label(runtime, "fastForward", "Live edge"), "live-edge"));
+        scope.on(button, "click", (event) => {
+          event.stopPropagation();
+          runtime.player?.liveEdge();
+        });
         play.after(button);
       }
     }
-    const license = state.layout.querySelector('#license') || document.getElementById('license');
-    if (license && state.pzp.contains(license) && !state.pzp.querySelector('#knife-stats')) {
-      const menu = track(license.cloneNode(true)); menu.id = 'knife-stats'; menu.classList.add('knife-owned');
-      const link = menu.querySelector('button,a');
+    const license = mount.layout.querySelector("#license") || document.getElementById("license");
+    if (license && pzp.contains(license) && !pzp.querySelector("#knife-stats")) {
+      const menu = mount.track(license.cloneNode(true));
+      menu.id = "knife-stats";
+      menu.classList.add("knife-owned");
+      const link = menu.querySelector("button,a");
       if (link) {
-        link.textContent = label('stats', 'Stats');
-        if (link.tagName === 'A') link.href = '#';
-        scope.on(link, 'click', event => {
-          event.preventDefault(); event.stopPropagation();
-          if (state.layout.querySelector('.knife-stats-overlay')) return;
-          const overlayScope = runtime.createScope(); scope.add(() => overlayScope.dispose());
-          const overlay = track(document.createElement('div')); overlay.className = 'knife-stats-overlay knife-owned';
-          const content = document.createElement('pre'); const close = document.createElement('button'); close.type = 'button'; close.textContent = '×'; close.title = label('close','Close');
-          overlay.append(content, close); state.layout.append(overlay);
-          overlayScope.add(() => overlay.remove()); overlayScope.on(close, 'click', () => overlayScope.dispose());
+        link.textContent = label(runtime, "stats", "Stats");
+        if (link instanceof target.HTMLAnchorElement) link.href = "#";
+        scope.on(link, "click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (mount.layout.querySelector(".knife-stats-overlay")) return;
+          const overlayScope = runtime.createScope();
+          scope.add(() => overlayScope.dispose());
+          const overlay = mount.track(document.createElement("div"));
+          overlay.className = "knife-stats-overlay knife-owned";
+          const content = document.createElement("pre");
+          const close = document.createElement("button");
+          close.type = "button";
+          close.textContent = "×";
+          close.title = label(runtime, "close", "Close");
+          overlay.append(content, close);
+          mount.layout.append(overlay);
+          overlayScope.add(() => overlay.remove());
+          overlayScope.on(close, "click", () => overlayScope.dispose());
           let last;
           const update = async () => {
             let metrics = null;
-            try { metrics = await runtime.adapter?.player.readMetrics(state.layout); } catch {}
+            try {
+              metrics = await runtime.adapter?.player.readMetrics(mount.layout) || null;
+            } catch {
+            }
             if (overlayScope.disposed || scope.disposed) return;
             const info = readStats(video, metrics);
             let fps = null;
             const quality = video.getVideoPlaybackQuality?.();
-            const now = performance.now();
+            const now = target.performance.now();
             if (quality) {
-              if (last && now > last.at) fps = Math.round((quality.totalVideoFrames - last.frames) * 1000 / (now - last.at));
+              if (last && now > last.at) fps = Math.round((quality.totalVideoFrames - last.frames) * 1e3 / (now - last.at));
               last = { frames: quality.totalVideoFrames, at: now };
             }
-            const unknown = label('unknown','Unknown');
-            content.textContent = [label('resolution','Resolution') + ': ' + (info.resolution || unknown),
-              label('bitrate','Bitrate') + ': ' + unknown,
-              label('fps','FPS') + ' (' + label('measured','measured') + '): ' + (fps ?? unknown),
-              label('latency','Latency') + ': ' + unknown,
-              label('codec','Codec') + ': ' + (info.codec || unknown)].join('\n');
+            const unknown = label(runtime, "unknown", "Unknown");
+            content.textContent = [
+              `${label(runtime, "resolution", "Resolution")}: ${info.resolution || unknown}`,
+              `${label(runtime, "bitrate", "Bitrate")}: ${unknown}`,
+              `${label(runtime, "fps", "FPS")} (${label(runtime, "measured", "measured")}): ${fps ?? unknown}`,
+              `${label(runtime, "latency", "Latency")}: ${unknown}`,
+              `${label(runtime, "codec", "Codec")}: ${info.codec || unknown}`
+            ].join("\n");
           };
-          update(); overlayScope.interval(update, 1000);
-          runtime.setStatus('statistics', 'limited', 'internal-metrics-unavailable');
+          void update();
+          overlayScope.interval(() => {
+            void update();
+          }, 1e3);
+          runtime.setStatus("statistics", "limited", "internal-metrics-unavailable");
         });
         license.before(menu);
       }
     }
-    if (video && runtime.audio) {
-      const volume = pzp.querySelector('.pzp-pc__volume-control:not(.knife-comp)');
-      if (volume && !pzp.querySelector('.knife-comp')) {
-        const box = track(document.createElement('div')); box.className = 'pzp-pc__volume-control knife-comp knife-owned';
-        const button = ownedButton('pzp-pc__volume-button', label('enableCompressor', 'Enable compressor'),
-          'compressor');
-        const slider = document.createElement('input'); slider.type = 'range'; slider.min = '0'; slider.max = '2'; slider.step = '0.05';
-        slider.className = 'knife-gain-slider'; slider.setAttribute('aria-label', 'Gain');
-        box.append(button, slider); volume.after(box);
-        scope.on(button, 'click', event => {
-          event.stopPropagation(); manuallyToggled.add(video);
-          runtime.audio.setEnabled(video, !['on','pending'].includes(runtime.audio.getState(video)));
+    const audio = runtime.audio;
+    if (audio) {
+      const volume = pzp.querySelector(".pzp-pc__volume-control:not(.knife-comp)");
+      if (volume && !pzp.querySelector(".knife-comp")) {
+        const box = mount.track(document.createElement("div"));
+        box.className = "pzp-pc__volume-control knife-comp knife-owned";
+        const button = ownedButton(document, "pzp-pc__volume-button", label(runtime, "enableCompressor", "Enable compressor"), "compressor");
+        const slider = document.createElement("input");
+        slider.type = "range";
+        slider.min = "0";
+        slider.max = "2";
+        slider.step = "0.05";
+        slider.className = "knife-gain-slider";
+        slider.setAttribute("aria-label", "Gain");
+        box.append(button, slider);
+        volume.after(box);
+        scope.on(button, "click", (event) => {
+          event.stopPropagation();
+          manuallyToggled.add(video);
+          void audio.setEnabled(video, !["on", "pending"].includes(audio.getState(video)));
         });
-        scope.on(slider, 'input', () => runtime.audio.setGain(video, Number(slider.value)));
-        // Native player shortcuts otherwise prevent the range's own defaults.
-        // Do not preventDefault: arrows/Home/End and Tab retain browser behavior.
-        scope.on(slider, 'keydown', event => event.stopPropagation());
-        scope.add(runtime.audio.subscribe(video, (status, gain) => {
-          box.dataset.state = status; button.setAttribute('aria-pressed', String(status === 'on'));
-          const text = label(status === 'on' || status === 'pending' ? 'disableCompressor' : 'enableCompressor', 'Compressor');
-          button.title = text; button.setAttribute('aria-label', text);
-          slider.value = String(gain); slider.hidden = status !== 'on'; slider.title = `${Math.round(gain * 100)}%`;
+        scope.on(slider, "input", () => audio.setGain(video, Number(slider.value)));
+        scope.on(slider, "keydown", (event) => event.stopPropagation());
+        scope.add(audio.subscribe(video, (status, gain) => {
+          box.dataset.state = status;
+          button.setAttribute("aria-pressed", String(status === "on"));
+          const text = label(runtime, status === "on" || status === "pending" ? "disableCompressor" : "enableCompressor", "Compressor");
+          button.title = text;
+          button.setAttribute("aria-label", text);
+          slider.value = String(gain);
+          slider.hidden = status !== "on";
+          slider.title = `${Math.round(gain * 100)}%`;
         }));
       }
-      runtime.audio.configure();
-      if (runtime.config.compressorDefault === true && !defaultRequested.has(video) && !manuallyToggled.has(video) && runtime.audio.eligible(video)) {
-        defaultRequested.add(video); runtime.audio.setEnabled(video, true);
+      audio.configure();
+      if (runtime.config.compressorDefault === true && !defaultRequested.has(video) && !manuallyToggled.has(video) && audio.eligible(video)) {
+        defaultRequested.add(video);
+        void audio.setEnabled(video, true);
       }
     }
-    const container = pzp.querySelector('.pzp-pc__video');
-    if (runtime.state.route.kind === 'vod' && container && state.holdTarget !== container) {
-      state.holdTarget = container;
-      scope.on(container, 'pointerdown', event => {
-        if (event.button !== 0 || runtime.config.pressToFastForward !== true || !video) return;
-        state.stopHold();
-        const hold = state.pointer = { target: container, id: event.pointerId, x: event.clientX, y: event.clientY, originalRate: video.playbackRate, active: false };
-        hold.timer = setTimeout(async () => {
-          if (state.pointer !== hold || scope.disposed) return;
-          if (runtime.config.pressToFastForward !== true) { state.stopHold(); return; }
-          hold.active = true; hold.originalRate = video.playbackRate; video.playbackRate = 2;
-          const indicator = hold.indicator = document.createElement('div'); indicator.className = 'knife-ff-indicator knife-owned';
-          indicator.textContent = label('speed2x', '2x'); pzp.append(indicator);
+    const container = pzp.querySelector(".pzp-pc__video");
+    if (runtime.state.route?.kind === "vod" && container && mount.holdTarget !== container) {
+      mount.holdTarget = container;
+      scope.on(container, "pointerdown", (event) => {
+        const pointer = event;
+        if (pointer.button !== 0 || runtime.config.pressToFastForward !== true) return;
+        mount.stopHold();
+        const hold = {
+          target: container,
+          id: pointer.pointerId,
+          x: pointer.clientX,
+          y: pointer.clientY,
+          originalRate: video.playbackRate,
+          active: false,
+          timer: 0
+        };
+        mount.pointer = hold;
+        hold.timer = target.setTimeout(async () => {
+          if (mount.pointer !== hold || scope.disposed) return;
+          if (runtime.config.pressToFastForward !== true) {
+            mount.stopHold();
+            return;
+          }
+          hold.active = true;
+          hold.originalRate = video.playbackRate;
+          video.playbackRate = 2;
+          const indicator = hold.indicator = document.createElement("div");
+          indicator.className = "knife-ff-indicator knife-owned";
+          indicator.textContent = label(runtime, "speed2x", "2x");
+          pzp.append(indicator);
           try {
             container.setPointerCapture?.(hold.id);
-            if (video.paused) { hold.startedPlaying = true; await video.play(); if (state.pointer !== hold && !video.paused) video.pause(); }
-          } catch { state.stopHold(); }
+            if (video.paused) {
+              hold.startedPlaying = true;
+              await video.play();
+              if (mount.pointer !== hold && !video.paused) video.pause();
+            }
+          } catch {
+            mount.stopHold();
+          }
         }, 500);
       });
     }
-  };
-  const readStats = (video, metrics) => ({
-    resolution: video?.videoWidth > 0 && video?.videoHeight > 0 ? video.videoWidth + '×' + video.videoHeight : null,
-    bitrate: null, latency: null,
-    codec: metrics?.codec || null,
-  });
-  runtime.player = { seek, liveEdge, ranges, readStats };
-  runtime.subscribe(state => {
-    const player = state.player;
-    if (current && (!runtime.configReady || !player || current.pzp !== player.pzp || current.video !== player.video || current.layout !== player.layout || current.path !== state.route.path)) {
-      current.scope.dispose(); current = null;
+  }
+  function installPlayer(target) {
+    const browser = target;
+    const key = browser.Symbol.for("cheese-knife.runtime.v1");
+    const runtime = Object.getOwnPropertyDescriptor(target, key)?.value;
+    if (!runtime || runtime.player) return null;
+    if (!runtime.adapter) runtime.setStatus("player", "pending", "site-adapter-unavailable");
+    let current = null;
+    let unsubscribe = null;
+    let disposed = false;
+    const disposeCurrent = () => {
+      current?.scope.dispose();
+      current = null;
+    };
+    const controller = {
+      seek(backward) {
+        const video = runtime.state.player?.video;
+        if (runtime.state.route?.kind !== "live" || runtime.config.arrowSeek !== true || !video) return false;
+        const available = ranges(video);
+        if (!available.length) return false;
+        video.currentTime = bounded(video.currentTime + (backward ? -5 : 5), available, !backward);
+        return true;
+      },
+      liveEdge() {
+        const video = runtime.state.player?.video;
+        if (!video) return;
+        const available = ranges(video);
+        if (available.length) video.currentTime = bounded(Infinity, available, true);
+      },
+      ranges,
+      readStats
+    };
+    const reconcile = (state) => {
+      const player = state.player;
+      if (current && (!runtime.configReady || !player || current.pzp !== player.pzp || current.video !== player.video || current.layout !== player.layout || current.path !== state.route?.path)) {
+        current.scope.dispose();
+        current = null;
+      }
+      if (!runtime.configReady || !player?.video || !player.layout) return;
+      if (!current) {
+        current = mountPlayer(runtime, player);
+        for (const type of ["loadedmetadata", "loadeddata", "emptied"]) current.scope.on(player.video, type, () => runtime.schedule());
+      }
+      syncControls(current);
+      runtime.setStatus("player", "ready");
+    };
+    const onKeyDown = (event) => {
+      const element = event.target instanceof browser.Element ? event.target : null;
+      if (event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !["ArrowLeft", "ArrowRight"].includes(event.key) || element?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="slider"]')) return;
+      const video = runtime.state.player?.video;
+      if (runtime.state.route?.kind !== "live" || runtime.config.arrowSeek !== true || !video || video.seeking || !ranges(video).length) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      controller.seek(event.key === "ArrowLeft");
+    };
+    const dispose = () => {
+      if (disposed) return;
+      disposed = true;
+      disposeCurrent();
+      unsubscribe?.();
+      unsubscribe = null;
+      target.removeEventListener("keydown", onKeyDown);
+      target.removeEventListener("pagehide", onPageHide);
+      if (runtime.player === controller) Reflect.deleteProperty(runtime, "player");
+    };
+    const onPageHide = (event) => {
+      if (!event.persisted) dispose();
+    };
+    const onState = (state) => {
+      if (disposed) return;
+      try {
+        reconcile(state);
+      } catch {
+        disposeCurrent();
+        runtime.setStatus("player", "failed", "feature-initialization");
+      }
+    };
+    try {
+      unsubscribe = runtime.subscribe(onState);
+      target.addEventListener("keydown", onKeyDown);
+      target.addEventListener("pagehide", onPageHide);
+      runtime.player = controller;
+      return controller;
+    } catch {
+      dispose();
+      return null;
     }
-    if (!runtime.configReady || !player?.video) return;
-    if (!current) {
-      current = mount(player);
-      for (const type of ['loadedmetadata', 'loadeddata', 'emptied']) current.scope.on(player.video, type, () => runtime.schedule());
-    }
-    controls(current);
-    runtime.setStatus('player', 'ready');
-  });
-  window.addEventListener('keydown', event => {
-    if (event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey ||
-      !['ArrowLeft','ArrowRight'].includes(event.key) || event.target?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="slider"]')) return;
-    const video = runtime.state.player?.video;
-    if (runtime.state.route?.kind !== 'live' || runtime.config.arrowSeek !== true || !video || video.seeking || !ranges(video).length) return;
-    // Window bubbling comes after native body/document handlers. Respect a seek
-    // already requested by CHZZK instead of applying another five seconds.
-    event.preventDefault(); event.stopImmediatePropagation(); seek(event.key === 'ArrowLeft');
-  });
-  window.addEventListener('pagehide', event => { if (!event.persisted && current) { current.scope.dispose(); current = null; } });
+  }
+
+  // src/main/features/player/entry.ts
+  installPlayer(window);
 })();

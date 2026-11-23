@@ -304,6 +304,18 @@ test('VOD identity change supersedes pending lookup without stale response or du
   assert.equal(node.dataset.knifeTooltip, 'Live start: 2026-10-08 11:00:00');
 });
 
+test('replacing a pending VOD link with an untrusted link cancels its stale lookup', async t => {
+  const dom = setup(t); const node = currentVodDate(dom); const link = node.closest('article').querySelector('a');
+  let request;
+  dom.window.fetch = (url, options) => new Promise(resolve => { request = { signal: options.signal, resolve }; });
+  node.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush();
+  const replacement = link.cloneNode(true); replacement.href = 'https://foreign.invalid/video/456'; link.replaceWith(replacement);
+  node.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true })); await flush();
+  assert.equal(request.signal.aborted, true);
+  request.resolve({ ok: true, json: async () => ({ code: 200, content: { liveOpenDate: '2026-10-08 10:00:00' } }) }); await flush();
+  assert.equal(node.dataset.knifeTooltip, undefined);
+});
+
 test('VOD tooltip lookup leaves preexisting foreign annotations untouched', async t => {
   const dom = setup(t); const node = currentVodDate(dom);
   node.dataset.knifeTooltip = 'External annotation';

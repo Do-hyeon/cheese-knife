@@ -14,6 +14,32 @@ function setup(t) {
   return { dom, preview: runtime(dom).preview, pending, response, one: dom.window.document.getElementById('one'), two: dom.window.document.getElementById('two') };
 }
 
+function enableStream(dom, destroyed) {
+  dom.window.HTMLMediaElement.prototype.pause = () => {};
+  dom.window.HTMLMediaElement.prototype.load = () => {};
+  runtime(dom).Hls = class {
+    static isSupported() { return true; }
+    static Events = { ERROR: 'error', MANIFEST_PARSED: 'manifest' };
+    constructor() { this.levels = []; }
+    on() {} loadSource() {} attachMedia() {} startLoad() {} recoverMediaError() {}
+    destroy() { destroyed.count++; }
+  };
+}
+
+const streamResponse = () => ({ ok: true, json: async () => ({ code: 200, content: { status: 'OPEN', adult: false,
+  livePlaybackJson: JSON.stringify({ media: [{ mediaId: 'HLS', path: 'https://media.invalid/master.m3u8' }] }) } }) });
+
+test('duplicate install preserves an existing preview controller', t => {
+  const dom = page(playerHTML + '<aside id="sidebar"></aside>');
+  t.after(() => dom.window.close());
+  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom, { preview: true });
+  const existing = { diagnostics: { events: [] }, show: async () => {}, hide: () => {} };
+  runtime(dom).preview = existing;
+  load(dom, 'web/preview.js');
+  assert.equal(runtime(dom).preview, existing);
+  assert.equal(dom.window.document.querySelector('.knife-preview'), null);
+});
+
 test('late hover A cannot replace newer hover B even when abort is ignored', async t => {
   const { dom, preview, pending, response, one, two } = setup(t);
   const first = preview.show(one.href, one, true);
@@ -39,10 +65,119 @@ test('same anchor changing URL invalidates an earlier request', async t => {
   assert.equal(dom.window.document.querySelector('.knife-preview')?.hidden ?? true, true);
 });
 
+for (const invalidation of ['route', 'sidebar-owner']) {
+  test(`displayed preview closes when its ${invalidation} identity changes`, async t => {
+    const { dom, preview, pending, response, one } = setup(t);
+    const showing = preview.show(one.href, one, true);
+    pending[0].resolve(response('https://images.invalid/a.jpg')); await showing;
+    await new Promise(resolve => setTimeout(resolve, 150));
+    assert.equal(dom.window.document.querySelector('.knife-preview').hidden, false);
+    if (invalidation === 'route') dom.window.history.pushState({}, '', '/live/dddddddddddddddddddddddddddddddd');
+    else runtime(dom).state.sidebar = dom.window.document.createElement('aside');
+    runtime(dom).notify();
+    assert.equal(dom.window.document.querySelector('.knife-preview').hidden, true);
+  });
+}
+
 test('untrusted hrefs do not request an API or create media', async t => {
   const { preview, pending, one } = setup(t);
   await preview.show('https://external.invalid/live/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', one, true);
   assert.equal(pending.length, 0);
+});
+
+for (const field of ['content', 'status']) test(`live-detail ${field} accessors are rejected without invocation`, async t => {
+  const { dom, preview, pending, one } = setup(t);
+  let reads = 0;
+  const content = { adult: false, livePlaybackJson: '{}' };
+  if (field === 'status') Object.defineProperty(content, 'status', { get() { reads++; return 'OPEN'; } });
+  else content.status = 'OPEN';
+  const body = { code: 200 };
+  if (field === 'content') Object.defineProperty(body, 'content', { get() { reads++; return content; } });
+  else body.content = content;
+  const showing = preview.show(one.href, one, true);
+  pending[0].resolve({ ok: true, json: async () => body }); await showing;
+  assert.equal(reads, 0);
+  assert.equal(dom.window.document.querySelector('.knife-preview'), null);
+  assert.equal(runtime(dom).statuses.livePreview.reason, 'live-detail-unavailable');
+});
+
+test('oversized playback JSON is rejected before media creation', async t => {
+  const { dom, preview, pending, one } = setup(t);
+  deliver(dom, { preview: true, livePreview: true, previewDelay: 0.1 }, 2);
+  const playback = JSON.stringify({ media: [{ mediaId: 'HLS', path: 'https://media.invalid/master.m3u8' }], padding: 'x'.repeat(1024 * 1024) });
+  const showing = preview.show(one.href, one, true);
+  pending[0].resolve({ ok: true, json: async () => ({ code: 200, content: { status: 'OPEN', adult: false, livePlaybackJson: playback } }) });
+  await showing;
+  assert.equal(dom.window.document.querySelector('.knife-preview-video'), null);
+  assert.equal(runtime(dom).statuses.livePreview.reason, 'stream-unavailable');
+});
+
+for (const status of [401, 403]) test(`live-detail HTTP ${status} remains limited without playback`, async t => {
+  const { dom, preview, pending, one } = setup(t);
+  const showing = preview.show(one.href, one, true);
+  pending[0].resolve({ ok: false, status, json: async () => { throw new Error('must not parse'); } }); await showing;
+  assert.equal(dom.window.document.querySelector('.knife-preview'), null);
+  assert.equal(runtime(dom).statuses.livePreview.reason, 'live-detail-unavailable');
+});
+
+test('live-detail cache evicts the oldest entry at 101 channels', async t => {
+  const { dom, preview } = setup(t);
+  const sidebar = dom.window.document.getElementById('sidebar');
+  let requests = 0;
+  dom.window.fetch = async () => { requests++; return { ok: true, json: async () => ({ code: 200, content: { status: 'CLOSE', adult: false, livePlaybackJson: '{}' } }) }; };
+  const anchors = [];
+  for (let index = 0; index < 101; index++) {
+    const anchor = dom.window.document.createElement('a');
+    anchor.href = `/live/${index.toString(16).padStart(32, '0')}`;
+    anchor.getBoundingClientRect = () => ({ left: 20, right: 120, top: 30, bottom: 50, width: 100, height: 20 });
+    sidebar.append(anchor); anchors.push(anchor);
+    await preview.show(anchor.href, anchor, true); preview.hide();
+  }
+  assert.equal(requests, 101);
+  await preview.show(anchors[0].href, anchors[0], true);
+  assert.equal(requests, 102);
+});
+
+for (const invalidation of ['panel-removal', 'visibility-hidden']) test(`${invalidation} disposes only the active preview session`, async t => {
+  const { dom, preview, pending, one } = setup(t);
+  const destroyed = { count: 0 }; enableStream(dom, destroyed);
+  deliver(dom, { preview: true, livePreview: true, previewDelay: 0.1 }, 2);
+  const showing = preview.show(one.href, one, true); pending[0].resolve(streamResponse()); await showing;
+  assert.ok(dom.window.document.querySelector('.knife-preview-video'));
+  if (invalidation === 'panel-removal') dom.window.document.querySelector('.knife-preview').remove();
+  else {
+    Object.defineProperty(dom.window.document, 'hidden', { configurable: true, value: true });
+    dom.window.document.dispatchEvent(new dom.window.Event('visibilitychange'));
+  }
+  await flush();
+  assert.equal(destroyed.count, 1);
+  assert.equal(dom.window.document.querySelector('.knife-preview-video'), null);
+});
+
+test('persisted pagehide clears media but keeps the controller; final pagehide is idempotent', async t => {
+  const { dom, preview, pending, one, two } = setup(t);
+  const destroyed = { count: 0 }; enableStream(dom, destroyed);
+  deliver(dom, { preview: true, livePreview: true, previewDelay: 0.1 }, 2);
+  const first = preview.show(one.href, one, true); pending[0].resolve(streamResponse()); await first;
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide', { persisted: true }));
+  assert.equal(destroyed.count, 1); assert.equal(runtime(dom).preview, preview);
+  const second = preview.show(two.href, two, true); pending[1].resolve(streamResponse()); await second;
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
+  dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
+  assert.equal(destroyed.count, 2);
+  assert.equal(dom.window[dom.window.Symbol.for('cheese-knife.runtime.v1')]?.preview, undefined);
+});
+
+test('a throwing status sink cannot abort preview setup or cleanup', async t => {
+  const { dom, preview, pending, one } = setup(t);
+  const destroyed = { count: 0 }; enableStream(dom, destroyed);
+  deliver(dom, { preview: true, livePreview: true, previewDelay: 0.1 }, 2);
+  runtime(dom).setStatus = () => { throw new Error('status-sink-failed'); };
+  const showing = preview.show(one.href, one, true); pending[0].resolve(streamResponse());
+  await assert.doesNotReject(showing);
+  assert.ok(dom.window.document.querySelector('.knife-preview-video'));
+  assert.doesNotThrow(() => preview.hide());
+  assert.equal(destroyed.count, 1);
 });
 
 for (const phase of ['fetch', 'preload', 'displayed']) {

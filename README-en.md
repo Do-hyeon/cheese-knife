@@ -58,7 +58,7 @@ Security checks cover specific tools and scopes and are not proof that the produ
 
 ## Development direction
 
-The installed MV3 E2E foundation is in place. Explicit module boundaries and an incremental TypeScript transition are next; the feature roadmap resumes on top of that safety net after AF05 completes the transition.
+Product runtime sources use strict TypeScript, with checked JavaScript generation for Chrome. AF05 transition closure and deployment acceptance are in progress; the feature roadmap resumes after they complete.
 
 [Execution plan](PLANS.md) (Korean) · [AF00 validation record](docs/superpowers/validation/2026-10-11-af00-installed-extension-e2e.md) (Korean) · [Third-party notices](THIRD_PARTY_NOTICES.md)
 

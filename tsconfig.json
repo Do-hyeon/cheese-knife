@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
-    "allowJs": true,
-    "checkJs": true,
+    "allowJs": false,
     "noEmit": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -12,8 +11,6 @@
     "types": ["chrome"]
   },
   "include": [
-    "config.js",
-    "style-schema.js",
     "src/settings/**/*.ts",
     "src/main/**/*.ts",
     "build-proof/**/*.ts"

@@ -1,32 +1,31 @@
+// Generated from src/settings/config.ts by scripts/settings-runtime.mjs. Do not edit.
 var KnifeHostPolicy = Object.freeze({
-  origins: Object.freeze(["https://chzzk.naver.com/*"]),
+  origins: Object.freeze(["https://chzzk.naver.com/*"])
 });
-
-/** @type {KnifeConfigGroup[]} */
 var CONFIGS = [
   {
     id: "preview",
     configs: [
       {
         id: "preview",
-        defaultValue: true,
+        defaultValue: true
       },
       {
         id: "livePreview",
-        defaultValue: true,
+        defaultValue: true
       },
       {
         id: "previewStartUnmuted",
-        defaultValue: false,
+        defaultValue: false
       },
       {
         id: "previewWidth",
         type: "range",
         min: 300,
-        max: 1000,
+        max: 1e3,
         step: 50,
         unit: "px",
-        defaultValue: 400,
+        defaultValue: 400
       },
       {
         id: "previewDelay",
@@ -36,7 +35,7 @@ var CONFIGS = [
         step: 0.1,
         digits: 1,
         unit: "s",
-        defaultValue: 1,
+        defaultValue: 1
       },
       {
         id: "previewVolume",
@@ -45,41 +44,41 @@ var CONFIGS = [
         max: 100,
         step: 1,
         unit: "%",
-        defaultValue: 5,
+        defaultValue: 5
       },
       {
         id: "rightClickToUnmute",
-        defaultValue: true,
-      },
-    ],
+        defaultValue: true
+      }
+    ]
   },
   {
     id: "explore",
     configs: [
       {
         id: "updateSidebar",
-        defaultValue: true,
+        defaultValue: true
       },
       {
         id: "expandFollowings",
-        defaultValue: false,
+        defaultValue: false
       },
       {
         id: "popupPlayer",
-        defaultValue: true,
-      },
-    ],
+        defaultValue: true
+      }
+    ]
   },
   {
     id: "player",
     configs: [
       {
         id: "arrowSeek",
-        defaultValue: true,
+        defaultValue: true
       },
       {
         id: "pressToFastForward",
-        defaultValue: true,
+        defaultValue: true
       },
       {
         id: "videoFilter",
@@ -92,7 +91,7 @@ var CONFIGS = [
             max: 3,
             step: 0.05,
             digits: 2,
-            defaultValue: 1,
+            defaultValue: 1
           },
           {
             id: "contrast",
@@ -101,7 +100,7 @@ var CONFIGS = [
             max: 3,
             step: 0.05,
             digits: 2,
-            defaultValue: 1,
+            defaultValue: 1
           },
           {
             id: "saturation",
@@ -110,7 +109,7 @@ var CONFIGS = [
             max: 3,
             step: 0.05,
             digits: 2,
-            defaultValue: 1,
+            defaultValue: 1
           },
           {
             id: "gamma",
@@ -119,7 +118,7 @@ var CONFIGS = [
             max: 3,
             step: 0.05,
             digits: 2,
-            defaultValue: 1,
+            defaultValue: 1
           },
           {
             id: "sharpness",
@@ -128,9 +127,9 @@ var CONFIGS = [
             max: 10,
             step: 0.1,
             digits: 1,
-            defaultValue: 0,
-          },
-        ],
+            defaultValue: 0
+          }
+        ]
       },
       {
         id: "compressor",
@@ -138,7 +137,7 @@ var CONFIGS = [
         configs: [
           {
             id: "compressorDefault",
-            defaultValue: false,
+            defaultValue: false
           },
           {
             id: "compressorThreshold",
@@ -147,7 +146,7 @@ var CONFIGS = [
             max: 0,
             step: 1,
             unit: "dB",
-            defaultValue: -50,
+            defaultValue: -50
           },
           {
             id: "compressorKnee",
@@ -156,7 +155,7 @@ var CONFIGS = [
             max: 40,
             step: 1,
             unit: "dB",
-            defaultValue: 40,
+            defaultValue: 40
           },
           {
             id: "compressorRatio",
@@ -165,7 +164,7 @@ var CONFIGS = [
             max: 20,
             step: 0.5,
             digits: 1,
-            defaultValue: 12,
+            defaultValue: 12
           },
           {
             id: "compressorAttack",
@@ -175,7 +174,7 @@ var CONFIGS = [
             step: 0.01,
             digits: 2,
             unit: "s",
-            defaultValue: 0,
+            defaultValue: 0
           },
           {
             id: "compressorRelease",
@@ -185,28 +184,26 @@ var CONFIGS = [
             step: 0.01,
             digits: 2,
             unit: "s",
-            defaultValue: 0.25,
-          },
-        ],
-      },
-    ],
+            defaultValue: 0.25
+          }
+        ]
+      }
+    ]
   },
   {
     id: "chat",
     configs: [
       {
         id: "hideDonation",
-        defaultValue: false,
+        defaultValue: false
       },
       {
         id: "showDeleted",
-        defaultValue: false,
-      },
-    ],
-  },
+        defaultValue: false
+      }
+    ]
+  }
 ];
-
-/** @type {Record<string, KnifeScalar>} */
 const DEFAULT_CONFIGS = {};
 for (const { configs } of CONFIGS) {
   for (const c of configs) {
@@ -219,11 +216,6 @@ for (const { configs } of CONFIGS) {
     }
   }
 }
-
-/**
- * @param {unknown} value
- * @returns {Record<string, KnifeScalar>}
- */
 function normalizeConfig(value) {
   const result = { ...DEFAULT_CONFIGS };
   if (value == null || typeof value !== "object" || Array.isArray(value)) {
@@ -232,7 +224,7 @@ function normalizeConfig(value) {
   for (const category of CONFIGS) {
     for (const item of category.configs) {
       for (const field of item.type === "details" ? item.configs : [item]) {
-        const stored = /** @type {KnifeUnknownRecord} */ (value)[field.id];
+        const stored = value[field.id];
         if (field.type === "range") {
           if (typeof stored === "number" && Number.isFinite(stored) && stored >= field.min && stored <= field.max) {
             result[field.id] = stored;
@@ -245,18 +237,14 @@ function normalizeConfig(value) {
   }
   return result;
 }
-
-/** @param {boolean} includeStyleParameters */
 async function getConfig(includeStyleParameters) {
   const stored = await chrome.storage.local.get({
     config: DEFAULT_CONFIGS,
-    ...(includeStyleParameters ? { styleParameters: {} } : {}),
+    ...includeStyleParameters ? { styleParameters: {} } : {}
   });
-  /** @type {{ config: Record<string, KnifeScalar>, styleParameters?: KnifeUnknownRecord }} */
   const result = { config: normalizeConfig(stored.config) };
   if (includeStyleParameters) {
-    result.styleParameters = stored.styleParameters != null && typeof stored.styleParameters === "object" && !Array.isArray(stored.styleParameters)
-      ? /** @type {KnifeUnknownRecord} */ (stored.styleParameters) : {};
+    result.styleParameters = stored.styleParameters != null && typeof stored.styleParameters === "object" && !Array.isArray(stored.styleParameters) ? stored.styleParameters : {};
   }
   return result;
 }

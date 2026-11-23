@@ -26,6 +26,20 @@ export interface BlindEventSnapshot {
 
 export interface SitePlayerMetrics { codec: string | null }
 
+export type ChatRouteKind = 'live' | 'vod';
+export type SidebarSectionKind = 'popular' | 'schedule' | 'partner' | 'shortcut';
+
+export interface FollowingControls {
+  section: Element;
+  more: HTMLButtonElement | null;
+  fold: HTMLButtonElement | null;
+  refresh: HTMLButtonElement | null;
+}
+
+export type StartTimeTarget =
+  | { kind: 'live'; node: HTMLElement }
+  | { kind: 'vod'; node: HTMLElement; link: HTMLAnchorElement; id: string };
+
 export interface OwnedBinding {
   readonly active: boolean;
   dispose(): void;
@@ -52,8 +66,24 @@ export interface SiteAdapter {
   discover(root: Document, route: Route): SiteSnapshot;
   affectsDiscovery(node: Element, target?: Element): boolean;
   chat: {
+    findContainer(body: Element, kind: ChatRouteKind): Element | null;
+    findLogRoot(container: Element): Element | null;
+    messageRows(root: Element): readonly Element[];
+    timestampTarget(row: Element): HTMLElement | null;
+    deletedTextTargets(row: Element): readonly HTMLElement[];
     readMessage(row: Element): ChatMessageSnapshot | null;
     connect(container: Element): ChatControllerPort | null;
+  };
+  sidebar: {
+    sections(root: Element): readonly Element[];
+    classify(section: Element): SidebarSectionKind | null;
+    following(root: Element): FollowingControls | null;
+    viewMode(body: HTMLElement | null, player: Element | null, route: Route): boolean | null;
+  };
+  page: {
+    channelTabs(body: Element, route: Route): Element | null;
+    startTarget(target: EventTarget | null, route: Route): StartTimeTarget | null;
+    bannerRoot(body: Element): Element | null;
   };
   banner: { closeHandler(node: Element): (() => unknown) | null };
   video: { openDate(node: Element): string | null };
