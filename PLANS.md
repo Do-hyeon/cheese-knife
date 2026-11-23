@@ -17,6 +17,7 @@
 - 복구판은 Google Chrome만 지원한다. Firefox 구현·빌드·배포는 복구하지 않는다.
 - AF00–AF05를 완료하기 전에는 F00–F05 기능 로드맵을 구현하지 않는다.
 - TypeScript는 장기 목표지만 전면 일괄 변환은 하지 않는다. 설치형 E2E로 현재 동작을 보호한 뒤 계약 경계부터 점진적으로 이전한다.
+- 테스트·개발 도구의 전면 TS 이전은 필수 조건이 아니다. 공용 계약과 연결된 호출자부터 타입 검사 효과를 확인하며, DT 후속 작업을 AF05·F00의 새 선행 게이트로 추가하지 않는다.
 - React/Vue를 도입하지 않는다. Webpack/Vite 자체를 목표로 삼지 않고 출력 계약에 필요한 최소 도구만 별도 proof 뒤 선택한다.
 - 권한, host permission, 사용자 데이터 저장, 외부 전송, 원격 코드와 공개 지원 범위를 몰래 확대하지 않는다. 변경 필요 시 별도 설계·정책 검토·사용자 승인을 받는다.
 - 실제 계정·쿠키·채팅·결제·후원·연령 제한 콘텐츠를 결정적 CI fixture나 공개 artifact로 사용하지 않는다.
@@ -210,6 +211,31 @@ AF05-B 공개 수용 — P09와 차기 AF 배포에 의존:
 | F04 | 2–4채널 멀티뷰 | 독립 재생·음량·화질·채팅과 부분 교체 보장 |
 | F05 | 통나무파워 조회 | 데이터 최소화·계정 분리·새 권한 별도 승인 |
 
+### 독립 유지보수 후속 — 테스트·개발 도구 타입 강화
+
+검토: [테스트·개발 도구 타입 강화 공격적 검토](docs/superpowers/specs/2026-10-12-development-tooling-typescript-review.md).
+
+P09·AF05-B의 현재 커서는 유지한다. 아래 작업은 기능 로드맵의 새 선행 조건이 아니며, 상세 구현 계획 승인 후 공개 심사와 독립적으로 실행할 수 있다. 언어 비율 개선이나 전체 `.mjs`·`.cjs` 제거를 목표로 삼지 않는다.
+
+- [x] 테스트·fixture와 도구·실행 경계 각각의 Astra max 독립 검토 및 주 실행자 교차 검토.
+- [x] 전면 이전 대신 명시적 JSDoc + `checkJs` 우선, 효과 확인 후 선택적 TS 이전 방향 고정.
+- [x] **DT00 / 계획:** [공용 helper·bridge 계약 검사 상세 계획](docs/superpowers/plans/2026-10-12-dt00-helper-contracts.md) 작성·자체 대조와 사용자 승인 완료.
+- [x] **DT00 / 구현·검토:** 의도적 계약 오용5종의 컴파일 거부와 정상/raw 대조, 기존 생성 JS 실행 검사 유지. 집중53/53·공개조건 전체815/815·설치형 positive/negative·Astra max 검토 통과. [검증 기록](docs/superpowers/validation/2026-10-12-dt00-helper-contracts.md)에 의존성·단언·비용·제외 범위 고정. 공개 CI·병합은 [PR #26](https://github.com/Do-hyeon/cheese-knife/pull/26)의 마지막 커밋 기준으로 확인한다.
+- [x] **DT00 / 판단:** 제한된 공용 계약 검사는 유지한다. 전체 변환으로 자동 확대하지 않으며 DT01은 별도 작은 설계 단위로 진행한다.
+- [x] **DT01 / 설계·검토:** [순수 오디오 수치·파형 요약 상세 설계](docs/superpowers/specs/2026-10-12-dt01-audio-contract-design.md) 작성·Astra max 검토와 Important1 보완. 기존 명시적 lint 목록 이전·old-export 검사 graph·frequency 생략/undefined/null·DT00 CI 순서 보존 반영. 기준 metrics/artifacts19/19·기존 lint1/1 확인이며 새 구현을 검증한 것은 아니다.
+- [x] **DT01-A / 설계 승인:** 사용자가 written-spec 승인. 순수 수치3개+실제 Node 요약 소비자 범위와 full report/browser/file capability 제외 유지.
+- [x] **DT01-A / 구현 계획·검토:** [상세 구현 계획](docs/superpowers/plans/2026-10-12-dt01a-audio-signal-contracts.md) 작성·자체 대조·Astra max 공격적 검토(Critical0·Important0·Minor1 보완). 무음 tone의 정합 조건을 정확한 입력으로 고정. 순수 모듈 proof와 구 API/CLI/감사 연결의 두 순차 단위·명령·커밋·제외 범위 명시.
+- [x] **DT01-A / 구현 승인:** 사용자가 상세 계획과 Native(주 실행자 순차 구현)+최종 Astra max 검토를 승인했다.
+- [x] **DT01-A / 구현·로컬 검증:** 순수 수치3개·실제 Node summary strict 계약, 구 export identity·CLI5개 호출·실제 감사 포함 연결. 집중43/43·연결77/77·공개조건 전체832/832, 합성14/18/12·qualityFailures0·full-scale0, 설치형 positive/negative 통과. [검증 기록](docs/superpowers/validation/2026-10-12-dt01a-audio-signal-contracts.md)에 비용·단언·미검사 범위와 기존 ESLint7 관측 유지 기록.
+- [x] **DT01-A / 최종 검토:** Astra max whole-branch Critical0·Important0·Minor0. 기준 버전과2,286개 수치·요약 호출의 결과/오류 대조 및 집중77/77 재확인. 공개 CI·병합 이력은 이 변경 PR의 마지막 커밋 checks·merge 상태를 기준으로 확인한다. 제품·스토어 제출본 불변, DT01-B/C/S·NUM01 미완료 유지.
+- [ ] **DT01-B / WAITING-DEPENDENCY:** 정상/partial/raw quality report gate·transition 계약은 DT01-A 효과 확인 뒤 독립 상세 설계. 기존 실패 입력·독립 기대값·오류/측정 의미 보존.
+- [ ] **DT01-C / WAITING-DEPENDENCY:** artifact 부분 report projection·comparison과 owned-files 연결은 별도 설계. 기존 부분 report 허용·비교 허용치·감사 대상 보존.
+- [ ] **DT01-S / BACKLOG-BLOCKED:** settings fixture/reply는 별도 유지보수 후보로 보류하며 오디오 작업에 함께 끌어오지 않는다.
+- [ ] **NUM01 / PLAN-REVIEW:** rmsEnvelope의 NaN sampleRate/windowMs 입력에서 NaN·Infinity 결과가 남는 기존 한계 확인. 타입 이전과 분리한 숫자 입력 오류 정책·회귀 설계 후보이며 제품 결함/보안 취약점으로 확대 해석하지 않는다.
+- [ ] **DT02 / WAITING-DEPENDENCY:** JSDoc보다 명확한 이점이 입증된 파일만 native `.mts`/`.cts` 검토. 실행 경로·테스트 발견·기존 감사 대상의 inventory·snapshot·ESLint·provenance 누락 방지와 별도 strict 검사를 함께 확보. 기존 감사 제외 범위를 확대하지 않는다.
+
+완료 기준은 계약 오용 검출과 기존 증거의 보존이다. 타입 단언·ignore로 진단만 없애거나 테스트/감사 대상을 줄이면 완료하지 않는다. HLS 자식 프로세스·고정 해시 검증 가족은 첫 실험에서 제외하고, 이후 변경 필요 시 별도 계획으로 다룬다.
+
 ## 9. 검증 진입점
 
 현재 제품 기준 게이트:
@@ -229,4 +255,4 @@ git -c core.safecrlf=false diff --check
 
 ## 10. 현재 사용자 개입 지점
 
-AF05 내부 작업은 완료됐다. P09는 심사 중이며 게시 후 새 설치·기존 설치 업데이트·설정 보존과 배포 증거를 확인한다. AF 변경 후보는 별도 차기 버전으로 설치·업데이트·롤백 수용을 기록한다. 현재는 추가 사용자 조작이 필요 없으며, 실제 공개 설치·차기 배포·로드맵 동결 해제에 필요한 행동이나 결정만 요청한다.
+AF05 내부 작업은 완료됐다. P09는 심사 중이며 게시 후 새 설치·기존 설치 업데이트·설정 보존과 배포 증거를 확인한다. AF 변경 후보는 별도 차기 버전으로 설치·업데이트·롤백 수용을 기록한다. DT01-A의 구현·최종 독립 검토에는 추가 사용자 조작이 필요 없으며 공개 통합은 PR 이력으로 확인한다. 다음 DT01-B는 별도 상세 설계 대상이다. 실제 공개 설치·차기 배포·로드맵 동결 해제의 별도 결정 조건은 유지한다.

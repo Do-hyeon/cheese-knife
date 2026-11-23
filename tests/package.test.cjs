@@ -166,7 +166,7 @@ test('checked build rejects MAIN drift before touching generated files or dist',
 test('foundation checks MAIN runtime after typecheck and settings before build proof', async () => {
   const workflow = await fs.readFile('.github/workflows/ci.yml', 'utf8');
   const command = workflow.match(/run: (npm run check:toolchain[^\r\n]+)/)?.[1] || '';
-  const ordered = ['npm run typecheck', 'npm run check:settings-runtime', 'npm run check:main-runtime', 'npm run check:build-proof'];
+  const ordered = ['npm run typecheck', 'npm run typecheck:development', 'npm run check:settings-runtime', 'npm run check:main-runtime', 'npm run check:build-proof'];
   for (const value of ordered) assert.notEqual(command.indexOf(value), -1, value);
   for (let index = 1; index < ordered.length; index++) assert.ok(command.indexOf(ordered[index - 1]) < command.indexOf(ordered[index]));
 });

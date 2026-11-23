@@ -1,0 +1,9 @@
+{
+  "sampleRate": 1000,
+  "windowSeconds": 0.008,
+  "channels": [
+    {"samples":8,"mean":0,"rms":0.7905694150420949,"peak":1,"peakDbfs":0,"rmsDbfs":-2.041199826559247,"overFullScaleSamples":0,"maxAdjacentStep":2,"thdPercent":null,"thdnPercent":null,"fundamentalAmplitude":null,"spectralReason":"","envelope8ms":{"windowSamples":8,"min":0.7905694150420949,"max":0.7905694150420949}},
+    {"samples":8,"mean":0,"rms":0,"peak":0,"peakDbfs":null,"rmsDbfs":null,"overFullScaleSamples":0,"maxAdjacentStep":0,"thdPercent":null,"thdnPercent":null,"fundamentalAmplitude":null,"spectralReason":"","envelope8ms":{"windowSamples":8,"min":0,"max":0}}
+  ],
+  "channelDifferenceRms": 0.7905694150420949
+}

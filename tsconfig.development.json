@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "useUnknownInCatchVariables": true,
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM"],
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "types": ["node"],
+    "typeRoots": ["./node_modules/@types"]
+  },
+  "files": [
+    "tests/helpers.cjs",
+    "tests/bridge.test.cjs",
+    "tests/helper-contracts.test.cjs",
+    "tests/development-types.test.cjs"
+  ]
+}

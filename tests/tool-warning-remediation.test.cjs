@@ -84,8 +84,10 @@ test('deleted-chat array boundaries have no generic object-injection observation
 
 test('development report boundaries have no generic object-injection observation', async () => {
   const lint = new ESLint({ overrideConfigFile: 'eslint.security.config.mjs' });
+  const config = await lint.calculateConfigForFile('scripts/audio-signal.mjs');
+  assert.ok(config?.rules['security/detect-object-injection']?.[0], 'moved numeric code must remain in the real lint scope');
   const result = await lint.lintFiles([
-    'scripts/audio-metrics.mjs', 'scripts/check-audio-quality.mjs', 'scripts/check-store-popup.mjs',
+    'scripts/audio-metrics.mjs', 'scripts/audio-signal.mjs', 'scripts/check-audio-quality.mjs', 'scripts/check-store-popup.mjs',
     'scripts/check-video-filters.mjs', 'scripts/tool-audit.mjs',
   ]);
   const findings = result.flatMap(file => file.messages)
