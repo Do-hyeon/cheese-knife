@@ -3,7 +3,7 @@
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
-import {audioQualityFailures} from './audio-metrics.mjs';
+import {audioQualityReportFailures as audioQualityFailures} from './audio-metrics.mjs';
 import {summarizeCapture} from './audio-signal.mjs';
 import {openOwnedRoot} from './owned-files.mjs';
 import {AUDIO_ARTIFACT_FILES,describeAudioArtifact,parseAudioQualityArgs} from './audio-artifacts.mjs';
