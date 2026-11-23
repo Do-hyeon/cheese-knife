@@ -7,7 +7,7 @@ const expectedOrigins = ['https://chzzk.naver.com/*'];
 const baseline = JSON.parse(fs.readFileSync('tests/fixtures/host-permissions-baseline.json', 'utf8'));
 
 test('host policy and manifest use HTTPS main only without changing static script boundaries', t => {
-  const dom = page(); t.after(() => dom.window.close()); load(dom, 'config.js');
+  const dom = page(); t.after(() => dom.window.close()); load(dom, 'media-profiles.js'); load(dom, 'config.js');
   const policy = dom.window.KnifeHostPolicy;
   assert.ok(policy, 'config must expose the shared host policy');
   assert.equal(Object.isFrozen(policy), true);
@@ -20,5 +20,8 @@ test('host policy and manifest use HTTPS main only without changing static scrip
   assert.equal(manifest.minimum_chrome_version, baseline.minimum_chrome_version);
   assert.equal(manifest.manifest_version, 3);
   assert.deepEqual(manifest.content_scripts.map(item => item.matches), [expectedOrigins, expectedOrigins]);
-  assert.deepEqual(manifest.content_scripts.map(({ matches, ...item }) => item), baseline.content_scripts);
+  assert.deepEqual(manifest.content_scripts.map(({ matches, js, ...item }) => item),
+    baseline.content_scripts.map(({ js, ...item }) => item));
+  assert.deepEqual(manifest.content_scripts.map(item => item.js), baseline.content_scripts.map(item =>
+    item.world==='MAIN'?item.js:['media-profiles.js',...item.js]));
 });

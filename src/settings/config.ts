@@ -83,110 +83,12 @@ var CONFIGS: KnifeConfigGroup[] = [
       {
         id: "videoFilter",
         type: "details",
-        configs: [
-          {
-            id: "brightness",
-            type: "range",
-            min: 0,
-            max: 3,
-            step: 0.05,
-            digits: 2,
-            defaultValue: 1,
-          },
-          {
-            id: "contrast",
-            type: "range",
-            min: 0,
-            max: 3,
-            step: 0.05,
-            digits: 2,
-            defaultValue: 1,
-          },
-          {
-            id: "saturation",
-            type: "range",
-            min: 0,
-            max: 3,
-            step: 0.05,
-            digits: 2,
-            defaultValue: 1,
-          },
-          {
-            id: "gamma",
-            type: "range",
-            min: 0,
-            max: 3,
-            step: 0.05,
-            digits: 2,
-            defaultValue: 1,
-          },
-          {
-            id: "sharpness",
-            type: "range",
-            min: 0,
-            max: 10,
-            step: 0.1,
-            digits: 1,
-            defaultValue: 0,
-          },
-        ],
+        configs: [...KnifeMediaProfiles.videoFields],
       },
       {
         id: "compressor",
         type: "details",
-        configs: [
-          {
-            id: "compressorDefault",
-            defaultValue: false,
-          },
-          {
-            id: "compressorThreshold",
-            type: "range",
-            min: -100,
-            max: 0,
-            step: 1,
-            unit: "dB",
-            defaultValue: -50,
-          },
-          {
-            id: "compressorKnee",
-            type: "range",
-            min: 0,
-            max: 40,
-            step: 1,
-            unit: "dB",
-            defaultValue: 40,
-          },
-          {
-            id: "compressorRatio",
-            type: "range",
-            min: 1,
-            max: 20,
-            step: 0.5,
-            digits: 1,
-            defaultValue: 12,
-          },
-          {
-            id: "compressorAttack",
-            type: "range",
-            min: 0,
-            max: 1,
-            step: 0.01,
-            digits: 2,
-            unit: "s",
-            defaultValue: 0,
-          },
-          {
-            id: "compressorRelease",
-            type: "range",
-            min: 0,
-            max: 1,
-            step: 0.01,
-            digits: 2,
-            unit: "s",
-            defaultValue: 0.25,
-          },
-        ],
+        configs: [...KnifeMediaProfiles.audioFields],
       },
     ],
   },
@@ -253,4 +155,21 @@ async function getConfig(includeStyleParameters: boolean) {
       ? (stored.styleParameters as KnifeUnknownRecord) : {};
   }
   return result;
+}
+
+async function readScopedConfig(context: KnifeScopedContext): Promise<KnifeScopedSnapshot> {
+  const stored = await chrome.storage.local.get(['config', 'styles', 'styleParameters', 'settingsRevision', 'mediaProfiles']);
+  const baseConfig = normalizeConfig(stored.config), read = KnifeMediaProfiles.readStore(stored.mediaProfiles);
+  const resolved = KnifeMediaProfiles.resolveMediaSettings(baseConfig, read, {
+    channelId: context.channelId, topFrame: window.top === window,
+    incognito: chrome.extension?.inIncognitoContext !== false,
+  });
+  const revision = stored.settingsRevision === undefined ? 0 : stored.settingsRevision;
+  const globalRevision = KnifeMediaProfiles.isCounter(revision) && revision < Number.MAX_SAFE_INTEGER ? revision : null;
+  return { baseConfig, effectiveConfig: resolved.effectiveConfig,
+    styleParameters: stored.styleParameters && typeof stored.styleParameters === 'object' && !Array.isArray(stored.styleParameters)
+      ? stored.styleParameters as KnifeUnknownRecord : {},
+    version: { globalRevision, mediaRevision: read.state === 'valid' || read.state === 'absent' ? read.store.revision : null },
+    revisionStatus: globalRevision === null ? 'repair-required' : 'ready', profileState: resolved.profileState,
+    audioBindingKey: resolved.audioBindingKey, audioKind: resolved.audioKind, videoKind: resolved.videoKind };
 }

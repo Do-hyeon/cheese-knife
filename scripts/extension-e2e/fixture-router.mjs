@@ -1,10 +1,12 @@
 export const FIXTURE_LIVE_URL = 'https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 export const FIXTURE_CHANNEL_URL = 'https://chzzk.naver.com/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+export const FIXTURE_VOD_URL = 'https://chzzk.naver.com/video/12345';
 export const FIXTURE_SITE_SCRIPT_URL = 'https://chzzk.naver.com/__knife_fixture__/site.js';
 
 const definitions = Object.freeze([
   Object.freeze({ url: FIXTURE_LIVE_URL, file: 'tests/fixtures/installed-extension/live.html', contentType: 'text/html; charset=utf-8' }),
   Object.freeze({ url: FIXTURE_CHANNEL_URL, file: 'tests/fixtures/installed-extension/channel.html', contentType: 'text/html; charset=utf-8' }),
+  Object.freeze({ url: FIXTURE_VOD_URL, file: 'tests/fixtures/installed-extension/live.html', contentType: 'text/html; charset=utf-8' }),
   Object.freeze({ url: FIXTURE_SITE_SCRIPT_URL, file: 'tests/fixtures/installed-extension/site.js', contentType: 'text/javascript; charset=utf-8' }),
 ]);
 

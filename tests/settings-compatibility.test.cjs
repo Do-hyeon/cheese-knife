@@ -3,13 +3,13 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { createHash } = require('node:crypto');
 const { settingsHarness, config, style, parameter, getURL, extensionId } = require('./settings-fixture.cjs');
-const published = import('../scripts/published-settings-baseline.mjs').then(m => m.readPublishedWorkerSources());
-const files = ['config.js', 'style-schema.js', 'settings-contract.js', 'settings-broker.js'];
-const current = Object.freeze(Object.fromEntries(files.map(file => [file, fs.readFileSync(file, 'utf8')])));
+const published = import('../scripts/published-settings-baseline.mjs').then(m => ({ generation: 'published', sources: m.readPublishedWorkerSources() }));
+const files = ['media-profiles.js', 'config.js', 'style-schema.js', 'settings-contract.js', 'settings-broker.js'];
+const current = Object.freeze({ generation: 'f00', sources: Object.freeze(Object.fromEntries(files.map(file => [file, fs.readFileSync(file, 'utf8')])) ) });
 const plain = value => JSON.parse(JSON.stringify(value));
 const count = (h, kind) => h.calls.filter(call => call.kind === kind).length;
 function assertWorker(h, sources) {
-  const source = sources['settings-broker.js'];
+  const source = sources.sources['settings-broker.js'];
   const marker = 'var createSettingsBroker = ', index = source.indexOf(marker);
   assert.notEqual(index, -1);
   assert.equal(h.worker.window.createSettingsBroker.toString(), source.slice(index + marker.length).trim().replace(/;$/, ''));
@@ -41,8 +41,9 @@ test('old new old keeps the same raw storage and registration identities', async
 
 test('versioned switch refuses incomplete input without retiring current worker', async t => {
   const h = settingsHarness(t, {}, await published); await h.initialize(); await h.settle();
-  const worker = h.worker, missing = { ...current }; delete missing['config.js'];
-  for (const input of [missing, { ...current, extra: 'x' }, { ...current, 'config.js': '' }, Object.create(current), null]) {
+  const worker = h.worker, missing = { ...current.sources }; delete missing['config.js'];
+  for (const input of [{ ...current, sources: missing }, { ...current, extra: 'x' },
+    { ...current, sources: { ...current.sources, 'config.js': '' } }, Object.create(current), null]) {
     assert.throws(() => h.restartBroker(input)); assert.strictEqual(h.worker, worker);
   }
   assert.equal((await h.patch('popup', [config('arrowSeek', false)])).stored, true);
@@ -308,7 +309,8 @@ for (const [name, initial, initialized] of [
 test('compatibility oracle rejects seeded data loss', async t => {
   const h = settingsHarness(t, { config: { futureFlag: 'keep' }, settingsRevision: 4 }, await published);
   await h.initialize(); await h.patch('popup', [config('arrowSeek', false)]); await h.settle(); assertSeededConfig(h);
-  h.restartBroker({ ...current, 'settings-broker.js': 'void chrome.storage.local.set({config:{}});\n' + current['settings-broker.js'] });
+  h.restartBroker({ ...current, sources: { ...current.sources,
+    'settings-broker.js': 'void chrome.storage.local.set({config:{}});\n' + current.sources['settings-broker.js'] } });
   await h.initialize(); await h.settle(); assert.deepEqual(h.saved.config, {});
   assert.throws(() => assertSeededConfig(h), error => error instanceof assert.AssertionError && error.message.startsWith('arrowSeek lost'));
 });

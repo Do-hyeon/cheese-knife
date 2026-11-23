@@ -46,6 +46,14 @@ test('popup reports missing deleted-chat support as limited instead of ready', a
   assert.equal(values[1].classList.contains('limited'), true);
   assert.ok(values[1].parentElement.title, 'limited capability has an explanation');
 });
+test('popup explains scoped pending and reload-required media limits',async t=>{
+  for(const reason of ['scoped-config-pending','reload-required']){
+    const {dom}=await ui(t,'popup.html',{},'ko',api=>{api.tabs.sendMessage=async()=>({statuses:{mediaSettings:{
+      state:reason==='reload-required'?'limited':'pending',reason}}});});await flush();
+    const row=dom.window.document.querySelector('.capability-row');assert.ok(row);
+    assert.match(row.textContent,/채널별 미디어/);assert.match(row.title,reason==='reload-required'?/새로고침/:/기다/);
+  }
+});
 
 test('popup ignores inherited and unsupported capability statuses', async t => {
   const { dom } = await ui(t, 'popup.html', {}, 'ko', api => {

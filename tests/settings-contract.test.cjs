@@ -7,7 +7,7 @@ const style = (id, enabled) => ({ type: 'style', id, enabled });
 const parameter = (id, value) => ({ type: 'parameter', id, value });
 const plain = value => JSON.parse(JSON.stringify(value));
 function contract(t) {
-  const dom = page(); t.after(() => dom.window.close()); load(dom, 'config.js');
+  const dom = page(); t.after(() => dom.window.close()); load(dom, 'media-profiles.js'); load(dom, 'config.js');
   for (const file of ['style-schema.js', 'settings-contract.js']) if (fs.existsSync(file)) load(dom, file);
   assert.ok(dom.window.KnifeSettingsContract, 'new settings contract must be available');
   return { api: dom.window.KnifeSettingsContract, fields: dom.window.CONFIGS.flatMap(c => c.configs.flatMap(f => f.configs || [f])) };

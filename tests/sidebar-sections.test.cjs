@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { page, load, runtime, deliver, flush } = require('./helpers.cjs');
+const { page, load, runtime, deliverScoped: deliver, flush } = require('./helpers.cjs');
 
 const sections = {
   general: '<nav id="general" class="_section_test"><ul><li><a href="/lives">Live</a></li></ul></nav>',
@@ -13,7 +13,7 @@ const sections = {
 function setup(t, names = Object.keys(sections), before = () => {}) {
   const dom = page('<aside id="sidebar" aria-label="사이드바"><div class="_content_test">' + names.map(name => sections[name]).join('') + '</div></aside><main id="layout-body"></main>', 'https://chzzk.naver.com/');
   t.after(() => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); dom.window.close(); });
-  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom);
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom);
   before(dom); load(dom, 'web/inject.js');
   return dom;
 }

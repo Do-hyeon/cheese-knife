@@ -1,13 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { page, load, runtime, deliver, playerHTML, flush, clock } = require('./helpers.cjs');
+const { page, load, runtime, deliverScoped: deliver, playerHTML, flush, clock } = require('./helpers.cjs');
 
 function setup(t, html = playerHTML, url, beforeInject = () => {}) {
   const dom = page(html, url);
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
   dom.window.document.documentElement.style.setProperty('--knife-chat-resize', '1');
   dom.window.document.documentElement.style.setProperty('--knife-chat-timestamp', '1');
-  for (const file of ['web/runtime.js','web/site-adapter.js','web/audio.js','web/player.js']) load(dom, file);
+  for (const file of ['media-profiles.js','web/runtime.js','web/site-adapter.js','web/audio.js','web/player.js']) load(dom, file);
   deliver(dom, { arrowSeek: true, hideDonation: false });
   beforeInject(dom);
   load(dom, 'web/inject.js');
@@ -405,7 +405,7 @@ function sidebarFixture(t, config = {}) {
   dom.window.setInterval = (fn, ms) => { if (ms !== 30000) return setInterval(fn, ms); const id = next++; timers.set(id, fn); return id; };
   dom.window.clearInterval = id => { timers.delete(id); clearInterval(id); };
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
-  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
   deliver(dom, config); load(dom, 'web/inject.js');
   const counts = { refresh: 0, more: 0, foreign: 0 };
   dom.window.document.getElementById('refresh').addEventListener('click', () => counts.refresh++);

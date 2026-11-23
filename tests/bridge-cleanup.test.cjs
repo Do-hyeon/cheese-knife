@@ -44,7 +44,7 @@ async function bridge(t, sharedChanges = event()) {
     i18n: { getMessage: key => key },
   };
   dom.window.addEventListener('error', e => { errors.push(e.error); e.preventDefault(); });
-  load(dom, 'config.js'); load(dom, 'web/main.js');
+  load(dom, 'media-profiles.js'); load(dom, 'config.js'); load(dom, 'web/main.js');
   await dom.window.eval('requestLatestSettings()');
   const signal = () => sharedChanges.emit({ settingsRevision: { newValue: 1 } });
   const publishStatuses = statuses => dom.window.dispatchEvent(new dom.window.MessageEvent('message', {

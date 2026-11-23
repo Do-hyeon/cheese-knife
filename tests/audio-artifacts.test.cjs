@@ -6,7 +6,7 @@ const { spawnSync } = require('node:child_process');
 
 const load = () => import('../scripts/audio-artifacts.mjs');
 
-const artifactPaths=['config.js','web/runtime.js','web/site-adapter.js','web/audio.js','web/player.js'];
+const artifactPaths=['media-profiles.js','config.js','web/runtime.js','web/site-adapter.js','web/audio.js','web/player.js'];
 const rawReport=()=>({artifact:{label:'source',root:'fixture',files:artifactPaths.map(path=>({path,sha256:'a'.repeat(64)}))},qualityFailures:[]});
 const rawPair=(left,right)=>[{...rawReport(),...left},{...rawReport(),...right}];
 function rawInputs() {
@@ -48,7 +48,7 @@ function rawInputs() {
 
 test('literal raw artifact oracle preserves results exceptions order and plain inputs',async()=>{
   const {compareAudioArtifactReports}=await load();
-  const expected=require('./fixtures/audio-artifact-compatibility.json');
+  const expected=require('./fixtures/f00-audio-artifact-compatibility.json');
   const inputs=rawInputs();
   assert.deepEqual(Object.keys(inputs),Object.keys(expected));
   for(const [name,input] of Object.entries(inputs)) {
@@ -86,7 +86,7 @@ test('legacy artifact exports retain core function frozen list and constant iden
 
 test('independent raw oracle catches tolerance and selected THD mutations in actual core',async()=>{
   const crypto=require('node:crypto'),original=await fs.readFile('scripts/audio-artifact-core.mjs','utf8');
-  const expected=require('./fixtures/audio-artifact-compatibility.json');
+  const expected=require('./fixtures/f00-audio-artifact-compatibility.json');
   const comparator=source=>{
     assert.equal(source.split("import crypto from 'node:crypto';").length,2);
     return Function('crypto',source.replace("import crypto from 'node:crypto';",'').replace(/^export /gm,'')+'\nreturn compareAudioArtifactReports;')(crypto);
@@ -103,11 +103,19 @@ test('independent raw oracle catches tolerance and selected THD mutations in act
   assert.equal(await fs.readFile('scripts/audio-artifact-core.mjs','utf8'),original);
 });
 
-test('public entry delegates after label and owned root while CLI and parse body stay unchanged',async()=>{
+test('public entry retains the frozen CLI and calibration body apart from the exact F00 bridge bootstrap',async()=>{
   const crypto=require('node:crypto'),source=(await fs.readFile('scripts/audio-artifacts.mjs','utf8')).replaceAll('\r\n','\n');
   const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
   assert.equal(hash(source.slice(source.indexOf('export function parseAudioQualityArgs'),source.indexOf('export async function describeAudioArtifact'))),'6a8fb8a811f17bba7a6ffbdd7f841fea21d4e7470231dd0a5f37a45959eb413b');
-  assert.equal(hash((await fs.readFile('scripts/check-audio-quality.mjs','utf8')).replaceAll('\r\n','\n')),'6f8338b5c56b2043c33babea9957c3885c76b4be706ec578d300a849b789eee6');
+  const cli=(await fs.readFile('scripts/check-audio-quality.mjs','utf8')).replaceAll('\r\n','\n');
+  const previous=`    window.postMessage({namespace:'cheese-knife',protocol:1,type:'config',requestId:runtime.requestId,
+      revision:100,config:normalizeConfig({})},location.origin);`;
+  const current=`    const config=normalizeConfig({});
+    window.postMessage({namespace:'cheese-knife',protocol:2,type:'config',requestId:runtime.mediaRequestId,context:{...runtime.media.context},
+      deliverySequence:100,baseConfig:config,effectiveConfig:config,i18n:{},version:{globalRevision:0,mediaRevision:0},
+      profileState:'global',revisionStatus:'ready',mediaPhase:'ready',audioBindingGeneration:1,audioKind:'global',videoKind:'global'},location.origin);`;
+  assert.equal(cli.split(current).length,2,'only the approved bootstrap block differs');
+  assert.equal(hash(cli.replace(current,previous)),'6f8338b5c56b2043c33babea9957c3885c76b4be706ec578d300a849b789eee6');
   assert.match(source,/const files = await openOwnedRoot\(root\);\s+return describeAudioArtifactFiles\(files, label\);/);
   const {parseAudioQualityArgs}=await load();
   assert.deepEqual(parseAudioQualityArgs(['--chrome','--chrome','--label','first','--label','last'],process.cwd()),{chrome:true,root:process.cwd(),label:'last'});
@@ -124,6 +132,7 @@ test('public entry hashes actual disk bytes and retains label precedence missing
   // A fresh link destination avoids Windows locks on the just-renamed web directory.
   const linkedRoot=path.join(root,'linked-artifact');
   await fs.mkdir(linkedRoot);
+  await fs.copyFile(path.join(root,'media-profiles.js'),path.join(linkedRoot,'media-profiles.js'));
   await fs.copyFile(path.join(root,'config.js'),path.join(linkedRoot,'config.js'));
   await fs.symlink(path.join(root,'web'),path.join(linkedRoot,'web'),process.platform==='win32'?'junction':'dir');
   await assert.rejects(describeAudioArtifact(linkedRoot,'fixture'),{code:'owned-path-link'});
@@ -134,6 +143,7 @@ async function artifactFixture(t, suffix = '') {
   const root = await fs.mkdtemp(path.join(process.cwd(), 'output', 'test-audio-artifact-'));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   await fs.mkdir(path.join(root, 'web'));
+  await fs.writeFile(path.join(root, 'media-profiles.js'), `media${suffix}`);
   await fs.writeFile(path.join(root, 'config.js'), `config${suffix}`);
   await fs.writeFile(path.join(root, 'web/runtime.js'), `runtime${suffix}`);
   await fs.writeFile(path.join(root, 'web/site-adapter.js'), `adapter${suffix}`);
@@ -172,7 +182,7 @@ test('artifact description hashes every production audio entry file', async t =>
   const root = await artifactFixture(t);
   const description = await describeAudioArtifact(root, 'fixture');
   assert.equal(description.label, 'fixture');
-  assert.equal(description.files.length, 5);
+  assert.equal(description.files.length, 6);
   assert.deepEqual(description.files.map(item => item.path), AUDIO_ARTIFACT_FILES);
   assert.ok(description.files.every(item => /^[a-f0-9]{64}$/.test(item.sha256)));
 });

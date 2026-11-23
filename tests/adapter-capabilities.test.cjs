@@ -7,7 +7,7 @@ const { page, load, runtime, flush } = require('./helpers.cjs');
 function setup(t, html = '') {
   const dom = page(html);
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
-  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
   return { dom, adapter: runtime(dom).adapter };
 }
 

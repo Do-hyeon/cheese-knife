@@ -11,81 +11,157 @@ const initStyleParameters = (styleParameters: KnifeUnknownRecord | undefined) =>
 };
 
 let currentConfig: Record<string, KnifeScalar> | undefined;
-let currentParameters = {};
-let revision = 0;
+let currentParameters: KnifeUnknownRecord = {};
+let revision = 0, deliverySequence = 0;
 let requestId: string | undefined;
 let statuses: Record<string, { state: string; reason: string }> = {};
 let diagnostics: KnifeUnknownRecord = {};
-let readEpoch = 0, reading: { promise: Promise<void> } | null = null, readWanted = false, frozen = false, disposed = false;
-const sendConfig = () => window.postMessage({ namespace: "cheese-knife", protocol: 1,
-  type: "config", requestId, revision: revision++, config: currentConfig, i18n }, location.origin);
-function requestLatestSettings() {
-  if (disposed) return Promise.resolve();
-  readWanted = true;
-  if (frozen) return Promise.resolve();
-  if (reading) return reading.promise;
-  const job = {} as { promise: Promise<void> }; reading = job;
+type ReadJob = { promise: Promise<void> };
+type ScopeRequest = { requestId: string; context: KnifeScopedContext };
+let readEpoch = 0, reading: ReadJob | null = null, scopedReading: ReadJob | null = null;
+let readWanted = false, scopedWanted = false, frozen = false, disposed = false, scopedAcceptedEpoch = -1;
+let scopeRequest: ScopeRequest | null = null, audioBindingKey: string | null = null, audioBindingGeneration = 0;
+const pendingReads = new Set<() => void>();
+const own = (value: unknown, key: string): unknown => value && typeof value === 'object'
+  ? Object.getOwnPropertyDescriptor(value,key)?.value : undefined;
+function boundedRead<T>(read: () => Promise<T>): Promise<T> {
+  return new Promise<T>((resolve,reject) => {
+    let ended = false;
+    const finish = (result: { ok:true;value:T } | { ok:false;error:unknown }) => {
+      if (ended) return;ended = true;clearTimeout(timer);pendingReads.delete(cancel);
+      if (result.ok) resolve(result.value);else reject(result.error);
+    };
+    const cancel = () => finish({ok:false,error:new Error('configuration-read-retired')});
+    const timer = setTimeout(() => finish({ok:false,error:new Error('configuration-read-timeout')}),2000);
+    pendingReads.add(cancel);
+    try { void read().then(value => finish({ok:true,value}),error => finish({ok:false,error})); }
+    catch (error) { finish({ok:false,error}); }
+  });
+}
+function retireReads() {
+  readEpoch++;reading = null;scopedReading = null;readWanted = false;scopedWanted = false;scopedAcceptedEpoch = -1;
+  for (const cancel of [...pendingReads]) cancel();
+}
+const sendConfig = () => window.postMessage({namespace:'cheese-knife',protocol:1,type:'config',
+  requestId,revision:revision++,config:currentConfig,i18n},location.origin);
+function sendScoped(snapshot?: KnifeScopedSnapshot) {
+  const request = scopeRequest;
+  if (!request || !currentConfig || disposed || frozen || request.context.routePath !== location.pathname) return;
+  if (snapshot && snapshot.audioBindingKey !== audioBindingKey) {
+    audioBindingKey = snapshot.audioBindingKey;audioBindingGeneration++;
+  }
+  window.postMessage({namespace:'cheese-knife',protocol:2,type:'config',requestId:request.requestId,context:{...request.context},
+    deliverySequence:deliverySequence++,baseConfig:snapshot?.baseConfig ?? currentConfig,effectiveConfig:snapshot?.effectiveConfig ?? currentConfig,
+    i18n,version:snapshot?.version ?? {globalRevision:null,mediaRevision:null},
+    profileState:snapshot?.profileState ?? 'global',revisionStatus:snapshot?.revisionStatus ?? 'repair-required',
+    mediaPhase:snapshot ? snapshot.profileState === 'repair-required' || snapshot.revisionStatus === 'repair-required' ? 'limited' : 'ready' : 'pending',
+    audioBindingGeneration:snapshot ? audioBindingGeneration : 0,
+    audioKind:snapshot?.audioKind ?? 'global',videoKind:snapshot?.videoKind ?? 'global'},location.origin);
+}
+function requestLatestSettings(): Promise<void> {
+  if (disposed || frozen) return Promise.resolve();
+  readWanted = true;if (reading) return reading.promise;
+  const job = {} as ReadJob;reading = job;
   job.promise = (async () => {
     while (readWanted && !disposed && !frozen && reading === job) {
-      readWanted = false;
-      const started = readEpoch;
+      readWanted = false;const started = readEpoch;
       try {
-        const stored = await getConfig(true);
-        if (disposed || frozen || reading !== job) return;
-        if (started !== readEpoch) { readWanted = true; continue; }
-        currentConfig = stored.config; currentParameters = stored.styleParameters;
-        setFilters(currentConfig); initStyleParameters(currentParameters);
+        const stored = await boundedRead(() => getConfig(true));
+        if (disposed || frozen || reading !== job || started !== readEpoch) return;
+        if (scopedAcceptedEpoch !== started) {
+          currentConfig = stored.config;currentParameters = stored.styleParameters;initStyleParameters(currentParameters);
+          if (scopeRequest) sendScoped();
+        }
         if (requestId) sendConfig();
-      } catch { /* MAIN reports a bounded initial configuration timeout. Do not invent a successful read. */ }
+      } catch { /* The MAIN budget reports unavailable or a known-base limited fallback. */ }
     }
-  })().finally(() => { if (reading === job) reading = null; });
+  })().finally(() => {if (reading === job) reading = null;});
   return job.promise;
 }
-const onBridgeMessage = (e: MessageEvent<unknown>) => {
-  const data = e.data as KnifeUnknownRecord;
-  if (e.source !== window || e.origin !== location.origin || data == null || typeof data !== "object" ||
-    data.namespace !== "cheese-knife" || data.protocol !== 1) return;
-  if (data.type === "config-request" && typeof data.requestId === "string" && data.requestId.length <= 100) {
-    requestId = data.requestId;
+function requestScopedSettings(): Promise<void> {
+  if (disposed || frozen || !scopeRequest) return Promise.resolve();
+  scopedWanted = true;if (scopedReading) return scopedReading.promise;
+  const job = {} as ReadJob;scopedReading = job;
+  job.promise = (async () => {
+    while (scopedWanted && !disposed && !frozen && scopedReading === job && scopeRequest) {
+      scopedWanted = false;const started = readEpoch,request: ScopeRequest = scopeRequest;
+      try {
+        const stored = await boundedRead(() => readScopedConfig(request.context));
+        if (disposed || frozen || scopedReading !== job || started !== readEpoch || scopeRequest !== request ||
+          request.context.routePath !== location.pathname) return;
+        currentConfig = stored.baseConfig;currentParameters = stored.styleParameters;scopedAcceptedEpoch = started;
+        initStyleParameters(currentParameters);sendScoped(stored);
+        if (requestId) sendConfig();
+      } catch { /* Do not invent scoped success or preserve a retired channel overlay. */ }
+    }
+  })().finally(() => {if (scopedReading === job) scopedReading = null;});
+  return job.promise;
+}
+function readScopeRequest(data: unknown): ScopeRequest | null {
+  const id = own(data,'requestId'),raw = own(data,'context');
+  if (typeof id !== 'string' || !id.length || id.length > 128 || !raw || typeof raw !== 'object' || Array.isArray(raw) ||
+    Reflect.ownKeys(raw).length !== 4) return null;
+  const documentGeneration = own(raw,'documentGeneration'),routePath = own(raw,'routePath'),
+    channelId = own(raw,'channelId'),playerGeneration = own(raw,'playerGeneration');
+  if (!KnifeMediaProfiles.isCounter(documentGeneration) || documentGeneration < 1 ||
+    !KnifeMediaProfiles.isCounter(playerGeneration) || routePath !== location.pathname ||
+    channelId !== null && !KnifeMediaProfiles.isChannelId(channelId)) return null;
+  const actual = /^\/(?:live\/)?([a-f0-9]{32})\/?$/i.exec(location.pathname)?.[1]?.toLowerCase();
+  if (channelId !== null && (window.top !== window || actual !== channelId)) return null;
+  return {requestId:id,context:{documentGeneration,routePath,channelId,playerGeneration}};
+}
+const onBridgeMessage = (event: MessageEvent<unknown>) => {
+  const data = event.data;
+  if (disposed || frozen || event.source !== window || event.origin !== location.origin || own(data,'namespace') !== 'cheese-knife') return;
+  const protocol = own(data,'protocol'),type = own(data,'type');
+  if (protocol === 2 && type === 'config-request') {
+    const next = readScopeRequest(data);if (!next) return;
+    if (!scopeRequest || scopeRequest.requestId !== next.requestId || JSON.stringify(scopeRequest.context) !== JSON.stringify(next.context)) {
+      retireReads();scopeRequest = next;sendScoped();void requestLatestSettings();
+    }
+    void requestScopedSettings();
+  } else if (protocol === 1 && type === 'config-request' && typeof own(data,'requestId') === 'string') {
+    requestId = own(data,'requestId') as string;
+    if (!requestId.length || requestId.length > 100) {requestId = undefined;return;}
     void requestLatestSettings();
-  } else if (data.type === "status" && data.statuses && typeof data.statuses === "object") {
-    const accepted: [string, { state: string; reason: string }][] = [];
-    for (const [key, rawValue] of Object.entries(data.statuses)) {
-      const value = rawValue as { state: unknown; reason?: unknown } | null;
-      if (/^[a-zA-Z][a-zA-Z0-9-]{0,39}$/.test(key) &&
-        !['__proto__', 'prototype', 'constructor'].includes(key) && value &&
-        ["pending", "ready", "limited", "failed", "disabled"].includes(value.state as string)) {
-        accepted.push([key, { state: value.state as string, reason: typeof value.reason === "string" ? value.reason.slice(0, 80) : "" }]);
+  } else if (protocol === 1 && type === 'status' && own(data,'statuses') && typeof own(data,'statuses') === 'object') {
+    const accepted: [string,{state:string;reason:string}][] = [];
+    for (const [key,raw] of Object.entries(own(data,'statuses') as KnifeUnknownRecord)) {
+      const state = own(raw,'state'),reason = own(raw,'reason');
+      if (/^[a-zA-Z][a-zA-Z0-9-]{0,39}$/.test(key) && !['__proto__','prototype','constructor'].includes(key) &&
+        ['pending','ready','limited','failed','disabled'].includes(state as string)) {
+        accepted.push([key,{state:state as string,reason:typeof reason === 'string' ? reason.slice(0,80) : ''}]);
         if (accepted.length === 30) break;
       }
     }
     statuses = Object.fromEntries(accepted);
-    const detail = data.diagnostics as KnifeUnknownRecord | undefined;
-    diagnostics = detail?.world === "MAIN" ? detail : {};
-    let node = document.getElementById("knife-status");
-    if (!node) { node = document.createElement("script"); node.id = "knife-status"; (node as HTMLScriptElement).type = "application/json"; document.body.appendChild(node); }
-    node.textContent = JSON.stringify({ statuses, diagnostics });
+    const detail = own(data,'diagnostics');diagnostics = own(detail,'world') === 'MAIN' ? detail as KnifeUnknownRecord : {};
+    let node = document.getElementById('knife-status');
+    if (!node) {node = document.createElement('script');node.id = 'knife-status';(node as HTMLScriptElement).type = 'application/json';document.body.append(node);}
+    node.textContent = JSON.stringify({statuses,diagnostics});
   }
 };
-window.addEventListener('message', onBridgeMessage);
-const onStatusRequest = (message: unknown, _sender: chrome.runtime.MessageSender, respond: (value: unknown) => void) => {
-  if ((message as { type?: unknown } | null)?.type === "cheese-knife-status") respond({ statuses, diagnostics });
+window.addEventListener('message',onBridgeMessage);
+const onStatusRequest = (message: unknown,_sender:chrome.runtime.MessageSender,respond:(value:unknown)=>void) => {
+  if (own(message,'type') === 'cheese-knife-status') respond({statuses:requestId && !scopeRequest
+    ? {...statuses,mediaSettings:{state:'limited',reason:'reload-required'}} : statuses,diagnostics});
 };
 chrome.runtime.onMessage.addListener(onStatusRequest);
-const onSettingsChanged = (changes: Record<string, chrome.storage.StorageChange>) => {
-  if (['config', 'styleParameters', 'settingsRevision'].some(id => Object.hasOwn(changes, id))) {
-    readEpoch++; void requestLatestSettings();
+const onSettingsChanged = (changes: Record<string,chrome.storage.StorageChange>) => {
+  if (['config','styleParameters','settingsRevision','mediaProfiles'].some(key => Object.hasOwn(changes,key))) {
+    retireReads();sendScoped();void requestLatestSettings();void requestScopedSettings();
   }
 };
-// Subscribe before starting the first read; event payloads are never the settings authority.
 chrome.storage.local.onChanged.addListener(onSettingsChanged);
-const onPageShow = (event: PageTransitionEvent) => {
+const onPageShow = (event:PageTransitionEvent) => {
   if (!event.persisted || disposed) return;
-  frozen = false; readEpoch++; void requestLatestSettings();
+  frozen = false;retireReads();void requestLatestSettings();void requestScopedSettings();
 };
+window.addEventListener('pageshow',onPageShow);
+
 const onPageHide = (event: PageTransitionEvent) => {
   if (disposed) return;
-  readEpoch++; reading = null; frozen = true;
+  retireReads(); frozen = true;
   if (event.persisted) return;
   disposed = true;
   const failures: unknown[] = [];
@@ -143,76 +219,4 @@ i18nScript.type = "application/json";
 i18nScript.textContent = JSON.stringify(i18n);
 document.body.appendChild(i18nScript);
 
-const createSVGElement = <K extends keyof SVGElementTagNameMap>(name: K) =>
-  document.createElementNS("http://www.w3.org/2000/svg", name);
-const svg = createSVGElement("svg");
-if (navigator.userAgent.includes("Firefox")) {
-  svg.style.height = "0";
-} else {
-  svg.style.display = "none";
-}
-
-const filter = createSVGElement("filter");
-filter.id = "knifeFilter";
-svg.appendChild(filter);
-document.body.appendChild(svg);
-
-const setFilters = (config: Record<string, KnifeScalar>) => {
-  const filters = [];
-  for (const [f, v] of [["brightness", config.brightness as number], ["contrast", config.contrast as number], ["gamma", config.gamma as number]] as const) {
-    if (isNaN(v) || v === 1) {
-      continue;
-    }
-    const transfer = createSVGElement("feComponentTransfer");
-    filters.push(transfer);
-
-    for (const ff of ["feFuncR", "feFuncG", "feFuncB"] as const) {
-      const func = createSVGElement(ff);
-      switch (f) {
-        case "brightness":
-          func.setAttribute("type", "linear");
-          func.slope.baseVal = v;
-          break;
-        case "contrast":
-          func.setAttribute("type", "linear");
-          func.slope.baseVal = v;
-          func.intercept.baseVal = -v / 2 + 0.5;
-          break;
-        case "gamma":
-          func.setAttribute("type", "gamma");
-          func.exponent.baseVal = v;
-          break;
-      }
-      transfer.appendChild(func);
-    }
-  }
-
-  const sat = config.saturation as number;
-  if (!isNaN(sat) && sat !== 1) {
-    const color = createSVGElement("feColorMatrix");
-    color.setAttribute("type", "saturate");
-    const v = svg.createSVGNumber();
-    v.value = sat;
-    color.values.baseVal.initialize(v);
-    filters.push(color);
-  }
-
-  const s = config.sharpness as number;
-  if (s > 0) {
-    const v = Number((s / 5).toFixed(2));
-    const conv = createSVGElement("feConvolveMatrix");
-    conv.preserveAlpha.baseVal = true;
-    conv.setAttribute(
-      "kernelMatrix",
-      `0 ${-v} 0 ${-v} ${1 + v * 4} ${-v} 0 ${-v} 0`
-    );
-    filters.push(conv);
-  }
-  filter.replaceChildren(...filters);
-  if (filters.length) {
-    document.body.classList.add("knife-filter");
-  } else {
-    document.body.classList.remove("knife-filter");
-  }
-};
 void requestLatestSettings();

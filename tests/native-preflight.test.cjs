@@ -77,7 +77,7 @@ test('frozen styles UI really reports ready after a CSS initialization failure, 
   const { settingsHarness } = require('./settings-fixture.cjs'), { page, flush } = require('./helpers.cjs');
   const mod = await subject(), p = await payload(), b = mod.nativePreflightBaseline(p);
   const text = name => p.entries.find(e => e.name === name).bytes.toString();
-  const h = settingsHarness(t, {}, Object.fromEntries(['config.js','style-schema.js','settings-contract.js','settings-broker.js'].map(name => [name,text(name)])));
+  const h = settingsHarness(t, {}, {generation:'published',sources:Object.fromEntries(['config.js','style-schema.js','settings-contract.js','settings-broker.js'].map(name => [name,text(name)]))});
   h.failNext('css-get'); await h.initialize();
   const dom = page(text('styles.html'), `chrome-extension://${id}/styles.html`);
   t.after(() => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); dom.window.close(); });
@@ -97,7 +97,7 @@ for (const seeded of [false, true]) test(`frozen popup probe observes ${seeded ?
   const mod = await subject(), p = await payload(), b = mod.nativePreflightBaseline(p);
   const text = name => p.entries.find(e => e.name === name).bytes.toString();
   const raw = seeded ? { config: { arrowSeek: false, previewVolume: 25 }, settingsRevision: 7 } : {};
-  const h = settingsHarness(t, raw, Object.fromEntries(['config.js','style-schema.js','settings-contract.js','settings-broker.js'].map(name => [name,text(name)])));
+  const h = settingsHarness(t, raw, {generation:'published',sources:Object.fromEntries(['config.js','style-schema.js','settings-contract.js','settings-broker.js'].map(name => [name,text(name)]))});
   await h.initialize();
   const dom = page(text('popup.html'), `chrome-extension://${id}/popup.html`);
   t.after(() => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); dom.window.close(); });

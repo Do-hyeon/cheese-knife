@@ -111,7 +111,7 @@ function callbackScript(fixture,mode) {
 const {settingsHarness,config}=require(${JSON.stringify(fixture)});
 const cleanup=[],rejections=[],watchdog=setTimeout(()=>process.exit(2),10000);
 const onReject=e=>rejections.push(e.message);process.on('unhandledRejection',onReject);
-(async()=>{const sources=Object.fromEntries(['config.js','style-schema.js','settings-contract.js','settings-broker.js'].map(f=>[f,fs.readFileSync(f,'utf8')]));
+(async()=>{const sources={generation:'f00',sources:Object.fromEntries(['media-profiles.js','config.js','style-schema.js','settings-contract.js','settings-broker.js'].map(f=>[f,fs.readFileSync(f,'utf8')]))};
 const h=settingsHarness({after:f=>cleanup.push(f)}, {}, sources);await h.initialize();const c=h.client('popup');await h.settle();const api=c.api;
 let calls=0;const observations=[];const gate=h.holdNext('callback:patch');
 api.runtime.sendMessage({namespace:'cheese-knife-settings',protocol:1,requestId:'probe',action:'patch',operations:[config('arrowSeek',false)]},reply=>{
@@ -136,10 +136,12 @@ test('fixture compatibility: callback exceptions retain actual cleanup and count
 });
 
 test('fixture compatibility: post-eval Chrome replacement and original nullable src exception', async t => {
-  const sources={
+  /** @type {NonNullable<Parameters<typeof settingsHarness>[2]>} */
+  const sources={generation:'f00',sources:{
+    'media-profiles.js':fs.readFileSync('media-profiles.js','utf8'),
     'config.js':fs.readFileSync('config.js','utf8')+`;globalThis.fixtureReads=0;const prior=chrome;chrome=new Proxy(prior,{get(target,key){if(key==='storage')fixtureReads++;return Reflect.get(target,key);}});`,
     'style-schema.js':fs.readFileSync('style-schema.js','utf8'), 'settings-contract.js':fs.readFileSync('settings-contract.js','utf8'), 'settings-broker.js':fs.readFileSync('settings-broker.js','utf8'),
-  };
+  }};
   const h=settingsHarness(t,{},sources); await h.initialize(); await h.patch('popup',[config('arrowSeek',false)]); assert.ok(h.worker);
   const reads=h.worker.window.eval('fixtureReads'); assert.ok(typeof reads==='number'&&reads>0);
   await assert.rejects(h.openUi('popup',{setup:(_api,dom)=>{
@@ -151,7 +153,8 @@ test('fixture compatibility: post-eval Chrome replacement and original nullable 
 test('fixture compatibility: baseline runtime tokens and changed lastError oracle control', t => {
   const original=fs.readFileSync(fixturePath,'utf8');
   // One-time provenance: untouched051aad1/82eb66d; CI needs no historical object.
-  assert.equal(normalizedHash(original),'839420561b9c62c7ca0d66fc65dd5313216b81e6751bed41e3d2073f09ad4713');
+  const historical=fs.readFileSync('tests/fixtures/settings-fixture-pre-f00.txt','utf8');
+  assert.equal(normalizedHash(historical),'839420561b9c62c7ca0d66fc65dd5313216b81e6751bed41e3d2073f09ad4713');
   const directory=proofDirectory(t), copy=original.replace("require('./helpers.cjs')",`require(${JSON.stringify(path.resolve('tests/helpers.cjs'))})`);
   assert.equal(original.split("require('./helpers.cjs')").length,2);
   const file=path.join(directory,'raw.cjs'); fs.writeFileSync(file,copy);
@@ -209,7 +212,7 @@ function diagnostics(result,targets) {
   for(const [file,rows] of targets) assert.deepEqual([...(seen.get(file)||[])].sort((a,b)=>a-b),[...rows.keys()].sort((a,b)=>a-b),file);
 }
 
-test('fixture checker keeps strict options and the exact thirteen-file graph', () => {
+test('fixture checker keeps strict options and the exact F00 fifteen-file graph', () => {
   const project=JSON.parse(fs.readFileSync('tsconfig.settings-fixture.json','utf8')), parent=JSON.parse(fs.readFileSync('tsconfig.development.json','utf8'));
   assert.deepEqual(project,{extends:'./tsconfig.development.json',compilerOptions:{moduleDetection:'legacy',types:['node','chrome']},files:['tests/settings-fixture.cjs','tests/settings-fixture-contracts.test.cjs'],include:[]});
   for(const key of ['allowJs','checkJs','noEmit','strict','noUncheckedIndexedAccess','exactOptionalPropertyTypes','useUnknownInCatchVariables']) assert.equal(parent.compilerOptions[key],true);
@@ -219,6 +222,7 @@ test('fixture checker keeps strict options and the exact thirteen-file graph', (
   assert.deepEqual(actual.sort(),[
     'tests/settings-fixture.cjs','tests/settings-fixture-contracts.test.cjs','tests/helpers.cjs',
     'src/settings/config.ts','src/settings/style-schema.ts','src/settings/contract.ts','src/settings/client.ts','src/settings/broker.ts',
+    'src/settings/media-profiles.ts','src/shared/media-contracts.ts',
     'src/main/runtime/contracts.ts','src/main/site-adapter/contracts.ts','src/main/features/audio/contracts.ts','src/main/features/player/contracts.ts','src/main/features/preview/contracts.ts',
   ].sort());
 });
@@ -239,7 +243,7 @@ test('fixture public contract accepts real raw normal calls and rejects eighteen
     'const gate=h.holdNext("anything");gate.release();gate.entered({arbitrary:true});gate.reached.then(value=>{const raw=value;});',
     'const view=c.view();if(view?.snapshot)view.snapshot.revision.toFixed();if(c.time)await c.time.advance(0);',
     'await api.scripting.registerContentScripts([{id:"foreign"},{id:"mixed",js:["x"],css:["y"]}]);const tabs=await api.tabs.query({active:true});if(tabs[0])tabs[0].id.toFixed();',
-    'settingsHarness(t,{}, {"config.js":"x","style-schema.js":"x","settings-contract.js":"x","settings-broker.js":"x"});',
+    'settingsHarness(t,{}, {generation:"published",sources:{"config.js":"x","style-schema.js":"x","settings-contract.js":"x","settings-broker.js":"x"}});',
     'h.client("popup",{fakeTime:undefined});await h.openUi("popup",{locale:undefined,query:undefined,target:undefined,fakeTime:undefined,setup:undefined});',
     'await h.send("popup",42,{arbitrary:true});await h.request("popup","unknown",{payload:42});const raw=await h.snapshot();',
     '}'];
@@ -268,7 +272,7 @@ test('fixture actual internal bindings reject five goals and each one-boundary w
   copy=copy.replace(/<reference path="([^"]+)" \/>/g,(match,relative)=>{
     references++; const replacement=`<reference path="${path.resolve('tests',relative).replaceAll('\\','/')}" />`; rewrites.push([match,replacement]); return replacement;
   });
-  assert.equal(references,5);
+  assert.equal(references,6);
   let restored=copy.replace(absoluteHelper,helper); for(const [before,after] of rewrites) restored=restored.replace(after,before);
   assert.equal(restored,original);
   const controls=[

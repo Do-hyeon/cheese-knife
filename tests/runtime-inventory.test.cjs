@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
-const expected = require('./fixtures/runtime-js-baseline.json');
+const expected = require('./fixtures/f00-runtime-js.json');
 
 async function inventoryModule() {
   return import(pathToFileURL(path.resolve('scripts/check-runtime-inventory.mjs')));
@@ -27,7 +27,7 @@ async function writeBaselines(root, mod) {
   await fs.writeFile(path.join(root, 'executable.json'), JSON.stringify(hashes));
 }
 
-test('repository runtime inventory is exactly the approved 16 files', async () => {
+test('repository runtime inventory is exactly the approved F00 files', async () => {
   const mod = await inventoryModule();
   assert.deepEqual(await mod.listRuntimeJavaScript(path.resolve('.')), expected);
   await mod.checkRuntimeInventory(path.resolve('.'));

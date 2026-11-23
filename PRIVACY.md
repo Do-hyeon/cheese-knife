@@ -10,6 +10,8 @@
 
 복구판은 Google Chrome만 지원하며 Firefox를 지원·배포하지 않습니다.
 
+**개발 중 F00 고지:** 아래 채널 설정·프리셋 관련 내용은 아직 공개하지 않은 로컬 개발판의 추가 처리입니다. 현재 스토어 2.13.3의 기능 제공 또는 업데이트 완료를 뜻하지 않습니다. 정책 URL·스토어 항목은 이번 로컬 작업에서 변경하지 않습니다.
+
 ## 1. 목적과 처리 범위
 
 확장 프로그램의 목적은 치지직(CHZZK) 방송 및 VOD의 시청 경험 개선입니다. 미리보기, 플레이어 조작, 오디오 조절, 채팅 표시 및 화면 구성 설정에 필요한 정보를 사용자의 브라우저 안에서 처리합니다. 로컬 처리도 데이터 처리에 포함되므로 아래에 공개합니다.
@@ -22,6 +24,7 @@
 | 조작 이벤트 | 미리보기, 방향키 탐색, 길게 눌러 빨리 감기, 팝업 이동 및 채팅 크기 조절에 필요한 마우스 위치·버튼·관련 키 입력을 일시 처리합니다. 행동 분석 로그나 입력 내용의 기록을 만들지 않습니다. |
 | 웹사이트 콘텐츠와 재생 상태 | 페이지 요소, 방송 정보, 이미지·영상·음성, 재생 위치·속도 및 기능 연결 상태를 표시·재생·화면 및 오디오 조절에 사용합니다. 음성·영상 녹화 또는 개발자에게 업로드하는 기능은 없습니다. |
 | 설정값 | 기능 활성화 여부, 미리보기·영상 필터·컴프레서·스타일 설정, Gain 및 채팅 너비를 저장해 다음 사용에 반영합니다. |
+| 채널 선호 설정·프리셋 (개발 중 F00) | 사용자가 명시적으로 활성화한 채널의 방송 식별자와 오디오·영상 필터 값, 사용자가 입력한 프리셋 이름과 복사한 설정값을 로컬에 저장합니다. 로그인 계정별로 구별하거나 시청 이력을 자동 저장하지 않습니다. |
 
 확장 프로그램은 건강 정보, 결제 수단·결제 내역, 비밀번호 또는 GPS 위치를 별도로 추출하거나 보관하지 않습니다. 후원 메시지 숨김은 메시지 종류에 따른 표시 처리이며 결제 정보를 조회하는 기능이 아닙니다.
 
@@ -39,6 +42,7 @@
 ## 3. 저장 위치와 보관
 
 - 일반 기능·스타일 설정은 `chrome.storage.local`의 확장 전용 저장소에 보관합니다. 이 확장은 `chrome.storage.sync`를 사용하지 않습니다.
+- 개발 중 F00의 채널 선호 설정·프리셋도 같은 확장 전용 로컬 저장소에 보관합니다. 탐색만으로 채널 레코드를 만들지 않으며, 설정 탭의 명시적인 저장 동작이 필요합니다. 채널 목록·프리셋 이름 전체를 치지직 페이지에 전달하거나 외부로 전송하지 않습니다.
 - Gain(`knifeGain`)과 채팅 너비(`chatWidth`)는 치지직 사이트 origin의 `localStorage`에 저장합니다. 이 저장소는 사이트 측 저장소이므로 확장 제거만으로 해당 값의 삭제를 보장하지 않습니다.
 - 방송 정보·재생 상태·채팅 표시용 정보는 페이지 메모리에서 일시 처리합니다. 일부 방송·VOD 정보는 유효기간이 있는 메모리 캐시를 사용합니다. 채팅 본문·방문기록·조작 이벤트를 확장 전용 저장소나 파일에 장기 저장하는 기능은 없습니다.
 - 확장 관리자가 사용자의 브라우저에 저장된 이 데이터를 조회할 수 있는 수집 서버는 없습니다. 브라우저의 세션 복원·사이트 저장소 및 메모리 관리는 브라우저의 동작에 영향을 받습니다.
@@ -55,6 +59,8 @@
 
 저장된 값의 삭제가 필요하면 확장 전용 저장소와 치지직 사이트 저장소를 구분해야 합니다. 확장 전용 설정은 브라우저의 확장 관리 기능을 통해 관리합니다. 사이트 저장소의 `knifeGain`·`chatWidth`는 해당 키를 삭제하거나 치지직 사이트 데이터를 삭제해 제거할 수 있습니다. **사이트 데이터 전체 삭제는 치지직 로그인과 다른 사이트 설정에도 영향을 줄 수 있습니다.**
 
+개발 중 F00에서는 설정 탭에서 저장된 채널, 도메인별 설정 또는 프리셋을 수동 삭제할 수 있습니다. 프리셋 삭제는 이미 적용한 복사본을 삭제하지 않습니다. 확장 제거 시 확장 전용 로컬 설정·채널·프리셋은 사라지며 다른 확장 ID로 자동 이전되지 않습니다. Gain·채팅 너비의 사이트 저장소는 별도입니다.
+
 ## 6. 문의와 방침 변경
 
 문의는 [커뮤니티 포크 GitHub Issues](https://github.com/Do-hyeon/cheese-knife/issues)를 이용할 수 있습니다. Issues는 공개되므로 비밀번호, 쿠키·토큰, 개인 이메일, 비공개 채팅 또는 서명된 미디어 URL을 게시하지 마세요. 사용자가 자발적으로 제출한 문의와 첨부 자료는 GitHub에 남을 수 있으며, 해당 사이트의 삭제·개인정보 절차를 따릅니다.
@@ -70,6 +76,8 @@
 - **Maintainer:** the community fork maintained by GitHub account **Do-hyeon**.
 
 The community recovery supports Google Chrome only; Firefox is not supported or distributed.
+
+**F00 development notice:** channel preferences and presets described below are additions in the unpublished local development build, not a claim that the current store version 2.13.3 offers or has updated these features. This local work does not change the policy URL or store listing.
 
 The canonical document URL is [main/PRIVACY.md](https://github.com/Do-hyeon/cheese-knife/blob/main/PRIVACY.md). The published Chrome Web Store listing uses this URL as of October 12, 2026. URLs on the retired work branch are no longer maintained; use the canonical URL instead. This revision updates document-location guidance, not the data-processing policy below, and does not declare completed security verification.
 
@@ -109,6 +117,8 @@ Stream metadata, playback state and chat-display information are processed in pa
 **The extension's use of user data complies with the Chrome Web Store User Data Policy, including its Limited Use requirements.** Data are used only for the disclosed viewing features. Data are not sold or transferred for unrelated purposes; CHZZK/media requests necessary for these features are described above. Data are not used or transferred for personalized advertising, data brokerage, credit-worthiness or lending. The maintainer does not automatically receive or read browser-held chats, identifiers or interactions.
 
 ### Controls, deletion and contact
+
+In the unpublished F00 build, explicitly enabled channel identifiers, compressor/video-filter preferences and user-entered preset names are stored in extension-local storage, not sent externally or used to identify login accounts. Navigation alone does not create channel records. The CHZZK page does not receive the full channel/preset catalogue. Users can delete a saved channel, domain or preset in the settings tab; deleting a preset does not delete copies already applied. Uninstalling removes extension-local preferences and presets; migration between extension IDs is not automatic. Gain and chat width remain separate site-storage values.
 
 Users can disable individual features or disable/uninstall the extension. Reloading a page may be necessary for setting changes. Extension preferences and CHZZK site storage are separate: browser extension management controls the former; removing the `knifeGain` and `chatWidth` keys or clearing CHZZK site data removes the latter. **Clearing all CHZZK site data may also affect login and other site settings.**
 

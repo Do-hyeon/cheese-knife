@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { page, load, runtime, deliver, playerHTML, flush, clock } = require('./helpers.cjs');
+const { page, load, runtime, deliverScoped: deliver, playerHTML, flush, clock } = require('./helpers.cjs');
 
 function previewFixture(t, config = {}) {
   const dom = page(playerHTML + '<aside id="sidebar"><a id="side" href="/live/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb">Live</a></aside>');
@@ -37,7 +37,7 @@ function previewFixture(t, config = {}) {
       livePlaybackJson: JSON.stringify({ media: [{ mediaId: 'HLS', path: 'https://media.invalid/master.m3u8' }] }),
     } }) };
   };
-  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
   const values = { preview: true, livePreview: true, previewDelay: 0.1, previewWidth: 400, previewVolume: 5, rightClickToUnmute: true, ...config };
   deliver(dom, values); runtime(dom).Hls = Stream; load(dom, 'web/preview.js');
   t.after(() => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); dom.window.close(); });
@@ -246,7 +246,7 @@ test('startup deadline also cancels an unresolved play promise after a decoded f
 });
 
 for (const time of [0, 10]) test('media recovery resumes loading using the actual bundled HLS recovery method at time ' + time, async t => {
-  const vendorDom = page(); load(vendorDom, 'web/runtime.js'); load(vendorDom, 'vendor/hls.light.private.js');
+  const vendorDom = page(); load(vendorDom, 'media-profiles.js'); load(vendorDom, 'web/runtime.js'); load(vendorDom, 'vendor/hls.light.private.js');
   const method = runtime(vendorDom).Hls.prototype.recoverMediaError;
   t.after(() => { vendorDom.window.dispatchEvent(new vendorDom.window.PageTransitionEvent('pagehide')); vendorDom.window.close(); });
   const fixture = previewFixture(t); const video = await fixture.show(); const stream = fixture.instances[0];
@@ -297,7 +297,7 @@ async function followingFixture(t, { compact = false, noEffect = false, wrapped 
     '<button class="_more_button_test" aria-expanded="false" id="more">더보기</button>' + (wrapped ? '</div>' : '') + '</nav></aside>';
   const dom = page(html), time = clock(dom); const more = dom.window.document.getElementById('more'); let clicks = 0;
   more.addEventListener('click', () => { clicks++; if (!noEffect) more.setAttribute('aria-expanded', more.getAttribute('aria-expanded') === 'true' ? 'false' : 'true'); });
-  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
   deliver(dom, { expandFollowings: true, updateSidebar: false }); load(dom, 'web/inject.js');
   t.after(() => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); dom.window.close(); });
   await time.advance(500);

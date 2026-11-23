@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { page, load, runtime, deliver, playerHTML, flush } = require('./helpers.cjs');
+const { page, load, runtime, deliverScoped: deliver, playerHTML, flush } = require('./helpers.cjs');
 
 function setup(t, html = playerHTML, url) {
   const dom = page(html, url);
@@ -9,7 +9,7 @@ function setup(t, html = playerHTML, url) {
     await flush();
     dom.window.close();
   });
-  load(dom, 'web/runtime.js');
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js');
   load(dom, 'web/site-adapter.js');
   return dom;
 }
@@ -17,7 +17,7 @@ function setup(t, html = playerHTML, url) {
 test('runtime stays useful without an adapter and late adapter reconciles exactly once', t => {
   const dom = page(playerHTML), key = dom.window.Symbol.for('cheese-knife.runtime.v1');
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
-  load(dom, 'web/runtime.js');
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js');
   const knife = runtime(dom);
   assert.equal(knife.route().kind, 'live');
   assert.equal(knife.state.body, null);
@@ -44,7 +44,7 @@ test('runtime installs an own singleton instead of trusting an inherited symbol 
     dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
     await flush(); dom.window.close();
   });
-  load(dom, 'web/runtime.js');
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js');
   const descriptor = Object.getOwnPropertyDescriptor(dom.window, key);
   assert.ok(descriptor, 'the page runtime must be an own property');
   assert.notEqual(descriptor.value, prototype[key]);
@@ -53,13 +53,14 @@ test('runtime installs an own singleton instead of trusting an inherited symbol 
 
 test('runtime status keys reject prototype names and preserve a bounded ordinary snapshot', t => {
   const dom = setup(t), knife = runtime(dom);
+  const baseline=Object.keys(knife.statuses);
   const beforePrototype = Object.getPrototypeOf(knife.statuses);
   for (const key of ['__proto__', 'prototype', 'constructor', '', 'a'.repeat(41), 'bad key']) {
     knife.setStatus(key, 'ready', 'must-not-appear');
   }
   knife.setStatus('validFeature', 'limited', 'x'.repeat(100));
   assert.equal(Object.getPrototypeOf(knife.statuses), beforePrototype);
-  assert.deepEqual(Object.keys(knife.statuses), ['validFeature']);
+  assert.deepEqual(Object.keys(knife.statuses), [...baseline,'validFeature']);
   assert.equal(knife.statuses.validFeature.state, 'limited');
   assert.equal(knife.statuses.validFeature.reason, 'x'.repeat(80));
 });
@@ -86,7 +87,7 @@ test('preview video is not selected as the main player', t => {
 test('delayed root and video replacement are reconciled without duplicate runtime', async t => {
   const dom = setup(t, '');
   const original = runtime(dom);
-  load(dom, 'web/runtime.js');
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js');
   assert.equal(runtime(dom), original);
   dom.window.document.body.innerHTML = playerHTML;
   await flush();
@@ -119,11 +120,13 @@ test('late license anchor triggers one adapter-owned discovery reconciliation', 
 
 test('config accepts current same-window response and rejects null, foreign, stale messages', t => {
   const dom = setup(t);
+  let accepted;dom.window.addEventListener('message',event=>{accepted=event.data;});
   dom.window.dispatchEvent(new dom.window.MessageEvent('message', { data: null }));
   deliver(dom, { arrowSeek: false }, 2);
   deliver(dom, { arrowSeek: true }, 1);
-  dom.window.dispatchEvent(new dom.window.MessageEvent('message', { source: null,
-    origin: 'https://other.invalid', data: { namespace: 'cheese-knife', protocol: 1, type: 'config', revision: 3, config: { arrowSeek: true } } }));
+  for(const [source,origin] of [[null,dom.window.location.origin],[dom.window,'https://other.invalid']]) {
+    dom.window.dispatchEvent(new dom.window.MessageEvent('message',{source,origin,data:{...accepted,deliverySequence:3}}));
+  }
   assert.equal(runtime(dom).config.arrowSeek, false);
   assert.equal(runtime(dom).configReady, true);
 });
@@ -160,7 +163,7 @@ test('startup failure rolls back only its own registry and resources', t => {
       disconnect() {}
     };
     t.after(() => dom.window.close());
-    assert.throws(() => load(dom, 'web/runtime.js'), /fixture-startup/);
+    assert.throws(() => { load(dom, 'media-profiles.js');load(dom, 'web/runtime.js'); }, /fixture-startup/);
     assert.equal(Object.getOwnPropertyDescriptor(dom.window, key)?.value, replaceRegistry ? foreign : undefined);
     assert.equal(listeners.size, 0);
   }
@@ -183,7 +186,7 @@ test('persisted pagehide freezes one pulse and pageshow resumes it once', t => {
   dom.window.setInterval = () => { const id = ++next; active.add(id); return id; };
   dom.window.clearInterval = id => active.delete(id);
   t.after(() => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); dom.window.close(); });
-  load(dom, 'web/runtime.js');
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js');
   assert.equal(active.size, 1);
   dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide', { persisted: true }));
   assert.equal(active.size, 0);
@@ -198,7 +201,7 @@ test('configuration retry owns one timeout across repeated pageshow and teardown
   dom.window.setTimeout = callback => { const id = ++next; active.set(id, callback); return id; };
   dom.window.clearTimeout = id => active.delete(id);
   t.after(() => dom.window.close());
-  load(dom, 'web/runtime.js');
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js');
   assert.equal(active.size, 1);
   dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow', { persisted: true }));
   dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pageshow', { persisted: true }));
@@ -226,7 +229,7 @@ test('final pagehide removes owned listeners observer timers and registry', t =>
   const NativeObserver = dom.window.MutationObserver;
   dom.window.MutationObserver = class extends NativeObserver { disconnect() { disconnected++; super.disconnect(); } };
   t.after(() => dom.window.close());
-  load(dom, 'web/runtime.js');
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js');
   dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide'));
   assert.equal(Object.getOwnPropertyDescriptor(dom.window, key), undefined);
   assert.equal(active.size, 0);
@@ -236,21 +239,21 @@ test('final pagehide removes owned listeners observer timers and registry', t =>
 
 test('bridge copies config and i18n own data descriptors and rejects accessors prototypes and stale revisions', t => {
   const dom = setup(t), knife = runtime(dom); let getters = 0;
+  let accepted;dom.window.addEventListener('message',event=>{accepted=event.data;});
   deliver(dom, { arrowSeek: false }, 1);
+  const positive=accepted;assert.equal(knife.configReady,true);
   const accessorConfig = {};
   Object.defineProperty(accessorConfig, 'arrowSeek', { enumerable: true, get() { getters++; return true; } });
   dom.window.dispatchEvent(new dom.window.MessageEvent('message', { source: dom.window, origin: dom.window.location.origin,
-    data: { namespace: 'cheese-knife', protocol: 1, type: 'config', requestId: knife.requestId,
-      revision: 2, config: accessorConfig, i18n: {} } }));
+    data: { ...positive,deliverySequence:2,baseConfig:accessorConfig,effectiveConfig:accessorConfig } }));
   const inheritedConfig = Object.create({ arrowSeek: true });
   dom.window.dispatchEvent(new dom.window.MessageEvent('message', { source: dom.window, origin: dom.window.location.origin,
-    data: { namespace: 'cheese-knife', protocol: 1, type: 'config', requestId: knife.requestId,
-      revision: 3, config: inheritedConfig, i18n: {} } }));
+    data: { ...positive,deliverySequence:3,baseConfig:inheritedConfig,effectiveConfig:inheritedConfig } }));
   const accessorI18n = {};
   Object.defineProperty(accessorI18n, 'fastForward', { enumerable: true, get() { getters++; return 'unsafe'; } });
   dom.window.dispatchEvent(new dom.window.MessageEvent('message', { source: dom.window, origin: dom.window.location.origin,
-    data: { namespace: 'cheese-knife', protocol: 1, type: 'config', requestId: knife.requestId,
-      revision: 4, config: { arrowSeek: true }, i18n: accessorI18n } }));
+    data: { ...positive,deliverySequence:4,baseConfig:{...positive.baseConfig,arrowSeek:true},
+      effectiveConfig:{...positive.effectiveConfig,arrowSeek:true},i18n:accessorI18n } }));
   assert.equal(getters, 0);
   assert.equal(knife.config.arrowSeek, false);
   deliver(dom, { arrowSeek: true }, 2);

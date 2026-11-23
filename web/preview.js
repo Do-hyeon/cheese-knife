@@ -455,7 +455,7 @@
     const browser = target;
     const key = browser.Symbol.for("cheese-knife.runtime.v1");
     const runtime = Object.getOwnPropertyDescriptor(target, key)?.value;
-    if (!runtime || runtime.preview) return null;
+    if (runtime?.ownerProtocol !== 2 || runtime.preview) return null;
     const scope = runtime.createScope();
     const panel = createPanel(runtime, scope);
     const cache = /* @__PURE__ */ new Map();

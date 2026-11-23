@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const nonce = '0123456789abcdef0123456789abcdef', id = 'a'.repeat(32);
 const faultError = code => Object.assign(Error(code), { code });
 
-async function fixture(t, fault) {
+async function fixture(t, fault, scenario) {
   const { openOwnedRoot } = await import('../scripts/owned-files.mjs');
   const { readPublishedPayload } = await import('../scripts/extension-e2e/published-payload.mjs');
   const base = await fs.mkdtemp(path.join(os.tmpdir(), 'transition-child-'));
@@ -16,7 +16,8 @@ async function fixture(t, fault) {
   await files.ensureDirectory('work'); await files.ensureDirectory('artifact');
   let builds = 0, attestations = 0, launchIndex = 0, writes = 0;
   const payload = await readPublishedPayload();
-  const options = { nonce, roots: [{ caseId: 'valid-ui', root: 'work' }], candidateIds: ['first', 'second'], artifact: 'artifact', headed: false };
+  const options = { nonce, roots: [{ caseId: 'valid-ui', root: 'work' }], candidateIds: ['first', 'second'], artifact: 'artifact', headed: false,
+    ...(scenario ? { scenario } : {}) };
   const source = { sourceCommit: 'a'.repeat(40) };
   const deps = {
     openRepository: async () => files,
@@ -29,6 +30,8 @@ async function fixture(t, fault) {
       for (const entry of payload.entries) {
         const target = `${name}/${entry.name}`; await files.ensureDirectory(path.posix.dirname(target)); await files.writeFile(target, entry.bytes);
       }
+      if(fault!=='missing-media-module')await files.writeFile(`${name}/media-profiles.js`,'var KnifeMediaProfiles = {};');
+      if(fault==='extra-media-module')await files.writeFile(`${name}/unexpected.js`,'var unexpected = true;');
       return { dist: await files.resolve(name, { type: 'directory' }) };
     },
     openWorkRoot: async directory => {
@@ -44,13 +47,13 @@ async function fixture(t, fault) {
     requestLaunch: async message => { events.push(`intent:${message.phase}`); },
     send: async message => { messages.push(message); if (message.type === 'close-success') events.push(`closed:${message.phase}`); },
     launchInstalledExtension: async args => {
-      const phase = ['seed', 'old', 'new', 'rollback'][launchIndex++]; events.push(`launch:${phase}`);
+      const phase = (scenario ? ['seed','old','new','rollback','new'] : ['seed', 'old', 'new', 'rollback'])[launchIndex++]; events.push(`launch:${phase}`);
       paths.push([args.profilePath, args.extensionPath]);
       if (fault === 'launch' && phase === 'old') throw faultError('test-launch');
       const manifest = JSON.parse(await fs.readFile(path.join(args.extensionPath, 'manifest.json')));
       assert.equal(manifest.version, { seed: '2.13.3', old: '2.13.3', new: '2.13.4', rollback: '2.13.5' }[phase]);
       const pages = [];
-      const context = { setDefaultTimeout() {}, pages: () => pages,
+      const context = { fixturePhase:phase,setDefaultTimeout() {}, pages: () => pages,
         tracing: { start: async () => { if (fault === 'trace' && phase === 'old') throw faultError('test-trace'); }, stop: async options => { if (options?.path) await fs.writeFile(options.path, 'test trace'); } },
         newPage: async () => { const page = { goto: async () => {}, locator: () => ({ waitFor: async () => {} }), close: async () => {}, screenshot: async () => Buffer.from('test image') }; pages.push(page); return page; },
         close: async () => {
@@ -71,6 +74,14 @@ async function fixture(t, fault) {
         failure: { code: 'transition-storage-preservation', caseId: 'valid-ui', phase: 'new', step: 'startup', stage: 'candidate-init', cleanupErrors: [], observation: { raw: {}, execution: { extensionId: id, version: '2.13.4', brokerMatches: true } } },
       });
       return { caseId: args.caseId, phase: args.phase, records: [], final: { marker: args.phase } };
+    },
+    openMediaBrowserSession:async()=>({send:async()=>({}),on(){},off(){}}),
+    closeInstalledMediaBrowser:async({context})=>{events.push(`proof:${context.fixturePhase}`);return {browserCloseAcknowledged:true,browserDisconnected:true,
+      ownedRootClosed:!(fault==='media-close-root'&&context.fixturePhase==='old')};},
+    runInstalledMediaPreservationScenario:async args=>{
+      events.push(`media:${args.launchOccurrence}:${args.phase}`);const {expectedInstalledMediaStore}=await import('../scripts/extension-e2e/transition-scenario.mjs');
+      const presetId='11111111-1111-4111-8111-111111111111';if(args.launchOccurrence===2)storage.mediaProfiles=expectedInstalledMediaStore(nonce,presetId);
+      return {caseId:'valid-ui',phase:args.phase,launchOccurrence:args.launchOccurrence,records:[],final:{raw:structuredClone(storage)},presetId:args.launchOccurrence>=2?presetId:undefined};
     },
   };
   return { options, deps, events, messages, paths, writes: () => writes };
@@ -111,4 +122,21 @@ test('postclose inventory error cannot disappear behind the expected storage-los
   assert.equal(result.failure.code, 'transition-storage-preservation');
   assert.ok(result.secondaryErrors.some(error => error.code === 'transition-inventory'));
   assert.equal(f.events.includes('launch:rollback'), false);
+});
+test('media child keeps the same root for seed and four observations, creating only first-new',async t=>{
+  const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t,undefined,'media-preservation');await executeTransitionChild(f.options,f.deps);
+  const result=f.messages.at(-1).result;assert.equal(result.failure,undefined);assert.equal(result.scenario,'media-preservation');assert.equal(f.writes(),1);
+  assert.deepEqual(result.phases.map(value=>value.launchOccurrence),[1,2,3,4]);assert.deepEqual(result.phases.map(value=>value.phase),['old','new','rollback','new']);
+  const close=f.messages.filter(value=>value.type==='close-success');assert.equal(close.length,5);
+  assert.ok(close.every(value=>value.shutdown?.browserCloseAcknowledged&&value.shutdown?.browserDisconnected&&value.shutdown?.ownedRootClosed));
+  assert.ok(f.paths.every(value=>value[0]===f.paths[0][0]&&value[1]===f.paths[0][1]));
+});
+test('media child never replaces or relaunches after an unproven owned root close',async t=>{
+  const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t,'media-close-root','media-preservation');await executeTransitionChild(f.options,f.deps);
+  assert.ok(f.messages.at(-1).result.failure);assert.equal(f.events.includes('launch:new'),false);
+  assert.equal(f.messages.filter(value=>value.type==='close-success').length,1);
+});
+for(const fault of ['missing-media-module','extra-media-module'])test('child rejects current asset '+fault+' before launching',async t=>{
+  const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t,fault);await executeTransitionChild(f.options,f.deps);
+  assert.equal(f.paths.length,0);assert.equal(f.messages.at(-1).result.failure.code,'transition-inventory');
 });

@@ -19,6 +19,28 @@ const close = () => ({ ...intent(), type: 'close-success' });
 const roots = [{ caseId: 'valid-ui', root }];
 function exit(child, code = 0) { child.exitCode = code; child.emit('exit', code, null); }
 
+test('media supervisor accepts exact seed plus four occurrences and requires three close facts',async()=>{
+  const {superviseTransitionChild}=await subject(),child=childFixture();
+  const pending=superviseTransitionChild({child,nonce,roots,scenario:'media-preservation',deadlineMs:500});
+  for(const [launchOccurrence,phase] of ['seed','old','new','rollback','new'].entries()){
+    const request={type:'launch-intent',nonce,caseId:'valid-ui',phase,launchOccurrence,launchId:`valid-ui:${launchOccurrence}:${phase}`,root};
+    child.emit('message',request);assert.deepEqual(child.sent.at(-1),{...request,type:'launch-ack'});
+    child.emit('message',{...request,type:'close-success',shutdown:{browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:true}});
+  }
+  child.emit('message',{type:'result',nonce,result:{scenario:'media-preservation'}});exit(child);const result=await pending;
+  assert.equal(result.failure,null);assert.equal(result.launches.length,5);assert.deepEqual(result.unconfirmedRoots,[]);
+});
+for(const fault of ['skipped','duplicate','missing-proof','missing-root','unclosed'])test('media supervisor rejects '+fault+' before another launch',async()=>{
+  const {superviseTransitionChild}=await subject(),child=childFixture();const pending=superviseTransitionChild({child,nonce,roots,scenario:'media-preservation',deadlineMs:500});
+  const first={...intent(),launchOccurrence:0,launchId:'valid-ui:0:seed'};child.emit('message',fault==='skipped'?{...first,launchOccurrence:1,launchId:'valid-ui:1:seed'}:first);
+  if(fault!=='skipped')assert.equal(child.sent.length,1,'valid first intent must actually be admitted');
+  if(fault==='duplicate')child.emit('message',first);
+  if(fault==='missing-proof')child.emit('message',{...first,type:'close-success'});
+  if(fault==='missing-root')child.emit('message',{...first,type:'close-success',shutdown:{browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:false}});
+  const before=child.sent.length;child.emit('message',{...first,phase:'old',launchOccurrence:1,launchId:'valid-ui:1:old'});
+  assert.equal(child.sent.length,before);exit(child);assert.ok((await pending).failure);
+});
+
 test('supervisor requires matching close ACK, result and actual normal exit', async () => {
   const { superviseTransitionChild } = await subject(); const child = childFixture();
   const pending = superviseTransitionChild({ child, nonce, roots, control: 'storage-loss', deadlineMs: 500 });
@@ -285,3 +307,62 @@ for (const fault of ['artifact-exists', 'candidate-exists', 'claim', 'root', 'ph
     }
   });
 }
+
+test('media parent admits four observations and exact loss only, with later failures vetoing PASS', async () => {
+  const { runInstalledTransition } = await subject();
+  const api = await import('../scripts/extension-e2e/transition-scenario.mjs');
+  for (const mode of ['positive', 'loss', 'protocol', 'inventory', 'cleanup', 'unclosed', 'wrong-occurrence', 'timeout']) {
+    const fixture = parentFixture('phase'), child = childFixture(), id = 'a'.repeat(32), hash = '1'.repeat(64);
+    fixture.dependencies.forkChild = () => child;
+    fixture.dependencies.supervise = async supplied => {
+      assert.equal(supplied.scenario, 'media-preservation');
+      await new Promise(resolve => setImmediate(resolve));
+      const options = child.sent[0], n = options.nonce, presetId = '11111111-1111-4111-8111-111111111111';
+      assert.equal(options.roots.length, 1); assert.equal(options.scenario, 'media-preservation');
+      const store = api.expectedInstalledMediaStore(n, presetId), seed = api.transitionSeed('valid-ui', n);
+      const prepare = version => ({ developerMode: true, workerClosed: true, extensionId: id, version, state: 'ENABLED' });
+      const result = { scenario: 'media-preservation', source: { sourceCommit: 'a'.repeat(40) }, after: { sourceCommit: 'a'.repeat(40) },
+        candidateInventory: hash, seeds: [{ caseId: 'valid-ui', raw: seed, writes: 1, extensionId: id, preparation: prepare('2.13.3') }], phases: [] };
+      for (const [index, phase] of api.MEDIA_TRANSITION_PHASES.entries()) {
+        const occurrence = index + 1, version = phase === 'old' ? '2.13.3' : phase === 'rollback' ? '2.13.5' : '2.13.4';
+        if (mode !== 'positive' && occurrence === 4) break;
+        const observation = withStore => ({ raw: { ...structuredClone(seed), ...(withStore ? { mediaProfiles: structuredClone(store) } : {}) },
+          execution: { extensionId: id, version, brokerMatches: true } });
+        const initial = observation(occurrence >= 3), final = observation(occurrence >= 2);
+        const records = [{ step: 'startup', observation: initial }, ...(occurrence === 2 ? [{ step: 'create-media', observation: final }] : []),
+          { step: 'observe-ui', observation: final }];
+        result.phases.push({ caseId: 'valid-ui', phase, launchOccurrence: occurrence, extensionId: id, inventorySha256: hash, manifestSha256: hash,
+          preparation: prepare(version), records, final, presetId: occurrence >= 2 ? presetId : undefined });
+      }
+      const launches = ['seed', ...api.MEDIA_TRANSITION_PHASES].map((phase, launchOccurrence) => ({ caseId: 'valid-ui', phase, launchOccurrence,
+        launchId: `valid-ui:${launchOccurrence}:${phase}`, closed: true,
+        shutdown: { browserCloseAcknowledged: true, browserDisconnected: true, ownedRootClosed: mode !== 'unclosed' } }));
+      return { result, launches, normalExit: true, unconfirmedRoots: mode === 'unclosed' ? [options.roots[0].root] : [],
+        secondaryErrors: mode === 'protocol' ? [{ code: 'transition-ipc' }] : [], cleanupErrors: mode === 'cleanup' ? [{ code: 'close' }] : [],
+        ...(mode === 'positive' ? {} : { failure: { code: mode === 'timeout' ? 'media-ui-timeout' : 'media-preservation', caseId: 'valid-ui', phase: 'new',
+          launchOccurrence: mode === 'wrong-occurrence' ? 2 : 4, step: 'startup', stage: 'candidate-init', cleanupErrors: [],
+          observation: { raw: { ...seed, mediaProfiles: api.expectedInstalledMediaLoss(store) }, execution: { extensionId: id, version: '2.13.4', brokerMatches: true } } } }),
+        ...(mode === 'inventory' ? { result: { ...result, secondaryErrors: [{ code: 'transition-inventory' }] } } : {}) };
+    };
+    const options = { runId: 'Media1', scenario: 'media-preservation', dependencies: fixture.dependencies,
+      ...(mode === 'positive' ? {} : { control: 'media-profile-loss' }) };
+    if (['positive', 'loss'].includes(mode)) {
+      const report=await runInstalledTransition(options);assert.equal(report.ok,true);
+      assert.equal(report.shutdown.normalExit,true);assert.equal(report.shutdown.closes.length,5);
+      assert.ok(report.shutdown.closes.every(value=>value.closed&&value.browserCloseAcknowledged&&value.browserDisconnected&&value.ownedRootClosed));
+    }
+    else await assert.rejects(runInstalledTransition(options), error => error.report?.ok === false);
+    assert.equal(fixture.events.some(value => value.startsWith('candidate-remove:')), false);
+    assert.equal(fixture.events.some(value => value.startsWith('remove:output/playwright/installed-transition-work-')), false);
+  }
+});
+
+test('media selectors reject duplicate unknown incompatible and source/profile overrides before launch', () => {
+  for (const args of [ ['--scenario=other'], ['--scenario=media-preservation', '--scenario=media-preservation'],
+    ['--control=media-profile-loss'], ['--scenario=media-preservation', '--control=storage-loss'],
+    ['--scenario=media-preservation', '--control=media-profile-loss', '--control=media-profile-loss'],
+    ['--scenario=media-preservation', '--qualification=media-tab'], ['--scenario=media-preservation', '--profile=C:/Users/User'] ]) {
+    const result = spawnSync(process.execPath, ['scripts/check-installed-transition.mjs', ...args], { encoding: 'utf8', timeout: 5000 });
+    assert.equal(result.status, 1); assert.match(result.stderr, /transition-scenario-invalid|transition-control-invalid|installed-e2e-args-invalid/);
+  }
+});

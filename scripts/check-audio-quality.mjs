@@ -53,8 +53,10 @@ try {
   for(const file of AUDIO_ARTIFACT_FILES) await page.evaluate(await targetFiles.readFile(file,'utf8'));
   await page.evaluate(()=>{
     const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
-    window.postMessage({namespace:'cheese-knife',protocol:1,type:'config',requestId:runtime.requestId,
-      revision:100,config:normalizeConfig({})},location.origin);
+    const config=normalizeConfig({});
+    window.postMessage({namespace:'cheese-knife',protocol:2,type:'config',requestId:runtime.mediaRequestId,context:{...runtime.media.context},
+      deliverySequence:100,baseConfig:config,effectiveConfig:config,i18n:{},version:{globalRevision:0,mediaRevision:0},
+      profileState:'global',revisionStatus:'ready',mediaPhase:'ready',audioBindingGeneration:1,audioKind:'global',videoKind:'global'},location.origin);
   });
   await page.locator('.knife-comp').waitFor();
   const signal=async({frequency=1000,amplitude=0.5,stereo='identical',bursts=false}={})=>{

@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { page, load, runtime, deliver, flush } = require('./helpers.cjs');
+const { page, load, runtime, deliverScoped: deliver, flush } = require('./helpers.cjs');
 
 // External site boundary, characterized from its native listener/renderer:
 // registration copies a function into an ordered {listener, once} record;
@@ -50,7 +50,7 @@ function setup(t, config = {}, prepare = () => {}, vod = false) {
   const dom = page('<div id="root"><main id="layout-body"><aside><div role="log"></div></aside></main></div>',
     vod ? 'https://chzzk.naver.com/video/123' : undefined);
   t.after(() => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); dom.window.close(); });
-  for (const file of ['web/runtime.js', 'web/site-adapter.js']) load(dom, file);
+  for (const file of ['media-profiles.js','web/runtime.js', 'web/site-adapter.js']) load(dom, file);
   const aside = dom.window.document.querySelector('aside');
   const fixture = controllerFixture(dom, aside.querySelector('[role="log"]'));
   aside.__reactFiber$fixture = { memoizedState: { memoizedState: fixture.controller, next: null }, return: null };

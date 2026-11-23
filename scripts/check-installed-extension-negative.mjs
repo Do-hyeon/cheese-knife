@@ -118,5 +118,6 @@ export async function runInstalledExtensionNegative({ runId, headed = false, dep
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const options = parseInstalledE2EArgs(process.argv.slice(2));
+  if (options.qualification !== undefined) throw negativeError('installed-e2e-args-invalid');
   console.log(JSON.stringify(await runInstalledExtensionNegative(options), null, 2));
 }

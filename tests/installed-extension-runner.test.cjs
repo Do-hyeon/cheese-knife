@@ -45,7 +45,7 @@ function runnerFixture({ failAt, artifactExists = false } = {}) {
     },
     removeCandidate: async () => { events.push('candidate-remove'); return true; },
   };
-  return { events, dependencies };
+  return { events, dependencies, context };
 }
 
 test('installed E2E runner orders isolated candidate, browser and cleanup lifecycle', async () => {
@@ -83,6 +83,28 @@ test('installed E2E runner never overwrites an existing artifact directory', asy
   assert.equal(fixture.events.includes('json-write'), false);
   assert.equal(fixture.events.includes('candidate-remove'), true);
   assert.equal(fixture.events.includes('profile-create'), false);
+});
+for(const mode of ['ok','scenario','close-proof','missing-proof','missing-session','unsupported','dirty-source','changed-source','extra-asset','missing-asset'])test('media runner owns shutdown and preserves failed candidates: '+mode,async()=>{
+  const {runInstalledExtensionE2E}=await runnerModule(),f=runnerFixture();
+  f.dependencies.platform=mode==='unsupported'?'linux':'win32';
+  const buildCandidate=f.dependencies.verifyCandidate;f.dependencies.verifyCandidate=async id=>({...await buildCandidate(id),
+    files:mode==='extra-asset'?['dist/media-profiles.js','dist/extra.js']:mode==='missing-asset'?[]:['dist/media-profiles.js']});
+  f.dependencies.expectedMediaFiles=async()=>['dist/media-profiles.js'];
+  let attestations=0;f.dependencies.sourceAttestation=async()=>{f.events.push('source-attest');attestations++;
+    if(mode==='dirty-source')throw Object.assign(Error('dirty'),{code:'transition-source-dirty'});
+    return {sourceCommit:'a'.repeat(40),sourceSha256:mode==='changed-source'&&attestations>1?'c'.repeat(64):'b'.repeat(64)};};
+  f.dependencies.refreshTransitionWorker=async value=>{f.events.push('worker-refresh');return value;};
+  f.dependencies.openMediaBrowserSession=async()=>{f.events.push('session-open');return mode==='missing-session'?null:{send:async()=>({}),on(){},off(){}};};
+  f.dependencies.mediaScenario=async()=>{f.events.push('media-scenario');if(mode==='scenario')throw Object.assign(Error('scenario'),{code:'media-scenario-failed'});return {mediaTab:{passed:true}};};
+  f.dependencies.closeInstalledMediaBrowser=async()=>{f.events.push('close-proof');if(mode==='close-proof')throw Object.assign(Error('close'),{code:'media-close-failed'});
+    return {browserCloseAcknowledged:true,browserDisconnected:mode!=='missing-proof',ownedRootClosed:true};};
+  const pending=runInstalledExtensionE2E({runId:'Run1',qualification:'media-tab',dependencies:f.dependencies});
+  if(mode==='ok'){
+    const report=await pending;assert.equal(report.ok,true);assert.equal(report.mediaTab.passed,true);
+    assert.ok(f.events.indexOf('close-proof')<f.events.indexOf('context-close'));assert.equal(report.profileRetained,true);assert.equal(f.events.includes('profile-remove'),false);
+  }else{await assert.rejects(pending);assert.equal(f.events.includes('profile-remove'),false);assert.equal(f.events.includes('candidate-remove'),false);}
+  assert.equal(f.events.includes('scenarios'),false);
+  if(mode==='dirty-source')assert.equal(f.events.includes('browser-launch'),false);
 });
 
 test('multi-window scenario starts only after the base handshake state is captured', async () => {

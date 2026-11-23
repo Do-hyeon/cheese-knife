@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { page, load, runtime, deliver, playerHTML, flush } = require('./helpers.cjs');
+const { page, load, runtime, deliverScoped: deliver, playerHTML, flush } = require('./helpers.cjs');
 
 function setup(t) {
   const dom = page(playerHTML + '<aside id="sidebar"><a id="one" href="/live/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb">One</a><a id="two" href="/live/cccccccccccccccccccccccccccccccc">Two</a></aside>');
@@ -8,7 +8,7 @@ function setup(t) {
   const pending = [];
   dom.window.fetch = (_url, options) => new Promise(resolve => pending.push({ resolve, options }));
   for (const anchor of dom.window.document.querySelectorAll('a')) anchor.getBoundingClientRect = () => ({ left: 20, right: 120, top: 30, bottom: 50, width: 100, height: 20 });
-  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom, { preview: true, livePreview: false, previewWidth: 400, previewDelay: 0.1, previewVolume: 5 });
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom, { preview: true, livePreview: false, previewWidth: 400, previewDelay: 0.1, previewVolume: 5 });
   load(dom, 'web/preview.js');
   const response = image => ({ ok: true, json: async () => ({ code: 200, content: { status: 'OPEN', liveImageUrl: image, livePlaybackJson: '{}' } }) });
   return { dom, preview: runtime(dom).preview, pending, response, one: dom.window.document.getElementById('one'), two: dom.window.document.getElementById('two') };
@@ -32,7 +32,7 @@ const streamResponse = () => ({ ok: true, json: async () => ({ code: 200, conten
 test('duplicate install preserves an existing preview controller', t => {
   const dom = page(playerHTML + '<aside id="sidebar"></aside>');
   t.after(() => dom.window.close());
-  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom, { preview: true });
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom, { preview: true });
   const existing = { diagnostics: { events: [] }, show: async () => {}, hide: () => {} };
   runtime(dom).preview = existing;
   load(dom, 'web/preview.js');

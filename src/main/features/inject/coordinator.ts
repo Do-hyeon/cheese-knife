@@ -10,7 +10,7 @@ export function startCoordinator(target: Window): boolean {
   const browser = target as BrowserWindow;
   const key = browser.Symbol.for('cheese-knife.runtime.v1');
   const runtime = Object.getOwnPropertyDescriptor(target, key)?.value as KnifeRuntime | undefined;
-  if (!runtime || runtime.coordinatorStarted) return false;
+  if (runtime?.ownerProtocol !== 2 || runtime.coordinatorStarted) return false;
   const adapter = runtime.adapter;
   if (!adapter) {
     for (const feature of ['donationChat', 'deletedChat', 'chatTimestamp']) runtime.setStatus(feature, 'pending', 'site-adapter-unavailable');

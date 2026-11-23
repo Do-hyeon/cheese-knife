@@ -1,11 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { page, load, runtime, deliver, playerHTML, flush } = require('./helpers.cjs');
+const { page, load, runtime, deliverScoped: deliver, playerHTML, flush } = require('./helpers.cjs');
 
 test('statistics read frozen media metadata without changing track IDs', async t => {
   const dom = page(playerHTML);
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
-  load(dom, 'web/runtime.js'); deliver(dom); load(dom, 'web/player.js');
+  load(dom, 'media-profiles.js'); load(dom, 'web/runtime.js'); deliver(dom); load(dom, 'web/player.js');
   const video = dom.window.document.querySelector('video');
   Object.defineProperty(video, 'videoWidth', { value: 1920 }); Object.defineProperty(video, 'videoHeight', { value: 1080 });
   const media = Object.freeze([Object.freeze({ mediaId: 'HLS' }), Object.freeze({ mediaId: 'LLHLS' })]);

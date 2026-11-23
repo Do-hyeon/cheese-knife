@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { page, load, runtime, deliver, playerHTML, flush } = require('./helpers.cjs');
+const { page, load, runtime, deliverScoped: deliver, playerHTML, flush } = require('./helpers.cjs');
 
 /** @typedef {{config: Record<string, unknown>, styleParameters: Record<string, unknown>}} Snapshot */
 /** @param {import('node:test').TestContext} t @param {boolean} mainFirst @param {() => Promise<Snapshot>} [get] */
@@ -8,7 +8,8 @@ function bridge(t, mainFirst, get = async () => ({ config: { arrowSeek: false },
   const dom = page(playerHTML);
   /** @type {((changes: unknown) => void) | undefined} */
   let storageListener;
-  dom.window.chrome = {
+  // Supply only the external Chrome boundary exercised by the real bridge.
+  Reflect.set(dom.window, 'chrome', {
     storage: { local: { get,
       onChanged: {
         /** @param {(changes: unknown) => void} fn */
@@ -19,8 +20,8 @@ function bridge(t, mainFirst, get = async () => ({ config: { arrowSeek: false },
       getMessage: key => key,
     },
     runtime: { id: 'fixture-extension-id', onMessage: { addListener() {}, removeListener() {} } },
-  };
-  load(dom, 'config.js');
+  });
+  load(dom, 'media-profiles.js'); load(dom, 'config.js');
   if (mainFirst) { load(dom, 'web/main.js'); load(dom, 'web/runtime.js'); }
   else { load(dom, 'web/runtime.js'); load(dom, 'web/main.js'); }
   t.after(async () => {
@@ -46,7 +47,7 @@ for (const mainFirst of [true, false]) test(`settings handshake works with ISOLA
   const api = runtime(dom); assert.ok(api);
   dom.window.dispatchEvent(new Message('message', {
     source: dom.window, origin: dom.window.location.origin,
-    data: { namespace: 'cheese-knife', protocol: 1, type: 'config-request', requestId: api.requestId },
+    data: { namespace: 'cheese-knife', protocol: 2, type: 'config-request', requestId: api.mediaRequestId,context:{...api.media.context} },
   }));
   await flush();
   assert.equal(api.configReady, true);
@@ -67,7 +68,7 @@ for (const latest of [{ 'chat-font-size': 8 }, {}]) test(`initial style snapshot
   const api = runtime(dom); assert.ok(api);
   dom.window.dispatchEvent(new Message('message', {
     source: dom.window, origin: dom.window.location.origin,
-    data: { namespace: 'cheese-knife', protocol: 1, type: 'config-request', requestId: api.requestId },
+    data: { namespace: 'cheese-knife', protocol: 2, type: 'config-request', requestId: api.mediaRequestId,context:{...api.media.context} },
   }));
   assert.ok(resolveRead); resolveRead({ config: {}, styleParameters: { 'chat-font-size': 4 } }); await flush();
   assert.equal(dom.window.document.documentElement.style.getPropertyValue('--knife-chat-size-1'), Object.keys(latest).length ? '8px' : '');

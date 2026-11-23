@@ -6,6 +6,8 @@ export interface AudioController {
   setGain(video: HTMLVideoElement, value: number): number;
   configure(): void;
   bypass(video: HTMLVideoElement): void;
+  suspend(video: HTMLVideoElement): void;
+  resumeWanted(video: HTMLVideoElement): Promise<AudioState>;
   subscribe(video: HTMLVideoElement, callback: (state: AudioState, gain: number) => void): () => boolean;
   eligible(video: HTMLVideoElement): boolean;
 }
