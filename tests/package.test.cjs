@@ -34,6 +34,15 @@ async function addSettingsRuntime(root) {
   for (const [file, source] of Object.entries(await renderSettingsRuntime(root))) await fs.writeFile(path.join(root, file), source);
 }
 
+async function addMainRuntime(root) {
+  await fs.cp('src/main', path.join(root, 'src/main'), { recursive: true });
+  const { renderMainRuntime } = await import(pathToFileURL(path.resolve('scripts/main-runtime.mjs')));
+  for (const [file, source] of Object.entries(await renderMainRuntime(root))) {
+    await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true });
+    await fs.writeFile(path.join(root, file), source);
+  }
+}
+
 // These exercise actual filesystem types and the real package checker. Each
 // reference lives on its own path, so testing HTML/worker dependencies cannot
 // accidentally pass because a manifest script rejected it first.
@@ -139,10 +148,32 @@ test('checked build rejects settings drift before touching an existing dist', as
 
 test('checked build accepts matching settings runtime and produces a portable dist', async t => {
   const root = await fixture(t);
-  await addSettingsRuntime(root);
+  await addSettingsRuntime(root); await addMainRuntime(root);
   const { buildChecked } = await import(pathToFileURL(path.resolve('scripts/build.mjs')));
   const target = await buildChecked(root, path.join(root, 'dist'));
   assert.equal(await fs.readFile(path.join(target, 'settings-contract.js'), 'utf8'), await fs.readFile(path.join(root, 'settings-contract.js'), 'utf8'));
+});
+
+test('checked build rejects MAIN drift before touching generated files or dist', async t => {
+  const root = await fixture(t);
+  await addSettingsRuntime(root); await addMainRuntime(root);
+  await fs.mkdir(path.join(root, 'dist'));
+  await fs.writeFile(path.join(root, 'dist/sentinel.txt'), 'unchanged');
+  const stale = path.join(root, 'web/runtime.js');
+  const before = await fs.readFile(stale, 'utf8');
+  await fs.appendFile(stale, '// stale\n');
+  const { buildChecked } = await import(pathToFileURL(path.resolve('scripts/build.mjs')));
+  await assert.rejects(buildChecked(root, path.join(root, 'dist')), { code: 'main-runtime-drift' });
+  assert.equal(await fs.readFile(stale, 'utf8'), before + '// stale\n');
+  assert.equal(await fs.readFile(path.join(root, 'dist/sentinel.txt'), 'utf8'), 'unchanged');
+});
+
+test('foundation checks MAIN runtime after typecheck and settings before build proof', async () => {
+  const workflow = await fs.readFile('.github/workflows/ci.yml', 'utf8');
+  const command = workflow.match(/run: (npm run check:toolchain[^\r\n]+)/)?.[1] || '';
+  const ordered = ['npm run typecheck', 'npm run check:settings-runtime', 'npm run check:main-runtime', 'npm run check:build-proof'];
+  for (const value of ordered) assert.notEqual(command.indexOf(value), -1, value);
+  for (let index = 1; index < ordered.length; index++) assert.ok(command.indexOf(ordered[index - 1]) < command.indexOf(ordered[index]));
 });
 
 test('build accepts a root alias but rejects a linked dist without touching its target', async t => {

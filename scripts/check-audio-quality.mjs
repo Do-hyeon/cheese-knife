@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
 import {measureSignal,channelDifferenceRms,rmsEnvelope,audioQualityFailures} from './audio-metrics.mjs';
 import {openOwnedRoot} from './owned-files.mjs';
-import {describeAudioArtifact,parseAudioQualityArgs} from './audio-artifacts.mjs';
+import {AUDIO_ARTIFACT_FILES,describeAudioArtifact,parseAudioQualityArgs} from './audio-artifacts.mjs';
 const require=createRequire(import.meta.url);
 const {playerHTML}=require('../tests/helpers.cjs');
 const repositoryRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
@@ -49,7 +49,7 @@ try {
     context.createGain=()=>{const node=gain();probe.gains.push(node);return node;};
     window.AudioContext=class {constructor(){return context;}};
   });
-  for(const file of ['config.js','web/runtime.js','web/audio.js','web/player.js']) await page.evaluate(await targetFiles.readFile(file,'utf8'));
+  for(const file of AUDIO_ARTIFACT_FILES) await page.evaluate(await targetFiles.readFile(file,'utf8'));
   await page.evaluate(()=>{
     const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
     window.postMessage({namespace:'cheese-knife',protocol:1,type:'config',requestId:runtime.requestId,

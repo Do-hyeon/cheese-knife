@@ -44,6 +44,8 @@ export async function buildChecked(directory = sourceRoot, output = path.join(di
   if (browser !== 'chrome') return build(directory, output, browser);
   const { checkSettingsRuntime } = await import('./settings-runtime.mjs');
   await checkSettingsRuntime(directory);
+  const { checkMainRuntime } = await import('./main-runtime.mjs');
+  await checkMainRuntime(directory);
   return build(directory, output, browser);
 }
 

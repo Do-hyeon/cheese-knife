@@ -10,7 +10,7 @@ test('player controls use DOM SVG construction without an unsafe HTML assignment
   assert.equal(result.flatMap(file => file.messages).filter(message => message.ruleId === 'no-unsanitized/property').length, 0);
   const dom = page(playerHTML);
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
-  load(dom, 'web/runtime.js'); deliver(dom); load(dom, 'web/audio.js'); load(dom, 'web/player.js');
+  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js'); deliver(dom); load(dom, 'web/audio.js'); load(dom, 'web/player.js');
   runtime(dom).reconcile();
   for (const selector of ['.knife-ff', '.knife-comp button']) {
     const button = dom.window.document.querySelector(selector);
@@ -39,20 +39,17 @@ test('HLS TAP summary parsing uses only fixed regular-expression boundaries', as
   assert.deepEqual(findings.map(message => `${message.line}:${message.column}`), []);
 });
 
-test('webpack runtime callback remains functional without a Node dynamic-require warning', async t => {
+test('site adapter removes webpack injection without a Node dynamic-require warning', async t => {
   const lint = new ESLint({ overrideConfigFile: 'eslint.security.config.mjs' });
   const result = await lint.lintFiles(['web/site-adapter.js']);
   assert.equal(result.flatMap(file => file.messages).filter(message => message.ruleId === 'security/detect-non-literal-require').length, 0);
   const dom = page();
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
-  const webpackLoader = () => 'fixture module';
-  dom.window.webpackChunkglive_fe_pc = [];
-  dom.window.webpackChunkglive_fe_pc.push = chunk => {
-    const id = chunk[0][0];
-    chunk[1][id](null, null, webpackLoader);
-  };
+  let getters = 0;
+  Object.defineProperty(dom.window, 'webpackChunkglive_fe_pc', { get() { getters++; throw new Error('must-not-run'); } });
   load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
-  assert.equal(await runtime(dom).adapter.getWebpackRequire(), webpackLoader);
+  assert.equal(runtime(dom).adapter.getWebpackRequire, undefined);
+  assert.equal(getters, 0);
 });
 
 test('runtime dictionary boundaries have no generic object-injection observation', async () => {

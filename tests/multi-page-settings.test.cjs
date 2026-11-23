@@ -12,7 +12,7 @@ async function bridgePair(t) {
       const captured = structuredClone(saved); reads.push({ name, subscribers: changes.listeners.size });
       const gate = holds.get(name); if (gate) { holds.delete(name); gate.entered(); return gate.promise; } return captured;
     } } }, i18n: { getMessage: key => key }, runtime: { id: 'fixture-extension-id', onMessage: event() } };
-    load(dom, 'config.js'); load(dom, 'web/main.js'); load(dom, 'web/runtime.js');
+    load(dom, 'config.js'); load(dom, 'web/main.js'); load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
     return dom;
   }
   const A = open('A'), B = open('B');
@@ -52,9 +52,11 @@ for (const value of [undefined, null, '4', NaN, Infinity, 17, -7]) test('invalid
 });
 test('final pagehide removes only its subscription and late read cannot publish', async t => {
   const h = await bridgePair(t), old = h.holdReadA(); h.signal(); await flush();
-  const before = h.changes.listeners.size; h.A.window.dispatchEvent(new h.A.window.PageTransitionEvent('pagehide'));
+  const closedRuntime = runtime(h.A), before = h.changes.listeners.size;
+  h.A.window.dispatchEvent(new h.A.window.PageTransitionEvent('pagehide'));
   assert.equal(h.changes.listeners.size, before - 1); old.resolve({ config: { preview: false }, styleParameters: {} }); await flush();
-  assert.equal(runtime(h.A).config.preview, true);
+  assert.equal(closedRuntime.config.preview, true);
+  assert.equal(runtime(h.A), undefined);
   h.setStored({ config: { preview: false }, styleParameters: {} }); h.signal(); await flush(); assert.equal(runtime(h.B).config.preview, false);
 });
 function media(dom) {

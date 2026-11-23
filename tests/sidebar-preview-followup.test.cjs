@@ -37,7 +37,7 @@ function previewFixture(t, config = {}) {
       livePlaybackJson: JSON.stringify({ media: [{ mediaId: 'HLS', path: 'https://media.invalid/master.m3u8' }] }),
     } }) };
   };
-  load(dom, 'web/runtime.js');
+  load(dom, 'web/runtime.js'); load(dom, 'web/site-adapter.js');
   const values = { preview: true, livePreview: true, previewDelay: 0.1, previewWidth: 400, previewVolume: 5, rightClickToUnmute: true, ...config };
   deliver(dom, values); runtime(dom).Hls = Stream; load(dom, 'web/preview.js');
   t.after(() => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); dom.window.close(); });

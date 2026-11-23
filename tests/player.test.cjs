@@ -7,6 +7,7 @@ function setup(t, vod = false, beforePlayer = () => {}) {
     vod ? 'https://chzzk.naver.com/video/123456' : undefined);
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
   load(dom, 'web/runtime.js');
+  load(dom, 'web/site-adapter.js');
   deliver(dom, { arrowSeek: true, pressToFastForward: true });
   beforePlayer(dom);
   load(dom, 'web/player.js');
@@ -36,6 +37,21 @@ test('live-edge and compressor button SVG artwork and accessibility remain uncha
     assert.equal(svg.getAttribute('height'), '22');
     assert.equal(svg.querySelector('path').getAttribute('d'), expectedPath);
   }
+});
+
+test('statistics renders codec from a primitive adapter snapshot', async t => {
+  const dom = setup(t, false, dom => {
+    const pzp = dom.window.document.querySelector('.pzp-pc');
+    pzp.insertAdjacentHTML('beforeend', '<div id="license"><button>License</button></div>');
+    const layout = dom.window.document.getElementById('live_player_layout');
+    layout.__reactFiber$fixture = { memoizedState: { memoizedState: {
+      _corePlayer: { _currentCodecs: { video: 'avc1.640028', audio: 'mp4a.40.2' } },
+    }, next: null }, return: null };
+  });
+  dom.window.document.querySelector('#knife-stats button').click();
+  await flush();
+  assert.match(dom.window.document.querySelector('.knife-stats-overlay pre').textContent, /avc1\.640028, mp4a\.40\.2/);
+  assert.equal(Object.hasOwn(runtime(dom).adapter, 'getCorePlayer'), false);
 });
 
 test('player labels use own supported translations and ignore inherited values', t => {

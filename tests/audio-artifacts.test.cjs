@@ -13,6 +13,7 @@ async function artifactFixture(t, suffix = '') {
   await fs.mkdir(path.join(root, 'web'));
   await fs.writeFile(path.join(root, 'config.js'), `config${suffix}`);
   await fs.writeFile(path.join(root, 'web/runtime.js'), `runtime${suffix}`);
+  await fs.writeFile(path.join(root, 'web/site-adapter.js'), `adapter${suffix}`);
   await fs.writeFile(path.join(root, 'web/audio.js'), `audio${suffix}`);
   await fs.writeFile(path.join(root, 'web/player.js'), `player${suffix}`);
   return root;
@@ -42,7 +43,7 @@ test('artifact description hashes every production audio entry file', async t =>
   const root = await artifactFixture(t);
   const description = await describeAudioArtifact(root, 'fixture');
   assert.equal(description.label, 'fixture');
-  assert.equal(description.files.length, 4);
+  assert.equal(description.files.length, 5);
   assert.deepEqual(description.files.map(item => item.path), AUDIO_ARTIFACT_FILES);
   assert.ok(description.files.every(item => /^[a-f0-9]{64}$/.test(item.sha256)));
 });

@@ -5,6 +5,7 @@ import { openOwnedRoot } from './owned-files.mjs';
 export const AUDIO_ARTIFACT_FILES = Object.freeze([
   'config.js',
   'web/runtime.js',
+  'web/site-adapter.js',
   'web/audio.js',
   'web/player.js'
 ]);
