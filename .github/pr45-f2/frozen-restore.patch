@@ -1,0 +1,86 @@
+--- check-audio-quality.mjs
++++ check-audio-quality.mjs
+@@ -42,7 +42,16 @@
+       outputChannelCount:[2],channelCount:2,channelCountMode:'explicit'});
+     // Keep native processing active but deliver zeros to the real speakers.
+     sink.connect(context.destination);
+-    sink.port.onmessage=({data})=>{probe.chunks.push(data);while(probe.chunks.length>2000)probe.chunks.shift();};
++    sink.port.onmessage=({data})=>{
++      probe.chunks.push(data);while(probe.chunks.length>2000)probe.chunks.shift();
++      const row=probe.restoreDiagnostic;
++      if(row?.immediate&&!row.firstObservedBlock&&data.frame>row.immediate.contextFrame){
++        const node=probe.compressors[0],readback=node?[node.threshold.value,node.knee.value,node.ratio.value]:null;
++        row.firstObservedBlock={captureFrame:data.frame,
++          contextFrame:Math.round(context.currentTime*context.sampleRate),timeMs:performance.now(),readback,
++          sameNode:node===probe.restoreCompressor,contextState:context.state};
++      }
++    };
+     Object.defineProperty(context,'destination',{get:()=>sink});
+     const source=context.createMediaElementSource.bind(context);
+     context.createMediaElementSource=video=>{const node=source(video);probe.sources++;return node;};
+@@ -166,11 +175,60 @@
+     runtime.config={...runtime.config,compressorThreshold:0,compressorKnee:0,compressorRatio:1};runtime.audio.configure();});
+   await signal({frequency:1000,amplitude:0.98});await run(true,2);await page.waitForTimeout(1750);
+   const stress={profile:'threshold0/knee0/ratio1/gain2',...summarizeCapture(await windowSamples(),1000)};
+-  await page.evaluate(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];runtime.config=window.__quality.defaultConfig;runtime.audio.configure();});
+-  const nodes=await page.evaluate(()=>({sources:window.__quality.sources,
+-    compressor:window.__quality.compressors.map(node=>({threshold:node.threshold.value,knee:node.knee.value,
+-      ratio:node.ratio.value,attack:node.attack.value,release:node.release.value})),
+-    sampleRate:window.__quality.context.sampleRate}));
++  // 승인된 단일 로컬 진단에서 복원 호출에 한해 같은 노드의 실제 setter 입력을 관측한다.
++  await page.evaluate(()=>{
++    const runtime=window[Symbol.for('cheese-knife.runtime.v1')],probe=window.__quality;
++    const node=probe.compressors[0],context=probe.context;
++    const names=['threshold','knee','ratio'];
++    const config=()=>[runtime.config.compressorThreshold,runtime.config.compressorKnee,runtime.config.compressorRatio];
++    const stamp=()=>({contextFrame:Math.round(context.currentTime*context.sampleRate),
++      lastCaptureFrame:probe.chunks.at(-1)?.frame??null,timeMs:performance.now(),contextState:context.state});
++    const row={stressConfig:config(),restoredConfig:null,writes:[],restoreStart:null,restoreReturn:null,immediate:null,
++      firstObservedBlock:null,captureStatus:null};
++    if(!node)throw Error('restore-diagnostic-no-compressor');
++    const selected=new Map(names.map(name=>[node[name],name]));
++    const prototype=AudioParam.prototype,descriptor=Object.getOwnPropertyDescriptor(prototype,'value');
++    if(!descriptor?.configurable||typeof descriptor.set!=='function')throw Error('restore-diagnostic-setter');
++    probe.restoreCompressor=node;
++    probe.restoreDiagnostic=row;
++    runtime.config=probe.defaultConfig;
++    row.restoredConfig=config();
++    Object.defineProperty(prototype,'value',{...descriptor,set(value){
++      Reflect.apply(descriptor.set,this,[value]);
++      const name=selected.get(this);
++      if(name&&row.writes.length<32)row.writes.push({name,value,...stamp()});
++    }});
++    try{
++      row.restoreStart=stamp();
++      runtime.audio.configure();
++      row.restoreReturn=stamp();
++    }finally{
++      Object.defineProperty(prototype,'value',descriptor);
++    }
++  });
++  const nodes=await page.evaluate(()=>{
++    const probe=window.__quality;
++    const reportNodes={sources:window.__quality.sources,
++      compressor:window.__quality.compressors.map(node=>({threshold:node.threshold.value,knee:node.knee.value,
++        ratio:node.ratio.value,attack:node.attack.value,release:node.release.value})),
++      sampleRate:window.__quality.context.sampleRate};
++    const {context}=probe;
++    const first=reportNodes.compressor[0];
++    probe.restoreDiagnostic.immediate={readback:first?[first.threshold,first.knee,first.ratio]:null,
++      contextFrame:Math.round(context.currentTime*context.sampleRate),lastCaptureFrame:probe.chunks.at(-1)?.frame??null,
++      timeMs:performance.now(),sameNode:probe.compressors[0]===probe.restoreCompressor,contextState:context.state};
++    return reportNodes;
++  });
++  // 원래 읽기를 끝낸 후 다음 캡처 블록을 최대 750ms 기다린다.
++  let captureStatus='observed';
++  try{await page.waitForFunction(()=>window.__quality.restoreDiagnostic.firstObservedBlock,null,{timeout:750});}
++  catch(error){if(error.name!=='TimeoutError')throw error;captureStatus='timeout';}
++  const restoreDiagnostic=await page.evaluate(captureStatus=>{
++    const row=window.__quality.restoreDiagnostic;
++    row.captureStatus=captureStatus;
++    return row;
++  },captureStatus);
++  console.error('observer-f2-restore-diagnostic:'+JSON.stringify(restoreDiagnostic));
+   await page.evaluate(async()=>{document.querySelector('video').pause();await window.__quality.context.close();});
+   const report={browser:browser.version(),artifact,profile:'fresh synthetic, silent output sink',configuration:'normalized defaults; separately labeled stress case',nodes,cases,transitions,alignments,stress,
+     limits:'Steady coherent-window THD reports harmonics 2..10 below Nyquist, not all distortion. Floating >1 indicates headroom risk, not a measured hardware clip. Synthetic data is not subjective listening.'};

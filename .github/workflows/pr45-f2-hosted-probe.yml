@@ -1,0 +1,151 @@
+name: PR 45 F2 hosted diagnostic
+
+on:
+  push:
+    branches: [codex/pr45-f2-hosted-probe]
+
+permissions:
+  contents: read
+
+jobs:
+  observer:
+    if: github.event.created == true && github.event_name == 'push' && github.ref == 'refs/heads/codex/pr45-f2-hosted-probe' && github.run_attempt == '1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PRODUCT_ROOT: ${{ github.workspace }}/product
+      PROBE_ROOT: ${{ github.workspace }}/diagnostic/.github/pr45-f2
+      GITHUB_HEAD_SHA: a7b067e1b99b4f915b70d1dfa246bfba4531ae7d
+    steps:
+      - name: Set diagnostic paths
+        shell: bash
+        run: |
+          printf 'FROZEN_ROOT=%s\nPROBE_STAGE=%s\n' "$RUNNER_TEMP/pr45-f2-frozen" "$RUNNER_TEMP/pr45-f2-probe" >> "$GITHUB_ENV"
+
+      - name: Check out diagnostic branch
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          path: diagnostic
+          persist-credentials: false
+
+      - name: Check out the PR merge that produced the F2 result
+        id: product
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          ref: 1ed968d397eb92351ad7163ce28bc94dcae297f8
+          path: product
+          persist-credentials: false
+
+      - name: Set up exact Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version: '24.22.3'
+          cache: npm
+          cache-dependency-path: product/package-lock.json
+
+      - name: Install exact dependencies without scripts
+        working-directory: product
+        run: npm ci --ignore-scripts
+
+      - name: Install Playwright Chromium
+        working-directory: product
+        run: npx --no-install playwright install --with-deps chromium
+
+      - name: Pin product, frozen runner and probe
+        id: pin
+        working-directory: product
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 1ed968d397eb92351ad7163ce28bc94dcae297f8
+          test "$(git rev-parse HEAD^{tree})" = 651478ad1be21f12b5e7949614ee2034df79eeda
+          test "$(git cat-file -p HEAD | sed -n 's/^parent //p' | paste -sd ' ')" = "7284b1088156eb66a7b96295fbf4e4b8da8b94a0 $GITHUB_HEAD_SHA"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          frozen=c5d45b8a7abf30450d3f1bbff45afbb8cd020cb5
+          ref=refs/observer/frozen
+          git fetch --no-tags --depth=1 origin "$frozen:$ref"
+          git init --quiet "$FROZEN_ROOT"
+          git -C "$FROZEN_ROOT" config core.autocrlf false
+          git -C "$FROZEN_ROOT" fetch --no-tags --depth=1 "$PRODUCT_ROOT" "$ref:$ref"
+          git -C "$FROZEN_ROOT" checkout --quiet --detach "$frozen"
+          test "$(git -C "$FROZEN_ROOT" rev-parse HEAD)" = "$frozen"
+          test "$(git -C "$FROZEN_ROOT" rev-parse HEAD^{tree})" = 97a72ca3f33190511c82a77a0366f5a72e768605
+          ln -s "$PRODUCT_ROOT/node_modules" "$FROZEN_ROOT/node_modules"
+          test -z "$(git -C "$FROZEN_ROOT" status --porcelain --untracked-files=no)"
+          test "$(node --version)" = v24.22.3
+          test "$(node -p 'require("playwright/package.json").version')" = 1.62.1
+          browser="$(node --input-type=module -e 'import {observerBrowserExecutable} from "./scripts/audio-observer-isolation.mjs"; process.stdout.write(await observerBrowserExecutable(process.cwd()));')"
+          sha256sum --check <<'PINS'
+          63834ebd79cf78b1bcf59497e0ff8eeaf90a5940dab9287aa4bbed71564dbfef  extension/media-profiles.js
+          af02697e72c73ff20473b4d10dcde438ace18e373b274e3bc8d22e30df9dc7b9  extension/config.js
+          530ad9063c583d0f8030d75871879ea06ec99e336fad76793166ca4a11f39dc3  extension/web/runtime.js
+          c8575033ffffdc3ecdf8f83ed303465e7fbeff7dd67339ed4d10c357f8e22f16  extension/web/site-adapter.js
+          06424312bf9020b8b4365c7cd69144a769bb6a3e5f275ed1e54443a6b440f915  extension/web/audio.js
+          d97bb5aeb24b0ace29f103744309fd00688a44696dd7dafd6e78a7db416770ac  extension/web/player.js
+          0638ac4f6ae064e592ba4440140f5b14adc67e42c724fc147016b9641d421cd6  extension/web/audio-transition-worklet.js
+          bd505e7020843911068f43c29f36b0e7f80a0f5aadc158803fbe9b9a2fd47058  package-lock.json
+          db2b053c45eac9b81d035401e0106e49382a9f612bace22e78f377b7b3db3d69  scripts/audio-observer-isolation.mjs
+          PINS
+          printf '%s  %s\n' 'a7ec1b37e6ff9d187e4198c5b6df9a4eb1c74dd31804fb3bac55cc4ceca1ac01' "$(command -v node)" | sha256sum --check
+          printf '%s  %s\n' 'e11fc9ce65c96313476f7ee9844b6fb6a9220fb048693cfe9eee00acf4170a9f' "$browser" | sha256sum --check
+          printf '%s  %s\n' '539785dbfba59012079cfc56e9dda7a335fa1531e8cb699bebecc9ca8a7f14c7' "$FROZEN_ROOT/package-lock.json" | sha256sum --check
+          printf '%s  %s\n' '4f5826c2b10d6eeebcbd09637915a514a66ef4c66abaa6597f3df66bbe617c4a' "$FROZEN_ROOT/scripts/check-audio-quality.mjs" | sha256sum --check
+          mkdir "$PROBE_STAGE"
+          cp "$FROZEN_ROOT/scripts/check-audio-quality.mjs" "$PROBE_STAGE/instrumented-runner.mjs"
+          patch --batch --forward --fuzz=0 --no-backup-if-mismatch "$PROBE_STAGE/instrumented-runner.mjs" "$PROBE_ROOT/frozen-restore.patch"
+          printf '%s  %s\n' '8d3db9e78acaad5a458bc5c18731da94c6168ff1e177d1031e5e0a438b9f265d' "$PROBE_STAGE/instrumented-runner.mjs" | sha256sum --check
+          node --check "$PROBE_STAGE/instrumented-runner.mjs"
+
+      - name: Observe the original ordered set with F restore readback
+        id: observe
+        working-directory: product
+        shell: bash
+        run: |
+          set -euo pipefail
+          parent_loader="$(node --input-type=module -e 'import {pathToFileURL} from "node:url";import path from "node:path";process.stdout.write(pathToFileURL(path.join(process.env.PROBE_ROOT,"parent-loader.mjs")).href);')"
+          node --import "$parent_loader" "$PROBE_ROOT/observe.mjs"
+
+      - name: Record diagnostic provenance and step outcomes
+        if: always()
+        env:
+          CHECKOUT_OUTCOME: ${{ steps.product.outcome }}
+          PIN_OUTCOME: ${{ steps.pin.outcome }}
+          OBSERVER_OUTCOME: ${{ steps.observe.outcome }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/diagnostic-output"
+          python3 - "$GITHUB_WORKSPACE/diagnostic-output/pr45-f2-provenance.json" <<'PY'
+          import json, os, pathlib, subprocess, sys
+          env = os.environ
+          root = pathlib.Path(env["PRODUCT_ROOT"])
+          def git(*args):
+              if not (root / ".git").exists():
+                  return None
+              result = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, timeout=10)
+              return result.stdout.strip() if result.returncode == 0 else None
+          data = {
+              "diagnosticCommit": env["GITHUB_SHA"], "event": env["GITHUB_EVENT_NAME"], "ref": env["GITHUB_REF"],
+              "imageOS": env.get("ImageOS"), "imageVersion": env.get("ImageVersion"),
+              "run": env["GITHUB_RUN_ID"], "attempt": env["GITHUB_RUN_ATTEMPT"], "originalPRRun": 45363057943,
+              "productCommit": git("rev-parse", "HEAD"), "productTree": git("rev-parse", "HEAD^{tree}"),
+              "prHead": env["GITHUB_HEAD_SHA"], "frozenExpected": "c5d45b8a7abf30450d3f1bbff45afbb8cd020cb5",
+              "checkoutOutcome": env["CHECKOUT_OUTCOME"], "pinOutcome": env["PIN_OUTCOME"],
+              "observerOutcome": env["OBSERVER_OUTCOME"],
+              "observerStarted": (pathlib.Path(env.get("PROBE_STAGE", str(pathlib.Path(env["RUNNER_TEMP"]) / "pr45-f2-probe"))) / "observer-started").is_file()
+          }
+          with open(sys.argv[1], "x", encoding="utf-8") as output:
+              json.dump(data, output, indent=2)
+              output.write("\n")
+          PY
+
+      - name: Upload observer and provenance evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: pr45-f2-hosted-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            product/output/audio-observer/
+            diagnostic-output/pr45-f2-provenance.json
+          if-no-files-found: error
+          retention-days: 7
