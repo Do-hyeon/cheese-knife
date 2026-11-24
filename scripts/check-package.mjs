@@ -1,9 +1,16 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { openOwnedRoot, resolveOwnedPath } from './owned-files.mjs';
+import { openOwnedRoot, openExtensionRoot, resolveOwnedPath } from './owned-files.mjs';
 
 export function manifestFiles(manifest) {
   const files = new Set(['manifest.json']);
+  if(Object.hasOwn(manifest,'web_accessible_resources')){
+    const rules=manifest.web_accessible_resources,rule=Array.isArray(rules)&&rules.length===1?rules[0]:null;
+    if(!rule || Object.keys(rule).sort().join(',')!=='matches,resources' ||
+      !Array.isArray(rule.resources) || rule.resources.length!==1 || rule.resources[0]!=='web/audio-transition-worklet.js' ||
+      !Array.isArray(rule.matches) || rule.matches.length!==1 || rule.matches[0]!=='https://chzzk.naver.com/*')throw new Error('Invalid audio worklet resources');
+    files.add(rule.resources[0]);
+  }
   const add = file => { if (typeof file === 'string') files.add(file); };
   Object.values(manifest.icons || {}).forEach(add);
   add(manifest.action?.default_popup);
@@ -55,7 +62,8 @@ async function regularPackageFile(owned, file, missingMessage) {
 
 export async function checkPackage(directory, expectedVersion, browser = 'chrome') {
   if (browser !== 'chrome') throw new Error('Chrome only: Firefox packages are not supported by the community recovery');
-  const owned = await openOwnedRoot(directory);
+  const repository = await openOwnedRoot(directory);
+  const owned = await openExtensionRoot(directory);
   await regularPackageFile(owned, 'manifest.json', 'Missing extension resource');
   const manifest = JSON.parse(await owned.readFile('manifest.json', 'utf8'));
   if (manifest.manifest_version !== 3) throw new Error('Expected Manifest V3');
@@ -65,8 +73,8 @@ export async function checkPackage(directory, expectedVersion, browser = 'chrome
   if (manifest.browser_specific_settings) throw new Error('Chrome package must not declare browser_specific_settings');
   let project;
   try {
-    await regularPackageFile(owned, 'package.json');
-    project = JSON.parse(await owned.readFile('package.json', 'utf8'));
+    await regularPackageFile(repository, 'package.json');
+    project = JSON.parse(await repository.readFile('package.json', 'utf8'));
   } catch (error) { if (error.code !== 'ENOENT') throw error; }
   const version = expectedVersion || project?.version;
   if (version && manifest.version !== version) throw new Error('Package/manifest version mismatch');

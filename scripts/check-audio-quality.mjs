@@ -1,3 +1,5 @@
+// 제품 루트에서 Chromium과 빌드된 확장을 준비한 뒤 node scripts/check-audio-quality.mjs --label probe 로 실행한다.
+// 새 프로필에서 합성 음원을 무음 출력으로 측정한다. output/audio-quality에 수치·진단 JSON을 쓰고 검사 실패 시 비정상 종료한다.
 // Synthetic signals only, fresh profile. Capture the production graph's summed
 // floating output before a silent sink; never record a broadcast/user profile.
 import path from 'node:path';
@@ -5,23 +7,47 @@ import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
 import {audioQualityReportFailures as audioQualityFailures} from './audio-metrics.mjs';
 import {summarizeCapture} from './audio-signal.mjs';
-import {openOwnedRoot} from './owned-files.mjs';
+import {openOwnedRoot,openExtensionRoot} from './owned-files.mjs';
 import {AUDIO_ARTIFACT_FILES,describeAudioArtifact,parseAudioQualityArgs} from './audio-artifacts.mjs';
+import {openAudioMeasurementBrowser} from './audio-native-browser.mjs';
+import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import {prepareQualityRun,installQualityTrace,registerQualityWorklet,writeQualityDiagnostic} from './audio-quality-diagnostics.mjs';
+import {installWorkletProof} from './audio-worklet-signed.mjs';
+import {installRoleGraph,readRoleInputs,serializeRoleReport} from './audio-worklet-roles.mjs';
 const require=createRequire(import.meta.url);
 const {playerHTML}=require('../tests/helpers.cjs');
 const repositoryRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const options=parseAudioQualityArgs(process.argv.slice(2),repositoryRoot);
+const argv=process.argv.slice(2);
+const ciWorkletSigned=argv.length===3&&argv[0]==='--ci-worklet-signed'&&argv[1]==='--label';
+const options=parseAudioQualityArgs(ciWorkletSigned?argv.slice(1):argv,repositoryRoot);
 const {chromium}=await import('playwright');
 const files=await openOwnedRoot(repositoryRoot);
-const targetFiles=await openOwnedRoot(options.root);
+const targetFiles=await openExtensionRoot(options.root);
 const artifact=await describeAudioArtifact(options.root,options.label);
-const browser=await chromium.launch({headless:true,...(options.chrome?{channel:'chrome'}:{})});
+const diagnosticRun=await prepareQualityRun(files,options.label,process.env.KNIFE_AUDIO_QUALITY_TRACE);
+const diagnosticEvidence={artifact,sourceCommit:execFileSync('git',['rev-parse','HEAD'],{cwd:repositoryRoot,encoding:'utf8'}).trim(),
+  pullRequestHead:process.env.GITHUB_HEAD_SHA??null,platform:process.platform,nodeVersion:process.version,browserVersion:'unavailable',
+  sampleRate:0,audioConfig:{},wanted:false,state:'unavailable',trace:null,shutdown:null};
+let diagnosticFailure=null;
+const diagnosticSecondary=[];
+const diagnosticError=(stage,error)=>{if(diagnosticFailure===null)diagnosticFailure=error;else diagnosticSecondary.push(stage+':'+String(error?.message??error).slice(0,2048));};
+try {
+const measurement=options.chrome||process.platform!=='win32'?null:await openAudioMeasurementBrowser(chromium,files);
+const browser=measurement?.browser??await chromium.launch({headless:true,...(options.chrome?{channel:'chrome'}:{})});
 const output='output/audio-quality';
 const reportPath=options.label==='source'?`${output}/report.json`:`${output}/report-${options.label}.json`;
+let diagnosticPage,calibrate;
+diagnosticEvidence.browserVersion=browser.version();
 try {
   const page=await browser.newPage();
-  await page.route('https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',route=>route.fulfill({contentType:'text/html',body:playerHTML}));
-  await page.goto('https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+  diagnosticPage=page;
+  const openPlayer=async target=>{
+    const url='https://chzzk.naver.com/live/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    await target.route(url,route=>route.fulfill({contentType:'text/html',body:playerHTML}));
+    await target.goto(url);
+  };
+  await openPlayer(page);
   await page.evaluate(async()=>{
     const Native=window.AudioContext;
     const context=new Native({sampleRate:48000});
@@ -50,17 +76,39 @@ try {
     context.createGain=()=>{const node=gain();probe.gains.push(node);return node;};
     window.AudioContext=class {constructor(){return context;}};
   });
-  for(const file of AUDIO_ARTIFACT_FILES) await page.evaluate(await targetFiles.readFile(file,'utf8'));
-  await page.evaluate(()=>{
+  await page.evaluate(()=>{window.__quality.masterFrames=new Float64Array(12);window.__quality.masterFrameCount=0;});
+  if(diagnosticRun.trace)await page.evaluate(installQualityTrace);
+  if(ciWorkletSigned)await page.evaluate(installWorkletProof,{trace:diagnosticRun.trace});
+  let inputs;
+  if(ciWorkletSigned){
+    diagnosticEvidence.roleProfile=true;
+    inputs=await readRoleInputs(targetFiles);
+    diagnosticEvidence.injectedMain=inputs.manifest;
+    if(!inputs.manifest.every((file,i)=>{
+      const expected=artifact.files.at(i);
+      return expected!==undefined&&file.path===expected.path&&file.sha256===expected.sha256;
+    }))throw Error('worklet-role-main-manifest');
+    for(const script of inputs.scripts)await page.evaluate(script);
+  }else for(const file of AUDIO_ARTIFACT_FILES) await page.evaluate(await targetFiles.readFile(file,'utf8'));
+  if(await page.evaluate(()=>typeof window[Symbol.for('cheese-knife.runtime.v1')].audio.prepareTransitionModule==='function')){
+    diagnosticEvidence.workletSha256=null;
+    const bytes=inputs?.worklet??await targetFiles.readFile('web/audio-transition-worklet.js');
+    if(!bytes.length)throw new Error('audio-quality-worklet-empty');
+    diagnosticEvidence.workletSha256=createHash('sha256').update(bytes).digest('hex');
+    await page.evaluate(registerQualityWorklet,Array.from(bytes));
+  }
+  const configurePlayer=(target,role)=>target.evaluate(role=>{
     const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
-    const config=normalizeConfig({});
-    window.postMessage({namespace:'cheese-knife',protocol:2,type:'config',requestId:runtime.mediaRequestId,context:{...runtime.media.context},
+    const config={...normalizeConfig({}),...KnifeMediaProfiles.projectGlobalAudio(role?{normalizerEnabled:true}:{})};
+    if(role)config.normalizerEnabled=true;
+    window.postMessage({namespace:'cheese-knife',protocol:3,type:'config',requestId:runtime.mediaRequestId,context:{...runtime.media.context},
       deliverySequence:100,baseConfig:config,effectiveConfig:config,i18n:{},version:{globalRevision:0,mediaRevision:0},
-      profileState:'global',revisionStatus:'ready',mediaPhase:'ready',audioBindingGeneration:1,audioKind:'global',videoKind:'global'},location.origin);
-  });
+      profileState:'global',revisionStatus:'ready',mediaPhase:'ready',audioBindingGeneration:1,audioKind:'global',videoKind:'global',gainOrigin:'site-legacy'},location.origin);
+  },role);
+  await configurePlayer(page,false);
   await page.locator('.knife-comp').waitFor();
-  const signal=async({frequency=1000,amplitude=0.5,stereo='identical',bursts=false}={})=>{
-    await page.evaluate(async options=>{
+  const signal=async({frequency=1000,amplitude=0.5,stereo='identical',bursts=false}={},target=page)=>{
+    await target.evaluate(async options=>{
       const probe=window.__quality,video=document.querySelector('video'); video.pause();
       const rate=probe.context.sampleRate,length=rate*8,bytes=new ArrayBuffer(44+length*4),view=new DataView(bytes);
       const text=(offset,value)=>[...value].forEach((char,i)=>view.setUint8(offset+i,char.charCodeAt(0)));
@@ -78,12 +126,44 @@ try {
       await new Promise((resolve,reject)=>{video.addEventListener('loadeddata',resolve,{once:true});video.addEventListener('error',reject,{once:true});});
     },{frequency,amplitude,stereo,bursts});
   };
+  if(ciWorkletSigned&&diagnosticRun.trace)calibrate=async()=>{
+    const target=await browser.newPage();
+    const evidence=diagnosticEvidence.roles={label:options.label,injectedMain:inputs.manifest,
+      mainSource:diagnosticEvidence.workletSigned?.events?.find(event=>event.type==='create')?.source};
+    try{
+      await openPlayer(target);
+      await target.evaluate(installRoleGraph);
+      await target.evaluate(installWorkletProof,{trace:false});
+      for(const script of inputs.scripts)await target.evaluate(script);
+      await target.evaluate(registerQualityWorklet,Array.from(inputs.worklet));
+      await configurePlayer(target,true);
+      await target.locator('.knife-comp').waitFor();
+      await signal({},target);
+      await target.locator('.knife-comp button').click();
+      await target.waitForFunction(()=>document.querySelector('.knife-comp').dataset.state==='on');
+      await target.evaluate(()=>document.querySelector('video').play());
+      const observe=seq=>target.waitForFunction(seq=>window.__qualityRoles.observed(seq),seq,{timeout:5000});
+      await observe(1);
+      await target.evaluate(()=>{
+        const runtime=window[Symbol.for('cheese-knife.runtime.v1')];
+        runtime.config={...runtime.config,eqEnabled:true,eq1000:6};runtime.audio.configure();
+      });
+      await observe(2);
+    }catch(error){evidence.failure=String(error?.message??error).slice(0,2048);}
+    finally{
+      try{Object.assign(evidence,await target.evaluate(()=>({
+        ...window.__qualityRoles.snapshot(),registration:window[Symbol.for('cheese-knife.quality-worklet-signed')].snapshot().registration,
+      })));}finally{await target.close();}
+    }
+  };
   await signal();
   // The media is still paused: interception precedes the first playback.
   await page.locator('.knife-comp button').click();
   await page.waitForFunction(()=>document.querySelector('.knife-comp').dataset.state==='on');
   const captured=await page.evaluate(()=>({sources:window.__quality.sources,state:window.__quality.context.state}));
   if(captured.sources!==1||captured.state!=='running')throw new Error('Cannot safely start synthetic audio capture');
+  const wide=[];
+  const firstOn=ciWorkletSigned?{...captured,on:await page.locator('.knife-comp').getAttribute('data-state')==='on'}:null;
   const run=async(enabled,gain)=>page.evaluate(async ({enabled,gain})=>{
     const runtime=window[Symbol.for('cheese-knife.runtime.v1')],video=document.querySelector('video');
     runtime.audio.setGain(video,gain);await runtime.audio.setEnabled(video,enabled); await video.play();
@@ -95,6 +175,7 @@ try {
     const channels=[new Float32Array(end-start),new Float32Array(end-start)],covered=new Uint8Array(end-start);
     for(const chunk of chunks){
       const a=Math.max(start,chunk.frame),b=Math.min(end,chunk.frame+(chunk.samples[0]?.length||0));if(a>=b)continue;
+      if(chunk.samples.length!==2||!chunk.samples[0]||!chunk.samples[1]||chunk.samples[0].length!==chunk.samples[1].length)throw new Error('Incomplete stereo audio capture window');
       covered.fill(1,a-start,b-start);
       for(let channel=0;channel<2;channel++){
         const samples=chunk.samples.at(channel),target=channels.at(channel);
@@ -121,20 +202,36 @@ try {
   for(const frequency of [250,750,1000]){
     await signal({frequency,amplitude:0.5});await run(true,1);await page.waitForTimeout(1500);
     for(const [kind,value] of [['gain',1.5],['gain',2],['gain',0],['gain',1],['enabled',false],['enabled',true]]){
-      const frame=await page.evaluate(async({kind,value})=>{
+      const frame=await page.evaluate(async({kind,value,recordPort})=>{
         const runtime=window[Symbol.for('cheese-knife.runtime.v1')],video=document.querySelector('video');
         const frame=Math.round(window.__quality.context.currentTime*window.__quality.context.sampleRate);
+        const port=recordPort?window[Symbol.for('cheese-knife.quality-worklet-signed')]:null;
+        if(port)port.mark('start',frame);
         if(kind==='gain')runtime.audio.setGain(video,value);else await runtime.audio.setEnabled(video,value);
+        if(kind==='enabled'){const probe=window.__quality,index=probe.masterFrameCount++*2;
+          probe.masterFrames.fill(frame,index,index+1);probe.masterFrames[index+1]=Math.round(probe.context.currentTime*probe.context.sampleRate);}
+        if(port)port.mark('settle',window.__quality.masterFrames[window.__quality.masterFrameCount*2-1]);
         return frame;
-      },{kind,value});
+      },{kind,value,recordPort:kind==='enabled'&&ciWorkletSigned&&diagnosticRun.trace});
       await page.waitForTimeout(300);
+      if(ciWorkletSigned&&kind==='enabled'){
+        if(diagnosticRun.trace)await page.evaluate(()=>{
+          const context=window.__quality.context;
+          window[Symbol.for('cheese-knife.quality-worklet-signed')].mark('end',Math.round(context.currentTime*context.sampleRate));
+        });
+        wide.push(await windowSamples(frame-960,frame+3840));
+      }
       const rate=await page.evaluate(()=>window.__quality.context.sampleRate);
+      const diagnosticCapture=(capture,phase)=>kind==='enabled'?diagnosticRun.collector.retainCapture(capture,{frequency,value,frame},phase):capture;
       transitions.push({frequency,kind,value,
-        before:summarizeCapture(await windowSamples(frame-Math.round(rate*0.08),frame-Math.round(rate*0.04))),
-        change:summarizeCapture(await windowSamples(frame-Math.round(rate*0.02),frame+Math.round(rate*0.04))),
-        after:summarizeCapture(await windowSamples(frame+Math.round(rate*0.1),frame+Math.round(rate*0.14)))});
+        before:summarizeCapture(diagnosticCapture(await windowSamples(frame-Math.round(rate*0.08),frame-Math.round(rate*0.04)),'before')),
+        change:summarizeCapture(diagnosticCapture(await windowSamples(frame-Math.round(rate*0.02),frame+Math.round(rate*0.04)),'change')),
+        after:summarizeCapture(diagnosticCapture(await windowSamples(frame+Math.round(rate*0.1),frame+Math.round(rate*0.14)),'after'))});
     }
   }
+  if(ciWorkletSigned)diagnosticEvidence.workletSigned={
+    ...await page.evaluate(()=>window[Symbol.for('cheese-knife.quality-worklet-signed')].snapshot()),firstOn,wide,
+  };
   const alignments=await page.evaluate(async()=>{
     const rates=[8000,11025,16000,22050,32000,44100,48000,88200,96000,176400,192000,384000];
     const firstAndLast=channel=>{
@@ -169,15 +266,38 @@ try {
     compressor:window.__quality.compressors.map(node=>({threshold:node.threshold.value,knee:node.knee.value,
       ratio:node.ratio.value,attack:node.attack.value,release:node.release.value})),
     sampleRate:window.__quality.context.sampleRate}));
+  if(Object.hasOwn(diagnosticEvidence,'workletSha256'))nodes.workletSha256=diagnosticEvidence.workletSha256;
   await page.evaluate(async()=>{document.querySelector('video').pause();await window.__quality.context.close();});
   const report={browser:browser.version(),artifact,profile:'fresh synthetic, silent output sink',configuration:'normalized defaults; separately labeled stress case',nodes,cases,transitions,alignments,stress,
     limits:'Steady coherent-window THD reports harmonics 2..10 below Nyquist, not all distortion. Floating >1 indicates headroom risk, not a measured hardware clip. Synthetic data is not subjective listening.'};
   if(nodes.sources!==1||cases[0].channels[0].rms<0.34||cases[0].channels[0].rms>0.36)throw new Error('Capture calibration failed');
   const qualityFailures=audioQualityFailures(report);
   report.qualityFailures=qualityFailures;
-  await files.ensureDirectory(output);await files.writeFile(reportPath,JSON.stringify(report,null,2));
+  await files.ensureDirectory(output);await files.writeFile(reportPath,ciWorkletSigned?serializeRoleReport(report):JSON.stringify(report,null,2),{flag:'wx'});
   console.log(JSON.stringify({browser:report.browser,artifact,nodes,report:reportPath,cases:cases.map(item=>({frequency:item.frequency,amplitude:item.inputAmplitude,gain:item.gain,enabled:item.enabled,stereo:item.stereo,bursts:item.bursts,peak:item.channels[0].peak,rms:item.channels[0].rms,overFullScaleSamples:item.channels[0].overFullScaleSamples,thdPercent:item.channels[0].thdPercent})),
     stress:{profile:stress.profile,peak:stress.channels[0].peak,overFullScaleSamples:stress.channels[0].overFullScaleSamples},alignments,
     transitions:transitions.map(item=>({frequency:item.frequency,kind:item.kind,value:item.value,maxAdjacentStep:item.change.channels[0].maxAdjacentStep,baselineAdjacentStep:Math.max(item.before.channels[0].maxAdjacentStep,item.after.channels[0].maxAdjacentStep),peak:item.change.channels[0].peak,min8msRms:item.change.channels[0].envelope8ms.min,baselineMin8msRms:Math.min(item.before.channels[0].envelope8ms.min,item.after.channels[0].envelope8ms.min)}))},null,2));
   if(qualityFailures.length)throw new Error(`Audio quality failed: ${qualityFailures.join(', ')}`);
-}finally{await browser.close();}
+}catch(error){diagnosticError('quality',error);}
+finally{
+  if(diagnosticPage)try{
+    Object.assign(diagnosticEvidence,await diagnosticPage.evaluate(()=>{
+      const runtime=window[Symbol.for('cheese-knife.runtime.v1')],probe=window.__quality,video=document.querySelector('video');
+      const readback=runtime.audio.getReadback(video),wrapped=window[Symbol.for('cheese-knife.quality-trace')];
+      return {sampleRate:probe.context.sampleRate,audioConfig:Object.fromEntries(KnifeMediaProfiles.audioFieldsV2.map(({id})=>[id,Reflect.get(runtime.config,id)])),
+        wanted:readback.wanted,state:readback.state,actions:Array.from({length:probe.masterFrameCount},(_,index)=>({frame:probe.masterFrames[index*2],afterFrame:probe.masterFrames[index*2+1]})),
+        trace:wrapped?wrapped.snapshot():{complete:probe.gains.length===8,truncated:false,error:null,nodeCount:probe.gains.length,gains:probe.gains.map(node=>node.gain.value),events:[]}};
+    }));
+  }catch(error){diagnosticError('snapshot',error);}
+  if(calibrate)try{await calibrate();}catch(error){diagnosticEvidence.roles??={};diagnosticEvidence.roles.cleanupError=String(error?.message??error).slice(0,2048);}
+  try{
+    if(measurement)diagnosticEvidence.shutdown={kind:'windows-native',...await measurement.close()};
+    else{await browser.close();diagnosticEvidence.shutdown={kind:'playwright',browserCloseAcknowledged:true,browserDisconnected:!browser.isConnected()};}
+  }catch(error){diagnosticError('close',error);}
+}
+}catch(error){diagnosticError('launch',error);}
+const diagnostic=diagnosticRun.collector.buildReport({...diagnosticEvidence,error:diagnosticFailure,secondaryErrors:diagnosticSecondary});
+try{await files.ensureDirectory('output/audio-quality');await writeQualityDiagnostic(files,diagnosticRun.paths.diagnostic,diagnostic);}
+catch(error){diagnosticError('diagnostic-write',error);}
+if(diagnosticFailure!==null){console.error(JSON.stringify({diagnosticComplete:diagnostic.complete,secondaryErrors:diagnosticSecondary}));throw diagnosticFailure;}
+if(!diagnostic.complete)throw new Error('Audio diagnostic incomplete: '+diagnostic.validationErrors.join(', '));

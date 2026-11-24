@@ -6,7 +6,7 @@ const { spawnSync } = require('node:child_process');
 const fixture = require('./native-preflight-fixture.cjs');
 const subject = () => import('../scripts/check-native-preflight.mjs');
 const sources = ['scripts/check-native-preflight.mjs','scripts/extension-e2e/native-preflight.mjs','scripts/extension-e2e/native-preflight-contract.mjs','scripts/extension-e2e/native-profile.mjs','scripts/extension-e2e/published-payload.mjs',
-  'scripts/extension-e2e/transition-scenario.mjs','scripts/extension-e2e/fixture-router.mjs','scripts/owned-files.mjs','tests/fixtures/installed-extension/published-payload.json'];
+  'scripts/extension-e2e/transition-scenario.mjs','scripts/extension-e2e/transition-failure.mjs','scripts/audio-native-browser.mjs','scripts/extension-e2e/visibility-browser.mjs','scripts/extension-e2e/installed-protocol.mjs','scripts/extension-e2e/fixture-router.mjs','scripts/owned-files.mjs','tests/fixtures/installed-extension/published-payload.json'];
 async function runFixture(t) {
   const { openOwnedRoot } = await import('../scripts/owned-files.mjs');
   const base = path.resolve('output');
@@ -49,9 +49,9 @@ test('CLI supports real owned-file 4 to 8 to 12 stages without native profile lo
   assert.equal(result.status, 'NATIVE-PREFLIGHT-PASS'); assert.equal(result.complete, true); assert.equal(f.inspectCalls(), 4);
 });
 test('prepare refuses an existing run without modifying it', async t => {
-  const f = await runFixture(t), before = await f.run.readFile('manifest.json');
+  const f = await runFixture(t), before = await f.run.readFile("manifest.json");
   await assert.rejects(f.call(['--prepare']), { code: 'native-evidence-invalid' });
-  assert.deepEqual(await f.run.readFile('manifest.json'), before); assert.equal(f.inspectCalls(), 0);
+  assert.deepEqual(await f.run.readFile("manifest.json"), before); assert.equal(f.inspectCalls(), 0);
 });
 test('explicitly disabled native inspection has no automatic fallback', async t => {
   const f = await runFixture(t); f.dependencies.inspectNative=null;
@@ -115,7 +115,7 @@ test('unresolved intent survives primary and secondary journal write failures', 
 for (const totalBudget of [false, true]) test(`inspector output respects ${totalBudget ? 'prospective run' : 'per-file'} budget before writing`, async t => {
   const f = await runFixture(t), inspect = f.dependencies.inspectNative;
   if (totalBudget) {
-    const manifestBytes = (await f.run.readFile('manifest.json')).length;
+    const manifestBytes = (await f.run.readFile("manifest.json")).length;
     let current = manifestBytes;
     for (const name of await f.run.readdir('probes')) current += (await f.run.lstat(`probes/${name}`)).size;
     let remaining = 16777216 - current - 1024, index = 0;

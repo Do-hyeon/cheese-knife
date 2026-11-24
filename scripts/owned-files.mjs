@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
 import path from 'node:path';
 
 const ownedError = code => Object.assign(new Error(code), { code });
@@ -28,7 +29,16 @@ export async function openOwnedRoot(directory) {
   if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw ownedError('owned-root-invalid');
 
   const partsOf = relative => relative ? relative.split('/') : [];
-  async function inspect(relative, type = 'any') {
+  const notify=(control,error)=>{try{control?.onFailure?.(error);}catch{/* Preserve the capability failure. */}};
+  const guard=control=>{
+    if(!control)return;
+    if(!(control.signal instanceof AbortSignal)||typeof control.onFailure!=='function')throw ownedError('owned-operation-control');
+    if(!Number.isFinite(control.deadline)||performance.now()>=control.deadline)throw ownedError('owned-operation-deadline');
+    if(control.signal?.aborted)throw control.signal.reason??ownedError('owned-operation-aborted');
+  };
+  async function inspect(relative, type = 'any', control) {
+    try{
+    guard(control);
     if (!validTypes.has(type)) throw ownedError('owned-path-type');
     const target = resolveOwnedPath(root, relative);
     const parts = partsOf(relative);
@@ -40,6 +50,7 @@ export async function openOwnedRoot(directory) {
     for (let index = 0; index < parts.length; index++) {
       current = path.join(current, parts.at(index));
       let stat;
+      guard(control);
       try {
         // inspect verifies every existing child component immediately before a capability operation.
         stat = await fs.lstat(current); // eslint-disable-line security/detect-non-literal-fs-filename
@@ -58,17 +69,28 @@ export async function openOwnedRoot(directory) {
       }
     }
     throw ownedError('owned-path-invalid');
+    }catch(error){notify(control,error);throw error;}
   }
 
-  async function resolve(relative, { type = 'any', optional = false } = {}) {
-    const result = await inspect(relative, type);
+  async function resolve(relative, { type = 'any', optional = false } = {}, control) {
+    const result = await inspect(relative, type, control);
     if (result.exists) return result.path;
     if (optional) return null;
     if (type === 'missing-or-file' || type === 'missing-or-directory') return result.path;
-    throw missingError();
+    const error=missingError();notify(control,error);throw error;
   }
 
-  async function readFile(relative, options) {
+  async function readFile(relative, options, control) {
+    if(control!==undefined){
+      const selected={deadline:control.deadline,signal:control.signal,onFailure:control.onFailure};
+      try{
+        guard(selected);
+        const target=await resolve(relative,{type:'file'},selected);
+        guard(selected);
+        const data=await fs.readFile(target,options);
+        guard(selected);return data;
+      }catch(error){notify(selected,error);throw error;}
+    }
     const target = await resolve(relative, { type: 'file' });
     // resolve(file) rejects links and type mismatches before this read.
     return fs.readFile(target, options); // eslint-disable-line security/detect-non-literal-fs-filename
@@ -77,6 +99,15 @@ export async function openOwnedRoot(directory) {
     const target = await resolve(relative, { type: 'directory' });
     // resolve(directory) rejects links and type mismatches before enumeration.
     return fs.readdir(target, options); // eslint-disable-line security/detect-non-literal-fs-filename
+  }
+  async function* readChunks(relative, { signal } = {}) {
+    const target = await resolve(relative, { type: 'file' });
+    yield* createReadStream(target, { highWaterMark: 1048576, signal });
+  }
+  async function* directoryEntries(relative) {
+    const target = await resolve(relative, { type: 'directory' });
+    // Entries are raw: consumers still validate each child before reading or recursing.
+    yield* await fs.opendir(target, { bufferSize: 32 });
   }
   async function lstat(relative, { optional = false } = {}) {
     const result = await inspect(relative, 'any');
@@ -106,7 +137,27 @@ export async function openOwnedRoot(directory) {
     await inspect(relative, 'directory');
     return created;
   }
-  async function writeFile(relative, data, options) {
+  async function createDirectory(relative) {
+    if (!relative) throw ownedError('owned-path-root-operation');
+    const target = await resolve(relative, { type: 'missing-or-directory' });
+    // Non-recursive creation elects one caller; it does not lock ancestor paths.
+    await fs.mkdir(target); // eslint-disable-line security/detect-non-literal-fs-filename
+    return target;
+  }
+  async function writeFile(relative, data, options, control) {
+    if(control!==undefined){
+      const selected={deadline:control.deadline,signal:control.signal,onFailure:control.onFailure};
+      try{
+        guard(selected);
+        if(!relative)throw ownedError('owned-path-root-operation');
+        const result=await inspect(relative,'missing-or-file',selected),parts=partsOf(relative);
+        if(!result.exists&&result.missingAt!==parts.length-1)throw missingError();
+        guard(selected);
+        await fs.writeFile(result.path,data,options);
+        await inspect(relative,'file',selected);
+        guard(selected);return result.path;
+      }catch(error){notify(selected,error);throw error;}
+    }
     if (!relative) throw ownedError('owned-path-root-operation');
     const result = await inspect(relative, 'missing-or-file');
     const parts = partsOf(relative);
@@ -209,7 +260,15 @@ export async function openOwnedRoot(directory) {
     return destinationPath;
   }
 
-  const capability = { root, resolve, readFile, readdir, lstat, ensureDirectory, makeTempDirectory, writeFile, publishFile, removeTree, copyFile, copyTree, copyFileFrom, copyTreeFrom };
+  const capability = { root, resolve, readFile, readdir, readChunks, directoryEntries, lstat, ensureDirectory, makeTempDirectory, createDirectory, writeFile, publishFile, removeTree, copyFile, copyTree, copyFileFrom, copyTreeFrom };
   capabilities.set(capability, { root, inspect });
   return capability;
+}
+
+// Source checkouts nest assets; distribution and isolated fixtures are package roots.
+export async function openExtensionRoot(directory) {
+  const owned = await openOwnedRoot(directory);
+  if (!await owned.lstat('extension', { optional: true })) return owned;
+  if (await owned.lstat('manifest.json', { optional: true })) throw ownedError('extension-layout-ambiguous');
+  return openOwnedRoot(await owned.resolve('extension', { type: 'directory' }));
 }

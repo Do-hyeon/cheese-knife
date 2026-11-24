@@ -1,8 +1,9 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import path from 'node:path';
-import { promisify } from 'node:util';
+import { isDeepStrictEqual, promisify } from 'node:util';
 import { openOwnedRoot } from '../owned-files.mjs';
+import {isRunJobShutdown} from './run-job.mjs';
 export {selectPopupTarget,attachPopupCDP,openInstalledMediaSettings} from './popup-cdp.mjs';
 
 const harnessError = (code, cause) => Object.assign(new Error(code, cause ? { cause } : undefined), { code });
@@ -20,23 +21,61 @@ export async function openMediaBrowserSession(context) {
 }
 
 /** The caller owns this session and its exact disposable profile, not another Chrome window. */
-export async function closeInstalledMediaBrowser({context,browserSession,profilePath,
-  queryProcesses=async profile=>(await import('./native-profile.mjs')).queryWindowsProcesses(profile),timeoutMs=15000}) {
+export async function closeInstalledMediaBrowser({context,browserSession,profilePath,runJobOwner,shutdownBy,sameChildExit,
+  queryProcesses=async (profile,deadline)=>(await import('./native-profile.mjs')).queryWindowsProcesses(profile,undefined,deadline),timeoutMs=15000}) {
   if(!path.isAbsolute(profilePath)||!Number.isSafeInteger(timeoutMs)||timeoutMs<1||timeoutMs>15000)throw harnessError('media-close-invalid');
+  const sharedShutdown=shutdownBy!==undefined||sameChildExit!==undefined;
+  if(sharedShutdown&&(!Number.isFinite(shutdownBy)||!(sameChildExit instanceof Promise)||runJobOwner!==undefined))throw harnessError('media-close-invalid');
   const browser=context.browser();if(!browser)throw harnessError('media-browser-unavailable');
-  let disconnected=false,retired=false,timer;
+  const expectedBinding=runJobOwner===undefined?null:structuredClone(runJobOwner.binding);
+  let disconnected=false,retired=false,timer,job,actualChildExit;
+  const started=performance.now(),deadline=sharedShutdown?shutdownBy:started+timeoutMs,diagnostic={stage:'close-ack',browserCloseAcknowledged:false,queryPending:false,queryCount:0,lastRootCount:null};
+  if(sharedShutdown&&deadline>started+15000)throw harnessError('media-close-invalid');
+  const check=()=>{if(retired||performance.now()>=deadline)throw harnessError('media-close-unconfirmed');};
   const onDisconnected=()=>{disconnected=true;};browser.on('disconnected',onDisconnected);
   try{
+    const expired=new Promise((_,reject)=>{timer=setTimeout(()=>reject(harnessError('media-close-unconfirmed')),Math.max(0,deadline-performance.now()));});
     await Promise.race([(async()=>{
+      check();
       await browserSession.send('Browser.close');
+      check();
+      diagnostic.browserCloseAcknowledged=true;diagnostic.stage='disconnect';
       while(!disconnected||browser.isConnected()){
-        if(retired)throw harnessError('media-close-unconfirmed');await new Promise(resolve=>setTimeout(resolve,10));
+        check();await new Promise(resolve=>setTimeout(resolve,Math.min(10,deadline-performance.now())));check();
       }
-      for(;;){if(retired)throw harnessError('media-close-unconfirmed');const roots=await queryProcesses(profilePath);
+      check();
+      if(runJobOwner!==undefined){
+        diagnostic.stage='run-job';job=await runJobOwner.close(deadline);check();
+        if(!isRunJobShutdown({contract:'run-job-v1',browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:null,runJobClosed:true,profileRootAssessment:'UNASSESSED',job},expectedBinding))throw harnessError('media-close-job-unconfirmed');
+        return;
+      }
+      diagnostic.stage='owned-roots';
+      for(;;){check();if(deadline-performance.now()<1)throw harnessError('media-close-unconfirmed');diagnostic.queryCount++;diagnostic.queryPending=true;
+        let roots;try{roots=await queryProcesses(profilePath,deadline);}finally{if(!retired)diagnostic.queryPending=false;}
         if(!Array.isArray(roots)||roots.length>64)throw harnessError('media-close-roots-invalid');
-        if(roots.length===0)return;await new Promise(resolve=>setTimeout(resolve,25));}
-    })(),new Promise((_,reject)=>{timer=setTimeout(()=>reject(harnessError('media-close-unconfirmed')),timeoutMs);})]);
-    return {browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:true};
+        check();
+        diagnostic.lastRootCount=roots.length;
+        if(roots.length===0){
+          if(sharedShutdown){
+            diagnostic.stage='same-child-exit';
+            const actual=await sameChildExit,acceptedAt=performance.now();check();
+            if(!actual||actual.kind!=='exit'||!Number.isFinite(actual.at)||actual.at<0||actual.at>acceptedAt||actual.at>=deadline||
+              !(actual.code===null||Number.isSafeInteger(actual.code))||
+              !(actual.signal===null||typeof actual.signal==='string'&&actual.signal.length>0)||
+              (actual.code===null)===(actual.signal===null))throw harnessError('media-close-child-exit-unconfirmed');
+            actualChildExit=actual;
+            if(actual.code!==0||actual.signal!==null)throw harnessError('media-close-child-exit-abnormal');
+          }
+          return;
+        }
+        await new Promise(resolve=>setTimeout(resolve,Math.min(25,deadline-performance.now())));}
+    })(),expired]);
+    check();
+    if(runJobOwner!==undefined)return {contract:'run-job-v1',browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:null,runJobClosed:true,profileRootAssessment:'UNASSESSED',job};
+    return {browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:true,...sharedShutdown?{actualChildExit}:{}};
+  }catch(error){
+    let connected=null;try{connected=browser.isConnected();}catch{/* Preserve the original failure. */}
+    error.closeDiagnostic={...diagnostic,...actualChildExit?{actualChildExit}:{},browserDisconnected:disconnected,connected,elapsedMs:performance.now()-started};throw error;
   }finally{retired=true;clearTimeout(timer);browser.off('disconnected',onDisconnected);}
 }
 
@@ -226,7 +265,16 @@ async function findManifestTool() {
   throw harnessError('manifest-tool-unavailable');
 }
 
-async function prepareWindowsBundledChromium({ chromiumApi, profilePath }) {
+/** Bound SDK failures without retrying or replacing the original native exit information. */
+export async function embedChromiumManifest(manifestTool,manifest,assembly) {
+  return execFileAsync(manifestTool, ['-manifest', manifest, `-outputresource:${assembly};#2`], {
+    windowsHide:true,timeout:15000,maxBuffer:65536,
+  });
+}
+
+export async function prepareWindowsBundledChromium({ chromiumApi, profilePath }) {
+  const started=Date.now(),diagnostic={stage:'source',profilePath};
+  try {
   if (typeof chromiumApi.executablePath !== 'function') throw harnessError('bundled-chromium-path-unavailable');
   const sourceExecutable = chromiumApi.executablePath();
   const sourceRoot = path.dirname(sourceExecutable);
@@ -235,6 +283,7 @@ async function prepareWindowsBundledChromium({ chromiumApi, profilePath }) {
   const sourceExecutableRelative = path.basename(sourceExecutable);
   await source.resolve(sourceExecutableRelative, { type: 'file' });
   const { version, payloadRelative } = await findManifestLayout(source);
+  diagnostic.version=version;diagnostic.stage='copy';
   const targetRoot = 'bundled-chromium';
   const targetVersion = `${targetRoot}/${version}`;
   const targetExecutable = `${targetRoot}/chrome.exe`;
@@ -262,9 +311,68 @@ async function prepareWindowsBundledChromium({ chromiumApi, profilePath }) {
   await profile.copyFile(`${targetVersion}/chrome_elf.dll`, assemblyRelative);
   const assembly = await profile.resolve(assemblyRelative, { type: 'file' });
   const manifestTool = await findManifestTool();
-  await execFileAsync(manifestTool, ['-manifest', manifest, `-outputresource:${assembly};#2`], { windowsHide: true });
+  diagnostic.stage='manifest-tool';diagnostic.manifestTool=manifestTool;
+  await embedChromiumManifest(manifestTool,manifest,assembly);
+  diagnostic.stage='ready-marker';
   await profile.writeFile(readyMarker, version, 'utf8');
   return profile.resolve(targetExecutable, { type: 'file' });
+  } catch(error) {error.preparationDiagnostic={...diagnostic,elapsedMs:Date.now()-started};throw error;}
+}
+
+// shortcut: the reviewed digest binds bytes, not atomic ownership; revisit if concurrent replacement enters scope.
+export async function verifyBrowserCandidate(selection,{deadline=Date.now()+150000,signal,exclude=[]}={}) {
+  const reject=code=>{throw harnessError('browser-candidate-'+code);};
+  const check=()=>{if(signal?.aborted||Date.now()>=deadline)reject('deadline');};
+  const canonical=value=>{const absolute=path.resolve(value);return process.platform==='win32'?absolute.toLowerCase():absolute;};
+  const hashPattern=/^[a-f0-9]{64}$/;
+  const localAbsolute=value=>typeof value==='string'&&path.isAbsolute(value)&&!/^[\\/]{2}/.test(value)&&(process.platform!=='win32'||/^[a-z]:[\\/]/i.test(value));
+  if(!selection||!localAbsolute(selection.root)||!hashPattern.test(selection.manifestSha256)||!Number.isFinite(deadline))reject('selection');
+  deadline=Math.min(deadline,Date.now()+150000);
+  const requested=Object.freeze({root:path.resolve(selection.root),manifestSha256:selection.manifestSha256});check();
+  const files=await openOwnedRoot(requested.root);
+  if(canonical(files.root)!==canonical(requested.root))reject('root-alias');
+  const inside=(parent,child)=>{const relative=path.relative(parent,child);return !relative||relative!=='..'&&!relative.startsWith('..'+path.sep)&&!path.isAbsolute(relative);};
+  for(const other of exclude){
+    if(!localAbsolute(other)||inside(files.root,other)||inside(other,files.root))reject('overlap');
+    const actual=(await openOwnedRoot(other)).root;
+    if(inside(files.root,actual)||inside(actual,files.root))reject('overlap');
+  }
+  async function read(relative,maximum,collect=false){
+    check();const hash=createHash('sha256'),chunks=[];let bytes=0;
+    // The owned root rejects links/types before streaming; bytes are bounded during the read.
+    for await(const chunk of files.readChunks(relative,{signal})){check();bytes+=chunk.length;if(bytes>maximum)reject('file-size');hash.update(chunk);if(collect)chunks.push(chunk);}
+    check();return {bytes,sha256:hash.digest('hex'),...(collect?{data:Buffer.concat(chunks)}:{})};
+  }
+  const raw=await read('browser-candidate.json',1048576,true);
+  if(raw.sha256!==requested.manifestSha256)reject('manifest-hash');
+  let manifest;try{manifest=JSON.parse(raw.data.toString('utf8'));}catch{reject('manifest-json');}
+  const buildArgs={is_debug:true,is_component_build:true,symbol_level:0,blink_symbol_level:0,v8_symbol_level:0,target_cpu:'x64',use_remoteexec:false,use_siso:true};
+  if(!manifest||manifest.schema!=='f01-browser-candidate-v1'||typeof manifest.root!=='string'||!path.isAbsolute(manifest.root)||canonical(manifest.root)!==canonical(files.root)||manifest.version!=='159.0.8132.0'||manifest.revision!=='c409acbc7ae0155eb173d8d5b9fd815e244dbf97'||manifest.platform!=='win32'||manifest.arch!=='x64'||manifest.executable!=='chrome.exe'||!isDeepStrictEqual(manifest.buildArgs,buildArgs)||!Array.isArray(manifest.files)||manifest.files.length<1||manifest.files.length>4096)reject('manifest-scope');
+  const expected=new Map(),folded=new Set(),directories=new Set();let total=0;
+  for(const row of manifest.files){
+    if(!row||typeof row.path!=='string'||!row.path||row.path.split('/').some(part=>!part||part==='.'||part==='..'||/[\\:<>":|?*\x00-\x1f]/.test(part)||/[. ]$/.test(part)||/^(con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test(part))||row.path.toLowerCase()==='browser-candidate.json'||folded.has(row.path.toLowerCase())||!Number.isSafeInteger(row.bytes)||row.bytes<0||!hashPattern.test(row.sha256))reject('manifest-files');
+    folded.add(row.path.toLowerCase());expected.set(row.path,Object.freeze({path:row.path,bytes:row.bytes,sha256:row.sha256}));
+    const parts=row.path.split('/');if(parts.length>16)reject('inventory-bound');for(let i=1;i<parts.length;i++)directories.add(parts.slice(0,i).join('/'));
+    total+=row.bytes;if(total>200*1024**3)reject('payload-bound');
+  }
+  if(!expected.get('chrome.exe')?.bytes)reject('executable');
+  let entries=0;const found=new Set();
+  async function visit(relative=''){
+    check();
+    for await(const item of files.directoryEntries(relative)){
+      check();if(++entries>4096)reject('inventory-bound');const name=relative?relative+'/'+item.name:item.name;
+      if(item.isSymbolicLink())reject('inventory-link');
+      if(item.isDirectory()){if(!directories.has(name))reject('inventory');await visit(name);}
+      else if(item.isFile()){if(name!=='browser-candidate.json'){if(!expected.has(name))reject('inventory');found.add(name);}}
+      else reject('inventory-type');
+    }
+  }
+  await visit();if(found.size!==expected.size)reject('inventory');
+  const rows=[...expected.values()].sort((a,b)=>a.path.localeCompare(b.path));
+  for(const row of rows){const actual=await read(row.path,row.bytes);if(actual.bytes!==row.bytes||actual.sha256!==row.sha256)reject('file-hash');}
+  if((await read('browser-candidate.json',1048576)).sha256!==requested.manifestSha256)reject('manifest-changed');
+  const executable=await files.resolve('chrome.exe',{type:'file'});check();
+  return Object.freeze({root:files.root,manifestSha256:requested.manifestSha256,version:manifest.version,revision:manifest.revision,executable,bytes:total,files:Object.freeze(rows)});
 }
 
 export async function launchInstalledExtension({ chromiumApi, extensionPath, profilePath, artifactPath, headed, browserCompatibility }) {
@@ -293,6 +401,26 @@ export async function launchInstalledExtension({ chromiumApi, extensionPath, pro
     const worker = await waitForExtensionWorker(context);
     return { context, worker, extensionId: extensionIdFromWorkerURL(worker.url()) };
   } catch (error) {
+    if (typeof context.newPage === 'function') {
+      let timer;
+      try {
+        error.startupDiagnostic = await Promise.race([(async () => {
+          const manager = await context.newPage();
+          await manager.goto('chrome://extensions', { timeout: 3000 });
+          const text = await manager.evaluate(() => {
+            const pending = [document.documentElement]; let text = '', count = 0;
+            while (pending.length && text.length < 4096 && count++ < 2048) {
+              const node = pending.shift();
+              if (node.nodeType === Node.TEXT_NODE) text += node.textContent + '\n';
+              else { pending.push(...node.childNodes); if (node.shadowRoot) pending.push(node.shadowRoot); }
+            }
+            return text.slice(0, 4096);
+          });
+          return typeof text === 'string' ? text.slice(0, 4096) : 'unavailable';
+        })(), new Promise((_, reject) => { timer = setTimeout(() => reject(harnessError('startup-diagnostic-timeout')), 5000); })]);
+      } catch { error.startupDiagnostic = 'unavailable'; }
+      finally { clearTimeout(timer); }
+    }
     try {
       await context.close();
     } catch {

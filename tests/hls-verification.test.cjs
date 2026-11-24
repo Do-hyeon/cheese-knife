@@ -29,7 +29,7 @@ test('derives two isolated generation roots and inspects only the second bundle'
     outputRoot,
     generationOneRoot: path.join(outputRoot, 'generation-one'),
     generationTwoRoot: path.join(outputRoot, 'generation-two'),
-    inspectedCandidateBundle: path.join(outputRoot, 'generation-two', 'vendor', 'hls.light.private.js'),
+    inspectedCandidateBundle: path.join(outputRoot, 'generation-two', 'extension/vendor', 'hls.light.private.js'),
     reportPath: path.join(outputRoot, 'report.json')
   });
   assert.notEqual(paths.generationOneRoot, paths.generationTwoRoot);

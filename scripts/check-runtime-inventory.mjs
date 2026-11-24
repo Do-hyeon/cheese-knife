@@ -2,12 +2,12 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { transform } from 'esbuild';
-import { openOwnedRoot } from './owned-files.mjs';
+import { openOwnedRoot, openExtensionRoot } from './owned-files.mjs';
 
 const fail = code => Object.assign(new Error(code), { code });
 
 export async function listRuntimeJavaScript(root = process.cwd()) {
-  const files = await openOwnedRoot(root);
+  const files = await openExtensionRoot(root);
   const result = [];
   for (const entry of await files.readdir('', { withFileTypes: true })) {
     if (!entry.name.endsWith('.js')) continue;
@@ -34,7 +34,7 @@ export async function runtimeExecutableHashes(root, runtimeFiles) {
   if (!Array.isArray(runtimeFiles) || new Set(runtimeFiles).size !== runtimeFiles.length || runtimeFiles.some(file => typeof file !== 'string' || file.includes('\\'))) {
     throw fail('runtime-js-inventory-invalid');
   }
-  const files = await openOwnedRoot(root);
+  const files = await openExtensionRoot(root);
   const hashes = [];
   for (const relative of runtimeFiles) {
     const source = await files.readFile(relative, 'utf8');
@@ -54,8 +54,8 @@ export async function runtimeExecutableHashes(root, runtimeFiles) {
 
 export async function checkRuntimeInventory(
   root = process.cwd(),
-  inventoryFile = 'tests/fixtures/f00-runtime-js.json',
-  executableFile = 'tests/fixtures/f00-runtime-executable.json',
+  inventoryFile = 'tests/fixtures/f01-j1-runtime-js.json',
+  executableFile = 'tests/fixtures/f01-current-runtime-executable.json',
 ) {
   const owned = await openOwnedRoot(root);
   const approvedFiles = JSON.parse(await owned.readFile(inventoryFile, 'utf8'));

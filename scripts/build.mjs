@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkDistributionFiles, checkPackage, resolveFile } from './check-package.mjs';
-import { openOwnedRoot } from './owned-files.mjs';
+import { openOwnedRoot, openExtensionRoot } from './owned-files.mjs';
 
 const sourceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -12,17 +12,19 @@ export async function build(directory = sourceRoot, output = path.join(directory
   if (![path.join(path.resolve(directory), 'dist'), path.join(files.root, 'dist')].includes(requestedTarget)) throw new Error('Build target must be this repository Chrome dist directory');
   const target = path.join(files.root, 'dist');
   const source = await checkPackage(files.root);
-  const manifest = JSON.parse(await files.readFile('manifest.json', 'utf8'));
+  const assets = await openExtensionRoot(files.root);
+  const assetPath = name => path.posix.join(path.relative(files.root, assets.root).split(path.sep).join('/'), name);
+  const manifest = JSON.parse(await assets.readFile('manifest.json', 'utf8'));
   await files.removeTree('dist');
   await files.ensureDirectory('dist');
-  await files.copyFile('manifest.json', 'dist/manifest.json');
-  for (const entry of await files.readdir('', { withFileTypes: true })) {
+  await files.copyFile(assetPath('manifest.json'), 'dist/manifest.json');
+  for (const entry of await assets.readdir('', { withFileTypes: true })) {
     if (entry.isFile() && /\.(?:html|js|css|png)$/.test(entry.name)) {
-      await files.copyFile(entry.name, `dist/${entry.name}`);
+      await files.copyFile(assetPath(entry.name), `dist/${entry.name}`);
     }
   }
   for (const folder of ['web', 'styles', '_locales']) {
-    if (await files.lstat(folder, { optional: true })) await files.copyTree(folder, `dist/${folder}`, {
+    if (await assets.lstat(folder, { optional: true })) await files.copyTree(assetPath(folder), `dist/${folder}`, {
       accept: (_relative, entry) => entry.isDirectory() || /\.(?:js|css|json)$/.test(entry.name),
     });
   }
@@ -32,7 +34,7 @@ export async function build(directory = sourceRoot, output = path.join(directory
     resolveFile(target, file);
     const parent = path.posix.dirname(`dist/${file}`);
     await files.ensureDirectory(parent);
-    await files.copyFile(file, `dist/${file}`);
+    await files.copyFile(assetPath(file), `dist/${file}`);
   }
   for (const file of ['LICENSE', 'THIRD_PARTY_NOTICES.md']) if (await files.lstat(file, { optional: true })) await files.copyFile(file, `dist/${file}`);
   await checkDistributionFiles(target);

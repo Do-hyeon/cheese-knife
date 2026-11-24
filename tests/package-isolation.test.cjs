@@ -11,7 +11,7 @@ async function repositoryCopy(t) {
   assert.equal(path.dirname(root), parent);
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   // A real child test must never exercise the broken cleanup on the user's dist.
-  for (const folder of ['scripts', 'src', 'web', 'styles', '_locales', 'vendor', 'tests/fixtures']) {
+  for (const folder of ['scripts', 'src', 'extension', 'tests/fixtures']) {
     await fs.cp(folder, path.join(root, folder), { recursive: true });
   }
   for (const entry of await fs.readdir('.', { withFileTypes: true })) {

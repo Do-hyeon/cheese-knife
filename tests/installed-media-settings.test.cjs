@@ -19,7 +19,7 @@ test('media loss oracle removes only disposable A domain without altering revisi
 test('media loss admission requires final occurrence and exact independently specified remaining raw data',async()=>{
   const api=await subject();assert.equal(typeof api.matchesInstalledMediaLoss,'function');const store=api.expectedInstalledMediaStore(N,P);
   const raw={...api.transitionSeed('valid-ui',N),mediaProfiles:api.expectedInstalledMediaLoss(store)};
-  const failure={code:'media-preservation',caseId:'valid-ui',phase:'new',launchOccurrence:4,step:'startup',stage:'candidate-init',cleanupErrors:[],
+  const failure={code:'media-preservation',caseId:'valid-ui',phase:'new',launchOccurrence:4,step:'startup',stage:'candidate-init',cleanupErrors:[],pageErrors:[],routeErrors:[],errorsTruncated:false,errorsComplete:true,
     observation:{raw,execution:{extensionId:'a'.repeat(32),version:'2.13.4',brokerMatches:true}}};
   assert.equal(api.matchesInstalledMediaLoss(failure,N,'a'.repeat(32),P),true);
   for(const edit of [value=>{value.launchOccurrence=2;},value=>{value.observation.raw.config.brightness=2;},
@@ -40,13 +40,14 @@ test('media result validates complete raw observations and all occurrence close 
     const initial={raw:{...structuredClone(seed),...(launchOccurrence>=3?{mediaProfiles:structuredClone(store)}:{})},execution:{extensionId,version,brokerMatches:true}};
     const final={raw:{...structuredClone(seed),...(launchOccurrence>=2?{mediaProfiles:structuredClone(store)}:{})},execution:{extensionId,version,brokerMatches:true}};
     const records=[{step:'startup',observation:initial},...(launchOccurrence===2?[{step:'create-media',observation:final}]:[]),{step:'observe-ui',observation:final}];
-    result.phases.push({caseId:'valid-ui',phase,launchOccurrence,extensionId,preparation:prepare(version),inventorySha256:'c'.repeat(64),manifestSha256:'d'.repeat(64),
+    result.phases.push({caseId:'valid-ui',phase,launchOccurrence,extensionId,preparation:prepare(version),inventorySha256:'c'.repeat(64),manifestSha256:'d'.repeat(64),pageErrors:[],routeErrors:[],errorsTruncated:false,errorsComplete:true,
       records,final,presetId:launchOccurrence>=2?P:undefined});
   }
   const launches=['seed',...api.MEDIA_TRANSITION_PHASES].map((phase,launchOccurrence)=>({caseId:'valid-ui',phase,launchOccurrence,
     launchId:`valid-ui:${launchOccurrence}:${phase}`,closed:true,shutdown:{browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:true}}));
   assert.doesNotThrow(()=>validateInstalledMediaTransitionResult(result,N,undefined,launches));
-  for(const mutate of [value=>{value.phases.pop();},value=>{value.phases[2].final.raw.mediaProfiles.channels[0].audio.values.compressorRatio=9;},
+  for(const mutate of [value=>{value.phases.pop();},value=>{value.phases[2].pageErrors.push('page');},value=>{value.phases[2].routeErrors.push('route');},
+    value=>{delete value.phases[2].errorsComplete;},value=>{value.phases[2].errorsTruncated=true;},value=>{value.phases[2].final.raw.mediaProfiles.channels[0].audio.values.compressorRatio=9;},
     value=>{value.phases[3].records.splice(1,0,{step:'create-media',observation:value.phases[3].final});},
     value=>{for(const record of value.phases[2].records){const raw=record.observation.raw;
       raw.mediaProfiles={revision:raw.mediaProfiles.revision,schema:1,channels:raw.mediaProfiles.channels,presets:raw.mediaProfiles.presets};}
@@ -57,7 +58,7 @@ test('media result validates complete raw observations and all occurrence close 
 });
 test('media-profile-loss derivative removes A only at guarded startup and preserves source inputs',async()=>{
   const api=await subject(),{phasePayload}=await import('../scripts/check-installed-transition.mjs');
-  const source=await fs.readFile('settings-broker.js','utf8'),manifest=await fs.readFile('manifest.json');
+  const source=await fs.readFile("extension/settings-broker.js",'utf8'),manifest=await fs.readFile("extension/manifest.json");
   const payload={entries:[{name:'settings-broker.js',bytes:Buffer.from(source)},{name:'manifest.json',bytes:manifest}]};
   const entries=phasePayload(payload,'new','media-profile-loss');assert.equal(payload.entries[0].bytes.toString(),source);
   assert.equal(JSON.parse(entries[1].bytes).version,'2.13.4');const changed=entries[0].bytes.toString();assert.notEqual(changed,source);

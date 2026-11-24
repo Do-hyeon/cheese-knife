@@ -10,8 +10,8 @@ const fs = await openOwnedRoot(path.resolve(path.dirname(fileURLToPath(import.me
 
 const browser = await chromium.launch({ headless: true, channel: 'chrome' });
 try {
-  const css = await fs.readFile('popup.css', 'utf8');
-  const popupSource = await fs.readFile('popup.html', 'utf8');
+  const css = await fs.readFile("extension/popup.css", 'utf8');
+  const popupSource = await fs.readFile("extension/popup.html", 'utf8');
   const scripts = [...popupSource.matchAll(/<script src="([^"]+)"><\/script>/g)].map(match => match.at(1));
   const html = popupSource
     .replace(/<link[^>]+href="popup.css"[^>]*>/, `<style>${css}</style>`)
@@ -24,7 +24,7 @@ try {
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.setContent(html);
-    const messages = JSON.parse(await fs.readFile(`_locales/${locale}/messages.json`, 'utf8'));
+    const messages = JSON.parse(await fs.readFile(`extension/_locales/${locale}/messages.json`, 'utf8'));
     await page.evaluate(messages => {
       const ownMessages = new Map(Object.entries(messages));
       window.chrome = {
@@ -44,7 +44,7 @@ try {
         },
       };
     }, messages);
-    for (const file of scripts) await page.addScriptTag({ content: await fs.readFile(file, 'utf8') });
+    for (const file of scripts) await page.addScriptTag({ content: await fs.readFile('extension/'+file, 'utf8') });
     assert.deepEqual(errors, [], 'production popup scripts run without page errors in ' + locale);
     await page.locator('#preview').waitFor({ state: 'attached', timeout: 5000 });
     const result = await page.evaluate(() => {

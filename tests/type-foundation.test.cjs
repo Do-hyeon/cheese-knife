@@ -6,7 +6,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const contractFiles = ['src/settings/contract.ts', 'src/settings/client.ts', 'src/settings/broker.ts'];
-const generatedFiles = ['settings-contract.js', 'settings-client.js', 'settings-broker.js'];
+const generatedFiles = ['extension/settings-contract.js', 'extension/settings-client.js', 'extension/settings-broker.js'];
 const requiredTrue = ['noEmit', 'strict', 'noUncheckedIndexedAccess', 'exactOptionalPropertyTypes', 'useUnknownInCatchVariables'];
 
 test('audio runtime contract is explicit and typechecked', async () => {

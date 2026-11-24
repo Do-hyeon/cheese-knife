@@ -21,7 +21,7 @@ const wrapped = `// HLS.js ${metadata.version}, Apache-2.0. Official npm dist SH
   `(() => { const runtime = window[Symbol.for('cheese-knife.runtime.v1')]; if (!runtime || runtime.Hls) return; const module = { exports: {} }; const exports = module.exports;\n` +
   hardened.replace(/\/\/# sourceMappingURL=[^\r\n]+/g, '') +
   `\nruntime.Hls = module.exports; })();\n`;
-await fs.mkdir(path.join(root, 'vendor'), { recursive: true });
-await fs.writeFile(path.join(root, 'vendor/hls.light.private.js'), wrapped);
-await fs.writeFile(path.join(root, 'vendor/hls.js.LICENSE'), license);
+await fs.mkdir(path.join(root, 'extension/vendor'), { recursive: true });
+await fs.writeFile(path.join(root, 'extension/vendor/hls.light.private.js'), wrapped);
+await fs.writeFile(path.join(root, 'extension/vendor/hls.js.LICENSE'), license);
 console.log(JSON.stringify({ version: metadata.version, sha256, licenseSha256, hardening: HARDENING_REVISION, hardenedSha256, wrapper: 'local UMD export capture; source-map comment removed' }));

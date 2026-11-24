@@ -4,10 +4,11 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const vm = require('node:vm');
+const {EventEmitter}=require('node:events');
 const nonce = '0123456789abcdef0123456789abcdef', id = 'a'.repeat(32);
 const faultError = code => Object.assign(Error(code), { code });
 
-async function fixture(t, fault, scenario) {
+async function fixture(t, fault, { scenario, mediaSchema } = {}) {
   const { openOwnedRoot } = await import('../scripts/owned-files.mjs');
   const { readPublishedPayload } = await import('../scripts/extension-e2e/published-payload.mjs');
   const base = await fs.mkdtemp(path.join(os.tmpdir(), 'transition-child-'));
@@ -17,7 +18,7 @@ async function fixture(t, fault, scenario) {
   let builds = 0, attestations = 0, launchIndex = 0, writes = 0;
   const payload = await readPublishedPayload();
   const options = { nonce, roots: [{ caseId: 'valid-ui', root: 'work' }], candidateIds: ['first', 'second'], artifact: 'artifact', headed: false,
-    ...(scenario ? { scenario } : {}) };
+    ...(scenario ? { scenario } : {}), ...(mediaSchema ? { mediaSchema } : {}) };
   const source = { sourceCommit: 'a'.repeat(40) };
   const deps = {
     openRepository: async () => files,
@@ -31,6 +32,12 @@ async function fixture(t, fault, scenario) {
         const target = `${name}/${entry.name}`; await files.ensureDirectory(path.posix.dirname(target)); await files.writeFile(target, entry.bytes);
       }
       if(fault!=='missing-media-module')await files.writeFile(`${name}/media-profiles.js`,'var KnifeMediaProfiles = {};');
+      for(const asset of ['gain-authority.js','audio-settings-ui.js','web/player-gain.js'])if(fault!=='missing-'+asset)await files.writeFile(`${name}/${asset}`,'var fixture = true;');
+      if ((!scenario && !mediaSchema && fault !== 'missing-worklet') || fault === 'extra-worklet') {
+        const asset = fault === 'renamed-worklet' ? 'web/unexpected-worklet.js' : 'web/audio-transition-worklet.js';
+        const bytes = fault === 'second-worklet-bytes' && builds === 2 ? 'var changed = true;' : 'var fixture = true;';
+        await files.writeFile(`${name}/${asset}`, bytes);
+      }
       if(fault==='extra-media-module')await files.writeFile(`${name}/unexpected.js`,'var unexpected = true;');
       return { dist: await files.resolve(name, { type: 'directory' }) };
     },
@@ -45,22 +52,24 @@ async function fixture(t, fault, scenario) {
     },
     loadFixtureResponses: async () => ({}),
     requestLaunch: async message => { events.push(`intent:${message.phase}`); },
-    send: async message => { messages.push(message); if (message.type === 'close-success') events.push(`closed:${message.phase}`); },
+    send: async message => { messages.push(JSON.parse(JSON.stringify(message))); if (message.type === 'close-success') events.push(`closed:${message.phase}`); },
     launchInstalledExtension: async args => {
       const phase = (scenario ? ['seed','old','new','rollback','new'] : ['seed', 'old', 'new', 'rollback'])[launchIndex++]; events.push(`launch:${phase}`);
       paths.push([args.profilePath, args.extensionPath]);
       if (fault === 'launch' && phase === 'old') throw faultError('test-launch');
+      if (fault === 'launch-native' && phase === 'old') throw Object.assign(Error('browser-unavailable'),{code:'browser-unavailable',cause:
+        Object.assign(Error('manifest failed'),{code:5,killed:false,signal:null,stderr:'denied',preparationDiagnostic:{stage:'manifest-tool',elapsedMs:32,profilePath:args.profilePath}})});
       const manifest = JSON.parse(await fs.readFile(path.join(args.extensionPath, 'manifest.json')));
       assert.equal(manifest.version, { seed: '2.13.3', old: '2.13.3', new: '2.13.4', rollback: '2.13.5' }[phase]);
       const pages = [];
-      const context = { fixturePhase:phase,setDefaultTimeout() {}, pages: () => pages,
+      const context = Object.assign(new EventEmitter(),{ fixturePhase:phase,setDefaultTimeout() {}, pages: () => pages,
         tracing: { start: async () => { if (fault === 'trace' && phase === 'old') throw faultError('test-trace'); }, stop: async options => { if (options?.path) await fs.writeFile(options.path, 'test trace'); } },
         newPage: async () => { const page = { goto: async () => {}, locator: () => ({ waitFor: async () => {} }), close: async () => {}, screenshot: async () => Buffer.from('test image') }; pages.push(page); return page; },
         close: async () => {
           events.push(`close:${phase}`);
           if (fault === 'close' && phase === 'old') throw faultError('test-close');
           if (fault === 'postclose-inventory' && phase === 'new') await fs.writeFile(path.join(args.extensionPath, 'popup.html'), 'mixed');
-        } };
+        } });
       const worker = { evaluate: (fn, value) => vm.runInNewContext(`(${fn.toString()})(value)`, { value, chrome: { storage: { local: {
         get: async () => structuredClone(storage), set: async raw => { writes++; events.push('seed-write'); Object.assign(storage, structuredClone(raw)); },
       } } } }) };
@@ -69,6 +78,7 @@ async function fixture(t, fault, scenario) {
     refreshTransitionWorker: async ({ fixtureVersion, ...launched }) => ({ ...launched,
       preparation: { developerMode: true, workerClosed: true, extensionId: launched.extensionId, version: fixtureVersion, state: 'ENABLED' } }),
     runTransitionPhase: async args => {
+      assert.equal(args.expectedProtocol,args.phase==='new'?3:1,'payload role must supply the protocol');
       events.push(`scenario:${args.phase}`);
       if (['loss', 'postclose-inventory'].includes(fault) && args.phase === 'new') throw Object.assign(faultError('transition-storage-preservation'), {
         failure: { code: 'transition-storage-preservation', caseId: 'valid-ui', phase: 'new', step: 'startup', stage: 'candidate-init', cleanupErrors: [], observation: { raw: {}, execution: { extensionId: id, version: '2.13.4', brokerMatches: true } } },
@@ -101,6 +111,35 @@ test('child workflow seeds once, preserves path identity and closes before each 
   assert.deepEqual(result.seeds[0].preparation, { developerMode: true, workerClosed: true, extensionId: id, version: '2.13.3', state: 'ENABLED' });
   assert.deepEqual(result.phases.map(value => value.preparation.version), ['2.13.3', '2.13.4', '2.13.5']);
 });
+for(const stage of ['refresh','trace'])test('bare preparation TypeError retains finalized page evidence through child IPC: '+stage,async t=>{
+  const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t),launch=f.deps.launchInstalledExtension;
+  f.deps.launchInstalledExtension=async args=>{const launched=await launch(args);if(launched.context.fixturePhase==='old'){
+    const page=Object.assign(new EventEmitter(),{close:async()=>{},screenshot:async()=>Buffer.from('fixture')});launched.context.pages().push(page);
+    const fail=()=>{page.emit('pageerror',Error('preparation-page-sentinel'));throw new TypeError('preparation-original-sentinel');};
+    if(stage==='trace')launched.context.tracing.start=async()=>fail();else launched.preparationFailure=fail;
+  }return launched;};
+  const refresh=f.deps.refreshTransitionWorker;f.deps.refreshTransitionWorker=async launched=>{if(launched.preparationFailure)launched.preparationFailure();return refresh(launched);};
+  await executeTransitionChild(f.options,f.deps);
+  const first=f.messages.find(message=>message.type==='failure').failure,last=f.messages.at(-1).result.failure;
+  assert.deepEqual(last,first);assert.equal(first.diagnostic.name,'TypeError');assert.equal(first.diagnostic.message,'preparation-original-sentinel');
+  assert.deepEqual(first.pageErrors,['preparation-page-sentinel']);assert.deepEqual(first.routeErrors,[]);assert.equal(first.errorsComplete,true);assert.equal(first.errorsTruncated,false);
+  assert.equal(first.phase,'old');assert.ok(!f.events.includes('launch:new'));
+});
+
+for(const mediaSchema of [undefined,'f01'])for(const control of [undefined,'storage-loss'])test(`retention reaches both candidate preparations for ${mediaSchema||'general'}/${control||'normal'}`,async t=>{
+  const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t, undefined, { mediaSchema }),calls=[];
+  f.options={...f.options,retainEvidence:true,...(control?{control}:{})};
+  const verify=f.deps.verifyCandidate;f.deps.verifyCandidate=async(...args)=>{calls.push(args[2]);return verify(...args);};
+  await executeTransitionChild(f.options,f.deps);
+  assert.equal(calls.length,2);assert.deepEqual(calls,[{retainEvidence:true},{retainEvidence:true}]);
+  assert.match(f.messages.at(-1).result.candidateInventory, /^[a-f0-9]{64}$/);
+});
+
+for(const invalid of ['yes',null,0])test(`child rejects invalid retention ${JSON.stringify(invalid)} before preparing a candidate`,async t=>{
+  const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t);f.options.retainEvidence=invalid;
+  f.deps.sourceAttestation=async()=>{throw Error('must-not-attest');};await executeTransitionChild(f.options,f.deps);
+  assert.equal(f.messages.at(-1).result.failure.code,'transition-retention-invalid');
+});
 
 for (const [fault, code] of [['prepare', 'test-prepare'], ['second-build', 'test-second-build'], ['partial-install', 'test-partial-install'],
   ['launch', 'test-launch'], ['trace', 'test-trace'], ['close', 'cleanup-unconfirmed'], ['identity', 'transition-execution'], ['source-change', 'transition-source-changed']]) {
@@ -123,8 +162,50 @@ test('postclose inventory error cannot disappear behind the expected storage-los
   assert.ok(result.secondaryErrors.some(error => error.code === 'transition-inventory'));
   assert.equal(f.events.includes('launch:rollback'), false);
 });
+
+test('child waits for late route rejection and serializes finalized evidence before close acknowledgement',async t=>{
+  const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t);let reject;
+  const launch=f.deps.launchInstalledExtension;f.deps.launchInstalledExtension=async args=>{const value=await launch(args),close=value.context.close;
+    value.context.close=async()=>{await close();if(reject){reject(TypeError('sentinel-late-route'));await new Promise(resolve=>setImmediate(resolve));}};return value;};
+  f.deps.runTransitionPhase=async args=>{
+    assert.ok(args.errorObserver,'real child must supply the shared observer');
+    void args.errorObserver.guardRoute(()=>new Promise((_,fail)=>{reject=fail;}))();
+    return {caseId:args.caseId,phase:args.phase,records:[],final:{marker:'old'}};
+  };
+  await executeTransitionChild(f.options,f.deps);const first=f.messages.find(value=>value.type==='failure'),result=f.messages.at(-1).result;
+  assert.equal(result.failure.code,'transition-page-error');assert.deepEqual(result.failure.routeErrors,['sentinel-late-route']);assert.equal(result.failure.errorsComplete,true);
+  assert.deepEqual(first.failure,result.failure);assert.ok(f.messages.indexOf(first)<f.messages.findIndex(value=>value.type==='close-success'&&value.phase==='old'));
+  assert.equal(f.events.includes('launch:new'),false);
+});
+test('actual postclose F01 assertion failure receives the same finalized snapshot and final location',async()=>{
+  const source=(await fs.readFile('scripts/check-installed-transition.mjs','utf8')).replaceAll('\r\n','\n');
+  const start=source.indexOf('        let finalEvidence;'),end=source.indexOf('        const expectedLoss=',start);assert.ok(start>0&&end>start);
+  const generic=source.slice(source.indexOf('const genericFailure ='),source.indexOf('const relative ='));
+  const {observeTransitionErrors,withTransitionDiagnostic,hasNoTransitionErrors}=await import('../scripts/extension-e2e/transition-failure.mjs');
+  const {assertF01TransitionPhase}=await import('../scripts/extension-e2e/f01-transition.mjs');
+  const context=Object.assign(new EventEmitter(),{pages:()=>[]}),observer=observeTransitionErrors(context);
+  const AsyncFunction=Object.getPrototypeOf(async()=>{}).constructor;
+  const run=new AsyncFunction('errorObserver','closed','phaseResult','phaseError','phaseExpectation','active','assertF01TransitionPhase','withTransitionDiagnostic','hasNoTransitionErrors','fail','assigned','phase',
+    generic+source.slice(start,end)+'\nreturn {phaseError,phaseResult,active};');
+  const {phaseError,phaseResult}=await run(observer,true,{},undefined,{}, {caseId:'valid-v1',phase:'new',step:'startup',stage:'candidate-init'},assertF01TransitionPhase,withTransitionDiagnostic,hasNoTransitionErrors,faultError,{caseId:'valid-v1'},'new');
+  assert.ok(phaseError.failure.code);assert.equal(phaseError.failure.stage,'phase-action');assert.equal(phaseError.failure.step,'final');
+  for(const key of ['pageErrors','routeErrors','errorsComplete','errorsTruncated'])assert.deepEqual(phaseError.failure[key],phaseResult[key]);
+  assert.equal(phaseError.failure.errorsComplete,true);assert.equal(phaseError.failure.diagnostic.name,'Error');
+});
+
+test('cold child failure IPC retains bounded native cause and preparation stage, never a successful close',async t=>{
+  const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t,'launch-native');
+  await executeTransitionChild(f.options,f.deps);
+  const failure=f.messages.find(message=>message.type==='failure').failure;
+  assert.equal(failure.code,'browser-unavailable');assert.equal(failure.stage,'launch');
+  assert.ok(failure.diagnostic.native,'IPC failure must include the native failure chain');
+  assert.equal(failure.diagnostic.native.cause.code,5);assert.equal(failure.diagnostic.native.cause.stderr,'denied');
+  assert.equal(failure.diagnostic.native.cause.preparationDiagnostic.stage,'manifest-tool');
+  assert.equal(f.messages.filter(message=>message.type==='close-success').length,1);
+  assert.equal(f.events.includes('launch:new'),false);
+});
 test('media child keeps the same root for seed and four observations, creating only first-new',async t=>{
-  const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t,undefined,'media-preservation');await executeTransitionChild(f.options,f.deps);
+  const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t, undefined, { scenario: 'media-preservation' });await executeTransitionChild(f.options,f.deps);
   const result=f.messages.at(-1).result;assert.equal(result.failure,undefined);assert.equal(result.scenario,'media-preservation');assert.equal(f.writes(),1);
   assert.deepEqual(result.phases.map(value=>value.launchOccurrence),[1,2,3,4]);assert.deepEqual(result.phases.map(value=>value.phase),['old','new','rollback','new']);
   const close=f.messages.filter(value=>value.type==='close-success');assert.equal(close.length,5);
@@ -132,11 +213,29 @@ test('media child keeps the same root for seed and four observations, creating o
   assert.ok(f.paths.every(value=>value[0]===f.paths[0][0]&&value[1]===f.paths[0][1]));
 });
 test('media child never replaces or relaunches after an unproven owned root close',async t=>{
-  const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t,'media-close-root','media-preservation');await executeTransitionChild(f.options,f.deps);
+  const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t, 'media-close-root', { scenario: 'media-preservation' });await executeTransitionChild(f.options,f.deps);
   assert.ok(f.messages.at(-1).result.failure);assert.equal(f.events.includes('launch:new'),false);
   assert.equal(f.messages.filter(value=>value.type==='close-success').length,1);
 });
-for(const fault of ['missing-media-module','extra-media-module'])test('child rejects current asset '+fault+' before launching',async t=>{
-  const {executeTransitionChild}=await import('../scripts/check-installed-transition.mjs'),f=await fixture(t,fault);await executeTransitionChild(f.options,f.deps);
-  assert.equal(f.paths.length,0);assert.equal(f.messages.at(-1).result.failure.code,'transition-inventory');
-});
+for (const fault of ['missing-media-module', 'extra-media-module', 'missing-gain-authority.js', 'missing-audio-settings-ui.js',
+  'missing-web/player-gain.js', 'missing-worklet', 'renamed-worklet', 'second-worklet-bytes']) {
+  test('child rejects current asset ' + fault + ' before launching', async t => {
+    const { executeTransitionChild } = await import('../scripts/check-installed-transition.mjs');
+    const f = await fixture(t, fault);
+    await executeTransitionChild(f.options, f.deps);
+    assert.deepEqual(f.events, []);
+    assert.equal(f.paths.length, 0);
+    assert.equal(f.messages.at(-1).result.failure.code, fault === 'second-worklet-bytes' ? 'transition-build-reproducibility' : 'transition-inventory');
+  });
+}
+
+for (const profile of [{ scenario: 'media-preservation' }, { mediaSchema: 'f01' }]) {
+  test('child rejects the extra worklet for explicit ' + (profile.scenario || profile.mediaSchema) + ' before launching', async t => {
+    const { executeTransitionChild } = await import('../scripts/check-installed-transition.mjs');
+    const f = await fixture(t, 'extra-worklet', profile);
+    await executeTransitionChild(f.options, f.deps);
+    assert.deepEqual(f.events, []);
+    assert.equal(f.paths.length, 0);
+    assert.equal(f.messages.at(-1).result.failure.code, 'transition-inventory');
+  });
+}

@@ -84,14 +84,14 @@ export interface ResourceScope {
 }
 
 export interface KnifeRuntime {
-  readonly ownerProtocol: 2;
+  readonly ownerProtocol: 3;
   readonly requestId: string;
   config: Record<string, unknown>;
   baseConfig: Record<string, unknown>;
   mediaRequestId: string;
   media: { context: KnifeScopedContext; phase: 'pending' | 'ready' | 'limited'; version: KnifeMediaVersion;
     profileState: 'global' | 'scoped' | 'repair-required'; revisionStatus: 'ready' | 'repair-required';
-    audioBindingGeneration: number; audioKind: 'global' | 'channel'; videoKind: 'global' | 'channel' };
+    audioBindingGeneration: number; audioKind: 'global' | 'channel'; videoKind: 'global' | 'channel'; gainOrigin: import('../../shared/media-contracts').GainOrigin };
   i18n: Record<string, string>;
   configReady: boolean;
   state: RuntimeState;
@@ -158,6 +158,7 @@ export interface ScopedEnvelope {
   audioBindingGeneration: number;
   audioKind: 'global' | 'channel';
   videoKind: 'global' | 'channel';
+  gainOrigin: import('../../shared/media-contracts').GainOrigin;
 }
 
 export interface BridgeExpectation {

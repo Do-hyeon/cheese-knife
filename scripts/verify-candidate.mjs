@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { openOwnedRoot } from './owned-files.mjs';
+import { openOwnedRoot, openExtensionRoot } from './owned-files.mjs';
 import { build } from './build.mjs';
 import { checkPackage } from './check-package.mjs';
 import { checkSettingsRuntime } from './settings-runtime.mjs';
@@ -21,24 +21,34 @@ export async function removeCandidate(id) {
   return repository.removeTree(`output/tool-audit/p02-candidate-${candidateId}`);
 }
 
-export async function verifyCandidate(id, directory = repositoryRoot) {
+export async function verifyCandidate(id, directory = repositoryRoot, {retainEvidence = false} = {}) {
+  if (typeof retainEvidence !== 'boolean') throw Object.assign(new Error('candidate-retention-invalid'), {code:'candidate-retention-invalid'});
   const candidateId = validateCandidateId(id);
   const repository = await openOwnedRoot(directory);
   const candidateRelative = `output/tool-audit/p02-candidate-${candidateId}/chrome-candidate`;
   if (await repository.lstat(candidateRelative, { optional: true })) throw Object.assign(new Error('candidate-destination-exists'), { code: 'candidate-destination-exists' });
   await checkSettingsRuntime(repository.root);
   await checkMainRuntime(repository.root);
-  await repository.ensureDirectory(candidateRelative);
+  await repository.ensureDirectory(path.posix.dirname(candidateRelative));
+  try { await repository.createDirectory(candidateRelative); }
+  catch (error) {
+    if (error?.code === 'EEXIST') throw Object.assign(new Error('candidate-destination-exists', { cause: error }), { code: 'candidate-destination-exists' });
+    throw error;
+  }
   try {
-    const manifest = JSON.parse(await repository.readFile('manifest.json', 'utf8'));
-    const topEntries = await repository.readdir('', { withFileTypes: true });
+    const assets = await openExtensionRoot(repository.root);
+    const assetPath = name => path.posix.join(path.relative(repository.root, assets.root).split(path.sep).join('/'), name);
+    const manifest = JSON.parse(await assets.readFile('manifest.json', 'utf8'));
+    const topEntries = await assets.readdir('', { withFileTypes: true });
     for (const entry of topEntries) {
       if (entry.isFile() && (/\.(?:html|js|css|png)$/.test(entry.name) || ['manifest.json', 'package.json', 'LICENSE', 'THIRD_PARTY_NOTICES.md'].includes(entry.name))) {
-        await repository.copyFile(entry.name, `${candidateRelative}/${entry.name}`);
+        await repository.copyFile(assetPath(entry.name), `${candidateRelative}/${entry.name}`);
       }
     }
-    for (const folder of ['web', 'styles', '_locales']) if (await repository.lstat(folder, { optional: true })) {
-      await repository.copyTree(folder, `${candidateRelative}/${folder}`, {
+    for (const name of ['package.json','LICENSE','THIRD_PARTY_NOTICES.md']) if(await repository.lstat(name,{optional:true}))
+      await repository.copyFile(name,`${candidateRelative}/${name}`);
+    for (const folder of ['web', 'styles', '_locales']) if (await assets.lstat(folder, { optional: true })) {
+      await repository.copyTree(assetPath(folder), `${candidateRelative}/${folder}`, {
         accept: (_relative, entry) => entry.isDirectory() || /\.(?:js|css|json)$/.test(entry.name),
       });
     }
@@ -47,7 +57,7 @@ export async function verifyCandidate(id, directory = repositoryRoot) {
     for (const file of vendorFiles) {
       const parent = path.posix.dirname(`${candidateRelative}/${file}`);
       await repository.ensureDirectory(parent);
-      await repository.copyFile(file, `${candidateRelative}/${file}`);
+      await repository.copyFile(assetPath(file), `${candidateRelative}/${file}`);
     }
     const root = await repository.resolve(candidateRelative, { type: 'directory' });
     const dist = await build(root, path.join(root, 'dist'));
@@ -65,7 +75,12 @@ export async function verifyCandidate(id, directory = repositoryRoot) {
     await inventory('dist');
     return { root, dist, files: files.sort().map(slash), resources: checked.resources };
   } catch (error) {
-    await repository.removeTree(candidateRelative);
+    if (retainEvidence) {
+      if (error && typeof error === 'object' && Object.isExtensible(error)) error.retainedCandidatePath = path.join(repository.root,...candidateRelative.split('/'));
+    } else {
+      try { await repository.removeTree(candidateRelative); }
+      catch (secondary) { throw Object.assign(new Error('candidate-preparation-incomplete',{cause:error}),{code:'candidate-preparation-incomplete',secondaryErrors:[String(secondary?.message||secondary).slice(0,240)]}); }
+    }
     throw error;
   }
 }

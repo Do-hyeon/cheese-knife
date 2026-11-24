@@ -1,0 +1,24 @@
+{
+  "schema": "f01-reentry-verification-v1",
+  "sampleRateHz": [
+    44100,
+    48000,
+    96000
+  ],
+  "delayFrames": [
+    264,
+    288,
+    576
+  ],
+  "delaySeconds": 0.006,
+  "maxDelayFrames": 1023,
+  "delayRule": "min(floor(f32(f32(seconds)*f32(sampleRateHz))),maxDelayFrames)",
+  "offProgressMs": 20,
+  "qFallMs": 10,
+  "retireMs": 10,
+  "frameOrigin": "accepted-render-frame",
+  "tieOrder": "command-before-render",
+  "hold": "B<=R",
+  "retire": "R<B<E",
+  "unity": "B>=E"
+}

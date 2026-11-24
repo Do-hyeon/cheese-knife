@@ -84,7 +84,7 @@ for (const [locale, recovery, unofficial, labels] of [
   ['en', /Recovery/, /unofficial/i, ['Guide', 'Report issue', 'Source', 'Original project']],
 ]) test('community popup identifies the fork and localizes its support destinations in ' + locale, async t => {
   const { dom } = await ui(t, 'popup.html', {}, locale); await flush();
-  const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+  const manifest = JSON.parse(fs.readFileSync("extension/manifest.json", 'utf8'));
   const resolve = field => {
     const key = manifest[field].match(/^__MSG_(.+)__$/)?.[1];
     return key ? dom.window.chrome.i18n.getMessage(key) : manifest[field];
@@ -112,7 +112,7 @@ for (const [locale, recovery, unofficial, labels] of [
 
 test('community homepage opens the same fork guide that the popup offers', async t => {
   const { dom } = await ui(t, 'popup.html', {}); await flush();
-  const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+  const manifest = JSON.parse(fs.readFileSync("extension/manifest.json", 'utf8'));
   const guide = 'https://github.com/Do-hyeon/cheese-knife/blob/main/README.md';
   assert.equal(manifest.homepage_url, guide);
   assert.equal(dom.window.document.querySelector('footer a')?.href, guide);

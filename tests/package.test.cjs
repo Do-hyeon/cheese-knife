@@ -6,9 +6,9 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { spawnSync } = require('node:child_process');
 
-async function fixture(t) {
+async function fixture(t, { retain = false } = {}) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'cheese-package-'));
-  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  if (!retain) t.after(() => fs.rm(root, { recursive: true, force: true }));
   await fs.mkdir(path.join(root, 'web'));
   await fs.mkdir(path.join(root, 'vendor'));
   const manifest = { manifest_version: 3, version: '2.13.1', content_scripts: [
@@ -29,10 +29,49 @@ async function addSettingsRuntime(root) {
   for (const [file, source] of Object.entries(await renderSettingsRuntime(root))) await fs.writeFile(path.join(root, file), source);
 }
 
+test('extension sources build to the existing flat distribution layout', async t => {
+  const root=await fixture(t),extension=path.join(root,'extension');
+  await fs.mkdir(extension);
+  for(const name of ['manifest.json','web','vendor'])await fs.rename(path.join(root,name),path.join(extension,name));
+  const {checkPackage}=await import('../scripts/check-package.mjs');
+  const {build}=await import('../scripts/build.mjs');
+  assert.equal((await checkPackage(root)).version,'2.13.1');
+  const output=await build(root);
+  for(const name of ['manifest.json','web/inject.js','vendor/hls.light.private.js'])
+    assert.deepEqual(await fs.readFile(path.join(output,name)),await fs.readFile(path.join(extension,name)));
+  await assert.rejects(fs.stat(path.join(output,'extension')), {code:'ENOENT'});
+});
+
+test('an incomplete extension directory cannot fall back to stale root assets', async t => {
+  const root=await fixture(t);
+  await fs.mkdir(path.join(root,'extension'));
+  const {checkPackage}=await import('../scripts/check-package.mjs');
+  await assert.rejects(checkPackage(root),{code:'extension-layout-ambiguous'});
+  await fs.unlink(path.join(root,'manifest.json'));
+  await assert.rejects(checkPackage(root),/Missing extension resource/);
+});
+
+test('package validation cannot hide an invalid installed manifest behind nested source assets', async t => {
+  const root=await fixture(t);
+  await fs.mkdir(path.join(root,'extension'));
+  await fs.writeFile(path.join(root,'extension/manifest.json'),JSON.stringify({manifest_version:3,version:'2.13.1'}));
+  await fs.writeFile(path.join(root,'manifest.json'),JSON.stringify({manifest_version:2,version:'2.13.1'}));
+  const {checkPackage}=await import('../scripts/check-package.mjs');
+  await assert.rejects(checkPackage(root),{code:'extension-layout-ambiguous'});
+});
+
+test('a linked extension source directory cannot escape the owned repository', async t => {
+  const root=await fixture(t),outside=await fixture(t);
+  await fs.unlink(path.join(root,'manifest.json'));
+  await fs.symlink(outside,path.join(root,'extension'),'junction');
+  const {checkPackage}=await import('../scripts/check-package.mjs');
+  await assert.rejects(checkPackage(root),{code:'owned-path-link'});
+});
+
 async function addMainRuntime(root) {
   await fs.cp('src/main', path.join(root, 'src/main'), { recursive: true });
-  const { renderMainRuntime } = await import(pathToFileURL(path.resolve('scripts/main-runtime.mjs')));
-  for (const [file, source] of Object.entries(await renderMainRuntime(root))) {
+  const { renderMainRuntime, renderAudioWorklet } = await import(pathToFileURL(path.resolve('scripts/main-runtime.mjs')));
+  for (const [file, source] of Object.entries({...await renderMainRuntime(root),...await renderAudioWorklet(root)})) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true });
     await fs.writeFile(path.join(root, file), source);
   }
@@ -53,6 +92,8 @@ async function referencedFixture(t, kind) {
     await fs.writeFile(path.join(root, 'background.js'), "importScripts('parts/worker-part.js');");
   } else if (kind === 'locale') {
     resource = '_locales/ko/messages.json'; manifest.default_locale = 'ko';
+  } else if (kind === 'WAR') {
+    resource = 'web/audio-transition-worklet.js';manifest.web_accessible_resources=[{resources:[resource],matches:['https://chzzk.naver.com/*']}];
   }
   await fs.mkdir(path.dirname(path.join(root, resource)), { recursive: true });
   await fs.writeFile(path.join(root, resource), '// fixture resource');
@@ -61,7 +102,7 @@ async function referencedFixture(t, kind) {
 }
 
 // Break caught: existence-only checks accept a folder as a declared file.
-for (const kind of ['manifest', 'HTML', 'worker', 'locale']) {
+for (const kind of ['manifest', 'HTML', 'worker', 'locale','WAR']) {
   test(`${kind} resource must be a regular file, not an existing directory`, async t => {
     const { root, resource } = await referencedFixture(t, kind);
     await fs.unlink(path.join(root, resource)); await fs.mkdir(path.join(root, resource));
@@ -278,7 +319,7 @@ test('Chrome MV3 package validation rejects a legacy background scripts declarat
 
 test('Chrome source manifest is accepted only without MV2 background declarations', async () => {
   const { checkPackage } = await import(pathToFileURL(path.resolve('scripts/check-package.mjs')));
-  const manifest = JSON.parse(await fs.readFile('manifest.json', 'utf8'));
+  const manifest = JSON.parse(await fs.readFile("extension/manifest.json", 'utf8'));
   assert.equal(Object.hasOwn(manifest.background, 'scripts'), false);
   assert.equal(manifest.background.service_worker, 'background.js');
   await checkPackage(process.cwd());
@@ -346,6 +387,138 @@ test('candidate verifier rejects unsafe IDs and existing destinations without ov
   assert.equal(await fs.readFile(path.join(destination, 'sentinel.txt'), 'utf8'), 'unchanged');
 });
 
+test('candidate verifier rejects a same-ID contender before sharing candidate writes', { timeout: 90000 }, async t => {
+  const { AsyncLocalStorage } = require('node:async_hooks');
+  const { createHash } = require('node:crypto');
+  const { verifyCandidate } = await import(pathToFileURL(path.resolve('scripts/verify-candidate.mjs')));
+  const root = await fixture(t, { retain: true });
+  t.diagnostic(`candidate-race retained fixture: ${root}`);
+  await addSettingsRuntime(root);
+  await addMainRuntime(root);
+  const destination = path.join(root, 'output/tool-audit/p02-candidate-Race/chrome-candidate');
+  await fs.mkdir(path.dirname(destination), { recursive: true });
+  const context = new AsyncLocalStorage(), checked = new Set(), writes = [];
+  const realLstat = fs.lstat, realCopy = fs.copyFile;
+  const stopCode = 'candidate-race-harness-stop';
+  let releaseChecks, releaseWrites, firstError = null;
+  const checksReady = new Promise(resolve => { releaseChecks = resolve; });
+  const writesReady = new Promise(resolve => { releaseWrites = resolve; });
+  const stop = error => {
+    firstError ??= error;
+    releaseChecks();
+    releaseWrites();
+  };
+  const timer = setTimeout(() => stop(Object.assign(new Error('candidate-race-deadline'), { code: 'candidate-race-deadline' })), 30000);
+  const statMock = t.mock.method(fs, 'lstat', async function (file, ...args) {
+    const owner = context.getStore();
+    try { return await realLstat.call(fs, file, ...args); }
+    catch (error) {
+      if (owner && file === destination && error.code === 'ENOENT' && !checked.has(owner)) {
+        checked.add(owner);
+        if (checked.size === 2) releaseChecks();
+        await checksReady;
+        if (firstError) throw firstError;
+      }
+      throw error;
+    }
+  });
+  const copyMock = t.mock.method(fs, 'copyFile', async function (source, target, ...args) {
+    const owner = context.getStore();
+    if (!owner || !target.startsWith(destination + path.sep)) return realCopy.call(fs, source, target, ...args);
+    if (firstError) throw firstError;
+    try {
+      // Preserve real I/O; only delay its return so both callers reach their first write.
+      await realCopy.call(fs, source, target, ...args);
+      writes.push({ owner, source: path.relative(root, source), target: path.relative(root, target), completed: true });
+      if (writes.length === 2) releaseWrites();
+    } catch (error) { stop(error); throw error; }
+    await writesReady;
+    if (firstError) throw firstError;
+    throw Object.assign(new Error(stopCode), { code: stopCode });
+  });
+  let outcomes;
+  try {
+    outcomes = await Promise.allSettled(['A', 'B'].map(owner => context.run(owner, async () => {
+      try { return await verifyCandidate('Race', root, { retainEvidence: true }); }
+      catch (error) {
+        if (error.code === 'candidate-destination-exists') releaseWrites();
+        else if (error.code !== stopCode) stop(error);
+        throw error;
+      }
+    })));
+  } finally {
+    clearTimeout(timer);
+    statMock.mock.restore();
+    copyMock.mock.restore();
+  }
+  let finalFile = null;
+  if (writes.length) {
+    try {
+      const bytes = await fs.readFile(path.join(root, writes[0].target));
+      finalFile = { target: writes[0].target, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
+    } catch (error) { finalFile = { code: error.code, message: error.message }; }
+  }
+  const report = {
+    scope: 'same-ID first candidate writes only', fixture: root, initialMissing: [...checked], writes,
+    finalFile, firstError: firstError && { code: firstError.code, message: firstError.message, stack: firstError.stack },
+    outcomes: outcomes.map((result, index) => ({ owner: ['A', 'B'][index], status: result.status,
+      code: result.reason?.code ?? null, message: result.reason?.message ?? null, stack: result.reason?.stack ?? null,
+      retainedCandidatePath: result.reason?.retainedCandidatePath ?? null })),
+  };
+  let preservationError = null;
+  if (process.env.KNIFE_TEST_EVIDENCE_DIR) {
+    try {
+      report.archive = path.join(await fs.mkdtemp(path.join(path.resolve(process.env.KNIFE_TEST_EVIDENCE_DIR), 'candidate-race-')), 'fixture');
+      const relative = path.relative(root, report.archive);
+      if (!relative || relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative)) throw new Error('candidate-evidence-overlap');
+      await fs.writeFile(path.join(root, 'candidate-race-observation.json'), JSON.stringify(report, null, 2));
+      await fs.cp(root, report.archive, { recursive: true, force: false, errorOnExist: true });
+    } catch (error) { preservationError = error; report.preservationError = { code: error.code, message: error.message }; }
+  }
+  await fs.writeFile(path.join(root, 'candidate-race-observation.json'), JSON.stringify(report, null, 2));
+  t.diagnostic(JSON.stringify(report));
+  assert.equal(firstError, null, 'a fixture, real I/O or deadline failure is not a formed ownership result');
+  assert.deepEqual([...checked].sort(), ['A', 'B'], 'both callers must observe real initial ENOENT');
+  assert.equal(finalFile?.code, undefined, 'final evidence must remain readable after both callers settle');
+  assert.equal(new Set(writes.map(row => row.owner)).size, writes.length, 'at most one real write per caller');
+  assert.equal(new Set(writes.map(row => row.target)).size, 1, 'the observation must address the same candidate file');
+  assert.equal(writes.length, 1, 'the contender must be rejected before a second real candidate write');
+  assert.equal(report.outcomes.filter(result => result.code === 'candidate-destination-exists').length, 1);
+  assert.equal(report.outcomes.filter(result => result.code === stopCode).length, 1);
+  assert.equal(preservationError, null, 'evidence export must finish before fixture cleanup');
+  await fs.rm(root, { recursive: true, force: true });
+});
+
+test('candidate claim loser cannot clean another creator sentinel with retention disabled', async t => {
+  const { verifyCandidate } = await import(pathToFileURL(path.resolve('scripts/verify-candidate.mjs')));
+  const root = await fixture(t);
+  await addSettingsRuntime(root); await addMainRuntime(root);
+  const destination = path.join(root, 'output/tool-audit/p02-candidate-Claim/chrome-candidate');
+  await fs.mkdir(path.dirname(destination), { recursive: true });
+  const mkdir = fs.mkdir, copy = fs.copyFile, remove = fs.rm; let claimed = false, copies = 0, removals = 0;
+  const mock = t.mock.method(fs, 'mkdir', async function (target, ...args) {
+    if (target === destination && !claimed) {
+      claimed = true;
+      await mkdir.call(fs, destination);
+      await fs.writeFile(path.join(destination, 'sentinel'), 'other creator');
+    }
+    return mkdir.call(fs, target, ...args);
+  });
+  const copyMock = t.mock.method(fs, 'copyFile', async function (source, target, ...args) {
+    if (target.startsWith(destination + path.sep)) copies++;
+    return copy.call(fs, source, target, ...args);
+  });
+  const removeMock = t.mock.method(fs, 'rm', async function (target, ...args) {
+    if (target === destination) removals++;
+    return remove.call(fs, target, ...args);
+  });
+  try { await assert.rejects(verifyCandidate('Claim', root), { code: 'candidate-destination-exists' }); }
+  finally { mock.mock.restore(); copyMock.mock.restore(); removeMock.mock.restore(); }
+  assert.equal(claimed, true);
+  assert.equal(copies, 0); assert.equal(removals, 0);
+  assert.equal(await fs.readFile(path.join(destination, 'sentinel'), 'utf8'), 'other creator');
+});
+
 test('candidate verifier copies package inputs only and builds an isolated Chrome dist', async t => {
   const { verifyCandidate } = await import(pathToFileURL(path.resolve('scripts/verify-candidate.mjs')));
   const id = `fixture${Date.now()}`;
@@ -384,7 +557,7 @@ test('production build preserves first-party runtime bytes and excludes develope
   }
   const { build } = await import(pathToFileURL(path.resolve('scripts/build.mjs')));
   await build(root, target);
-  for (const file of baseline) assert.deepEqual(await fs.readFile(path.join(target, file)), await fs.readFile(file), file);
+  for (const file of baseline) assert.deepEqual(await fs.readFile(path.join(target, file)), await fs.readFile(path.join('extension',file)), file);
   const { files } = await (await import(pathToFileURL(path.resolve('scripts/check-package.mjs')))).checkDistributionFiles(target);
   assert.equal(files.some(file => file.endsWith('.map') || file.endsWith('.ts') || file.startsWith('src/') || file.startsWith('build-proof/') || file.startsWith('types/') || /^tsconfig.*\.json$/.test(file)), false);
 });

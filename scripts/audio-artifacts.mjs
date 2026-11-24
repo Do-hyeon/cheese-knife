@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { openOwnedRoot } from './owned-files.mjs';
+import { openExtensionRoot } from './owned-files.mjs';
 
 import { AUDIO_ARTIFACT_FILES, AUDIO_COMPARISON_ABSOLUTE_TOLERANCE, AUDIO_COMPARISON_RELATIVE_TOLERANCE, compareAudioArtifactReports, describeAudioArtifactFiles } from './audio-artifact-core.mjs';
 export { AUDIO_ARTIFACT_FILES, AUDIO_COMPARISON_ABSOLUTE_TOLERANCE, AUDIO_COMPARISON_RELATIVE_TOLERANCE, compareAudioArtifactReports };
@@ -35,6 +35,6 @@ export function parseAudioQualityArgs(argv, cwd = process.cwd()) {
 
 export async function describeAudioArtifact(root, label) {
   if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(label)) fail('audio-label-invalid');
-  const files = await openOwnedRoot(root);
+  const files = await openExtensionRoot(root);
   return describeAudioArtifactFiles(files, label);
 }

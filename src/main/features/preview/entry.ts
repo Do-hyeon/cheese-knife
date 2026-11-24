@@ -61,7 +61,7 @@ export function installPreview(target: Window): PreviewController | null {
   const browser = target as BrowserWindow;
   const key = browser.Symbol.for('cheese-knife.runtime.v1');
   const runtime = Object.getOwnPropertyDescriptor(target, key)?.value as KnifeRuntime | undefined;
-  if (runtime?.ownerProtocol !== 2 || runtime.preview) return null;
+  if (runtime?.ownerProtocol !== 3 || runtime.preview) return null;
   const scope = runtime.createScope();
   const panel = createPanel(runtime, scope);
   const cache = new Map<string, CacheEntry>();

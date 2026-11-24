@@ -9,12 +9,12 @@ const settle = async () => { for (let i = 0; i < 5; i++) await Promise.resolve()
 function permissionPage(t, { locale = 'ko', request } = {}) {
   const errors = [], virtualConsole = new VirtualConsole();
   virtualConsole.on('jsdomError', error => errors.push(error));
-  const dom = new JSDOM(fs.readFileSync('permission.html', 'utf8'), {
+  const dom = new JSDOM(fs.readFileSync("extension/permission.html", 'utf8'), {
     url: 'chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/permission.html',
     runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole,
   });
   t.after(() => dom.window.close());
-  const messages = JSON.parse(fs.readFileSync(`_locales/${locale}/messages.json`, 'utf8'));
+  const messages = JSON.parse(fs.readFileSync(`extension/_locales/${locale}/messages.json`, 'utf8'));
   const calls = []; let closeCount = 0;
   dom.window.close = () => { closeCount++; };
   dom.window.chrome = {
@@ -25,7 +25,7 @@ function permissionPage(t, { locale = 'ko', request } = {}) {
     } },
     permissions: { request: options => { calls.push(structuredClone(options)); return request ? request(options) : Promise.resolve(true); } },
   };
-  for (const script of dom.window.document.querySelectorAll('script[src]')) dom.window.eval(fs.readFileSync(script.getAttribute('src'), 'utf8'));
+  for (const script of dom.window.document.querySelectorAll('script[src]')) dom.window.eval(fs.readFileSync('extension/'+script.getAttribute('src'), 'utf8'));
   return { dom, calls, errors, closeCount: () => closeCount, grant: () => dom.window.document.getElementById('grant'),
     status: () => dom.window.document.getElementById('permission-status') };
 }

@@ -59,6 +59,105 @@ test('media owner requires public close ACK disconnection and exact owned roots 
   }
 });
 
+test('media close failures retain their exact phase and original error without inventing close proofs',async()=>{
+  const {closeInstalledMediaBrowser}=await harnessModule(),{EventEmitter}=require('node:events');
+  for(const mode of ['ack','disconnect','query-pending','query-error','root']){
+    const browser=new EventEmitter();let connected=true;
+    browser.isConnected=()=>connected;
+    const original=Object.assign(new Error('query refused'),{code:'EACCES'});
+    const session={send:async()=>{
+      if(mode==='ack')return new Promise(()=>{});
+      if(mode!=='disconnect'){connected=false;browser.emit('disconnected');}return {};
+    }};
+    await assert.rejects(()=>closeInstalledMediaBrowser({context:{browser:()=>browser},browserSession:session,
+      profilePath:path.resolve('output/owned-media-profile'),timeoutMs:35,queryProcesses:async()=>{
+        if(mode==='query-error')throw original;
+        if(mode==='query-pending')return new Promise(()=>{});
+        return [{ProcessId:123}];
+      }}),error=>{
+      if(mode==='query-error')assert.equal(error,original);
+      const detail=error.closeDiagnostic;assert.ok(detail);
+      assert.equal(detail.stage,mode==='ack'?'close-ack':mode==='disconnect'?'disconnect':'owned-roots');
+      assert.equal(detail.browserCloseAcknowledged,mode!=='ack');
+      assert.equal(detail.browserDisconnected,!['ack','disconnect'].includes(mode));
+      assert.equal(detail.queryPending,mode==='query-pending');
+      assert.equal(detail.lastRootCount,mode==='root'?1:null);
+      assert.equal(typeof detail.elapsedMs,'number');assert.ok(detail.elapsedMs>=0);
+      assert.equal(detail.ownedRootClosed,undefined);
+      return true;
+    });
+    assert.equal(browser.listenerCount('disconnected'),0);
+  }
+});
+
+for(const phase of ['ack','query','disconnect','fractional'])test('media close cutoff rejects late '+phase+' before accepting proof',async t=>{
+  const {closeInstalledMediaBrowser}=await harnessModule(),{EventEmitter}=require('node:events');let now=1000,connected=true,queries=0;
+  t.mock.method(performance,'now',()=>now);const browser=new EventEmitter();browser.isConnected=()=>{if(phase==='disconnect')now=16000;return connected;};
+  await assert.rejects(closeInstalledMediaBrowser({context:{browser:()=>browser},profilePath:path.resolve('output/synthetic-close'),
+    browserSession:{async send(){if(phase==='ack')now=16000;if(phase==='fractional')now=15999.5;connected=false;browser.emit('disconnected');}},
+    queryProcesses:async()=>{queries++;if(phase==='query')now=16001;return [];}
+  }),{code:'media-close-unconfirmed'});
+  assert.equal(queries,phase==='query'?1:0);assert.equal(browser.listenerCount('disconnected'),0);
+});
+test('media close cutoff shares an unchanged monotonic deadline and accepts timely proof',async t=>{
+  const {closeInstalledMediaBrowser}=await harnessModule(),{EventEmitter}=require('node:events');let now=1000,connected=true,deadline;
+  t.mock.method(performance,'now',()=>now);t.mock.method(Date,'now',()=>-100000);const browser=new EventEmitter();browser.isConnected=()=>connected;
+  const proof=await closeInstalledMediaBrowser({context:{browser:()=>browser},profilePath:path.resolve('output/synthetic-close'),
+    browserSession:{async send(){now=15998;connected=false;browser.emit('disconnected');}},queryProcesses:async(_profile,value)=>{deadline=value;now=15999;return [];}});
+  assert.equal(deadline,16000);assert.deepEqual(proof,{browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:true});
+});
+test('media close cutoff freezes failure evidence before late ACK and late query completion',async t=>{
+  const {closeInstalledMediaBrowser}=await harnessModule(),{EventEmitter}=require('node:events');
+  t.mock.timers.enable({apis:['setTimeout']});let now=1000;t.mock.method(performance,'now',()=>now);
+  for(const phase of ['ack','query']){
+    let connected=true,queries=0,release;const browser=new EventEmitter();browser.isConnected=()=>connected;
+    const pending=closeInstalledMediaBrowser({context:{browser:()=>browser},profilePath:path.resolve('output/synthetic-close'),timeoutMs:20,
+      browserSession:{async send(){connected=false;browser.emit('disconnected');if(phase==='ack')await new Promise(r=>release=r);}},
+      queryProcesses:async()=>{queries++;return new Promise(r=>release=()=>r([]));}});
+    await Promise.resolve();await Promise.resolve();now+=20;t.mock.timers.tick(20);
+    let failure;await assert.rejects(pending,e=>{failure=e;return e.code==='media-close-unconfirmed';});const snapshot=JSON.stringify(failure.closeDiagnostic);
+    release();await Promise.resolve();await Promise.resolve();assert.equal(JSON.stringify(failure.closeDiagnostic),snapshot);
+    assert.equal(queries,phase==='query'?1:0);assert.equal(browser.listenerCount('disconnected'),0);
+  }
+});
+test('media close cutoff preserves an original late query rejection',async t=>{
+  const {closeInstalledMediaBrowser}=await harnessModule(),{EventEmitter}=require('node:events');let now=1000; t.mock.method(performance,'now',()=>now);
+  const browser=new EventEmitter();browser.isConnected=()=>false;const original=Object.assign(Error('original-query'),{code:'native-unavailable'});
+  await assert.rejects(closeInstalledMediaBrowser({context:{browser:()=>browser},profilePath:path.resolve('output/synthetic-close'),
+    browserSession:{async send(){browser.emit('disconnected');}},queryProcesses:async()=>{now=16001;throw original;}}),e=>e===original);
+});
+test('media close cutoff default query bridge passes remaining budget without an OS query',async t=>{
+  const platform=Object.getOwnPropertyDescriptor(process,'platform');Object.defineProperty(process,'platform',{value:'win32'});t.after(()=>Object.defineProperty(process,'platform',platform));
+  const childProcess=require('node:child_process'),{syncBuiltinESMExports}=require('node:module'),{EventEmitter}=require('node:events');
+  const {closeInstalledMediaBrowser}=await harnessModule();let now=1000,connected=true,invokes=0;
+  t.mock.method(performance,'now',()=>now);
+  const spy=t.mock.method(childProcess,'execFileSync',(_exe,_args,options)=>{invokes++;assert.equal(options.timeout,11000);return '[]';});syncBuiltinESMExports();
+  try {const browser=new EventEmitter();browser.isConnected=()=>connected;
+    const result=await closeInstalledMediaBrowser({context:{browser:()=>browser},profilePath:path.resolve('output/synthetic-close'),
+      browserSession:{async send(){now=5000;connected=false;browser.emit('disconnected');}}});
+    assert.equal(result.ownedRootClosed,true);assert.equal(invokes,1);
+  }finally{spy.mock.restore();syncBuiltinESMExports();}
+});
+test('media close cutoff preserves queryCount one with zero invokes after loading delay',async t=>{
+  const platform=Object.getOwnPropertyDescriptor(process,'platform');Object.defineProperty(process,'platform',{value:'win32'});t.after(()=>Object.defineProperty(process,'platform',platform));
+  const {closeInstalledMediaBrowser}=await harnessModule(),{queryWindowsProcesses}=await import('../scripts/extension-e2e/native-profile.mjs'),{EventEmitter}=require('node:events');
+  let now=1000,invokes=0;t.mock.method(performance,'now',()=>now);const browser=new EventEmitter();browser.isConnected=()=>false;
+  await assert.rejects(closeInstalledMediaBrowser({context:{browser:()=>browser},profilePath:path.resolve('output/synthetic-close'),
+    browserSession:{async send(){browser.emit('disconnected');}},queryProcesses:async(profile,deadline)=>{
+      await Promise.resolve();now=15999.5;return queryWindowsProcesses(profile,()=>{invokes++;return '[]';},deadline);
+    }}),e=>{assert.equal(e.code,'native-unavailable');assert.equal(e.queryDiagnostic.reason,'timeout');assert.equal(e.closeDiagnostic.queryCount,1);return true;});
+  assert.equal(invokes,0);
+});
+
+test('manifest subprocess preserves native exit information on the original error',async()=>{
+  const {embedChromiumManifest}=await harnessModule();assert.equal(typeof embedChromiumManifest,'function');
+  await assert.rejects(()=>embedChromiumManifest(process.execPath,'unused.manifest','unused.dll'),error=>{
+    assert.equal(typeof error.code,'number');assert.notEqual(error.code,0);
+    assert.equal(error.killed,false);assert.equal(error.signal,null);
+    assert.match(error.stderr,/bad option|unknown|unrecognized/i);return true;
+  });
+});
+
 test('extension worker URL accepts only the exact MV3 background worker form', async () => {
   const { extensionIdFromWorkerURL } = await harnessModule();
   assert.equal(extensionIdFromWorkerURL(workerURL), extensionId);
@@ -120,6 +219,19 @@ test('launch closes every created context when worker validation fails', async (
     }), { code: item.code });
     assert.equal(closed, 1, item.code);
   }
+});
+
+test('worker startup failure retains bounded native extension-manager diagnostics without changing the failure', async () => {
+  const { launchInstalledExtension } = await harnessModule();
+  const visits=[];let closed=0;
+  const context={serviceWorkers:()=>[],waitForEvent:async()=>{throw new Error('timeout');},close:async()=>{closed++;},
+    newPage:async()=>({goto:async(url,options)=>{visits.push([url,options.timeout]);},
+      evaluate:async()=> 'Load error: invalid message key'.repeat(300)})};
+  await assert.rejects(launchInstalledExtension({chromiumApi:{launchPersistentContext:async()=>context},
+    extensionPath:path.resolve('output/candidate'),profilePath:path.resolve('output/profile'),artifactPath:path.resolve('output/artifacts'),headed:false}),error=>{
+    assert.equal(error.code,'extension-worker-timeout');assert.equal(error.startupDiagnostic.length,4096);return true;
+  });
+  assert.deepEqual(visits,[['chrome://extensions',3000]]);assert.equal(closed,1);
 });
 
 test('launch maps browser startup failures and returns a validated worker', async () => {

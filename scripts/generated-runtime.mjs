@@ -1,6 +1,6 @@
 import { Script } from 'node:vm';
 import { inspectBrowserSource } from './check-build-proof.mjs';
-import { openOwnedRoot } from './owned-files.mjs';
+import { openExtensionRoot } from './owned-files.mjs';
 
 export const CLASSIC_RUNTIME_OPTIONS = Object.freeze({
   target: 'chrome121', minify: false, sourcemap: false, legalComments: 'none', charset: 'utf8',
@@ -28,7 +28,7 @@ export async function checkGeneratedRuntime(root, entries, render, codes) {
   const second = await render(root);
   outputNames(entries, second, codes.outputSet);
   if (JSON.stringify(first) !== JSON.stringify(second)) throw generatedFailure(codes.nondeterministic);
-  const owned = await openOwnedRoot(root);
+  const owned = await openExtensionRoot(root);
   for (const entry of entries) {
     let committed;
     try { committed = await owned.readFile(entry.output, 'utf8'); }
@@ -45,7 +45,7 @@ export async function writeGeneratedRuntime(root, entries, render, codes) {
   if (process.env.CI) throw generatedFailure(codes.writeCi);
   const outputs = await render(root);
   outputNames(entries, outputs, codes.outputSet);
-  const owned = await openOwnedRoot(root);
+  const owned = await openExtensionRoot(root);
   for (const entry of entries) await owned.writeFile(entry.output, outputs[entry.output], 'utf8');
   return outputs;
 }

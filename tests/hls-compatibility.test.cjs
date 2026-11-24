@@ -10,7 +10,7 @@ const originalHash = crypto.createHash('sha256').update(fs.readFileSync(original
 assert.equal(originalHash, '947b45be1392e39569d4aefc2cff9ff6ecbe6cc246cf67ab12ece0c41c24b793', 'compatibility baseline must be the pinned upstream artifact');
 
 function exercise(name, bundle) {
-  const selectedBundle = bundle || process.env.KNIFE_HLS_TEST_BUNDLE || path.resolve(__dirname, '../vendor/hls.light.private.js');
+  const selectedBundle = bundle || process.env.KNIFE_HLS_TEST_BUNDLE || path.resolve(__dirname, '../extension/vendor/hls.light.private.js');
   const selectedHash = crypto.createHash('sha256').update(fs.readFileSync(selectedBundle)).digest('hex');
   const result = spawnSync(process.execPath, ['--max-old-space-size=192', path.join(__dirname, 'fixtures/hls-parser-child.cjs'), name], {
     timeout: 5000, windowsHide: true, encoding: 'utf8', maxBuffer: 64 * 1024,

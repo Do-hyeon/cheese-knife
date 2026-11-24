@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { spawnSync } = require('node:child_process');
+const {EventEmitter}=require('node:events');
 const subject = () => import('../scripts/extension-e2e/transition-scenario.mjs');
 const nonce = '0123456789abcdef0123456789abcdef', extensionId = 'a'.repeat(32);
 const seed = { config: { futureFlag: 'keep', brightness: 1.25 }, styles: ['future-style'],
@@ -10,6 +11,8 @@ const normalized = { preview: true, livePreview: true, previewStartUnmuted: fals
   arrowSeek: true, pressToFastForward: true, brightness: 1.25, contrast: 1, saturation: 1, gamma: 1, sharpness: 0,
   compressorDefault: false, compressorThreshold: -50, compressorKnee: 40, compressorRatio: 12,
   compressorAttack: 0, compressorRelease: 0.25, hideDonation: false, showDeleted: false };
+async function errors(t){const context=Object.assign(new EventEmitter(),{pages:()=>[],route:async()=>{},routeWebSocket:async()=>{}}),
+  errorObserver=(await import('../scripts/extension-e2e/transition-failure.mjs')).observeTransitionErrors(context);t.after(()=>errorObserver.dispose());return {context,errorObserver};}
 function observed(raw = seed, repair = false) {
   return { raw: structuredClone(raw),
     execution: { extensionId, version: '2.13.3', brokerMatches: true },
@@ -98,10 +101,10 @@ test('wrong execution takes precedence over simultaneous storage loss', async ()
   assert.throws(() => assertTransitionState(value, expectedTransitionState('valid-ui', 'old', 'startup', nonce, extensionId)), { code: 'transition-execution' });
 });
 
-test('phase refuses the wrong version before accessing any UI or storage', async () => {
+test('phase refuses the wrong version before accessing any UI or storage', async t => {
   const { runTransitionPhase } = await subject();
-  await assert.rejects(runTransitionPhase({ context: {}, worker: { evaluate: async () => ({ extensionId, version: '2.13.3', brokerSource: 'function() {}' }) },
-    extensionId, responses: {}, caseId: 'valid-ui', phase: 'new', runNonce: nonce, expectedBrokerSource: 'var createSettingsBroker = function() {};' }),
+  await assert.rejects(runTransitionPhase({ ...await errors(t), worker: { evaluate: async () => ({ extensionId, version: '2.13.3', brokerSource: 'function() {}' }) },
+    extensionId, responses: {}, caseId: 'valid-ui', phase: 'new', expectedProtocol:3, runNonce: nonce, expectedBrokerSource: 'var createSettingsBroker = function() {};' }),
   error => { assert.equal(error.code, 'transition-execution'); assert.equal(error.failure.observation.execution.version, '2.13.3'); return true; });
 });
 
@@ -148,6 +151,23 @@ test('font0 raw zero and registration contract are independently retained', asyn
   }
 });
 
+test('F01 runtime oracle includes the complete independent audio defaults while published and F00 stay unchanged',async()=>{
+  const {expectedTransitionState,assertTransitionState}=await subject();
+  const args=['legacy-invalid','new','startup',nonce,extensionId];
+  const old=expectedTransitionState(...args,{expectedProtocol:2});
+  assert.deepEqual(old.runtime.config,normalized);
+  const current=expectedTransitionState(...args,{expectedProtocol:3});
+  assert.deepEqual(current.runtime.config,{...normalized,audioDefault:false,compressorEnabled:true,audioGain:1,gainInherited:true,
+    eqEnabled:false,eq63:0,eq125:0,eq250:0,eq500:0,eq1000:0,eq2000:0,eq4000:0,eq8000:0,
+    normalizerEnabled:false,normalizerTargetDbfs:-20});
+  assert.equal(Object.hasOwn(current.raw.config,'audioDefault'),false);
+  for(const mutate of [config=>{delete config.eq8000;},config=>{config.extra=true;},config=>{config.audioGain=0;}]){
+    const actual=structuredClone(current);mutate(actual.runtime.config);
+    assert.throws(()=>assertTransitionState(actual,current),{code:'transition-main'});
+  }
+  assert.throws(()=>expectedTransitionState(...args,{expectedProtocol:4}),{code:'installed-protocol-invalid'});
+});
+
 test('bounded polling observes real provider results, does not swallow errors or accept timeout', async () => {
   const { waitTransition } = await subject();
   let calls = 0;
@@ -156,14 +176,15 @@ test('bounded polling observes real provider results, does not swallow errors or
   await assert.rejects(waitTransition(async () => { throw Object.assign(Error('worker'), { code: 'worker-failed' }); }, Boolean, 'wait-failed'), { code: 'worker-failed' });
 });
 
-test('actual phase propagates worker failure with case phase step stage and no invented observation', async () => {
+test('actual phase propagates worker failure with case phase step stage and no invented observation', async t => {
   const { runTransitionPhase } = await subject();
   const worker = { evaluate: async () => { throw Object.assign(Error('worker'), { code: 'worker-failed' }); } };
-  await assert.rejects(runTransitionPhase({ context: {}, worker, extensionId, responses: [], caseId: 'valid-ui',
-    phase: 'new', runNonce: nonce, expectedBrokerSource: 'source' }), error => {
+  await assert.rejects(runTransitionPhase({ ...await errors(t), worker, extensionId, responses: [], caseId: 'valid-ui',
+    phase: 'new', expectedProtocol:3, runNonce: nonce, expectedBrokerSource: 'source' }), error => {
     assert.equal(error.code, 'worker-failed');
     assert.deepEqual(error.failure, { code: 'worker-failed', caseId: 'valid-ui', phase: 'new', step: 'startup',
-      stage: 'candidate-init', cleanupErrors: [] }); return true;
+      stage: 'candidate-init', cleanupErrors: [],pageErrors:[],routeErrors:[],errorsTruncated:false,errorsComplete:false,
+      diagnostic:{name:'Error',message:'worker',native:{message:'worker',code:'worker-failed'}} }); return true;
   });
 });
 
@@ -172,4 +193,30 @@ test('transition scenario passes unchanged static tool rules', () => {
     '--no-inline-config', '--max-warnings=0', '--format=json', 'scripts/extension-e2e/transition-scenario.mjs'],
   { encoding: 'utf8', timeout: 20000 });
   assert.equal(result.error, undefined); assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
+test('actual style reload awaits navigation before evaluating fresh-document metadata',async()=>{
+  const fs=require('node:fs'),source=fs.readFileSync('scripts/extension-e2e/transition-scenario.mjs','utf8');
+  const start=source.indexOf("        if (step === 'font8' || step === 'font0' || step === 'rollback-font8') {"),
+    end=source.indexOf('reloaded = true; await check(); records.push({ step, reloaded: true, observation });',start);
+  assert.ok(start>0&&end>start);
+  let navigating=false,ready;const records=[];
+  const page={waitForNavigation(){return new Promise(resolve=>{ready=resolve;});},async evaluate(){
+    if(navigating)throw Error('Execution context was destroyed');return {load:2};}};
+  const styles={locator(){return {async click(){navigating=true;setTimeout(()=>{navigating=false;ready?.();},5);}};}};
+  const block=source.slice(start,end)+source.slice(end,source.indexOf('\n',end))+'\n}';
+  const execute=new (Object.getPrototypeOf(async()=>{}).constructor)('page','styles','waitTransition','observeInstalledProtocol','initialLoads','expectedProtocol','check','records','step','observation',
+    'let reloaded=false;'+block+';return reloaded;');
+  const {waitTransition}=await subject();
+  assert.equal(await execute(page,styles,waitTransition,()=>{},[1,1],1,async()=>{},records,'font8',{}),true);
+  assert.equal(records.length,1);assert.equal(records[0].reloaded,true);
+});
+
+test('generic phase exceptions retain a bounded original name and message for diagnosis',async t=>{
+  const {runTransitionPhase}=await subject();
+  await assert.rejects(runTransitionPhase({...await errors(t),worker:{async evaluate(){throw new TypeError('x'.repeat(300));}},
+    extensionId,responses:[],caseId:'valid-ui',phase:'old',runNonce:nonce,expectedBrokerSource:'source',expectedProtocol:1}),error=>{
+    assert.equal(error.code,'transition-phase-failed');assert.equal(error.failure.diagnostic.name,'TypeError');assert.equal(error.failure.diagnostic.message,'x'.repeat(240));
+    assert.equal(error.failure.diagnostic.native.message,'x'.repeat(300));return true;
+  });
 });

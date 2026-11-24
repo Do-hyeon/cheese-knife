@@ -1,5 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
+import { observeInstalledProtocol } from './installed-protocol.mjs';
 import { FIXTURE_LIVE_URL, FIXTURE_CHANNEL_URL, fixtureDecision } from './fixture-router.mjs';
+import {hasNoTransitionErrors,withTransitionDiagnostic} from './transition-failure.mjs';
 
 export const TRANSITION_CASES = Object.freeze(['valid-ui', 'legacy-valid', 'legacy-null', 'legacy-invalid', 'damaged-revision']);
 const defaults = Object.freeze({ preview: true, livePreview: true, previewStartUnmuted: false, previewWidth: 400, previewDelay: 1,
@@ -25,6 +27,10 @@ export function expectedInstalledMediaLoss(store) {
   if(!channel.video)lost.channels=lost.channels.filter(value=>value!==channel);return lost;
 }
 export function matchesInstalledMediaLoss(failure,runNonce,extensionId,presetId) {
+  return hasNoTransitionErrors(failure)&&isInstalledMediaLossObservation(failure,runNonce,extensionId,presetId);
+}
+// Provisional observation is used only for pre-close artifact collection, never admission.
+function isInstalledMediaLossObservation(failure,runNonce,extensionId,presetId) {
   if(!/^[a-p]{32}$/.test(extensionId||'')||failure?.code!=='media-preservation'||failure.caseId!=='valid-ui'||
     failure.phase!=='new'||failure.launchOccurrence!==4||failure.step!=='startup'||failure.stage!=='candidate-init'||
     !Array.isArray(failure.cleanupErrors)||failure.cleanupErrors.length)return false;
@@ -33,22 +39,24 @@ export function matchesInstalledMediaLoss(failure,runNonce,extensionId,presetId)
 }
 
 /** Four cold observations; only first-new explicitly creates media data through the actual TAB. */
-export async function runInstalledMediaPreservationScenario({context,worker,extensionId,responses,phase,launchOccurrence,runNonce,expectedBrokerSource,browserSession,presetId}) {
+export async function runInstalledMediaPreservationScenario({context,worker,extensionId,responses,phase,launchOccurrence,runNonce,expectedBrokerSource,browserSession,presetId,errorObserver}) {
   if(!Number.isInteger(launchOccurrence)||MEDIA_TRANSITION_PHASES[launchOccurrence-1]!==phase)throw fail('media-occurrence-invalid');
   const {openInstalledMediaSettings}=await import('./popup-cdp.mjs');
   let step='startup',observation;
   const snapshot=()=>worker.evaluate(()=>chrome.storage.local.get(null));
   try{
+    if(!errorObserver)throw fail('transition-error-observer');
+    await context.route(/^https?:\/\//,errorObserver.guardRoute(async route=>{const decision=fixtureDecision(route.request().url(),responses);
+      if(decision.action==='fulfill')await route.fulfill({status:decision.status,contentType:decision.contentType,body:decision.body});else await route.abort('blockedbyclient');}));
+    await context.routeWebSocket(/.*/,errorObserver.guardRoute(socket=>socket.close()));
     const execution=await worker.evaluate(()=>({extensionId:chrome.runtime.id,version:chrome.runtime.getManifest().version,brokerSource:createSettingsBroker.toString()}));
     execution.brokerMatches=execution.brokerSource===brokerFunctionSource(expectedBrokerSource);delete execution.brokerSource;
     if(!isDeepStrictEqual(execution,{extensionId,version:phase==='old'?'2.13.3':phase==='rollback'?'2.13.5':'2.13.4',brokerMatches:true}))throw fail('media-execution');
     observation={raw:await snapshot(),execution};
+    if(errorObserver.evidence.pageErrors.length||errorObserver.evidence.routeErrors.length||errorObserver.evidence.errorsTruncated)throw fail('transition-page-error');
     const expectedRaw={...transitionSeed('valid-ui',runNonce),...(launchOccurrence>=3?{mediaProfiles:expectedInstalledMediaStore(runNonce,presetId)}:{})};
     if(!isDeepStrictEqual(observation.raw,expectedRaw))throw fail('media-preservation');
     const records=[{step,observation}];
-    await context.route(/^https?:\/\//,async route=>{const decision=fixtureDecision(route.request().url(),responses);
-      if(decision.action==='fulfill')await route.fulfill({status:decision.status,contentType:decision.contentType,body:decision.body});else await route.abort('blockedbyclient');});
-    await context.routeWebSocket(/.*/,socket=>socket.close());
     const page=await context.newPage();await page.goto(FIXTURE_LIVE_URL,{waitUntil:'domcontentloaded'});
     const expectedProtocol=phase==='new'?2:1;
     await page.waitForFunction(protocol=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];return runtime?.configReady&&
@@ -84,10 +92,11 @@ export async function runInstalledMediaPreservationScenario({context,worker,exte
     const main=await page.evaluate(()=>{const runtime=window[Symbol.for('cheese-knife.runtime.v1')];return {brightness:runtime.config.brightness,threshold:runtime.config.compressorThreshold};});
     if(main.brightness!==1.25||main.threshold!==(phase==='new'?-35:-50))throw fail('media-main-values');
     observation={raw:await snapshot(),execution};
+    if(errorObserver.evidence.pageErrors.length||errorObserver.evidence.routeErrors.length||errorObserver.evidence.errorsTruncated)throw fail('transition-page-error');
     if(!isDeepStrictEqual(observation.raw,{...transitionSeed('valid-ui',runNonce),...(presetId?{mediaProfiles:expectedInstalledMediaStore(runNonce,presetId)}:{})}))throw fail('media-preservation');
-    records.push({step,observation});return {caseId:'valid-ui',phase,launchOccurrence,records,final:observation,presetId};
-  }catch(error){error.failure={code:error.code||'media-phase-failed',caseId:'valid-ui',phase,launchOccurrence,step,stage:step==='startup'?stageFor(phase):'phase-action',
-    ...(observation?{observation}:{}),cleanupErrors:[]};throw error;}
+    records.push({step,observation});return {caseId:'valid-ui',phase,launchOccurrence,records,final:observation,presetId,...errorObserver.evidence};
+  }catch(error){error.failure=withTransitionDiagnostic(error,{code:error.code||'media-phase-failed',caseId:'valid-ui',phase,launchOccurrence,step,stage:step==='startup'?stageFor(phase):'phase-action',
+    ...(observation?{observation}:{}),...errorObserver?.evidence,cleanupErrors:[]});throw error;}
 }
 
 export function transitionSeed(caseId, runNonce) {
@@ -131,9 +140,13 @@ export function expectedTransitionRaw(caseId, phase, step, runNonce) {
   return raw;
 }
 
-export function expectedTransitionState(caseId, phase, step, runNonce, extensionId, { reloaded = false, reloads = [0, 0] } = {}) {
+export function expectedTransitionState(caseId, phase, step, runNonce, extensionId, { reloaded = false, reloads = [0, 0], expectedProtocol = phase==='new'?3:1 } = {}) {
+  if (![1,2,3].includes(expectedProtocol)) throw fail('installed-protocol-invalid');
   const raw = expectedTransitionRaw(caseId, phase, step, runNonce), repair = caseId === 'damaged-revision';
   const known = { ...defaults, brightness: 1.25 };
+  if (expectedProtocol===3) Object.assign(known,{audioDefault:false,compressorEnabled:true,audioGain:1,gainInherited:true,
+    eqEnabled:false,eq63:0,eq125:0,eq250:0,eq500:0,eq1000:0,eq2000:0,eq4000:0,eq8000:0,
+    normalizerEnabled:false,normalizerTargetDbfs:-20});
   if (Object.hasOwn(raw.config, 'arrowSeek')) known.arrowSeek = raw.config.arrowSeek;
   if (Object.hasOwn(raw.config, 'previewVolume')) known.previewVolume = raw.config.previewVolume;
   const font = raw.styleParameters['chat-font-size'], ranking = raw.styles.includes('hide-ranking');
@@ -180,10 +193,17 @@ export function brokerFunctionSource(source) {
 }
 
 /** Observes packaged UI and worker only; the runner owns seed and context lifetime. */
-export async function runTransitionPhase({ context, worker, extensionId, responses, caseId, phase, runNonce, expectedBrokerSource }) {
+export async function runTransitionPhase({ context, worker, extensionId, responses, caseId, phase, runNonce, expectedBrokerSource, expectedProtocol,errorObserver }) {
+  if (![1,2,3].includes(expectedProtocol)) throw fail('installed-protocol-invalid');
   let step = 'startup', observation;
   try {
     expectedTransitionRaw(caseId, phase, step, runNonce);
+    if(!errorObserver)throw fail('transition-error-observer');
+    await context.route(/^https?:\/\//,errorObserver.guardRoute(async route=>{
+      const decision=fixtureDecision(route.request().url(),responses);
+      if(decision.action==='fulfill')await route.fulfill({status:decision.status,contentType:decision.contentType,body:decision.body});else await route.abort('blockedbyclient');
+    }));
+    await context.routeWebSocket(/.*/,errorObserver.guardRoute(socket=>socket.close()));
     const execution = await worker.evaluate(() => ({ extensionId: chrome.runtime.id,
       version: chrome.runtime.getManifest().version, brokerSource: createSettingsBroker.toString() }));
     const expectedFunction = brokerFunctionSource(expectedBrokerSource);
@@ -194,18 +214,6 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
     delete execution.brokerSource; observation = { execution };
     const version = phase === 'old' ? '2.13.3' : phase === 'new' ? '2.13.4' : '2.13.5';
     if (execution.extensionId !== extensionId || execution.version !== version || !execution.brokerMatches) { const error = fail('transition-execution'); error.diagnostic = diagnostic; throw error; }
-    const pageErrors = [], routeErrors = [];
-    const attach = page => page.on('pageerror', error => { if (pageErrors.length < 32) pageErrors.push(String(error?.message || error).slice(0, 240)); });
-    for (const page of context.pages()) attach(page);
-    context.on('page', attach);
-    await context.route(/^https?:\/\//, async route => {
-      try {
-        const decision = fixtureDecision(route.request().url(), responses);
-        if (decision.action === 'fulfill') await route.fulfill({ status: decision.status, contentType: decision.contentType, body: decision.body });
-        else await route.abort('blockedbyclient');
-      } catch (error) { if (routeErrors.length < 32) routeErrors.push(String(error?.code || error?.message).slice(0, 240)); }
-    });
-    await context.routeWebSocket(/.*/, socket => socket.close());
     const page = await context.newPage(); await page.goto(FIXTURE_LIVE_URL, { waitUntil: 'domcontentloaded', timeout: 15000 });
     const target = await worker.evaluate(async url => {
       const tabs = (await chrome.tabs.query({})).filter(tab => tab.url === url);
@@ -219,12 +227,7 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
     const repair = caseId === 'damaged-revision';
     await Promise.all([popupA, popupB, styles].map(ui => ui.locator(`#settings-status[data-phase="${repair ? 'repair-required' : 'ready'}"]`).waitFor({ timeout: 15000 })));
     // Ready waits are value-independent: lost raw config must reach the oracle, not a timeout.
-    const expectedProtocol = phase === 'new' ? 2 : 1;
-    await Promise.all([page, second].map(current => current.waitForFunction(protocol => {
-      const runtime = window[Symbol.for('cheese-knife.runtime.v1')],fixture = window.__knifeFixture;
-      return !!runtime?.configReady && (protocol === 1 ? !!fixture?.lastConfigEnvelopeV1 :
-        runtime.ownerProtocol === 2 && runtime.media.phase !== 'pending' && !!fixture?.lastConfigEnvelopeV2);
-    },expectedProtocol,{timeout:15000})));
+    await Promise.all([page, second].map(current => waitTransition(()=>current.evaluate(observeInstalledProtocol,expectedProtocol),Boolean,'transition-handshake-timeout')));
     const initialLoads = await Promise.all([page, second].map(current => current.evaluate(() => window.__knifeFixture.loads)));
     let reloaded = false, reloads = [0, 0];
     const capture = async () => {
@@ -243,18 +246,19 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
           stylesRankingDisabled: document.querySelector('#hide-ranking').disabled, stylesFontDisabled: document.querySelector('#chat-font-size').disabled })),
         page.evaluate(() => ({ font: [1, 2, 10, 20].map(divisor => getComputedStyle(document.documentElement).getPropertyValue(`--knife-chat-size-${divisor}`).trim()),
           ranking: getComputedStyle(document.querySelector('[class^="live_chatting_ranking_container__"]')).display })),
-        page.evaluate(protocol => { const runtime = window[Symbol.for('cheese-knife.runtime.v1')], envelope = protocol === 1 ? window.__knifeFixture.lastConfigEnvelopeV1 : window.__knifeFixture.lastConfigEnvelopeV2;
-          const ids = [...document.querySelectorAll('.knife-owned[id]')].map(item => item.id);
-          return { ready: runtime.configReady, config: { ...runtime.config }, requestIdObserved: typeof envelope?.requestId === 'string',
-            revisionObserved: Number.isSafeInteger(protocol === 1 ? envelope?.revision : envelope?.deliverySequence), duplicatedControls: new Set(ids).size !== ids.length }; },expectedProtocol),
+        (async()=>{
+          const observed=await page.evaluate(observeInstalledProtocol,expectedProtocol);
+          const duplicatedControls=await page.evaluate(()=>{const ids=[...document.querySelectorAll('.knife-owned[id]')].map(item=>item.id);return new Set(ids).size!==ids.length;});
+          return {ready:!!observed,config:observed?.config??null,requestIdObserved:!!observed,revisionObserved:!!observed,duplicatedControls};
+        })(),
       ]);
       reloads = await Promise.all([page, second].map(async (current, i) => await current.evaluate(() => window.__knifeFixture.loads) - initialLoads.at(i)));
       return { raw, execution, ui: { ...uiA, ...uiB, ...styleUI }, css: { registrations, ...styleView, reloads }, runtime: main };
     };
     const check = async () => {
       observation = await capture();
-      assertTransitionState(observation, expectedTransitionState(caseId, phase, step, runNonce, extensionId, { reloaded, reloads: reloaded ? [1, 0] : [0, 0] }));
-      if (pageErrors.length || routeErrors.length) throw fail('transition-page-error');
+      if(errorObserver.evidence.pageErrors.length||errorObserver.evidence.routeErrors.length||errorObserver.evidence.errorsTruncated)throw fail('transition-page-error');
+      assertTransitionState(observation, expectedTransitionState(caseId, phase, step, runNonce, extensionId, { reloaded, reloads: reloaded ? [1, 0] : [0, 0],expectedProtocol }));
     };
     await check();
     const records = [{ step, observation }];
@@ -271,25 +275,25 @@ export async function runTransitionPhase({ context, worker, extensionId, respons
         const wanted = expectedTransitionRaw(caseId, phase, step, runNonce);
         await waitTransition(() => worker.evaluate(() => chrome.storage.local.get(null)), raw => isDeepStrictEqual(raw, wanted), 'transition-action-timeout');
         // Storage completion alone is insufficient; both real clients and MAIN must catch up.
-        await waitTransition(capture, value => isDeepStrictEqual(value.ui, expectedTransitionState(caseId, phase, step, runNonce, extensionId).ui) &&
-          isDeepStrictEqual(value.runtime.config, expectedTransitionState(caseId, phase, step, runNonce, extensionId).runtime.config), 'transition-ui-timeout');
+        await waitTransition(capture, value => isDeepStrictEqual(value.ui, expectedTransitionState(caseId, phase, step, runNonce, extensionId,{expectedProtocol}).ui) &&
+          isDeepStrictEqual(value.runtime.config, expectedTransitionState(caseId, phase, step, runNonce, extensionId,{expectedProtocol}).runtime.config), 'transition-ui-timeout');
         await styles.locator('#settings-status[data-phase="ready"]').waitFor({ timeout: 15000 });
         await check(); records.push({ step, observation });
         if (step === 'font8' || step === 'font0' || step === 'rollback-font8') {
-          await styles.locator('#reload').click({ timeout: 15000 });
-          await page.waitForFunction(({before,protocol}) => window.__knifeFixture?.loads === before+1 &&
-            !!window[Symbol.for('cheese-knife.runtime.v1')]?.configReady &&
-            (protocol === 1 ? !!window.__knifeFixture.lastConfigEnvelopeV1 : !!window.__knifeFixture.lastConfigEnvelopeV2),
-            {before:initialLoads[0],protocol:expectedProtocol},{timeout:15000});
+          await Promise.all([
+            page.waitForNavigation({waitUntil:'domcontentloaded',timeout:15000}),
+            styles.locator('#reload').click({timeout:15000}),
+          ]);
+          await waitTransition(()=>page.evaluate(observeInstalledProtocol,expectedProtocol),value=>value?.load===initialLoads[0]+1,'transition-reload-handshake-timeout');
           reloaded = true; await check(); records.push({ step, reloaded: true, observation });
         }
       }
     }
-    return { caseId, phase, records, final: observation };
+    return { caseId, phase, records, final: observation,...errorObserver.evidence };
   } catch (error) {
     error.code ||= 'transition-phase-failed';
-    error.failure = { code: String(error.code).slice(0, 240), caseId, phase, step,
-      stage: step === 'startup' ? stageFor(phase) : 'phase-action', ...(observation ? { observation } : {}), ...(error.diagnostic ? { diagnostic: error.diagnostic } : {}), cleanupErrors: [] };
+    error.failure = withTransitionDiagnostic(error,{ code: String(error.code).slice(0, 240), caseId, phase, step,
+      stage: step === 'startup' ? stageFor(phase) : 'phase-action', ...(observation ? { observation } : {}),...errorObserver?.evidence,cleanupErrors: [] });
     throw error;
   }
 }

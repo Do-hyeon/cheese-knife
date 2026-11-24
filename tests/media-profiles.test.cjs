@@ -15,11 +15,13 @@ const selection = channelId => ({ kind: 'saved', channelId });
 const token = channelId => ({ channelId, recordCreatedRevision: 1, domainCreatedRevision: 1 });
 const plain = value => JSON.parse(JSON.stringify(value));
 function moduleUnderTest() {
-  assert.ok(fs.existsSync('media-profiles.js'), 'generated pure media contract must exist');
+  assert.ok(fs.existsSync("extension/media-profiles.js"), 'generated pure media contract must exist');
   const realm = vm.createContext({ TextEncoder });
-  vm.runInContext(fs.readFileSync('media-profiles.js', 'utf8'), realm);
+  vm.runInContext(fs.readFileSync("extension/media-profiles.js", 'utf8'), realm);
   assert.equal(typeof realm.KnifeMediaProfiles?.readStore, 'function');
-  return realm.KnifeMediaProfiles;
+  // Pin the F00 protocol2 contract separately from the new schema2 reader.
+  return { ...realm.KnifeMediaProfiles, readStore: realm.KnifeMediaProfiles.readLegacyStore,
+    resolveMediaSettings: realm.KnifeMediaProfiles.resolveLegacyMediaSettings };
 }
 function committed(mod, store, request) {
   const result = mod.mergeMediaOperation(store, request, globals);

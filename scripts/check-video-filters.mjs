@@ -50,9 +50,9 @@ try {
     };
   });
   for (const file of ['media-profiles.js','config.js','web/main.js','web/runtime.js','web/site-adapter.js','web/player.js']) {
-    await page.evaluate(await files.readFile(file, 'utf8'));
+    await page.evaluate(await files.readFile('extension/'+file, 'utf8'));
   }
-  await page.addStyleTag({ content: await fs.readFile('web/main.css', 'utf8') });
+  await page.addStyleTag({ content: await fs.readFile("extension/web/main.css", 'utf8') });
   await page.evaluate(() => {
     window.__filterApply = async change => {
       const config = normalizeConfig(change), revision = (window.__filterStored.settingsRevision ?? 0) + 1;
@@ -62,7 +62,7 @@ try {
       const deadline = performance.now() + 5000;
       while (performance.now() < deadline) {
         const runtime = window[Symbol.for('cheese-knife.runtime.v1')];
-        if (runtime?.ownerProtocol === 2 && runtime.media.phase !== 'pending' &&
+        if (runtime?.ownerProtocol === 3 && runtime.media.phase !== 'pending' &&
             runtime.media.context.routePath === location.pathname && runtime.media.version.globalRevision === revision) return;
         await new Promise(resolve => setTimeout(resolve, 10));
       }
@@ -212,12 +212,12 @@ try {
           {channelId:'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',createdRevision:1,revision:1,video:{createdRevision:1,
             values:{brightness:2,contrast:1,gamma:1,saturation:1,sharpness:0}}}],presets:[]}}),onChanged:{addListener(){},removeListener(){}}}},
         runtime:{onMessage:{addListener(){},removeListener(){}}},i18n:{getMessage:key=>key}};});
-      for(const name of ['media-profiles.js','config.js'])await negative.evaluate(await files.readFile(name,'utf8'));
-      await negative.evaluate(item.oldBridge?historical('web/main.js'):await fs.readFile('web/main.js','utf8'));
-      await negative.evaluate(item.oldOwner?historical('web/runtime.js'):await fs.readFile('web/runtime.js','utf8'));
-      await negative.evaluate(await fs.readFile('web/site-adapter.js','utf8'));
-      if(item.renderer)await negative.evaluate(await fs.readFile('web/player.js','utf8'));
-      await negative.addStyleTag({content:await fs.readFile('web/main.css','utf8')});
+      for(const name of ['media-profiles.js','config.js'])await negative.evaluate(await files.readFile('extension/'+name,'utf8'));
+      await negative.evaluate(item.oldBridge?historical('web/main.js'):await fs.readFile("extension/web/main.js",'utf8'));
+      await negative.evaluate(item.oldOwner?historical('web/runtime.js'):await fs.readFile("extension/web/runtime.js",'utf8'));
+      await negative.evaluate(await fs.readFile("extension/web/site-adapter.js",'utf8'));
+      if(item.renderer)await negative.evaluate(await fs.readFile("extension/web/player.js",'utf8'));
+      await negative.addStyleTag({content:await fs.readFile("extension/web/main.css",'utf8')});
       await negative.evaluate(async()=>{const canvas=document.getElementById('input'),video=document.getElementById('primary');
         const context=canvas.getContext('2d');context.fillStyle='rgb(100,80,60)';context.fillRect(0,0,64,64);
         video.srcObject=canvas.captureStream(10);await video.play();});

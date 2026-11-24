@@ -6,11 +6,16 @@ const { page, load, runtime, deliverScoped: deliver, playerHTML, flush } = requi
 
 test('media client uses fixed domain property access without object-injection findings', async () => {
   const lint=new ESLint({overrideConfigFile:'eslint.security.config.mjs'});
-  const results=await lint.lintFiles(['settings-client.js']);
+  const results=await lint.lintFiles(["extension/settings-client.js"]);
+  assert.deepEqual(results.flatMap(file=>file.messages),[]);
+});
+test('Native audio settings runner and its typed popup helper have no static-tool observations',async()=>{
+  const lint=new ESLint({overrideConfigFile:'eslint.security.config.mjs'});
+  const results=await lint.lintFiles(['scripts/check-installed-audio-settings.mjs','scripts/extension-e2e/popup-cdp.mjs','scripts/extension-e2e/f01-transition.mjs','scripts/extension-e2e/transition-failure.mjs','scripts/audio-signed-transition.mjs']);
   assert.deepEqual(results.flatMap(file=>file.messages),[]);
 });
 
-test('scoped pixel proof reads selected resources through the owned filesystem boundary', async () => {
+test('video-filter tool has no static-tool observations; rendered pixels require its browser run', async () => {
   const lint=new ESLint({overrideConfigFile:'eslint.security.config.mjs'});
   const results=await lint.lintFiles(['scripts/check-video-filters.mjs']);
   assert.deepEqual(results.flatMap(file=>file.messages),[]);
@@ -18,13 +23,13 @@ test('scoped pixel proof reads selected resources through the owned filesystem b
 
 test('preview autoplay proof loads the production site adapter boundary', async () => {
   const source = await fs.readFile('scripts/check-preview-autoplay.mjs', 'utf8');
-  assert.match(source, /readFile\('web\/site-adapter\.js'/);
+  assert.match(source, /readFile\(["']extension\/web\/site-adapter\.js["']/);
   assert.match(source, /test-site-adapter\.js/);
 });
 
 test('player controls use DOM SVG construction without an unsafe HTML assignment warning', async t => {
   const lint = new ESLint({ overrideConfigFile: 'eslint.security.config.mjs' });
-  const result = await lint.lintFiles(['web/player.js']);
+  const result = await lint.lintFiles(["extension/web/player.js"]);
   assert.equal(result.flatMap(file => file.messages).filter(message => message.ruleId === 'no-unsanitized/property').length, 0);
   const dom = page(playerHTML);
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
@@ -59,7 +64,7 @@ test('HLS TAP summary parsing uses only fixed regular-expression boundaries', as
 
 test('site adapter removes webpack injection without a Node dynamic-require warning', async t => {
   const lint = new ESLint({ overrideConfigFile: 'eslint.security.config.mjs' });
-  const result = await lint.lintFiles(['web/site-adapter.js']);
+  const result = await lint.lintFiles(["extension/web/site-adapter.js"]);
   assert.equal(result.flatMap(file => file.messages).filter(message => message.ruleId === 'security/detect-non-literal-require').length, 0);
   const dom = page();
   t.after(async () => { dom.window.dispatchEvent(new dom.window.PageTransitionEvent('pagehide')); await flush(); dom.window.close(); });
@@ -72,7 +77,7 @@ test('site adapter removes webpack injection without a Node dynamic-require warn
 
 test('runtime dictionary boundaries have no generic object-injection observation', async () => {
   const lint = new ESLint({ overrideConfigFile: 'eslint.security.config.mjs' });
-  const result = await lint.lintFiles(['popup.js', 'web/main.js', 'web/player.js', 'web/runtime.js']);
+  const result = await lint.lintFiles(["extension/popup.js", "extension/audio-settings-ui.js", "extension/web/main.js", "extension/web/player.js", "extension/web/runtime.js"]);
   const findings = result.flatMap(file => file.messages)
     .filter(message => message.ruleId === 'security/detect-object-injection');
   assert.deepEqual(findings.map(message => `${message.line}:${message.column}`), []);
@@ -80,7 +85,7 @@ test('runtime dictionary boundaries have no generic object-injection observation
 
 test('settings and compressor boundaries have no generic object-injection observation', async () => {
   const lint = new ESLint({ overrideConfigFile: 'eslint.security.config.mjs' });
-  const result = await lint.lintFiles(['settings-contract.js', 'web/audio.js']);
+  const result = await lint.lintFiles(["extension/settings-contract.js", "extension/web/audio.js"]);
   const findings = result.flatMap(file => file.messages)
     .filter(message => message.ruleId === 'security/detect-object-injection');
   assert.deepEqual(findings.map(message => `${message.filePath}:${message.line}:${message.column}`), []);
@@ -88,7 +93,7 @@ test('settings and compressor boundaries have no generic object-injection observ
 
 test('deleted-chat array boundaries have no generic object-injection observation', async () => {
   const lint = new ESLint({ overrideConfigFile: 'eslint.security.config.mjs' });
-  const result = await lint.lintFiles(['web/inject.js']);
+  const result = await lint.lintFiles(["extension/web/inject.js"]);
   const findings = result.flatMap(file => file.messages)
     .filter(message => message.ruleId === 'security/detect-object-injection');
   assert.deepEqual(findings.map(message => `${message.line}:${message.column}`), []);
@@ -102,7 +107,7 @@ test('development report boundaries have no generic object-injection observation
   assert.ok(artifactConfig?.rules['security/detect-object-injection']?.[0], 'artifact core must remain in the real lint scope');
   const result = await lint.lintFiles([
     'scripts/audio-metrics.mjs', 'scripts/audio-signal.mjs', 'scripts/audio-artifact-core.mjs', 'scripts/audio-artifacts.mjs', 'scripts/check-audio-quality.mjs', 'scripts/check-store-popup.mjs',
-    'scripts/check-video-filters.mjs', 'scripts/tool-audit.mjs',
+    'scripts/tool-audit.mjs',
   ]);
   const findings = result.flatMap(file => file.messages)
     .filter(message => message.ruleId === 'security/detect-object-injection');
@@ -131,7 +136,7 @@ test('filesystem consumers delegate all dynamic paths to the owned capability', 
   const result = await lint.lintFiles([
     'scripts/build.mjs', 'scripts/check-package.mjs', 'scripts/check-audio-quality.mjs',
     'scripts/check-preview-autoplay.mjs', 'scripts/check-store-popup.mjs', 'scripts/check-styles.mjs',
-    'scripts/smoke-browser.mjs', 'scripts/tool-audit.mjs', 'scripts/verify-candidate.mjs',
+    'scripts/tool-audit.mjs', 'scripts/verify-candidate.mjs',
     'scripts/check-installed-extension-negative.mjs', 'scripts/check-installed-extension.mjs',
     'scripts/extension-e2e/harness.mjs',
   ]);

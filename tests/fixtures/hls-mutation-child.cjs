@@ -31,7 +31,7 @@ if (!Object.hasOwn(mutations, mutation) || typeof caseName !== 'string' || !case
   throw new Error('Unknown HLS mutation request');
 }
 
-const source = fs.readFileSync(process.env.KNIFE_HLS_TEST_BUNDLE || path.join(root, 'vendor/hls.light.private.js'), 'utf8');
+const source = fs.readFileSync(process.env.KNIFE_HLS_TEST_BUNDLE || path.join(root, 'extension/vendor/hls.light.private.js'), 'utf8');
 const [before, after] = mutations[mutation];
 if (source.split(before).length !== 2) throw new Error('Mutation anchor must occur exactly once: ' + mutation);
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'knife-hls-mutation-'));
