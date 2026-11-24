@@ -139,13 +139,13 @@ const mediaClient = mediaLocation.mode === 'media' ? createMediaSettingsClient(c
 (document.getElementById('media-controls') as HTMLElement).hidden = !mediaClient;
 let globalView: KnifeSettingsView | null = null, mediaView: KnifeMediaView | null = null;
 let currentScope: Extract<KnifeMediaSelection, { kind: 'current' }> | null = null;
-const mediaDomain = (id: string): KnifeMediaDomain | null => KnifeMediaProfiles.audioFields.some(field => field.id === id) ? 'audio'
+const mediaDomain = (id: string): KnifeMediaDomain | null => [...KnifeMediaProfiles.audioFieldsV2,...KnifeMediaProfiles.audioFields].some(field => field.id === id) ? 'audio'
   : KnifeMediaProfiles.videoFields.some(field => field.id === id) ? 'video' : null;
-const channelBinding = (channel: KnifeChannelRecord | null | undefined, domain: KnifeMediaDomain) => domain === 'audio' ? channel?.audio : channel?.video;
+const channelBinding = (channel: KnifeChannelRecord | KnifeChannelRecordV2 | null | undefined, domain: KnifeMediaDomain) => domain === 'audio' ? channel?.audio : channel?.video;
 function editField(id: string, value: KnifeScalar) {
   if (retired) return;
   const domain = mediaDomain(id);
-  if (!domain || !mediaView || mediaView.selection.kind === 'global') settingsClient.edit({ type: 'config', id, value });
+  if (!domain || !mediaClient) settingsClient.edit({ type: 'config', id, value });
   else if (domain === 'audio') mediaClient?.editFields('audio', { [id]: value });
   else mediaClient?.editFields('video', { [id]: value });
 }
@@ -241,6 +241,7 @@ const renderFields = new Map<string, (view: KnifeSettingsView) => void>();
 
     for (const c of configs) {
       if (c.type === "details") {
+        if (mediaClient && c.id === 'compressor') continue;
         const details = document.createElement("details");
         box.appendChild(details);
 
@@ -287,11 +288,37 @@ const mediaStatus = document.getElementById('media-status') as HTMLElement;
 const presetSelect = document.getElementById('media-preset') as HTMLSelectElement;
 const presetName = document.getElementById('media-preset-name') as HTMLInputElement;
 const presetDomain = document.getElementById('media-preset-domain') as HTMLSelectElement;
+const createName = document.getElementById('media-preset-create-name') as HTMLInputElement;
+const createDetails = document.getElementById('media-preset-new') as HTMLDetailsElement;
+const panelTabs = [...document.querySelectorAll<HTMLButtonElement>('[data-media-panel]')];
+function showPanel(name: string, focus = false) {
+  for (const tab of panelTabs) {
+    const selected = tab.dataset.mediaPanel === name;tab.setAttribute('aria-selected',String(selected));tab.tabIndex = selected ? 0 : -1;
+    (document.getElementById(tab.getAttribute('aria-controls')!) as HTMLElement).hidden = !selected;
+    if (selected && focus) tab.focus();
+  }
+  if (name === 'presets') renderMedia();
+}
+for (const tab of panelTabs) {
+  tab.addEventListener('click',() => {if (!retired) showPanel(tab.dataset.mediaPanel!);});
+  tab.addEventListener('keydown',event => {
+    if (retired || !['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;event.preventDefault();
+    const index = panelTabs.indexOf(tab), next = event.key === 'Home' ? panelTabs[0] : event.key === 'End' ? panelTabs.at(-1) :
+      panelTabs.at((index+(event.key === 'ArrowLeft' ? 2 : 1))%3);
+    if (next) showPanel(next.dataset.mediaPanel!,true);
+  });
+}
+const createStatus = document.getElementById('media-create-status') as HTMLElement;
 const mediaDiscard = document.getElementById('media-discard') as HTMLButtonElement;
 const text = (key: string) => chrome.i18n.getMessage(key) || key;
+const label = (key: string, fallback: string) => chrome.i18n.getMessage(key) || fallback;
+for (const element of document.querySelectorAll<HTMLElement>('[data-audio-label]')) {
+  element.textContent = label('audio_ui_'+element.dataset.audioLabel,element.textContent ?? '');
+}
+const button = (id: string) => document.getElementById(id) as HTMLButtonElement;
 for (const [id, key] of [['media-scope-label','media_scope'],['media-preset-name-label','media_preset_name'],
   ['media-preset-domain-label','media_preset_domain'],['media-preset-label','media_presets'],['media-discard','settings_discard'],
-  ['media-preset-create','media_create'],['media-preset-apply','media_apply'],['media-preset-rename','media_rename'],
+  ['media-preset-create','media_create'],['media-preset-rename','media_rename'],
   ['media-preset-delete','media_delete_preset'],['media-channel-delete','media_delete_channel'],['media-refresh','media_refresh'],
   ['media-audio-enable','media_enable_audio'],['media-video-enable','media_enable_video'],
   ['media-audio-global','media_global_audio'],['media-video-global','media_global_video']] as const) {
@@ -299,149 +326,255 @@ for (const [id, key] of [['media-scope-label','media_scope'],['media-preset-name
 }
 scopeSelect.options[0]!.textContent = text('media_global');scopeSelect.options[1]!.textContent = text('media_current');
 presetDomain.options[0]!.textContent = text('media_audio');presetDomain.options[1]!.textContent = text('media_video');
-const scopeKey = (selection: KnifeMediaSelection) => selection.kind === 'saved' ? `saved:${selection.channelId}` : selection.kind;
-let catalogueKey = '';
-function confirmedPresetValues(domain: KnifeMediaDomain): Extract<KnifeValuesResult, { ok: true }> | null {
-  const global = globalView, media = mediaView;
-  if (!global?.snapshot || !media?.snapshot || global.phase !== 'ready' || media.phase !== 'ready' ||
-    !media.snapshot.canWrite || global.pendingKeys.length || media.pendingKeys.length || media.pendingRequest) return null;
-  const fields = domain === 'audio' ? KnifeMediaProfiles.audioFields : KnifeMediaProfiles.videoFields;
-  const inherited = media.selection.kind === 'global' || !channelBinding(media.snapshot.channel, domain);
-  if (inherited && (global.snapshot.revision !== media.snapshot.version.globalRevision ||
-    fields.some(field => global.values.config[field.id] !== global.snapshot!.config[field.id]))) return null;
-  const values = media.selection.kind === 'global'
-    ? Object.fromEntries(fields.map(field => [field.id, global.snapshot!.config[field.id]]))
-    : domain === 'audio' ? media.snapshot.values.audio : media.snapshot.values.video;
-  const displayed = media.selection.kind === 'global' ? global.values.config : domain === 'audio' ? media.values.audio : media.values.video;
-  if (fields.some(field => Reflect.get(displayed, field.id) !== Reflect.get(values, field.id))) return null;
-  const validated = KnifeMediaProfiles.validateValues(domain, values);
-  return validated.ok ? validated : null;
+const scopeKey = (selection: KnifeMediaSelection) => selection.kind === 'saved' ? 'saved:'+selection.channelId : selection.kind;
+const fingerprint = () => mediaView?.snapshot ? JSON.stringify({ selection:mediaView.selection, snapshot:mediaView.snapshot, fresh:mediaView.fresh }) : '';
+const ready = () => !retired && mediaView?.phase === 'ready' && mediaView.snapshot?.canWrite === true &&
+  mediaView.fresh && !mediaView.pendingRequest && !mediaView.pendingKeys.length && !audioUI?.hasDraft();
+const perform = (request: KnifeMediaIntent) => { if (!retired) void mediaClient?.perform(request).catch(() => renderMedia()); };
+function confirmPerform(request: KnifeMediaIntent, key: string, target: string, upgrade = false) {
+  if (!mediaClient || !mediaView?.snapshot || !ready() && !(upgrade && mediaView.phase === 'ready' && mediaView.snapshot.code === 'media-upgrade-required')) return;
+  const payload = mediaClient.capture(request), basis = fingerprint();
+  if (!window.confirm(label(key,key)+'\n'+target)) return;
+  if (retired || basis !== fingerprint() || mediaView.phase !== 'ready' || mediaView.pendingRequest || mediaView.pendingKeys.length) return;
+  perform(payload);
 }
+type ConfirmedPreset = {domain:'audio';values:KnifeAudioValuesV2} | {domain:'video';values:KnifeVideoValues};
+function confirmedPresetValues(domain: KnifeMediaDomain): ConfirmedPreset | null {
+  if (!ready() || !mediaView?.snapshot) return null;
+  const snapshot = mediaView.snapshot;
+  if (domain === 'audio') {
+    if (snapshot.gainOrigin === 'site-legacy') return null;
+    const validated = KnifeMediaProfiles.validateAudioV2({...snapshot.values.audio,audioGain:snapshot.effectiveGain,gainInherited:false});
+    return validated.ok ? {domain,values:validated.values} : null;
+  }
+  const validated = KnifeMediaProfiles.validateValues('video',snapshot.values.video);
+  return validated.ok && validated.domain === 'video' ? {domain,values:validated.values} : null;
+}
+let creation: { basis: string; source: ConfirmedPreset } | null = null, creationExpired = false;
+let creationOpenedBySaveAs = false, managementOpened = false;
+const createDrafts = new Map<KnifeMediaDomain,string>([['audio',''],['video','']]);
+let createDomain: KnifeMediaDomain = 'audio', catalogueKey = '';
+function prepareCreation(domain: KnifeMediaDomain) {
+  createDrafts.set(createDomain,createName.value);createDomain = domain;presetDomain.value = domain;createName.value = createDrafts.get(domain) ?? '';
+  const source = confirmedPresetValues(domain);creation = source ? {basis:fingerprint(),source:structuredClone(source)} : null;
+  creationExpired = false;renderMedia();
+}
+const audioTransport = createSettingsRequestTransport(chrome);
+let audioState: KnifeAudioState | null = null, audioBusy = false, audioEpoch = 0;
+let audioRoutePath: string | null = null;
+let legacy: { value: KnifeLegacyGainRead; revision: number; basis: string } | null = null;
+let legacyBusy = false;
+const legacyStatus = document.getElementById('media-legacy-status') as HTMLElement;
+const legacyLimited = label('audio_ui_legacy_limited','사이트 Gain 읽기·가져오기는 확인된 라이브 채널에서만 지원합니다. VOD에서는 Gain을 직접 저장해 주세요.');
+let audioMessage = label('audio_ui_target_missing','방송 탭에서 설정을 다시 열어 주세요.');
+async function refreshAudio(wanted?: boolean): Promise<void> {
+  if (retired || !mediaLocation.target || !audioRoutePath || audioBusy || wanted !== undefined && !audioState) return;
+  const target = {tabId:mediaLocation.target.tabId,windowId:mediaLocation.target.windowId,routePath:audioRoutePath};
+  const sequence = ++audioEpoch, basis = scopeKey(mediaView?.selection ?? {kind:'global'}), binding = audioState;
+  audioBusy = true;renderMedia();
+  try {
+    const request: KnifeMediaCallV3 = wanted === undefined ? {action:'get-audio-state',target} :
+      {action:'set-audio-wanted',target,binding:binding!,wanted};
+    const {reply} = await audioTransport.send(3,request).promise;
+    if (retired || sequence !== audioEpoch || basis !== scopeKey(mediaView?.selection ?? {kind:'global'})) return;
+    if (!reply.ok || !reply.audioState) throw new Error(reply.code || 'audio-target-unavailable');
+    audioState = reply.audioState;audioMessage = reply.audioState.state === 'pending' || reply.audioState.state === 'unavailable'
+      ? label('audio_ui_resume_hint','방송에서 보정 버튼을 직접 눌러 주세요. 설정 탭은 재생 권한을 전달하지 않습니다.')
+      : label('audio_ui_advisory','현재 방송의 적용 상태입니다. 실제 출력 음량 측정값은 아닙니다.');
+  } catch {
+    if (retired || sequence !== audioEpoch) return;
+    audioState = null;audioMessage = label('audio_ui_target_changed','원래 방송 문서가 바뀌었거나 연결할 수 없습니다. 새로 조회해 주세요. 자동 재시도하지 않습니다.');
+  } finally { if (sequence === audioEpoch) {audioBusy = false;renderMedia();} }
+}
+const audioUI = mediaClient ? createAudioSettingsUI(document.getElementById('media-audio-panel') as HTMLElement,{
+  edit(patch) {
+    if (Object.hasOwn(patch,'gainInherited') && patch.gainInherited === true && mediaView?.snapshot && ready()) {
+      const view = mediaView, channel = view.snapshot!.channel;
+      if (view.selection.kind === 'global') confirmPerform({action:'patch-global-fields',domain:'audio',patch:{gainInherited:true},
+        expectedGlobalRevision:view.snapshot!.version.globalRevision!},'media_confirm_gain_inherit',text('media_global'));
+      else if (channel?.audio) confirmPerform({action:'patch-channel-fields',domain:'audio',selection:view.selection,patch:{gainInherited:true},
+        channelToken:{channelId:channel.channelId,recordCreatedRevision:channel.createdRevision,domainCreatedRevision:channel.audio.createdRevision}},
+        'media_confirm_gain_inherit',channel.channelId);
+      renderMedia();
+    } else mediaClient.editFields('audio',patch);
+  }, wanted(value) { void refreshAudio(value); },draftChanged:renderMedia,
+}) : null;
+const applySelect = (domain: KnifeMediaDomain) => document.getElementById('media-'+domain+'-preset') as HTMLSelectElement;
+function selectedPreset() { return mediaView?.snapshot?.store?.presets.find(preset => preset.id === presetSelect.value); }
 function renderMedia() {
   if (retired || !globalView) return;
   const selected = mediaView?.selection.kind !== 'global' && mediaView?.selection !== undefined;
   for (const [id, render] of renderFields) {
     const domain = mediaDomain(id);
-    const projected = selected && domain && mediaView ? { ...globalView,
-      values: { ...globalView.values, config: { ...globalView.values.config, ...(domain === 'audio' ? mediaView.values.audio : mediaView.values.video) } } } : globalView;
+    const projected = mediaClient && domain && mediaView ? {...globalView,
+      values:{...globalView.values,config:{...globalView.values.config,...domain === 'audio' ? mediaView.values.audio : mediaView.values.video}}} : globalView;
     render(projected);
-    if (selected && domain) (document.getElementById(id) as HTMLInputElement).disabled =
-      !mediaView?.snapshot?.canWrite || !channelBinding(mediaView.snapshot.channel, domain) ||
+    if (mediaClient && domain && mediaView) (document.getElementById(id) as HTMLInputElement).disabled =
+      !mediaView.snapshot?.canWrite || selected && !channelBinding(mediaView.snapshot.channel,domain) ||
       ['loading','unknown','failed','conflict','repair-required','unavailable'].includes(mediaView.phase);
   }
-  // The first global subscription is synchronous, before the media controls are bound.
   if (!mediaView) return;
-  const blocked = mediaView.phase !== 'ready' || !mediaView.snapshot?.canWrite || globalView.phase !== 'ready';
-  scopeSelect.disabled = ['saving','unknown'].includes(mediaView.phase) || mediaView.pendingKeys.length > 0;
-  const store = mediaView.snapshot?.store;
-  const nextCatalogue = JSON.stringify([store?.channels.map(channel => channel.channelId), store?.presets.map(preset => [preset.id,preset.name]), currentScope?.channelId, scopeKey(mediaView.selection)]);
+  const blocked = !ready(), snapshot = mediaView.snapshot, channel = snapshot?.channel, store = snapshot?.store;
+  button('media-legacy-read').disabled = !currentScope || legacyBusy;
+  button('media-legacy-import').disabled = !currentScope || blocked || !legacy || legacy.basis !== fingerprint();
+  if (!currentScope) legacyStatus.textContent = legacyLimited;
+  else if (legacyStatus.textContent === legacyLimited) legacyStatus.textContent = '';
+  if (!managementOpened && !(document.getElementById('media-presets') as HTMLElement).hidden && ready()) {
+    managementOpened = true;
+    if (!store?.presets.length && !createDetails.open) {
+      prepareCreation(presetDomain.value === 'audio' ? 'audio' : 'video');
+      creationOpenedBySaveAs = true;createDetails.open = true;
+    }
+  }
+  scopeSelect.disabled = audioBusy || ['saving','unknown'].includes(mediaView.phase) || mediaView.pendingKeys.length > 0;
+  const nextCatalogue = JSON.stringify([store?.channels.map(item => item.channelId),store?.presets.map(item => [item.id,item.name,item.domain]),currentScope?.channelId,scopeKey(mediaView.selection)]);
   if (nextCatalogue !== catalogueKey) {
     catalogueKey = nextCatalogue;
     for (const option of [...scopeSelect.options].slice(2)) option.remove();
-    for (const channel of store?.channels ?? []) { const option = document.createElement('option');
-      option.value = `saved:${channel.channelId}`; option.textContent = channel.channelId; scopeSelect.append(option); }
-    const savedId = mediaView.selection.kind === 'saved' ? mediaView.selection.channelId : null;
-    if (savedId && !store?.channels.some(channel => channel.channelId === savedId)) {
-      const option = document.createElement('option');option.value = scopeKey(mediaView.selection);
-      option.textContent = savedId;scopeSelect.append(option);
+    for (const item of store?.channels ?? []) { const option = document.createElement('option');option.value = 'saved:'+item.channelId;option.textContent = item.channelId;scopeSelect.append(option); }
+    if (mediaView.selection.kind === 'saved') {
+      const id = mediaView.selection.channelId;
+      if (![...scopeSelect.options].some(option => option.value === 'saved:'+id)) { const option = document.createElement('option');option.value = 'saved:'+id;option.textContent = id;scopeSelect.append(option); }
     }
-    const previous = presetSelect.value; presetSelect.replaceChildren();
-    for (const preset of store?.presets ?? []) { const option = document.createElement('option');option.value = preset.id;
-      option.textContent = `${text(`media_${preset.domain}`)} · ${preset.name}`;presetSelect.append(option); }
+    const previous = presetSelect.value;presetSelect.replaceChildren();
+    for (const preset of store?.presets ?? []) { const option = document.createElement('option');option.value = preset.id;option.textContent = text('media_'+preset.domain)+' · '+preset.name;presetSelect.append(option); }
     if ([...presetSelect.options].some(option => option.value === previous)) presetSelect.value = previous;
+    for (const domain of ['audio','video'] as const) {
+      const select = applySelect(domain), old = select.value;select.replaceChildren();
+      const entries = domain === 'audio' ? [['recipe:compressor',label('audio_ui_recipe_compressor','기존 컴프레서')],['recipe:voice',label('audio_ui_recipe_voice','음성 EQ')]] : [];
+      for (const preset of store?.presets ?? []) if (preset.domain === domain) entries.push([preset.id,preset.name]);
+      for (const [value,name] of entries) { const option = document.createElement('option');option.value = value!;option.textContent = name!;select.append(option); }
+      if ([...select.options].some(option => option.value === old)) select.value = old;
+    }
   }
-  scopeSelect.value = scopeKey(mediaView.selection);
-  scopeSelect.options[1]!.disabled = !currentScope;
-  const channel = mediaView.snapshot?.channel;
+  scopeSelect.value = scopeKey(mediaView.selection);scopeSelect.options[1]!.disabled = !currentScope;
   for (const domain of ['audio','video'] as const) {
-    (document.getElementById(`media-${domain}-enable`) as HTMLButtonElement).disabled = blocked || !selected || !!channelBinding(channel, domain);
-    (document.getElementById(`media-${domain}-global`) as HTMLButtonElement).disabled = blocked || !selected || !channelBinding(channel, domain);
+    button('media-'+domain+'-enable').disabled = blocked || !selected || !!channelBinding(channel,domain);
+    button('media-'+domain+'-global').disabled = blocked || !selected || !channelBinding(channel,domain);
+    button('media-'+domain+'-preset-apply').disabled = blocked || !applySelect(domain).value || selected && !channelBinding(channel,domain);
+    button('media-'+domain+'-save-preset').disabled = !confirmedPresetValues(domain);
+    applySelect(domain).disabled = blocked;
   }
-  for (const id of ['media-preset-create','media-preset-apply','media-preset-rename','media-preset-delete','media-channel-delete']) {
-    (document.getElementById(id) as HTMLButtonElement).disabled = blocked ||
-      (id === 'media-channel-delete' ? !selected || !channel : id !== 'media-preset-create' && !presetSelect.value) ||
-      (id === 'media-preset-create' && !confirmedPresetValues(presetDomain.value === 'audio' ? 'audio' : 'video')) ||
-      (id === 'media-preset-apply' && selected && !channelBinding(channel, selectedPreset()?.domain ?? 'audio'));
-  }
+  button('media-channel-delete').disabled = blocked || !selected || !channel;
+  for (const id of ['media-preset-rename','media-preset-delete']) button(id).disabled = blocked || !selectedPreset();
+  if (creation && creation.basis !== fingerprint()) creationExpired = true;
+  button('media-preset-create').disabled = blocked || !creation || creationExpired;
+  createStatus.textContent = creationExpired ? label('audio_ui_create_expired','원래 설정이 변경되었습니다. 이름은 보존했습니다. 생성 영역을 다시 열어 준비해 주세요.') :
+    creation ? label('audio_ui_create_ready','진입 시 확정 저장값으로 생성합니다.') :
+    label('audio_ui_gain_unconfirmed','사이트 Gain은 미확인입니다. Gain을 직접 저장하거나 읽어 가져온 뒤 다시 준비해 주세요.');
+  const upgrade = button('media-upgrade');upgrade.hidden = snapshot?.code !== 'media-upgrade-required';upgrade.disabled = mediaView.phase !== 'ready';
+  audioUI?.render({values:mediaView.values.audio,effectiveGain:mediaView.pendingKeys.includes('audio:audioGain') ? mediaView.values.audio.audioGain :
+    snapshot?.gainOrigin === 'site-legacy' ? legacy?.basis === fingerprint() ? legacy.value.value : null : snapshot?.effectiveGain ?? null,
+    globalScope:mediaView.selection.kind === 'global',
+    gainOrigin:snapshot?.gainOrigin ?? 'site-legacy',editable:!!snapshot?.canWrite && (!selected || !!channel?.audio) &&
+      !['loading','unknown','failed','conflict','repair-required','unavailable'].includes(mediaView.phase),
+    wanted:audioState?.wanted ?? false,masterAvailable:!!audioState && !audioBusy,masterStatus:audioMessage});
   mediaStatus.dataset.phase = mediaView.phase;
-  mediaStatus.textContent = `${text(`media_${mediaView.phase.replace('-', '_')}`)}${mediaView.code ? ` (${mediaView.code})` : ''}`;
+  mediaStatus.textContent = text('media_'+mediaView.phase.replace('-','_'))+(mediaView.code ? ' ('+mediaView.code+')' : '');
   mediaDiscard.hidden = !['failed','unknown','conflict'].includes(mediaView.phase);
   const draft = document.getElementById('media-draft') as HTMLElement, request = mediaView.pendingRequest;
   draft.hidden = !(request || mediaView.pendingKeys.length) || !['failed','unknown','conflict'].includes(mediaView.phase);
-  draft.textContent = draft.hidden ? '' : `${text('media_draft')}\n${JSON.stringify({ action:request?.action,
-    intent:mediaView.pendingValues ?? mediaView.values, name:request && 'name' in request ? request.name : undefined,
-    saved:mediaView.snapshot?.values, version:mediaView.snapshot?.version },null,2)}`;
+  draft.textContent = draft.hidden ? '' : text('media_draft')+'\n'+JSON.stringify({action:request?.action,intent:mediaView.pendingValues ?? mediaView.values,
+    name:request && 'name' in request ? request.name : undefined,saved:snapshot?.values,version:snapshot?.version},null,2);
 }
-mediaClient?.subscribe(view => { mediaView = view; renderMedia(); });
+mediaClient?.subscribe(view => {mediaView = view;renderMedia();});
 void capturedTab.then(tab => {
-  const id = mediaLocation.target?.channelId;
-  if (retired) return;
-  if (tab && id && tab.incognito === false) currentScope = { kind: 'current', tabId: tab.id, windowId: tab.windowId, channelId: id };
-  if (mediaClient && mediaLocation.target && !tab) targetStatus.textContent = chrome.i18n.getMessage('media_target_changed');
-  renderMedia();
+  if (retired) return;const id = mediaLocation.target?.channelId;
+  if (tab && id && tab.incognito === false) currentScope = {kind:'current',tabId:tab.id,windowId:tab.windowId,channelId:id};
+  if (mediaClient && mediaLocation.target && !tab) targetStatus.textContent = text('media_target_changed');
+  if (tab) audioRoutePath = new URL(tab.url as string).pathname;
+  renderMedia();if (tab && mediaClient) void refreshAudio();
 });
-scopeSelect.addEventListener('change', () => {
-  if (retired) return;
-  const next: KnifeMediaSelection | null = scopeSelect.value === 'global' ? { kind: 'global' } : scopeSelect.value === 'current' ? currentScope
-    : scopeSelect.value.startsWith('saved:') ? { kind: 'saved', channelId: scopeSelect.value.slice(6) } : null;
-  if (next && mediaClient) void mediaClient.selectScope(next).then(() => renderMedia());else renderMedia();
+scopeSelect.addEventListener('change',() => {
+  if (retired || audioBusy) return;
+  const next: KnifeMediaSelection | null = scopeSelect.value === 'global' ? {kind:'global'} : scopeSelect.value === 'current' ? currentScope :
+    scopeSelect.value.startsWith('saved:') ? {kind:'saved',channelId:scopeSelect.value.slice(6)} : null;
+  if (next && mediaClient) { audioEpoch++;audioState = null;void mediaClient.selectScope(next).then(() => {renderMedia();void refreshAudio();}); } else renderMedia();
 });
-const perform = (request: KnifeMediaMutation) => { if (!retired) void mediaClient?.perform(request).catch(() => renderMedia()); };
-function confirmPerform(request: KnifeMediaMutation, key: string, target: string) {
-  const view = mediaView;
-  if (retired || !view || view.phase !== 'ready' || !view.snapshot?.canWrite || view.pendingKeys.length || view.pendingRequest) return;
-  if (!window.confirm(`${text(key)}\n${target}`)) return;
-  if (mediaView?.phase !== 'ready' || !mediaView.snapshot?.canWrite || globalView?.phase !== 'ready' ||
-    mediaView.pendingKeys.length || mediaView.pendingRequest || JSON.stringify(mediaView.selection) !== JSON.stringify(view.selection)) return;
-  // Keep the pre-dialog tokens; the worker must reject a concurrent edit, not adopt it.
-  perform(request);
-}
 for (const domain of ['audio','video'] as const) {
-  (document.getElementById(`media-${domain}-enable`) as HTMLButtonElement).addEventListener('click', () => {
-    const view = mediaView, channel = view?.snapshot?.channel;
-    if (!view?.snapshot || view.selection.kind === 'global') return;
-    perform({ action: 'enable-channel-domain', selection: view.selection, domain,
-      expectedGlobalRevision: view.snapshot.version.globalRevision!, expectedMediaRevision: view.snapshot.version.mediaRevision!,
-      expectedRecord: channel ? { createdRevision: channel.createdRevision, revision: channel.revision } : null });
+  button('media-'+domain+'-enable').addEventListener('click',() => {
+    const view = mediaView, channel = view?.snapshot?.channel;if (!view?.snapshot || view.selection.kind === 'global') return;
+    perform({action:'enable-channel-domain',selection:view.selection,domain,expectedGlobalRevision:view.snapshot.version.globalRevision!,
+      expectedMediaRevision:view.snapshot.version.mediaRevision!,expectedRecord:channel ? {createdRevision:channel.createdRevision,revision:channel.revision} : null});
   });
-  (document.getElementById(`media-${domain}-global`) as HTMLButtonElement).addEventListener('click', () => {
-    const view = mediaView, channel = view?.snapshot?.channel, binding = channelBinding(channel, domain);
+  button('media-'+domain+'-global').addEventListener('click',() => {
+    const view = mediaView, channel = view?.snapshot?.channel, binding = channelBinding(channel,domain);
     if (!view || view.selection.kind === 'global' || !channel || !binding) return;
-    confirmPerform({ action: 'reset-channel-domain', selection: view.selection, domain, recordCreatedRevision: channel.createdRevision,
-      domainCreatedRevision: binding.createdRevision, expectedRecordRevision: channel.revision },'media_confirm_reset',`${channel.channelId} · ${text(`media_${domain}`)}`);
+    confirmPerform({action:'reset-channel-domain',selection:view.selection,domain,recordCreatedRevision:channel.createdRevision,
+      domainCreatedRevision:binding.createdRevision,expectedRecordRevision:channel.revision},'media_confirm_reset',channel.channelId+' · '+text('media_'+domain));
+  });
+  applySelect(domain).addEventListener('change',renderMedia);
+  button('media-'+domain+'-save-preset').addEventListener('click',() => {
+    prepareCreation(domain);if (!createDetails.open) creationOpenedBySaveAs = true;createDetails.open = true;showPanel('presets');createName.focus();
+  });
+  button('media-'+domain+'-preset-apply').addEventListener('click',() => {
+    const view = mediaView, snapshot = view?.snapshot, choice = applySelect(domain).value;if (!view || !snapshot || !ready()) return;
+    let patch: Partial<KnifeAudioValuesV2> | null = null;
+    if (domain === 'audio' && choice.startsWith('recipe:')) {
+      patch = Object.fromEntries(KnifeMediaProfiles.audioFields.filter(field => field.id !== 'compressorDefault').map(field => [field.id,field.defaultValue]));
+      Object.assign(patch,{compressorEnabled:true,eqEnabled:false,normalizerEnabled:false},Object.fromEntries([[63,-2],[125,-1],[250,-1],[500,0],[1000,1],[2000,2],[4000,1],[8000,0]].map(([hz,gain]) => ['eq'+hz,choice === 'recipe:voice' ? gain! : 0])));
+      if (choice === 'recipe:voice') patch.eqEnabled = true;
+    }
+    const preset = snapshot.store?.presets.find(item => item.id === choice && item.domain === domain);
+    const presetToken = preset ? {id:preset.id,createdRevision:preset.createdRevision,revision:preset.revision} : null;
+    if (!patch && !presetToken) return;
+    const title = preset?.name ?? applySelect(domain).selectedOptions[0]?.textContent ?? '';
+    if (view.selection.kind === 'global') {
+      if (patch) confirmPerform({action:'patch-global-fields',domain:'audio',patch,expectedGlobalRevision:snapshot.version.globalRevision!},'media_confirm_apply',title);
+      else confirmPerform({action:'apply-preset-global',presetToken:presetToken!,expectedGlobalRevision:snapshot.version.globalRevision!},'media_confirm_apply',title);
+    } else {
+      const channel = snapshot.channel, binding = channelBinding(channel,domain);if (!channel || !binding) return;
+      const common = {action:'replace-channel-domain' as const,selection:view.selection,domain,expectedRecordRevision:channel.revision,
+        channelToken:{channelId:channel.channelId,recordCreatedRevision:channel.createdRevision,domainCreatedRevision:binding.createdRevision}};
+      confirmPerform(patch ? {...common,domain:'audio',values:{...snapshot.values.audio,...patch}} : {...common,presetToken:presetToken!},'media_confirm_apply',title);
+    }
   });
 }
-mediaDiscard.addEventListener('click', () => mediaClient?.discardPending());
-(document.getElementById('media-refresh') as HTMLButtonElement).addEventListener('click', () => { void mediaClient?.refresh(); });
-(document.getElementById('media-channel-delete') as HTMLButtonElement).addEventListener('click', () => {
+mediaDiscard.addEventListener('click',() => {void mediaClient?.discardPending();});
+button('media-refresh').addEventListener('click',() => {void mediaClient?.refresh();void refreshAudio();});
+button('media-upgrade').addEventListener('click',() => {if (mediaView?.snapshot) confirmPerform({action:'upgrade-media-store',
+  expectedMediaRevision:mediaView.snapshot.version.mediaRevision!},'media_confirm_upgrade',label('audio_ui_upgrade_note','저장 형식만 전환하며 현재 방송의 보정을 자동으로 켜지 않습니다.'),true);});
+button('media-channel-delete').addEventListener('click',() => {
   const view = mediaView, channel = view?.snapshot?.channel;
-  if (view && view.selection.kind !== 'global' && channel) confirmPerform({ action:'delete-channel',selection:view.selection,
-    recordCreatedRevision:channel.createdRevision,expectedRecordRevision:channel.revision },'media_confirm_channel',channel.channelId);
+  if (view && view.selection.kind !== 'global' && channel) confirmPerform({action:'delete-channel',selection:view.selection,
+    recordCreatedRevision:channel.createdRevision,expectedRecordRevision:channel.revision},'media_confirm_channel',channel.channelId);
 });
-(document.getElementById('media-preset-create') as HTMLButtonElement).addEventListener('click', () => {
-  const domain = presetDomain.value === 'audio' ? 'audio' : 'video',values = confirmedPresetValues(domain);
-  if (!mediaView?.snapshot || !values) return;
-  const common = { action:'create-preset' as const,id:crypto.randomUUID(),expectedMediaRevision:mediaView.snapshot.version.mediaRevision!,name:presetName.value };
-  perform(values.domain === 'audio' ? { ...common,domain:'audio',values:values.values }
-    : { ...common,domain:'video',values:values.values });
+createDetails.addEventListener('toggle',() => {
+  if (!createDetails.open || retired) {creationOpenedBySaveAs = false;return;}
+  if (creationOpenedBySaveAs) {creationOpenedBySaveAs = false;return;}
+  prepareCreation(presetDomain.value === 'audio' ? 'audio' : 'video');
 });
-function selectedPreset() { return mediaView?.snapshot?.store?.presets.find(preset => preset.id === presetSelect.value); }
-(document.getElementById('media-preset-apply') as HTMLButtonElement).addEventListener('click', () => {
-  const preset = selectedPreset(),view = mediaView;if (!preset || !view?.snapshot) return;
-  const presetToken = { id:preset.id,createdRevision:preset.createdRevision,revision:preset.revision };
-  if (view.selection.kind === 'global') perform({ action:'apply-preset-global',presetToken,expectedGlobalRevision:globalView!.snapshot!.revision });
-  else { const channel = view.snapshot.channel,binding = channelBinding(channel, preset.domain);if (!channel || !binding) return;
-    perform({ action:'replace-channel-domain',selection:view.selection,domain:preset.domain,presetToken,expectedRecordRevision:channel.revision,
-      channelToken:{ channelId:channel.channelId,recordCreatedRevision:channel.createdRevision,domainCreatedRevision:binding.createdRevision } }); }
+presetDomain.addEventListener('change',() => prepareCreation(presetDomain.value === 'audio' ? 'audio' : 'video'));
+createName.addEventListener('input',() => {createDrafts.set(createDomain,createName.value);});
+button('media-preset-create').addEventListener('click',() => {
+  if (!creation || !ready() || creation.basis !== fingerprint() || !mediaClient || !mediaView?.snapshot) {creationExpired = true;renderMedia();return;}
+  const source = creation.source, common = {action:'create-preset' as const,id:crypto.randomUUID(),
+    expectedMediaRevision:mediaView.snapshot.version.mediaRevision!,name:createName.value};
+  const request = mediaClient.capture(source.domain === 'audio' ? {...common,domain:'audio',values:source.values} : {...common,domain:'video',values:source.values});
+  perform(request);
 });
-(document.getElementById('media-preset-rename') as HTMLButtonElement).addEventListener('click', () => {
-  const preset = selectedPreset();if (preset) perform({ action:'edit-preset',id:preset.id,createdRevision:preset.createdRevision,name:presetName.value });
+button('media-preset-rename').addEventListener('click',() => {
+  const preset = selectedPreset();if (preset) perform({action:'edit-preset',id:preset.id,createdRevision:preset.createdRevision,name:presetName.value});
 });
-(document.getElementById('media-preset-delete') as HTMLButtonElement).addEventListener('click', () => {
-  const preset = selectedPreset();if (preset) confirmPerform({ action:'delete-preset',presetToken:{id:preset.id,createdRevision:preset.createdRevision,revision:preset.revision} },'media_confirm_preset',preset.name);
+button('media-preset-delete').addEventListener('click',() => {
+  const preset = selectedPreset();if (preset) confirmPerform({action:'delete-preset',presetToken:{id:preset.id,createdRevision:preset.createdRevision,revision:preset.revision}},'media_confirm_preset',preset.name);
 });
 presetSelect.addEventListener('change',renderMedia);
-presetDomain.addEventListener('change',renderMedia);
+button('media-legacy-read').addEventListener('click',() => {
+  if (!currentScope || retired || legacyBusy) return;
+  const basis = fingerprint(), scope = {...currentScope};legacyBusy = true;renderMedia();
+  void audioTransport.send(3,{action:'read-legacy-gain',selection:scope}).promise.then(({reply}) => {
+    if (retired || basis !== fingerprint() || !reply.ok || !reply.legacyGain) return;
+    legacy = {value:reply.legacyGain,revision:reply.snapshot!.version.globalRevision!,basis};
+    legacyStatus.textContent = (reply.legacyGain.value*100).toFixed(2)+'% · '+reply.legacyGain.state;
+    renderMedia();
+  }).catch(() => {legacy = null;}).finally(() => {legacyBusy = false;renderMedia();});
+});
+button('media-legacy-import').addEventListener('click',() => {
+  if (!legacy || !currentScope || legacy.basis !== fingerprint()) {button('media-legacy-import').disabled = true;return;}
+  confirmPerform({action:'import-legacy-gain',selection:{...currentScope},expectedGlobalRevision:legacy.revision,
+    documentId:legacy.value.documentId,value:legacy.value.value},'media_confirm_gain_import',(legacy.value.value*100).toFixed(2)+'% · '+text('media_global'));
+});
 const reconnect = document.getElementById('settings-reconnect') as HTMLButtonElement;
 reconnect.textContent = text('settings_reconnect');
 function showReconnectionRequired(): void {
@@ -452,6 +585,7 @@ function showReconnectionRequired(): void {
 }
 function retireSettingsDocument(): void {
   if (retired) return;retired = true;
+  audioEpoch++;audioState = null;audioTransport.dispose();
   const draft = document.getElementById('settings-retired-draft') as HTMLElement;
   const globalPending = globalView?.pendingKeys.length || globalView?.phase === 'saving' || globalView?.phase === 'unknown';
   const mediaPending = mediaView?.pendingRequest || mediaView?.pendingKeys.length;

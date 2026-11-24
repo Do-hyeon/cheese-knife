@@ -6,10 +6,13 @@ const { pathToFileURL } = require('node:url');
 
 const entries = [
   { source: 'src/settings/media-profiles.ts', output: 'media-profiles.js', global: 'KnifeMediaProfiles' },
+  { source: 'src/settings/gain-authority.ts', output: 'gain-authority.js', global: 'createPlayerGainAuthority' },
+  { source: 'src/settings/player-gain.ts', output: 'web/player-gain.js', global: null },
   { source: 'src/settings/config.ts', output: 'config.js', global: 'KnifeHostPolicy' },
   { source: 'src/settings/style-schema.ts', output: 'style-schema.js', global: 'STYLES' },
   { source: 'src/settings/contract.ts', output: 'settings-contract.js', global: 'KnifeSettingsContract' },
   { source: 'src/settings/client.ts', output: 'settings-client.js', global: 'createSettingsClient' },
+  { source: 'src/settings/audio-settings-ui.ts', output: 'audio-settings-ui.js', global: 'createAudioSettingsUI' },
   { source: 'src/settings/broker.ts', output: 'settings-broker.js', global: 'createSettingsBroker' },
   { source: 'src/settings/background.ts', output: 'background.js', global: null },
   { source: 'src/settings/permission.ts', output: 'permission.js', global: null },
@@ -145,7 +148,7 @@ test('write is forbidden in CI', async t => {
 
 test('repository generated settings runtime is current and check is read-only', async () => {
   const mod = await runtimeModule();
-  const files = entries.flatMap(entry => [entry.source, entry.output]);
+  const files = entries.flatMap(entry => [entry.source, path.join('extension',entry.output)]);
   const before = await Promise.all(files.map(file => fs.readFile(file)));
   await mod.checkSettingsRuntime(path.resolve('.'));
   const after = await Promise.all(files.map(file => fs.readFile(file)));

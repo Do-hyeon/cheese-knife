@@ -8,8 +8,8 @@ function settings(stored) {
     TextEncoder,
     chrome: { storage: { local: { get: async () => stored } } },
   });
-  vm.runInContext(fs.readFileSync('media-profiles.js', 'utf8'), context);
-  vm.runInContext(fs.readFileSync('config.js', 'utf8'), context);
+  vm.runInContext(fs.readFileSync("extension/media-profiles.js", 'utf8'), context);
+  vm.runInContext(fs.readFileSync("extension/config.js", 'utf8'), context);
   return vm.runInContext('getConfig(true)', context);
 }
 

@@ -14,8 +14,8 @@ const INPUT_FILES = [
 const PROTECTED_FILES = [
   'scripts/hls-hardening.mjs',
   'scripts/vendor-hls.mjs',
-  'vendor/hls.light.private.js',
-  'vendor/hls.js.LICENSE',
+  'extension/vendor/hls.light.private.js',
+  'extension/vendor/hls.js.LICENSE',
   'THIRD_PARTY_NOTICES.md',
 ];
 const VERIFICATION_FILES = [
@@ -73,7 +73,7 @@ export function hlsValidationPaths(repoRoot, runId) {
     outputRoot,
     generationOneRoot,
     generationTwoRoot,
-    inspectedCandidateBundle: path.join(generationTwoRoot, 'vendor', 'hls.light.private.js'),
+    inspectedCandidateBundle: path.join(generationTwoRoot, 'extension/vendor', 'hls.light.private.js'),
     reportPath: path.join(outputRoot, 'report.json')
   };
 }
@@ -243,7 +243,7 @@ export async function runHlsVerification(repoRoot, runId, options = {}) {
   let candidate = null;
   let candidateBefore = null;
   let candidateAfter = null;
-  const candidateRelative = `${runRelative}/generation-two/vendor/hls.light.private.js`;
+  const candidateRelative = `${runRelative}/generation-two/extension/vendor/hls.light.private.js`;
   const report = {
     schemaVersion: 1,
     runId: id,
@@ -311,12 +311,12 @@ export async function runHlsVerification(repoRoot, runId, options = {}) {
       });
       const metadataResult = parseVendoringOutput(command);
       const generationFiles = await openOwnedRoot(generationRoot);
-      const bundle = await generationFiles.readFile('vendor/hls.light.private.js');
-      const licenseBytes = await generationFiles.readFile('vendor/hls.js.LICENSE');
+      const bundle = await generationFiles.readFile("extension/vendor/hls.light.private.js");
+      const licenseBytes = await generationFiles.readFile("extension/vendor/hls.js.LICENSE");
       generations.push({
         id: generation,
         root: generationRoot,
-        bundlePath: path.join(generationRoot, 'vendor/hls.light.private.js'),
+        bundlePath: path.join(generationRoot, 'extension/vendor/hls.light.private.js'),
         bundleSha256: sha256(bundle),
         licenseSha256: sha256(licenseBytes),
         metadata: metadataResult,
@@ -325,7 +325,7 @@ export async function runHlsVerification(repoRoot, runId, options = {}) {
     }
 
     if (generations[0].bundleSha256 !== generations[1].bundleSha256) findings.push({ code: 'generation-bytes-differ' });
-    const protectedCandidate = protectedBefore.find(file => file.path === 'vendor/hls.light.private.js');
+    const protectedCandidate = protectedBefore.find(file => file.path === 'extension/vendor/hls.light.private.js');
     if (!protectedCandidate || generations[1].bundleSha256 !== protectedCandidate.sha256) findings.push({ code: 'protected-candidate-differs' });
     candidate = { path: paths.inspectedCandidateBundle, sha256: generations[1].bundleSha256 };
     report.candidate = candidate;

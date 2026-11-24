@@ -1,0 +1,13 @@
+{
+  "schema": "f01-audio-processing-v1",
+  "sampleRates": [44100, 48000, 96000],
+  "eqFrequencies": [63, 125, 250, 500, 1000, 2000, 4000, 8000],
+  "neutralAndMixedFrequencies": [80, 125, 250, 500, 1000, 2000, 4000, 8000, 10000],
+  "mixedLevels": [3, -3, 6, -6, 2, -2, 4, -4],
+  "normalizerInputRmsDbfs": [-36, -24, -12, -6],
+  "normalizerPatterns": ["mono", "stereo", "antiphase", "left", "right"],
+  "normalizerTargetRmsDbfs": -20,
+  "normalizerSteadySeconds": 15,
+  "identityNodes": {"sources": 1, "gainNodes": 8, "filters": 8, "compressors": 1, "delays": 2, "shapers": 1},
+  "limits": {"neutralDb": 0.05, "equalizerDb": 0.5, "normalizerDb": 1, "wetPeak": 0.9801, "upDbPerSecond": 1, "downDbPerSecond": 12}
+}

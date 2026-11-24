@@ -23,12 +23,12 @@ export function installRuntime(target: Window): KnifeRuntime | null {
     () => runtime.diagnostics(),
   );
   runtime = {
-    ownerProtocol: 2,
+    ownerProtocol: 3,
     requestId: `knife-${Date.now().toString(36)}`,
     config: {}, baseConfig: {}, mediaRequestId: '',
     media: { context: { documentGeneration:1,routePath:initialRoute.path,channelId:channelId(initialRoute),playerGeneration },
       phase:'pending',version:{globalRevision:null,mediaRevision:null},profileState:'global',revisionStatus:'repair-required',
-      audioBindingGeneration:0,audioKind:'global',videoKind:'global' },
+      audioBindingGeneration:0,audioKind:'global',videoKind:'global',gainOrigin:'site-legacy' },
     i18n: {}, configReady: false, state: {}, statuses: status.statuses, features: {}, generation: 0,
     route: () => parseRoute(target.location.pathname),
     selectPlayer() {

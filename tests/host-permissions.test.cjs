@@ -14,14 +14,16 @@ test('host policy and manifest use HTTPS main only without changing static scrip
   assert.equal(Object.isFrozen(policy.origins), true);
   assert.deepEqual(Array.from(policy.origins), expectedOrigins);
 
-  const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+  const manifest = JSON.parse(fs.readFileSync("extension/manifest.json", 'utf8'));
   assert.deepEqual(manifest.host_permissions, expectedOrigins);
   assert.deepEqual(manifest.permissions, baseline.permissions);
   assert.equal(manifest.minimum_chrome_version, baseline.minimum_chrome_version);
   assert.equal(manifest.manifest_version, 3);
-  assert.deepEqual(manifest.content_scripts.map(item => item.matches), [expectedOrigins, expectedOrigins]);
-  assert.deepEqual(manifest.content_scripts.map(({ matches, js, ...item }) => item),
+  assert.deepEqual(manifest.content_scripts.map(item => item.matches), [expectedOrigins, expectedOrigins, expectedOrigins]);
+  assert.deepEqual(manifest.content_scripts.slice(0, 2).map(({ matches, js, ...item }) => item),
     baseline.content_scripts.map(({ js, ...item }) => item));
-  assert.deepEqual(manifest.content_scripts.map(item => item.js), baseline.content_scripts.map(item =>
+  assert.deepEqual(manifest.content_scripts.slice(0, 2).map(item => item.js), baseline.content_scripts.map(item =>
     item.world==='MAIN'?item.js:['media-profiles.js',...item.js]));
+  assert.deepEqual(manifest.content_scripts[2], { all_frames: false, js: ['web/player-gain.js'],
+    matches: expectedOrigins, exclude_matches: manifest.content_scripts[0].exclude_matches, world: 'ISOLATED' });
 });

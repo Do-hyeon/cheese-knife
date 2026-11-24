@@ -1,3 +1,4 @@
+import {audioInputs, attestAudioSource} from './audio-verification-contract.mjs';
 import { createHash, randomBytes } from 'node:crypto';
 import { fork, execFile, execFileSync } from 'node:child_process';
 import { promisify, isDeepStrictEqual } from 'node:util';
@@ -5,23 +6,27 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { openOwnedRoot } from './owned-files.mjs';
+import {observeTransitionErrors,hasNoTransitionErrors,withTransitionDiagnostic} from './extension-e2e/transition-failure.mjs';
 import { verifyCandidate, removeCandidate } from './verify-candidate.mjs';
-import { loadFixtureResponses } from './extension-e2e/fixture-router.mjs';
+import { expectedCurrentAudioFiles, expectedF01MediaFiles } from './check-installed-extension.mjs';
+import { loadFixtureResponses,loadAudioFixtureResponses,FIXTURE_LIVE_URL,FIXTURE_AUDIO_URL } from './extension-e2e/fixture-router.mjs';
 import { launchInstalledExtension, parseInstalledE2EArgs, openMediaBrowserSession, closeInstalledMediaBrowser } from './extension-e2e/harness.mjs';
 import { refreshTransitionWorker } from './extension-e2e/transition-preparation.mjs';
+import {parseF01TransitionArgs,readFrozenF00Payload,f01TransitionAssignments,f01TransitionStages,f01TransitionSeed,
+  expectedF01TransitionRaw,runF01TransitionPhase,assertF01TransitionPhase,matchF01TransitionLoss,isF01TransitionLossObservation} from './extension-e2e/f01-transition.mjs';
 export { refreshTransitionWorker };
-import { readPublishedPayload, PUBLISHED_PAYLOAD_BASELINE, validatePayloadMetadata } from './extension-e2e/published-payload.mjs';
+import { readPublishedPayload, PUBLISHED_PAYLOAD_BASELINE } from './extension-e2e/published-payload.mjs';
 import { TRANSITION_CASES, transitionSeed, expectedTransitionRaw, expectedTransitionState, assertTransitionState, runTransitionPhase,
-  MEDIA_TRANSITION_PHASES, runInstalledMediaPreservationScenario, expectedInstalledMediaStore, matchesInstalledMediaLoss } from './extension-e2e/transition-scenario.mjs';
+  MEDIA_TRANSITION_PHASES, runInstalledMediaPreservationScenario, expectedInstalledMediaStore, matchesInstalledMediaLoss,brokerFunctionSource } from './extension-e2e/transition-scenario.mjs';
 
 const scriptPath = fileURLToPath(import.meta.url), repositoryRoot = path.resolve(path.dirname(scriptPath), '..');
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const fail = code => Object.assign(new Error(code), { code });
 const execFileAsync = promisify(execFile);
 const slash = value => value.split(path.sep).join('/');
-const genericFailure = error => error?.failure || { code: String(error?.code || 'transition-failed').slice(0, 240),
+const genericFailure = error => withTransitionDiagnostic(error,error?.failure || { code: String(error?.code || 'transition-failed').slice(0, 240),
   caseId: null, phase: null, step: 'prepare', stage: 'prepare',
-  diagnostic: { name: String(error?.name || 'Error').slice(0, 80), message: String(error?.message || '').replaceAll(repositoryRoot, '<repository>').slice(0, 240) }, cleanupErrors: [] };
+  cleanupErrors: [] });
 const relative = (files, absolute) => {
   const value = slash(path.relative(files.root, absolute));
   if (!value || value === '..' || value.startsWith('../') || path.isAbsolute(value)) throw fail('transition-owned-path');
@@ -66,6 +71,10 @@ export function phasePayload(payload, phase, control) {
 }
 
 export function matchesStorageLoss(failure, nonce, extensionId) {
+  return hasNoTransitionErrors(failure)&&isStorageLossObservation(failure,nonce,extensionId);
+}
+// Raw observation alone may select artifacts, never authorize a negative PASS.
+function isStorageLossObservation(failure,nonce,extensionId){
   const expected = expectedTransitionRaw('valid-ui', 'old', 'font8', nonce); delete expected.config;
   return failure?.code === 'transition-storage-preservation' && failure.caseId === 'valid-ui' && failure.phase === 'new' &&
     failure.step === 'startup' && failure.stage === 'candidate-init' && Array.isArray(failure.cleanupErrors) && failure.cleanupErrors.length === 0 &&
@@ -74,7 +83,8 @@ export function matchesStorageLoss(failure, nonce, extensionId) {
     isDeepStrictEqual(failure.observation?.raw, expected);
 }
 
-export function validateTransitionResult(result, nonce, control, launches) {
+export function validateTransitionResult(result, nonce, control, launches, currentProtocol=3) {
+  if (![2,3].includes(currentProtocol)) throw fail('installed-protocol-invalid');
   const cases = control ? ['valid-ui'] : TRANSITION_CASES;
   if (!result?.source?.sourceCommit || !isDeepStrictEqual(result.source, result.after) ||
       !/^[a-f0-9]{64}$/.test(result.candidateInventory || '') || result.seeds?.length !== cases.length ||
@@ -88,7 +98,7 @@ export function validateTransitionResult(result, nonce, control, launches) {
     for (const phase of phases) {
       const steps = caseId !== 'valid-ui' ? ['startup'] : phase.phase === 'old' ? ['startup', 'arrow-off', 'volume25', 'hide-ranking-on', 'font8', 'font8'] :
         phase.phase === 'new' ? ['startup', 'two-popup-merge', 'font0', 'font0'] : ['startup', 'volume26', 'rollback-font8', 'rollback-font8', 'rollback-font0'];
-      if (phase.extensionId !== seed.extensionId || !/^[a-f0-9]{64}$/.test(phase.inventorySha256 || '') ||
+      if (!hasNoTransitionErrors(phase)||phase.extensionId !== seed.extensionId || !/^[a-f0-9]{64}$/.test(phase.inventorySha256 || '') ||
           !isDeepStrictEqual(phase.preparation, { developerMode: true, workerClosed: true, extensionId: seed.extensionId,
             version: phase.phase === 'old' ? '2.13.3' : phase.phase === 'new' ? '2.13.4' : '2.13.5', state: 'ENABLED' }) ||
           !/^[a-f0-9]{64}$/.test(phase.manifestSha256 || '') || !Array.isArray(phase.records) ||
@@ -99,7 +109,7 @@ export function validateTransitionResult(result, nonce, control, launches) {
         if (Boolean(record.reloaded) !== shouldReload) throw fail('transition-result-incomplete');
         reloaded ||= shouldReload;
         assertTransitionState(record.observation, expectedTransitionState(caseId, phase.phase, record.step, nonce, seed.extensionId,
-          { reloaded, reloads: reloaded ? [1, 0] : [0, 0] }));
+          { reloaded, reloads: reloaded ? [1, 0] : [0, 0],expectedProtocol:phase.phase==='new'?currentProtocol:1 }));
       }
       if (!isDeepStrictEqual(phase.final, phase.records.at(-1).observation)) throw fail('transition-result-incomplete');
     }
@@ -118,7 +128,7 @@ export function validateInstalledMediaTransitionResult(result,nonce,control,laun
   for(const [index,phase] of phases.entries()){
     const occurrence=index+1,wanted=MEDIA_TRANSITION_PHASES.at(index),version=wanted==='old'?'2.13.3':wanted==='rollback'?'2.13.5':'2.13.4';
     const steps=occurrence===2?['startup','create-media','observe-ui']:['startup','observe-ui'];
-    if(phase.caseId!=='valid-ui'||phase.phase!==wanted||phase.launchOccurrence!==occurrence||phase.extensionId!==seed.extensionId||
+    if(!hasNoTransitionErrors(phase)||phase.caseId!=='valid-ui'||phase.phase!==wanted||phase.launchOccurrence!==occurrence||phase.extensionId!==seed.extensionId||
       !/^[a-f0-9]{64}$/.test(phase.inventorySha256||'')||!/^[a-f0-9]{64}$/.test(phase.manifestSha256||'')||
       !isDeepStrictEqual(phase.preparation,prepare(version))||!isDeepStrictEqual(phase.records?.map(value=>value.step),steps)||
       !isDeepStrictEqual(phase.final,phase.records.at(-1)?.observation))throw fail('media-result-incomplete');
@@ -137,47 +147,188 @@ export function validateInstalledMediaTransitionResult(result,nonce,control,laun
   }
 }
 
-export async function terminateTransitionChild(child) {
-  if (child.exitCode !== null || child.signalCode !== null) return;
-  if (!Number.isSafeInteger(child.pid) || child.pid <= 0) throw fail('transition-child-pid');
-  await timeout(async () => {
-    if (process.platform === 'win32') await execFileAsync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, timeout: 5000 });
-    else process.kill(-child.pid, 'SIGKILL');
-    if (child.exitCode === null && child.signalCode === null) await new Promise(resolve => child.once('exit', resolve));
-  }, 5000, 'transition-kill-failed');
+export function validateF01TransitionResult(result,nonce,control,launches,seedFixture,expectedFixture){
+  const assignments=f01TransitionAssignments(control),source=result?.source;
+  if(result?.mediaSchema!=='f01'||result.failure!==undefined&&result.failure!==null||!source||!/^[a-f0-9]{40}$/.test(source.sourceCommit||'')||
+    !['sourceSha256','lockSha256','manifestSha256','toolchainSha256'].every(key=>/^[a-f0-9]{64}$/.test(Reflect.get(source,key)||''))||
+    !isDeepStrictEqual(source,result.after)||!Array.isArray(result.seeds)||result.seeds.length!==assignments.length||!Array.isArray(result.phases)||
+    !Array.isArray(result.detected)||result.detected.length!==(control?5:0)||!isDeepStrictEqual(result.cleanupErrors,[])||!isDeepStrictEqual(result.secondaryErrors,[])||
+    result.payloads?.published?.inventorySha256!==PUBLISHED_PAYLOAD_BASELINE.inventorySha256||result.payloads.published.count!==58||
+    result.payloads?.f00?.inventorySha256!=='9715087af1aa2b36fc54b330e5a879ce384f4c9a4f56faf1c6fd8847436580df'||result.payloads.f00.count!==59||
+    result.payloads?.f01?.count!==62||result.payloads.f01.inventorySha256!==result.candidateInventory||!/^[a-f0-9]{64}$/.test(result.candidateInventory||'')||
+    launches.length!==assignments.reduce((sum,row)=>sum+f01TransitionStages(row,control).length,0))throw fail('f01-transition-result');
+  const legacyIds=assignments.filter(row=>row.kind==='legacy').map(row=>row.caseId);
+  validateTransitionResult({...result,seeds:result.seeds.filter(row=>legacyIds.includes(row.caseId)),phases:result.phases.filter(row=>legacyIds.includes(row.caseId)),candidateInventory:result.payloads.f00.inventorySha256},
+    nonce,control,launches.filter(row=>legacyIds.includes(row.caseId)),2);
+  let phaseCount=0,launchIndex=0;
+  for(const [index,assignment]of assignments.entries()){
+    const seed=result.seeds.at(index),stages=f01TransitionStages(assignment,control),phases=result.phases.filter(row=>row.caseId===assignment.caseId),
+      loss=control?result.detected.find(row=>row.caseId===assignment.caseId):null;
+    if(seed?.caseId!==assignment.caseId||seed.writes!==1||!/^[a-p]{32}$/.test(seed.extensionId||'')||!isDeepStrictEqual(seed.raw,assignment.kind==='legacy'?transitionSeed(assignment.caseId,nonce):f01TransitionSeed(assignment.mediaCase,nonce,seedFixture)))throw fail('f01-transition-result');
+    const prepare=version=>({developerMode:true,workerClosed:true,extensionId:seed.extensionId,version,state:'ENABLED'});
+    if(!isDeepStrictEqual(seed.preparation,prepare('2.13.3'))||phases.length!==stages.length-1-(control?1:0))throw fail('f01-transition-result');
+    for(const [occurrence,stage]of stages.entries()){
+      const launch=launches.at(launchIndex++);if(launch?.caseId!==assignment.caseId||launch.phase!==stage.phase||launch.payload!==stage.payload||launch.launchOccurrence!==occurrence||
+        launch.launchId!==`${assignment.caseId}:${occurrence}:${stage.phase}`||launch.closed!==true||!isDeepStrictEqual(launch.shutdown,{browserCloseAcknowledged:true,browserDisconnected:true,ownedRootClosed:true}))throw fail('f01-transition-result');
+    }
+    if(assignment.kind==='legacy'){
+      if(control&&!matchesStorageLoss(loss,nonce,seed.extensionId))throw fail('f01-transition-result');
+    }else{
+      const presetId=phases.find(row=>row.launchOccurrence===2)?.presetId;
+      for(const [position,phase]of phases.entries()){
+        const occurrence=position+1,stage=stages.at(occurrence);
+        assertF01TransitionPhase(phase,{caseId:assignment.mediaCase,assignedCaseId:assignment.caseId,runNonce:nonce,seed:seedFixture,expected:expectedFixture,occurrence,
+          phase:stage.phase,payload:stage.payload,extensionId:seed.extensionId,...(presetId?{presetId}:{})});
+      }
+      if(control&&!matchF01TransitionLoss(loss,expectedF01TransitionRaw({caseId:'valid-v1',runNonce:nonce,seed:seedFixture,expected:expectedFixture,occurrence:3,step:'startup',presetId}),assignment.loss,seed.extensionId))throw fail('f01-transition-result');
+    }
+    for(const phase of phases){const version=phase.phase==='old'?'2.13.3':phase.phase==='new'?'2.13.4':'2.13.5';
+      if(phase.extensionId!==seed.extensionId||!isDeepStrictEqual(phase.preparation,prepare(version))||!/^[a-f0-9]{64}$/.test(phase.inventorySha256||'')||!/^[a-f0-9]{64}$/.test(phase.manifestSha256||''))throw fail('f01-transition-result');}
+    phaseCount+=phases.length;
+  }
+  if(phaseCount!==result.phases.length)throw fail('f01-transition-result');
 }
 
-export function superviseTransitionChild({ child, nonce, roots, scenario, deadlineMs = 600000, phaseTimeoutMs = 130000, killChild = terminateTransitionChild }) {
+const transitionTerminations = new WeakMap();
+export function terminateTransitionChild(child, { deadline = performance.now() + 5000, observed = {}, platform = process.platform } = {}) {
+  const prior = transitionTerminations.get(child);
+  if (prior) return prior.promise;
+  const cutoff = Math.min(deadline, performance.now() + 5000);
+  let resolve, reject, timer, final;
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  let attempted = false, command = { outcome: 'pending' };
+  let exitObserved = observed.exitObserved === true || child.exitCode !== null && child.exitCode !== undefined || child.signalCode !== null && child.signalCode !== undefined;
+  let closeConfirmed = observed.closeConfirmed === true;
+  const safeSignal = value => ['SIGTERM', 'SIGKILL', 'SIGINT', 'SIGBREAK'].includes(value) ? value : null;
+  let exitCode = Number.isSafeInteger(observed.exitCode ?? child.exitCode) ? observed.exitCode ?? child.exitCode : null;
+  let signal = safeSignal(observed.signal ?? child.signalCode);
+  const snapshot = outcome => Object.freeze({ attempted, outcome,
+    stage: command.outcome === 'failed' ? 'settled' : command.outcome === 'pending' ? 'command-pending' : !exitObserved ? 'exit-pending' : !closeConfirmed ? 'close-pending' : 'settled',
+    command: Object.freeze({ ...command }), exitObserved, exitCode, signal, closeConfirmed });
+  const finish = (outcome, code = 'transition-kill-failed') => {
+    if (final) return;
+    final = snapshot(outcome); clearTimeout(timer);
+    child.removeListener('exit', onExit); child.removeListener('close', onClose);
+    if (outcome === 'completed') resolve(final);
+    else reject(Object.assign(fail(code), { termination: final }));
+  };
+  const active = () => { if (!final && performance.now() >= cutoff) finish('unconfirmed'); return !final; };
+  const settle = () => { if (active() && command.outcome !== 'pending' && exitObserved && closeConfirmed) finish('completed'); };
+  const onExit = (code, value) => { if (!active()) return; exitObserved = true; exitCode = Number.isSafeInteger(code) ? code : null; signal = safeSignal(value); settle(); };
+  const onClose = () => { if (!active()) return; closeConfirmed = true; settle(); };
+  transitionTerminations.set(child, { promise, snapshot: () => { active(); return final ?? snapshot('pending'); } });
+  if (!Number.isSafeInteger(child.pid) || child.pid <= 0) {
+    command = { outcome: 'failed', reason: 'invalid-owner' }; finish('failed', 'transition-child-pid'); return promise;
+  }
+  if (!Number.isFinite(cutoff)) { command = { outcome: 'failed', reason: 'invalid-deadline' }; finish('failed'); return promise; }
+  if (!active()) return promise;
+  child.on('exit', onExit); child.on('close', onClose);
+  timer = setTimeout(() => finish('unconfirmed'), Math.max(1, Math.ceil(cutoff - performance.now())));
+  if (exitObserved) { command = { outcome: 'not-needed' }; settle(); return promise; }
+  const failed = error => {
+    if (!active()) return;
+    // Child-process errors can carry private argv and output; preserve only bounded categories.
+    const code = Number.isSafeInteger(error?.code) ? error.code : error?.status;
+    command = { outcome: 'failed', reason: ['EPERM', 'EACCES', 'ENOENT', 'ESRCH', 'ETIMEDOUT', 'ENOBUFS'].includes(error?.code) ? error.code : 'command-failed',
+      ...(Number.isSafeInteger(code) ? { exitCode: code } : {}), ...(safeSignal(error?.signal) ? { signal: error.signal } : {}) };
+    finish('failed');
+  };
+  // Cache and listeners precede command invocation, including synchronous injected completions.
+  try {
+    const remaining = Math.ceil(cutoff - performance.now());
+    if (remaining <= 0) { finish('unconfirmed'); return promise; }
+    attempted = true;
+    const work = platform === 'win32'
+      ? execFileAsync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, timeout: remaining, maxBuffer: 1048576 })
+      : process.kill(-child.pid, 'SIGKILL');
+    void Promise.resolve(work).then(() => { if (active()) { command = { outcome: 'succeeded', exitCode: 0 }; settle(); } }, failed);
+  } catch (error) { failed(error); }
+  return promise;
+}
+
+function assertTransitionParent(){
+  if(process.execArgv.some(value=>/^--input[-_]type(?:=|$)/.test(value)))throw fail('transition-parent-input-type');
+}
+export function forkTransitionChild(){
+  assertTransitionParent();
+  // Keep Node's identity-sensitive default execArgv cleanup for CJS eval parents.
+  return fork(scriptPath,[],{detached:process.platform!=='win32',stdio:['ignore','ignore','pipe','ipc'],windowsHide:true});
+}
+
+export function superviseTransitionChild({ child, nonce, roots, scenario, mediaSchema, control, deadlineMs = 600000, phaseTimeoutMs = 130000, killChild = terminateTransitionChild }) {
   if (scenario !== undefined && scenario !== 'media-preservation') throw fail('transition-scenario-invalid');
-  const media = scenario === 'media-preservation';
+  if(mediaSchema!==undefined&&(mediaSchema!=='f01'||scenario!==undefined))throw fail('transition-scenario-invalid');
+  const f01=mediaSchema==='f01',media = scenario === 'media-preservation'||f01;
   return new Promise(resolve => {
     const launches = new Map(), cleanupErrors = [], secondaryErrors = [];
-    let failure = null, result, receivedResult = false, finished = false, phaseTimer;
+    let failure = null, result, receivedResult = false, finished = false, phaseTimer, graceTimer, graceDeadline;
+    let stopRequested=false,killSettled=true,exitObserved=false,exitCode=null,signal=null,closeConfirmed=false;
+    let stderr=Buffer.alloc(0),stderrTruncated=false;
     const remember = error => {
+      if (finished) return;
       const next = genericFailure(error);
       if (!failure) failure = next;
       else if (secondaryErrors.length < 32) secondaryErrors.push(next);
     };
-    const finish = normalExit => {
-      if (finished) return; finished = true; clearTimeout(timer); clearTimeout(phaseTimer);
-      child.removeListener('message', onMessage); child.removeListener('exit', onExit); child.removeListener('error', onError);
+    const finish = () => {
+      if (finished) return; clearTimeout(timer); clearTimeout(phaseTimer);
+      clearTimeout(graceTimer);
+      child.removeListener('message', onMessage); child.removeListener('exit', onExit); child.removeListener('error', onError);child.removeListener('close',onClose);
+      child.stderr?.removeListener('data',onStderr);child.stderr?.removeListener('error',onError);
+      const normalExit=!stopRequested&&exitObserved&&exitCode===0&&signal===null&&closeConfirmed;
       const unconfirmedRoots = [...new Set([...launches.values()].filter(value => !value.closed).map(value => value.root))];
       if (!receivedResult) remember(fail('transition-child-result-missing'));
       if (!normalExit) remember(fail('transition-child-exit'));
       if (unconfirmedRoots.length) remember(fail('cleanup-unconfirmed'));
-      resolve({ result, failure, cleanupErrors, secondaryErrors, unconfirmedRoots, normalExit, launches: [...launches.values()] });
+      const termination = transitionTerminations.get(child)?.snapshot();
+      finished = true;
+      const report = structuredClone({ result, failure, cleanupErrors, secondaryErrors, unconfirmedRoots, normalExit, launches: [...launches.values()],
+        childProcess:{exitObserved,exitCode,signal,closeConfirmed,stderr:stderr.toString('utf8'),stderrTruncated,...(termination?{termination}:{})} });
+      const pending = [report], seen = new Set();
+      while (pending.length) {
+        const value = pending.pop();
+        if (!value || typeof value !== 'object' || seen.has(value)) continue;
+        seen.add(value); for (const nested of Object.values(value)) pending.push(nested); Object.freeze(value);
+      }
+      resolve(report);
     };
-    const expire = async code => {
-      if (finished) return;
+    const finishGrace=()=>{
+      if(finished)return;
+      if(!closeConfirmed)remember(fail('transition-child-close-unconfirmed'));
+      if(!killSettled)remember(fail('transition-child-kill-unconfirmed'));
+      finish();
+      // Only release our handles; a forced local close is not natural close proof.
+      child.stderr?.destroy();if(child.connected)child.disconnect();child.unref?.();
+    };
+    const withinGrace=()=>{
+      if(finished)return false;
+      if(graceDeadline!==undefined&&performance.now()>=graceDeadline){finishGrace();return false;}
+      return true;
+    };
+    const settle=()=>{if(withinGrace()&&exitObserved&&closeConfirmed&&killSettled)finish();};
+    const startGrace=()=>{
+      clearTimeout(timer);clearTimeout(phaseTimer);
+      if(graceTimer)return;
+      graceDeadline=performance.now()+5000;
+      graceTimer=setTimeout(finishGrace,5000);
+    };
+    const expire = code => {
+      if (finished||stopRequested) return;
+      stopRequested=true;killSettled=false;
       remember(fail(code));
-      try { await killChild(child); }
-      catch { cleanupErrors.push({ code: 'transition-kill-failed', caseId: null, phase: null }); }
-      finish(false);
+      startGrace();
+      void Promise.resolve().then(()=>killChild(child,{deadline:graceDeadline,observed:{exitObserved,exitCode,signal,closeConfirmed}})).catch(error=>{
+        if(withinGrace())cleanupErrors.push(withTransitionDiagnostic(error,{code:'transition-kill-failed',caseId:null,phase:null}));
+      }).finally(()=>{killSettled=true;if(!finished)settle();});
     };
     const timer = setTimeout(() => { void expire('transition-child-timeout'); }, deadlineMs);
-    const onError = error => { remember(error); void expire('transition-child-error'); };
-    const onExit = (code, signal) => finish(code === 0 && signal === null);
+    const onError = error => { if(!withinGrace())return; remember(error); void expire('transition-child-error'); };
+    const onExit = (code, value) => {if(!withinGrace())return;exitObserved=true;exitCode=code;signal=value;startGrace();settle();};
+    const onClose=()=>{if(!withinGrace())return;closeConfirmed=true;startGrace();settle();};
+    const onStderr=chunk=>{if(!withinGrace())return;const bytes=Buffer.isBuffer(chunk)?chunk:Buffer.from(chunk);const remaining=4096-stderr.length;
+      stderrTruncated||=bytes.length>remaining;if(remaining>0)stderr=Buffer.concat([stderr,bytes.subarray(0,remaining)]);};
     const onMessage = message => {
+      if(!withinGrace())return;
       try {
         if (!message || message.nonce !== nonce || Buffer.byteLength(JSON.stringify(message)) > 1048576) throw fail('transition-ipc');
         if (message.type === 'failure') { if (!message.failure?.code) throw fail('transition-ipc'); remember({ failure: message.failure }); return; }
@@ -187,17 +338,19 @@ export function superviseTransitionChild({ child, nonce, roots, scenario, deadli
         }
         const assigned = roots.find(value => value.caseId === message.caseId && value.root === message.root);
         const launchId = media ? `${message.caseId}:${message.launchOccurrence}:${message.phase}` : `${message.caseId}:${message.phase}`;
+        const stages=f01&&assigned?f01TransitionStages(Object.fromEntries(Object.entries(assigned).filter(([key])=>key!=='root')),control):null;
         if (!assigned || !['seed', 'old', 'new', 'rollback'].includes(message.phase) || message.launchId !== launchId ||
-          media && (!Number.isInteger(message.launchOccurrence) || message.launchOccurrence < 0 || message.launchOccurrence > 4)) throw fail('transition-ipc');
+          media && (!Number.isInteger(message.launchOccurrence) || message.launchOccurrence < 0 || message.launchOccurrence > (f01?8:4))||
+          f01&&(stages.at(message.launchOccurrence)?.phase!==message.phase||stages.at(message.launchOccurrence)?.payload!==message.payload)) throw fail('transition-ipc');
         if (message.type === 'launch-intent') {
           if (failure || receivedResult || launches.has(message.launchId) || [...launches.values()].some(value => !value.closed)) throw fail('transition-ipc');
           const previous = [...launches.values()].filter(value => value.caseId === message.caseId);
-          if ((media ? ['seed','old','new','rollback','new'] : ['seed', 'old', 'new', 'rollback']).at(previous.length) !== message.phase ||
+          if ((f01?stages.map(value=>value.phase):media ? ['seed','old','new','rollback','new'] : ['seed', 'old', 'new', 'rollback']).at(previous.length) !== message.phase ||
             media && message.launchOccurrence !== previous.length) throw fail('transition-ipc');
           launches.set(message.launchId, { caseId: message.caseId, phase: message.phase, launchId: message.launchId, root: message.root,
-            ...(media ? { launchOccurrence: message.launchOccurrence } : {}), closed: false });
+            ...(media ? { launchOccurrence: message.launchOccurrence } : {}),...(f01?{payload:message.payload}:{}), closed: false });
           clearTimeout(phaseTimer); phaseTimer = setTimeout(() => { void expire('transition-phase-timeout'); }, phaseTimeoutMs);
-          child.send({ ...message, type: 'launch-ack' }, error => { if (error) remember(error); });
+          child.send({ ...message, type: 'launch-ack' }, error => { if (error && withinGrace()) remember(error); });
         } else if (message.type === 'close-success') {
           const launch = launches.get(message.launchId);
           if (!launch || launch.closed || launch.root !== message.root) throw fail('transition-ipc');
@@ -212,19 +365,25 @@ export function superviseTransitionChild({ child, nonce, roots, scenario, deadli
         } else throw fail('transition-ipc');
       } catch (error) { remember(error); }
     };
-    child.on('message', onMessage); child.once('exit', onExit); child.once('error', onError);
+    child.on('message', onMessage); child.once('exit', onExit); child.once('error', onError);child.once('close',onClose);
+    child.stderr?.on('data',onStderr);child.stderr?.on('error',onError);
   });
 }
 
-export async function sourceAttestation(files) {
+export async function sourceAttestation(files, required = []) {
+  if (Array.isArray(required) && required.some(name=>audioInputs.includes(name))) {
+    if (audioInputs.some(name=>!required.includes(name))) throw fail('transition-audio-inputs');
+    return attestAudioSource(files,required,'clean');
+  }
   const command = args => execFileSync('git', args, { cwd: files.root, encoding: 'utf8', timeout: 15000, maxBuffer: 2097152, stdio: ['ignore', 'pipe', 'pipe'] });
   if (command(['status', '--porcelain', '--untracked-files=no']).trim()) throw fail('transition-source-dirty');
   const sourceCommit = command(['rev-parse', 'HEAD']).trim();
   const tracked = command(['ls-files', '-z']).split('\0').filter(Boolean).sort();
+  if (!Array.isArray(required) || required.some(name => typeof name !== 'string' || !tracked.includes(name))) throw fail('transition-input-untracked');
   const entries = [];
   for (const name of tracked) entries.push([name, sha256(await files.readFile(name))]);
   return { sourceCommit, sourceSha256: sha256(JSON.stringify(entries)),
-    lockSha256: sha256(await files.readFile('package-lock.json')), manifestSha256: sha256(await files.readFile('manifest.json')),
+    lockSha256: sha256(await files.readFile('package-lock.json')), manifestSha256: sha256(await files.readFile("extension/manifest.json")),
     toolchainSha256: sha256(await files.readFile('scripts/check-toolchain.mjs')) };
 }
 
@@ -282,52 +441,66 @@ export async function executeTransitionChild(options, dependencies = {}) {
   const deps = { openRepository: () => openOwnedRoot(repositoryRoot), openWorkRoot: openOwnedRoot, sourceAttestation,
     readPublishedPayload, verifyCandidate, loadFixtureResponses, launchInstalledExtension, refreshTransitionWorker,
     runTransitionPhase, runInstalledMediaPreservationScenario, openMediaBrowserSession, closeInstalledMediaBrowser, requestLaunch, send, ...dependencies };
-  const files = await deps.openRepository(), phases = [], seeds = [], cleanupErrors = [], secondaryErrors = [];
-  let failure, source, after, candidateInventory, active;
+  const files = await deps.openRepository(), phases = [], seeds = [], cleanupErrors = [], secondaryErrors = [],detected=[];
+  let failure, source, after, candidateInventory, active,payloads;
   const noticed = new Set();
   const noticeFailure = async error => {
     if (noticed.has(error)) return;
     noticed.add(error);
-    for (const cleanup of (error?.cleanupErrors || []).slice(0, 32)) cleanupErrors.push({ code: String(cleanup.code).slice(0, 240), caseId: active?.caseId || null, phase: active?.phase || null });
-    const next = error?.failure || { ...genericFailure(error), ...active };
+    for (const cleanup of (error?.cleanupErrors || []).slice(0, 32)) cleanupErrors.push({...genericFailure(cleanup),code:String(cleanup.code).slice(0,240),caseId:active?.caseId||null,phase:active?.phase||null});
+    const next = { ...genericFailure(error), ...(error?.failure?{}:active) };
     if (failure) { if (secondaryErrors.length < 32) secondaryErrors.push(next); return; }
     failure = next;
     await deps.send({ type: 'failure', nonce: options.nonce, failure });
   };
   try {
+    if (options.retainEvidence !== undefined && typeof options.retainEvidence !== 'boolean') throw fail('transition-retention-invalid');
     if (options.scenario !== undefined && options.scenario !== 'media-preservation') throw fail('transition-scenario-invalid');
-    const media=options.scenario==='media-preservation';
-    if (options.control !== undefined && (media ? options.control !== 'media-profile-loss' : options.control !== 'storage-loss')) throw fail('transition-control-invalid');
-    source = await deps.sourceAttestation(files);
+    if(options.mediaSchema!==undefined&&(options.mediaSchema!=='f01'||options.scenario!==undefined))throw fail('transition-scenario-invalid');
+    const f01=options.mediaSchema==='f01',media=options.scenario==='media-preservation'||f01;
+    if (options.control !== undefined && (!f01&&media ? options.control !== 'media-profile-loss' : options.control !== 'storage-loss')) throw fail('transition-control-invalid');
+    source = await deps.sourceAttestation(files,f01?['scripts/extension-e2e/f01-transition.mjs','scripts/extension-e2e/transition-failure.mjs','scripts/check-installed-transition.mjs','tests/f01-installed-transition.test.cjs',
+      'tests/fixtures/installed-extension/f00-payload.json','tests/fixtures/installed-extension/f01-transition-seed.json','tests/fixtures/installed-extension/f01-transition-expected-media.json',
+      'audio-settings-ui.js','gain-authority.js','web/player-gain.js']:[]);
     const published = await deps.readPublishedPayload();
-    const metadata=validatePayloadMetadata(JSON.parse(await (await openOwnedRoot(repositoryRoot)).readFile('tests/fixtures/installed-extension/published-payload.json','utf8')));
-    const currentNames=[...metadata.map(entry=>entry.name),'media-profiles.js'].sort();
-    const first = await deps.verifyCandidate(options.candidateIds[0], files.root);
+    const expectedFiles = media ? expectedF01MediaFiles : expectedCurrentAudioFiles;
+    const currentNames = (await expectedFiles(await openOwnedRoot(repositoryRoot))).map(name => name.slice('dist/'.length));
+    const first = await deps.verifyCandidate(options.candidateIds[0], files.root,{retainEvidence:options.retainEvidence ?? false});
     const current = await payloadFromDirectory(first.dist,currentNames);
-    const second = await deps.verifyCandidate(options.candidateIds[1], files.root);
+    const second = await deps.verifyCandidate(options.candidateIds[1], files.root,{retainEvidence:options.retainEvidence ?? false});
     if (current.inventorySha256 !== (await payloadFromDirectory(second.dist,currentNames)).inventorySha256) throw fail('transition-build-reproducibility');
     candidateInventory = current.inventorySha256;
     const responses = await deps.loadFixtureResponses(files);
+    const frozen=f01?readFrozenF00Payload(files.root,JSON.parse(await files.readFile('tests/fixtures/installed-extension/f00-payload.json','utf8'))):null;
+    const seedFixture=f01?JSON.parse(await files.readFile('tests/fixtures/installed-extension/f01-transition-seed.json','utf8')):null,
+      expectedFixture=f01?JSON.parse(await files.readFile('tests/fixtures/installed-extension/f01-transition-expected-media.json','utf8')):null;
+    const audioResponses=f01?(await loadAudioFixtureResponses(files)).map(row=>row.url===FIXTURE_AUDIO_URL?{...row,url:FIXTURE_LIVE_URL}:row):null;
+    if(f01)payloads={published:{count:58,inventorySha256:published.inventorySha256},f00:{count:59,inventorySha256:frozen.inventorySha256},f01:{count:62,inventorySha256:current.inventorySha256}};
     let failureArtifacts = false;
     for (const assigned of options.roots) {
       const work = await deps.openWorkRoot(await files.resolve(assigned.root, { type: 'directory' }));
       const profilePath = await work.ensureDirectory('profile'), extensionPath = await work.ensureDirectory('extension'), artifactPath = await work.ensureDirectory('trace');
       let expectedId,presetId;
-      for (const [launchOccurrence,phase] of (media ? ['seed',...MEDIA_TRANSITION_PHASES] : ['seed', 'old', 'new', 'rollback']).entries()) {
+      const assignment=Object.fromEntries(Object.entries(assigned).filter(([key])=>key!=='root')),
+        stages=f01?f01TransitionStages(assignment,options.control):(media ? ['seed',...MEDIA_TRANSITION_PHASES] : ['seed', 'old', 'new', 'rollback']).map(phase=>({phase}));
+      for (const [launchOccurrence,stage] of stages.entries()) {
+        const {phase,payload}=stage;
         active = { caseId: assigned.caseId, phase, step: 'replace', stage: 'replace',...(media?{launchOccurrence}:{}) };
-        const entries = phasePayload(phase === 'new' ? current : published, phase === 'seed' ? 'old' : phase,
-          phase === 'new' && (!media || launchOccurrence===4) ? options.control : undefined);
+        const sourcePayload=f01?(payload==='f01'?current:payload==='f00'?frozen:published):(phase==='new'?current:published);
+        const entries = phasePayload(sourcePayload, phase === 'seed' ? 'old' : phase,
+          f01?(assignment.kind==='legacy'&&phase==='new'?options.control:undefined):phase === 'new' && (!media || launchOccurrence===4) ? options.control : undefined);
         await replacePayload(work, entries);
         active = { ...active, step: 'prelaunch', stage: 'inventory' };
         const beforeHash = await checkInventory(extensionPath, entries);
         const intent = { type: 'launch-intent', nonce: options.nonce, caseId: assigned.caseId, phase,
-          launchId:media?`${assigned.caseId}:${launchOccurrence}:${phase}`:`${assigned.caseId}:${phase}`,root:assigned.root,...(media?{launchOccurrence}:{}) };
+          launchId:media?`${assigned.caseId}:${launchOccurrence}:${phase}`:`${assigned.caseId}:${phase}`,root:assigned.root,...(media?{launchOccurrence}:{}),...(f01?{payload}:{}) };
         active = { ...active, step: 'launch', stage: 'launch' };
         await deps.requestLaunch(intent);
-        let context,browserSession,shutdown,traced = false, closed = false, phaseError;
+        let context,browserSession,shutdown,errorObserver,phaseResult,phaseExpectation,traced = false, closed = false, phaseError;
         try {
           let launched = await deps.launchInstalledExtension({ chromiumApi: chromium, extensionPath, profilePath, artifactPath, headed: options.headed });
           context = launched.context;
+          if(phase!=='seed')errorObserver=observeTransitionErrors(context);
           context.setDefaultTimeout(15000);
           launched = await deps.refreshTransitionWorker(launched);
           if(media)browserSession=await deps.openMediaBrowserSession(context);
@@ -341,21 +514,38 @@ export async function executeTransitionChild(options, dependencies = {}) {
             await popup.locator('#settings-status[data-phase="ready"]').waitFor({ timeout: 15000 });
             const raw = await launched.worker.evaluate(() => chrome.storage.local.get(null));
             if (!isDeepStrictEqual(raw, {})) throw fail('transition-seed-not-empty');
-            const seed = transitionSeed(assigned.caseId, options.nonce);
+            const seed = f01&&assignment.kind==='f01'?f01TransitionSeed(assignment.mediaCase,options.nonce,seedFixture):transitionSeed(assigned.caseId, options.nonce);
             await launched.worker.evaluate(value => chrome.storage.local.set(value), seed);
             if (!isDeepStrictEqual(await launched.worker.evaluate(() => chrome.storage.local.get(null)), seed)) throw fail('transition-seed-write');
             seeds.push({ caseId: assigned.caseId, raw: seed, extensionId: expectedId, writes: 1, preparation: launched.preparation });
           } else {
-            const args={ ...launched, responses, caseId: assigned.caseId, phase,runNonce:options.nonce,
+            const args={ ...launched, errorObserver,responses, caseId: assigned.caseId, phase,runNonce:options.nonce,
+              expectedProtocol:sourcePayload===published?1:sourcePayload===frozen?2:3,
               expectedBrokerSource:entries.find(entry=>entry.name==='settings-broker.js').bytes.toString('utf8') };
-            const result = media ? await deps.runInstalledMediaPreservationScenario({...args,launchOccurrence,browserSession,presetId}) : await deps.runTransitionPhase(args);
+            const f01Args={...args,responses:audioResponses,
+              caseId:assignment.mediaCase,assignedCaseId:assignment.caseId,occurrence:launchOccurrence,payload,browserSession,...(presetId?{presetId}:{}),
+              seed:seedFixture,expected:expectedFixture,expectedBrokerFunction:brokerFunctionSource(args.expectedBrokerSource)};
+            const result = f01?(assignment.kind==='legacy'?await deps.runTransitionPhase(args):await runF01TransitionPhase(f01Args)):
+              media ? await deps.runInstalledMediaPreservationScenario({...args,launchOccurrence,browserSession,presetId}) : await deps.runTransitionPhase(args);
             if(media&&launchOccurrence===2)presetId=result.presetId;
-            phases.push({ ...result, extensionId: expectedId, inventorySha256: beforeHash, preparation: launched.preparation,
-              manifestSha256: entries.find(entry => entry.name === 'manifest.json').sha256 });
+            phaseResult={ ...result,...(f01?{payload,launchOccurrence}:{}), extensionId: expectedId, inventorySha256: beforeHash, preparation: launched.preparation,
+              manifestSha256: entries.find(entry => entry.name === 'manifest.json').sha256 };
+            if(f01&&assignment.kind!=='legacy')phaseExpectation={...f01Args,...(result.presetId?{presetId:result.presetId}:{})};
+            if(f01&&assignment.loss&&launchOccurrence===2){
+              const raw=await launched.worker.evaluate(()=>chrome.storage.local.get(null));
+              if(!isDeepStrictEqual(raw,expectedF01TransitionRaw({caseId:'valid-v1',runNonce:options.nonce,seed:seedFixture,expected:expectedFixture,occurrence:2,step:'final',presetId})))throw fail('f01-transition-loss-preparation');
+              await launched.worker.evaluate(async ({loss,presetId})=>{const raw=await chrome.storage.local.get('mediaProfiles'),store=raw.mediaProfiles;
+                if(loss==='preset-id'){const preset=store.presets.find(row=>row.id===presetId&&row.createdRevision===11&&row.name==='F01 transition owned');
+                  if(!preset)throw new Error('f01-transition-loss-preparation');delete preset.id;
+                }else delete store.channels[0].audio.values[loss==='owned-gain'?'audioGain':loss==='inherit-bit'?'gainInherited':'eq125'];
+                await chrome.storage.local.set({mediaProfiles:store});},{loss:assignment.loss,presetId});
+            }
           }
         } catch (error) {
-          phaseError = error; await noticeFailure(error);
-          if (context && !failureArtifacts) {
+          phaseError=error;
+          const provisionalLoss=f01&&options.control&&(assignment.kind==='legacy'?isStorageLossObservation(error?.failure,options.nonce,expectedId):
+            launchOccurrence===3&&presetId&&isF01TransitionLossObservation(error?.failure,expectedF01TransitionRaw({caseId:'valid-v1',runNonce:options.nonce,seed:seedFixture,expected:expectedFixture,occurrence:3,step:'startup',presetId}),assignment.loss,expectedId));
+          if (!provisionalLoss && context && !failureArtifacts) {
             failureArtifacts = true;
             try {
               const page = context.pages().at(-1);
@@ -370,27 +560,41 @@ export async function executeTransitionChild(options, dependencies = {}) {
                 traced = false;
                 if ((await files.lstat(trace)).size > 33554432) { await files.removeTree(trace); throw fail('transition-artifact-limit'); }
               }
-            } catch (artifactError) { cleanupErrors.push({ code: artifactError?.code || 'transition-artifact-failed', caseId: assigned.caseId, phase }); }
+            } catch (artifactError) { cleanupErrors.push({...genericFailure(artifactError),code:artifactError?.code||'transition-artifact-failed',caseId:assigned.caseId,phase}); }
           }
         } finally {
           if (context) {
             if (traced) {
               try { await timeout(() => context.tracing.stop(), 10000, 'transition-trace-timeout'); }
-              catch (error) { cleanupErrors.push({ code: error?.code || 'transition-trace-failed', caseId: assigned.caseId, phase }); }
+              catch (error) { cleanupErrors.push({...genericFailure(error),code:error?.code||'transition-trace-failed',caseId:assigned.caseId,phase}); }
             }
             try {
               if(media){shutdown=await deps.closeInstalledMediaBrowser({context,browserSession,profilePath});
                 if(shutdown?.browserCloseAcknowledged!==true||shutdown?.browserDisconnected!==true||shutdown?.ownedRootClosed!==true)throw fail('media-close-unconfirmed');
                 await context.close();
               }else await timeout(async () => { for (const page of context.pages()) await page.close(); await context.close(); }, 10000, 'transition-close-timeout');
-              closed = true;await deps.send({...intent,type:'close-success',...(media?{shutdown}:{})});
-            } catch (error) { cleanupErrors.push({ code: error?.code || 'transition-close-failed', caseId: assigned.caseId, phase }); }
+              closed = true;
+            } catch (error) { cleanupErrors.push({...genericFailure(error),code:error?.code||'transition-close-failed',caseId:assigned.caseId,phase}); }
           }
         }
+        let finalEvidence;
+        if(errorObserver){
+          const observed=await errorObserver.dispose(),evidence={...observed,errorsComplete:closed&&observed.errorsComplete};
+          finalEvidence=evidence;
+          if(phaseResult)Object.assign(phaseResult,evidence);
+          if(!phaseError&&!hasNoTransitionErrors(observed))phaseError=Object.assign(fail('transition-page-error'),{failure:{code:'transition-page-error',caseId:assigned.caseId,phase,step:'final',stage:'phase-action',cleanupErrors:[]}});
+        }
+        if(phaseResult&&!phaseError&&phaseExpectation){active={...active,step:'final',stage:'phase-action'};try{assertF01TransitionPhase(phaseResult,phaseExpectation);}catch(error){phaseError=error;}}
+        if(phaseError&&finalEvidence)phaseError={failure:{...genericFailure(phaseError),...(phaseError.failure?{}:active),...finalEvidence},cleanupErrors:phaseError.cleanupErrors||[]};
+        const expectedLoss=closed&&!cleanupErrors.length&&f01&&options.control&&(assignment.kind==='legacy'?matchesStorageLoss(phaseError?.failure,options.nonce,expectedId):
+          launchOccurrence===3&&presetId&&matchF01TransitionLoss(phaseError?.failure,expectedF01TransitionRaw({caseId:'valid-v1',runNonce:options.nonce,seed:seedFixture,expected:expectedFixture,occurrence:3,step:'startup',presetId}),assignment.loss,expectedId));
+        if(expectedLoss)detected.push(phaseError.failure);else if(phaseError)await noticeFailure(phaseError);
+        if(phaseResult&&!phaseError)phases.push(phaseResult);
+        if(closed)await deps.send({...intent,type:'close-success',...(media?{shutdown}:{})});
         if (!closed) { active = { ...active, step: 'close', stage: 'close' }; throw phaseError || fail('cleanup-unconfirmed'); }
         active = { ...active, step: 'postclose', stage: 'inventory' };
         await checkInventory(extensionPath, entries);
-        if (phaseError) throw phaseError;
+        if (phaseError&&!expectedLoss) throw phaseError;
         if (cleanupErrors.length) throw fail('transition-cleanup-failed');
       }
     }
@@ -398,7 +602,7 @@ export async function executeTransitionChild(options, dependencies = {}) {
   try { after = await deps.sourceAttestation(files); if (source && !isDeepStrictEqual(source, after)) throw fail('transition-source-changed'); }
   catch (error) { await noticeFailure(error); }
   await deps.send({ type: 'result', nonce: options.nonce, result: { source, after, candidateInventory, seeds, phases, failure, cleanupErrors, secondaryErrors,
-    ...(options.scenario?{scenario:options.scenario}:{}) } });
+    ...(options.scenario?{scenario:options.scenario}:{}),...(options.mediaSchema?{mediaSchema:options.mediaSchema,payloads,detected}:{}) } });
 }
 
 // This path is below the freshly claimed artifact root; Playwright needs an absolute output path.
@@ -406,21 +610,25 @@ const awaitPath = (files, value) => path.join(files.root, ...value.split('/'));
 
 const dependenciesDefault = {
   openRepository: () => openOwnedRoot(repositoryRoot),
-  forkChild: () => fork(scriptPath, [], { detached: process.platform !== 'win32', stdio: ['ignore', 'ignore', 'ignore', 'ipc'], windowsHide: true }),
+  forkChild: forkTransitionChild,
   supervise: superviseTransitionChild,
   removeCandidate,
 };
 
-export async function runInstalledTransition({ runId, headed = false, scenario, control, dependencies = {} } = {}) {
+export async function runInstalledTransition({ runId, headed = false, scenario, mediaSchema, control, retainEvidence = false, dependencies = {} } = {}) {
+  assertTransitionParent();
+  if (typeof retainEvidence !== 'boolean') throw fail('transition-retention-invalid');
   if (!/^[A-Za-z0-9]{1,64}$/.test(runId || '') || typeof headed !== 'boolean') throw fail('installed-e2e-args-invalid');
   if (scenario !== undefined && scenario !== 'media-preservation') throw fail('transition-scenario-invalid');
-  const media=scenario==='media-preservation';
-  if (control !== undefined && (media ? control !== 'media-profile-loss' : control !== 'storage-loss')) throw fail('transition-control-invalid');
+  if(mediaSchema!==undefined&&(mediaSchema!=='f01'||scenario!==undefined))throw fail('transition-scenario-invalid');
+  const f01=mediaSchema==='f01',media=scenario==='media-preservation'||f01;
+  if (control !== undefined && (!f01&&media ? control !== 'media-profile-loss' : control !== 'storage-loss')) throw fail('transition-control-invalid');
   const deps = { ...dependenciesDefault, ...dependencies }, files = await deps.openRepository();
   const nonce = randomBytes(16).toString('hex'), artifact = `output/playwright/installed-extension-transition-${runId}`;
   const claim = `output/playwright/installed-transition-claim-${runId}.lock`, candidateIds = [`B2${runId}A`, `B2${runId}B`];
   const roots = [], candidates = [], cleanupErrors = [], secondaryErrors = [];
   let claimed = false, artifactCreated = false, supervision, primary, child, report;
+  const remember=error=>{const next=genericFailure(error);if(!primary)primary=next;else if(secondaryErrors.length<32)secondaryErrors.push(next);};
   try {
     await files.ensureDirectory('output/playwright');
     if (await files.lstat(artifact, { optional: true })) throw fail('transition-artifact-exists');
@@ -431,20 +639,32 @@ export async function runInstalledTransition({ runId, headed = false, scenario, 
       if (await files.lstat(directory, { optional: true })) throw fail('transition-candidate-exists');
       await files.ensureDirectory(directory); candidates.push(id);
     }
-    for (const caseId of media || control ? ['valid-ui'] : TRANSITION_CASES) {
-      roots.push({ caseId, root: relative(files, await files.makeTempDirectory('output/playwright/installed-transition-work-')) });
+    for (const assigned of f01?f01TransitionAssignments(control):(media || control ? ['valid-ui'] : TRANSITION_CASES).map(caseId=>({caseId}))) {
+      roots.push({ ...assigned, root: relative(files, await files.makeTempDirectory('output/playwright/installed-transition-work-')) });
     }
     child = deps.forkChild();
-    const pending = deps.supervise({ child, nonce, roots,...(media?{scenario}:{}) });
-    child.send({ nonce, roots, candidateIds, artifact, runId, headed, control,...(media?{scenario}:{}) }, error => { if (error) child.emit('error', error); });
+    const pending = deps.supervise({ child, nonce, roots,...(scenario?{scenario}:{}),...(f01?{mediaSchema,control}:{}) });
+    child.send({ nonce, roots, candidateIds, artifact, runId, headed, control,retainEvidence,...(scenario?{scenario}:{}),...(f01?{mediaSchema}:{}) }, error => { if (error) child.emit('error', error); });
     supervision = await pending;
     primary = supervision.failure;
     const result = supervision.result;
-    if (!result || !result.source || !isDeepStrictEqual(result.source, result.after)) primary ||= genericFailure(fail('transition-source-changed'));
+    if (!result || !result.source || !isDeepStrictEqual(result.source, result.after)) remember(fail('transition-source-changed'));
     if (Array.isArray(result?.cleanupErrors)) cleanupErrors.push(...result.cleanupErrors);
     secondaryErrors.push(...(supervision.secondaryErrors || []), ...(result?.secondaryErrors || []));
     cleanupErrors.push(...supervision.cleanupErrors);
-    if(media&&control&&primary&&supervision.normalExit&&!supervision.unconfirmedRoots.length&&!cleanupErrors.length&&!secondaryErrors.length&&
+    if(result?.failure&&(!control||f01))remember(Object.assign(fail('transition-final-failure'),{failure:result.failure}));
+    if(!f01&&control&&primary){
+      const matches=value=>media?matchesInstalledMediaLoss(value,nonce,result?.seeds?.[0]?.extensionId,result?.phases?.find(value=>value.launchOccurrence===2)?.presetId):matchesStorageLoss(value,nonce,result?.seeds?.[0]?.extensionId);
+      if(!matches(primary)||!matches(result?.failure)||!isDeepStrictEqual(primary,result.failure)){
+        remember(fail('transition-control-failure-mismatch'));
+        if(result?.failure&&!isDeepStrictEqual(primary,result.failure))remember(Object.assign(fail('transition-final-failure'),{failure:result.failure}));
+      }
+    }
+    if(f01&&!primary&&supervision.normalExit&&!supervision.unconfirmedRoots.length&&!cleanupErrors.length&&!secondaryErrors.length){
+      validateF01TransitionResult(result,nonce,control,supervision.launches,JSON.parse(await files.readFile('tests/fixtures/installed-extension/f01-transition-seed.json','utf8')),
+        JSON.parse(await files.readFile('tests/fixtures/installed-extension/f01-transition-expected-media.json','utf8')));
+      report={ok:true,mediaSchema,control,result};
+    }else if(!f01&&media&&control&&primary&&supervision.normalExit&&!supervision.unconfirmedRoots.length&&!cleanupErrors.length&&!secondaryErrors.length&&
       matchesInstalledMediaLoss(primary,nonce,result?.seeds?.[0]?.extensionId,result?.phases?.find(value=>value.launchOccurrence===2)?.presetId)){
       validateInstalledMediaTransitionResult(result,nonce,control,supervision.launches);report={ok:true,scenario,control,detected:primary,result};primary=null;
     }else if (!media && control && primary && supervision.normalExit && !supervision.unconfirmedRoots.length && !cleanupErrors.length && !secondaryErrors.length &&
@@ -453,16 +673,17 @@ export async function runInstalledTransition({ runId, headed = false, scenario, 
       const old = result?.phases;
       if (old?.length !== 1 || old[0].caseId !== 'valid-ui' || old[0].phase !== 'old' || old[0].final?.raw?.settingsRevision !== 8) throw fail('transition-control-old-baseline');
       report = { ok: true, control, detected: primary, result }; primary = null;
-    } else if (!primary && !secondaryErrors.length) {
+    } else if (!f01&&!primary&&!result?.failure&&supervision.normalExit&&!supervision.unconfirmedRoots.length&&!cleanupErrors.length&&!secondaryErrors.length) {
       if (control) throw fail('transition-control-unexpected-pass');
       if(media)validateInstalledMediaTransitionResult(result,nonce,control,supervision.launches);else validateTransitionResult(result, nonce, control, supervision.launches);
       report = { ok: true, result };
     }
-  } catch (error) { primary ||= genericFailure(error); }
+    if(!report&&!primary)throw fail(f01?'f01-transition-result':'transition-result-not-admitted');
+  } catch (error) { remember(error); }
   finally {
     const uncertain = new Set(supervision?.unconfirmedRoots || (child && !supervision ? roots.map(value => value.root) : []));
     for (const assigned of roots) {
-      if(media)continue;
+      if(media||retainEvidence)continue;
       if (uncertain.has(assigned.root) || (child && !supervision?.normalExit)) {
         cleanupErrors.push({ code: 'cleanup-unconfirmed', caseId: assigned.caseId, phase: null }); continue;
       }
@@ -470,7 +691,7 @@ export async function runInstalledTransition({ runId, headed = false, scenario, 
       catch (error) { cleanupErrors.push({ code: error?.code || 'transition-root-cleanup', caseId: assigned.caseId, phase: null }); }
     }
     for (const id of candidates) {
-      if(media)continue;
+      if(media||retainEvidence)continue;
       if (child && !supervision?.normalExit) { cleanupErrors.push({ code: 'cleanup-unconfirmed', caseId: null, phase: null }); continue; }
       try { await deps.removeCandidate(id); }
       catch (error) { cleanupErrors.push({ code: error?.code || 'transition-candidate-cleanup', caseId: null, phase: null }); }
@@ -480,18 +701,45 @@ export async function runInstalledTransition({ runId, headed = false, scenario, 
       catch (error) { cleanupErrors.push({ code: error?.code || 'transition-claim-cleanup', caseId: null, phase: null }); }
     }
   }
-  report = { ...(report || {}), ...(supervision?.result ? { result: supervision.result } : {}), ok: !primary && cleanupErrors.length === 0 && secondaryErrors.length === 0, runId, ...(control ? { control } : {}),
+  let retainedRoots = roots.filter(value => media || retainEvidence || supervision?.unconfirmedRoots.includes(value.root) || (child && !supervision?.normalExit));
+  const retainedCandidates = [];
+  if (retainEvidence) {
+    const confirmed = [];
+    for (const assigned of retainedRoots) {
+      try {
+        if (!(await files.lstat(assigned.root,{optional:true}))?.isDirectory()) throw fail('transition-evidence-missing');
+        confirmed.push(assigned);
+      } catch (error) { cleanupErrors.push({code:error?.code || 'transition-evidence-missing',caseId:assigned.caseId,phase:null}); }
+    }
+    retainedRoots = confirmed;
+    for (const id of candidates) {
+      const directory = `output/tool-audit/p02-candidate-${id}`;
+      try {
+        if (!(await files.lstat(directory,{optional:true}))?.isDirectory()) throw fail('transition-evidence-missing');
+        retainedCandidates.push(directory);
+      } catch (error) { cleanupErrors.push({code:error?.code || 'transition-evidence-missing',caseId:null,phase:null}); }
+    }
+  }
+  report = { ...(report || {}), ...(supervision?.result ? { result: supervision.result } : {}), ok: report?.ok===true&&!primary && cleanupErrors.length === 0 && secondaryErrors.length === 0, runId, ...(control ? { control } : {}),
+    ...(supervision?.childProcess?{childProcess:supervision.childProcess}:{}),
     ...(primary ? { failure: primary } : {}), cleanupErrors: cleanupErrors.slice(0, 32), secondaryErrors: secondaryErrors.slice(0, 32),
-    retainedRoots: roots.filter(value => media || supervision?.unconfirmedRoots.includes(value.root) || (child && !supervision?.normalExit)),
-    ...(media?{scenario,candidatesRetained:true,shutdown:{normalExit:supervision?.normalExit===true,
-      closes:(supervision?.launches||[]).map(value=>({phase:value.phase,launchOccurrence:value.launchOccurrence,closed:value.closed===true,
+    retainedRoots,
+    ...(media?{...(scenario?{scenario}:{}),...(f01?{mediaSchema}:{}),candidatesRetained:true,shutdown:{normalExit:supervision?.normalExit===true,
+      closes:(supervision?.launches||[]).map(value=>({caseId:value.caseId,phase:value.phase,launchOccurrence:value.launchOccurrence,...(f01?{payload:value.payload}:{}),closed:value.closed===true,
         browserCloseAcknowledged:value.shutdown?.browserCloseAcknowledged===true,browserDisconnected:value.shutdown?.browserDisconnected===true,
         ownedRootClosed:value.shutdown?.ownedRootClosed===true}))}}:{}),
+    ...(retainEvidence?{candidatesRetained:candidates.length>0&&retainedCandidates.length===candidates.length,retainedCandidates}:{}),
     limits: ['bundled-code-relaunch-not-native-update', 'no-platform-rollback', 'detached-browser-needs-close-ack'] };
   if (artifactCreated) {
-    const text = `${JSON.stringify(report, null, 2)}\n`;
-    if (Buffer.byteLength(text) > 1048576) throw fail('transition-artifact-limit');
-    await files.writeFile(`${artifact}/summary.json`, text, { flag: 'wx' });
+    try {
+      const text = `${JSON.stringify(report, null, 2)}\n`;
+      if (Buffer.byteLength(text) > 1048576) throw fail('transition-artifact-limit');
+      await files.writeFile(`${artifact}/summary.json`, text, { flag: 'wx' });
+    } catch (error) {
+      const original=report.failure||report.detected||error;
+      report.ok=false;report.secondaryErrors=[...report.secondaryErrors.slice(0,31),genericFailure(error)];
+      throw Object.assign(fail(primary?.code||error?.code||'transition-report-failed'),{cause:original,failure:report.failure,report,secondaryErrors:report.secondaryErrors});
+    }
   }
   if (!report.ok) { const error = fail(primary?.code || 'transition-cleanup-failed'); error.failure = report.failure; error.report = report; throw error; }
   return report;
@@ -506,7 +754,12 @@ if (process.argv[1] && path.resolve(process.argv[1]) === scriptPath) {
     });
   } else {
     try {
-      const args = process.argv.slice(2), controls = args.filter(value => value.startsWith('--control=')),scenarios=args.filter(value=>value.startsWith('--scenario='));
+      const args = process.argv.slice(2);
+      if(args.some(value=>value.startsWith('--media-schema='))){
+        const report=await runInstalledTransition(parseF01TransitionArgs(args));
+        console.log(JSON.stringify({ok:report.ok,runId:report.runId,mediaSchema:report.mediaSchema,control:report.control,phases:report.result.phases.length}));
+      }else{
+      const controls = args.filter(value => value.startsWith('--control=')),scenarios=args.filter(value=>value.startsWith('--scenario='));
       if(scenarios.length>1||scenarios.length===1&&scenarios[0]!=='--scenario=media-preservation')throw fail('transition-scenario-invalid');
       const media=scenarios.length===1;
       if (controls.length > 1 || (controls.length === 1 && controls[0] !== (media?'--control=media-profile-loss':'--control=storage-loss'))) throw fail('transition-control-invalid');
@@ -514,6 +767,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === scriptPath) {
       if (options.qualification !== undefined) throw fail('installed-e2e-args-invalid');
       const report = await runInstalledTransition({ ...options,...(media?{scenario:'media-preservation'}:{}),...(controls.length?{control:media?'media-profile-loss':'storage-loss'}:{}) });
       console.log(JSON.stringify({ ok: report.ok, runId: report.runId, control: report.control, phases: report.result.phases.length }));
+      }
     } catch (error) { console.error(error?.code || error?.message); process.exitCode = 1; }
   }
 }

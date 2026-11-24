@@ -4,8 +4,9 @@ const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const { createHash } = require('node:crypto');
 
-const expected = require('./fixtures/f00-runtime-js.json');
+const expected = require('./fixtures/f01-j1-runtime-js.json');
 
 async function inventoryModule() {
   return import(pathToFileURL(path.resolve('scripts/check-runtime-inventory.mjs')));
@@ -27,10 +28,41 @@ async function writeBaselines(root, mod) {
   await fs.writeFile(path.join(root, 'executable.json'), JSON.stringify(hashes));
 }
 
-test('repository runtime inventory is exactly the approved F00 files', async () => {
+test('repository runtime inventory is exactly the current F01 files', async () => {
   const mod = await inventoryModule();
   assert.deepEqual(await mod.listRuntimeJavaScript(path.resolve('.')), expected);
   await mod.checkRuntimeInventory(path.resolve('.'));
+});
+
+test('historical latch executable pin changes only the audio pair and preserves the J1 fixtures',async()=>{
+  const oldBytes=await fs.readFile('tests/fixtures/f01-j1-runtime-executable.json'),inventoryBytes=await fs.readFile('tests/fixtures/f01-j1-runtime-js.json');
+  const old=JSON.parse(oldBytes),latch=JSON.parse(await fs.readFile('tests/fixtures/f01-product-latch-runtime-executable.json','utf8'));
+  assert.equal(createHash('sha256').update(oldBytes).digest('hex'),'261f5f60a287a62f0bae2a97aa1c0b9f2d58a7cbb7d8e6af7747bd016ba8973a');
+  assert.equal(createHash('sha256').update(inventoryBytes).digest('hex'),'cbfd5b2567b2f4a46813768e026a3437b9765ce99edab61ec99717602239a438');
+  assert.equal(createHash('sha256').update(await fs.readFile('tests/fixtures/f01-product-latch-runtime-executable.json')).digest('hex'),'17df5a255990782207a462960a71ae1d6d624135b71fd7c3a7c4b5fa6cd9155c');
+  assert.deepEqual(Object.keys(latch),expected);
+  assert.deepEqual(expected.filter(file=>latch[file]!==old[file]),['web/audio-transition-worklet.js','web/audio.js']);
+});
+
+test('current executable authority is separate from the immutable historical latch subject',async()=>{
+  const file='tests/fixtures/f01-current-runtime-executable.json';
+  assert.ok(await fs.access(file).then(()=>true,()=>false),'reviewed current authority must be declared separately');
+  const mod=await inventoryModule(),current=JSON.parse(await fs.readFile(file,'utf8')),
+    latch=JSON.parse(await fs.readFile('tests/fixtures/f01-product-latch-runtime-executable.json','utf8'));
+  assert.deepEqual(Object.keys(current),expected);
+  assert.deepEqual(expected.filter(name=>current[name]!==latch[name]),['web/audio-transition-worklet.js','web/audio.js']);
+  assert.deepEqual(await mod.runtimeExecutableHashes(path.resolve('.'),expected),current);
+  await mod.checkRuntimeInventory(path.resolve('.'));
+  await assert.rejects(mod.checkRuntimeInventory(path.resolve('.'),'tests/fixtures/f01-j1-runtime-js.json',
+    'tests/fixtures/f01-product-latch-runtime-executable.json'),error=>error?.code==='runtime-executable-changed');
+});
+
+test('latch repair keeps the reviewed D pin immutable and changes only its audio pair',async()=>{
+  const reviewedBytes=await fs.readFile('tests/fixtures/f01-product-runtime-executable.json');
+  assert.equal(createHash('sha256').update(reviewedBytes).digest('hex'),'ae118cf33e5c4be2a60677027aabcc21ea115c37cfa78368c0cdac94d25bed3f');
+  const reviewed=JSON.parse(reviewedBytes),latch=JSON.parse(await fs.readFile('tests/fixtures/f01-product-latch-runtime-executable.json','utf8'));
+  assert.deepEqual(Object.keys(latch),Object.keys(reviewed));
+  assert.deepEqual(expected.filter(file=>latch[file]!==reviewed[file]),['web/audio-transition-worklet.js','web/audio.js']);
 });
 
 test('a new nested web script changes the inventory', async t => {

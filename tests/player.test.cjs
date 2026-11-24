@@ -157,18 +157,13 @@ test('editable descendants and sliders retain arrow keys', t => {
   assert.equal(video.currentTime, 50);
 });
 
-test('Gain keys retain native range defaults without reaching player shortcuts', t => {
+test('MAIN has no Gain writer and ordinary site shortcuts remain native', t => {
   const dom = setup(t, false, dom => load(dom, 'web/audio.js'));
   const { document, KeyboardEvent } = dom.window;
   const pzp = document.querySelector('.pzp-pc');
   let nativeShortcuts = 0;
   pzp.addEventListener('keydown', event => { nativeShortcuts++; event.preventDefault(); });
-  const slider = document.querySelector('.knife-gain-slider');
-  for (const key of ['ArrowRight', 'ArrowLeft', 'Home', 'End']) {
-    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
-    slider.dispatchEvent(event);
-    assert.equal(event.defaultPrevented, false, `${key} must retain range default`);
-  }
+  assert.equal(document.querySelector('.knife-gain-slider'), null);
   assert.equal(nativeShortcuts, 0);
   pzp.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
   assert.equal(nativeShortcuts, 1, 'non-slider shortcuts remain native');

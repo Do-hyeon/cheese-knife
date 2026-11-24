@@ -6,8 +6,8 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { performance } = require('node:perf_hooks');
 const root = path.resolve(__dirname, '../..');
-const bytes = fs.readFileSync(process.env.KNIFE_HLS_TEST_BUNDLE || path.join(root, 'vendor/hls.light.private.js'), 'utf8');
-const bundlePath = path.resolve(process.env.KNIFE_HLS_TEST_BUNDLE || path.join(root, 'vendor/hls.light.private.js'));
+const bytes = fs.readFileSync(process.env.KNIFE_HLS_TEST_BUNDLE || path.join(root, 'extension/vendor/hls.light.private.js'), 'utf8');
+const bundlePath = path.resolve(process.env.KNIFE_HLS_TEST_BUNDLE || path.join(root, 'extension/vendor/hls.light.private.js'));
 const bundleSha256 = crypto.createHash('sha256').update(bytes).digest('hex');
 if (process.env.KNIFE_HLS_EXPECTED_BUNDLE_SHA256 && bundleSha256 !== process.env.KNIFE_HLS_EXPECTED_BUNDLE_SHA256) {
   throw new Error('KNIFE_HLS_INFRA:candidate-hash-mismatch');

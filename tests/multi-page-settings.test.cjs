@@ -94,15 +94,25 @@ test('audio graphs and mute remain page-local across settings updates and closin
     const parameter = value => ({ value, setValueAtTime(next) { this.value = next; }, cancelScheduledValues() {}, linearRampToValueAtTime(next) { this.value = next; } });
     const node = type => { const n = { type, outputs: new Set(), connect(other) { this.outputs.add(other); }, disconnect() { this.outputs.clear(); } }; nodes.push(n); return n; };
     let sourceCount = 0;
-    dom.window.AudioContext = class {
-      constructor() { this.state = 'running'; this.currentTime = 0; this.sampleRate = 48000; this.destination = node('destination'); }
+    dom.window.AudioContext = class extends dom.window.EventTarget {
+      constructor() { super();this.state = 'running'; this.currentTime = 0; this.sampleRate = 48000; this.destination = node('destination'); this.audioWorklet={addModule:async()=>{}}; }
       createGain() { return Object.assign(node('gain'), { gain: parameter(1) }); }
       createDelay() { return Object.assign(node('delay'), { delayTime: parameter(0) }); }
       createDynamicsCompressor() { return Object.assign(node('compressor'), Object.fromEntries(['threshold', 'knee', 'ratio', 'attack', 'release'].map(id => [id, parameter(0)]))); }
       createWaveShaper() { return Object.assign(node('waveshaper'), { curve: null, oversample: 'none' }); }
+      createBiquadFilter() { return Object.assign(node('biquad'), { frequency: parameter(350), Q: parameter(1), gain: parameter(0) }); }
+      createConstantSource() {return Object.assign(node('constant'),{offset:parameter(0),start(){},stop(){}});}
+      createChannelSplitter() {return node('splitter');}
       createMediaElementSource(element) { assert.equal(element, video); sourceCount++; return node('source'); }
     };
-    load(dom, 'web/audio.js'); return { video, nodes, api: runtime(dom).audio, sourceCount: () => sourceCount };
+    dom.window.AudioWorkletNode=class {
+      constructor(ctx,name,options){this.parameters=new Map([['K',parameter(0)]]);this.connect=()=>{};this.disconnect=()=>{};
+        const reply=(kind,seq,gain=null)=>this.port.onmessage?.({data:{kind,seq,frame:0,sourceEpoch:options.processorOptions.sourceEpoch,meterEpoch:0,gain,code:null}});
+        this.port={onmessage:null,postMessage:packet=>queueMicrotask(()=>{reply('accepted',packet.seq);reply('completed',packet.seq,packet.wanted?packet.gain:1);})};
+        queueMicrotask(()=>reply('prepared',0));}
+    };
+    load(dom, 'web/audio.js');void runtime(dom).audio.prepareTransitionModule('chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/web/audio-transition-worklet.js');
+    return { video, nodes, api: runtime(dom).audio, sourceCount: () => sourceCount };
   }
   const a = audio(h.A), b = audio(h.B); await a.api.setEnabled(a.video, true); await b.api.setEnabled(b.video, true);
   a.video.muted = true; a.api.setGain(a.video, 1.5);

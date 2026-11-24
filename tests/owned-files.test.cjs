@@ -14,6 +14,74 @@ async function fixture(t) {
 }
 const linkDirectory = (target, link) => fs.symlink(target, link, process.platform === 'win32' ? 'junction' : 'dir');
 
+test('HOST response storage confirms one owned-file round trip',async t=>{
+  const {openOwnedRoot}=await owned(),{createHostResponseStorage}=await import('../scripts/extension-e2e/host-response-storage.mjs');
+  const {root}=await fixture(t),files=await openOwnedRoot(root),receipts=[],secondary=[];let first=null;
+  await files.ensureDirectory('response');
+  const storage=createHostResponseStorage({files,directory:'response',runId:'OwnedUnit',caseId:'96000/reentry/2/10',first:()=>first,
+    onReceipt:receipt=>receipts.push(receipt),onSecondary:error=>secondary.push(error)});
+  const deadline=storage.beginScenario(),error=Object.freeze(Error('synthetic-FIRST'));
+  first=Object.freeze({error,firstAt:performance.now(),authority:'source'});
+  storage.captureFirst(error,{value:'synthetic'},true);
+  const receipt=await storage.finish(),bytes=await files.readFile('response/first-host-response.json');
+  assert.deepEqual(bytes,Buffer.from('{"value":"synthetic"}\n'));
+  assert.equal(receipt.status,'CONFIRMED');assert.equal(receipt.nativeSeal,'UNFORMED');assert.equal(receipt.deadline,deadline);
+  assert.ok(receipt.verifiedAt<deadline);assert.equal(receipt.bytes,bytes.length);assert.equal(storage.budget().chargedBytes,bytes.length);
+  assert.equal(receipt.sha256,require('node:crypto').createHash('sha256').update(bytes).digest('hex'));
+  assert.equal(receipts.length,1);assert.deepEqual(secondary,[]);assert.equal(first.error,error);
+});
+
+test('owned streaming reads and incremental entries retain path guards and cancellation', async t => {
+  const { openOwnedRoot } = await owned(), { root } = await fixture(t), files = await openOwnedRoot(root);
+  const bytes=Buffer.alloc(2*1024*1024+17,71);await files.writeFile('payload',bytes);
+  assert.equal(typeof files.readChunks,'function');assert.equal(typeof files.directoryEntries,'function');
+  const chunks=[];for await(const chunk of files.readChunks('payload')){assert.ok(chunk.length<=1024*1024);chunks.push(chunk);}
+  assert.deepEqual(Buffer.concat(chunks),bytes);
+  const entries=[];for await(const entry of files.directoryEntries(''))entries.push(entry.name);assert.deepEqual(entries,['payload']);
+  const consume=async iterator=>{for await(const ignored of iterator){void ignored;}};
+  for(const relative of ['../outside','missing','payload/child']){
+    await assert.rejects(consume(files.readChunks(relative)));
+    await assert.rejects(consume(files.directoryEntries(relative)));
+  }
+  await assert.rejects(consume(files.readChunks('')),{code:'owned-path-type'});
+  await assert.rejects(consume(files.directoryEntries('payload')),{code:'owned-path-type'});
+  const controller=new AbortController();controller.abort();
+  await assert.rejects(consume(files.readChunks('payload',{signal:controller.signal})),{name:'AbortError'});
+});
+
+test('owned streaming closes native iterators on early return and mid-read abort',{timeout:3000},async t=>{
+  const {openOwnedRoot}=await owned(),{root}=await fixture(t),files=await openOwnedRoot(root);
+  await files.writeFile('payload',Buffer.alloc(3*1024*1024,19));
+  const nativeFs=require('node:fs'),{syncBuiltinESMExports}=require('node:module'),{once}=require('node:events');
+  const originalStream=nativeFs.createReadStream,originalOpen=fs.opendir;let stream,directory;
+  nativeFs.createReadStream=(...args)=>(stream=originalStream(...args));syncBuiltinESMExports();
+  fs.opendir=async(...args)=>(directory=await originalOpen(...args));
+  try{
+    const iterator=files.readChunks('payload');assert.equal((await iterator.next()).done,false);await iterator.return();
+    if(!stream.closed)await new Promise(resolve=>stream.once('close',resolve));assert.equal(stream.closed,true);
+    const entries=files.directoryEntries('');assert.equal((await entries.next()).done,false);await entries.return();
+    await assert.rejects(directory.read(),{code:'ERR_DIR_CLOSED'});
+    const controller=new AbortController();let chunks=0;
+    await assert.rejects((async()=>{for await(const chunk of files.readChunks('payload',{signal:controller.signal})){assert.ok(chunk.length);chunks++;controller.abort();}})(),{name:'AbortError'});
+    if(!stream.closed)await once(stream,'close');assert.equal(stream.closed,true);assert.equal(chunks,1);
+  }finally{nativeFs.createReadStream=originalStream;syncBuiltinESMExports();fs.opendir=originalOpen;}
+});
+
+test('exclusive directory creation has one owner and preserves an existing target', async t => {
+  const { openOwnedRoot } = await owned(), { root } = await fixture(t), files = await openOwnedRoot(root);
+  await files.ensureDirectory('claims');
+  const results = await Promise.allSettled([files.createDirectory('claims/shared'), files.createDirectory('claims/shared')]);
+  assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
+  assert.equal(results.filter(result => result.status === 'rejected' && result.reason.code === 'EEXIST').length, 1);
+  await files.writeFile('claims/shared/sentinel', 'keep');
+  await assert.rejects(files.createDirectory('claims/shared'), { code: 'EEXIST' });
+  assert.equal(await files.readFile('claims/shared/sentinel', 'utf8'), 'keep');
+  await assert.rejects(files.createDirectory('claims/shared/sentinel'), { code: 'owned-path-type' });
+  await assert.rejects(files.createDirectory('missing/child'), { code: 'ENOENT' });
+  await assert.rejects(files.createDirectory(''), { code: 'owned-path-root-operation' });
+  await assert.rejects(files.createDirectory('../outside'), { code: 'owned-path-invalid' });
+});
+
 test('publishing a complete owned file is exclusive and does not create a partial destination', async t => {
   const { openOwnedRoot } = await owned(); const { root, outside } = await fixture(t), files = await openOwnedRoot(root);
   await files.writeFile('complete', 'complete bytes');

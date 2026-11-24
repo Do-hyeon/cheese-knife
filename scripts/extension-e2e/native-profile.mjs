@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { openOwnedRoot } from '../owned-files.mjs';
 import { NATIVE_ID } from './native-preflight-contract.mjs';
 import { assertNativeInstallation } from './native-preflight.mjs';
+import { commandLineUnavailableRow } from '../audio-native-browser.mjs';
 
 const profilePath = 'output/p09-public-20261012152819/fresh-chrome-profile';
 const fail = code => Object.assign(new Error(code), { code });
@@ -43,35 +44,85 @@ function rootProcess(rows, profile, phase) {
   need(['closed','after'].includes(phase) ? roots.length === 0 : roots.length === 1);
   return {queried:true,root:roots[0] || null};
 }
-export async function queryWindowsProcesses(profile, invoke=execFileSync) {
+export async function queryWindowsProcesses(profile, invoke=execFileSync, deadline=undefined, {observeUnavailable=false,extensionPath=/** @type {string|undefined} */(undefined)}={}) {
   if (process.platform !== 'win32') throw fail('native-unavailable');
   // Command lines stay in this child-result memory, never in artifacts or diagnostics.
   const target = Buffer.from(profile).toString('base64');
+  if(extensionPath!==undefined&&!path.isAbsolute(extensionPath))throw fail('native-unavailable');
+  const extension=extensionPath===undefined?'':Buffer.from(path.resolve(extensionPath)).toString('base64');
   const script = String.raw`
 $ErrorActionPreference='Stop'
 $taskProfile=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${target}'))
+$taskQueryReason='query-failed'
+$taskUnavailableRow=$null
+$taskExtension=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${extension}'))
+$taskExtensionPattern=[regex]::Escape($taskExtension)+'(?=$|[\s",\\])'
+try {
 $taskAll=@(Get-CimInstance Win32_Process -Filter "Name='chrome.exe'")
 $taskRows=@(foreach($taskProcess in $taskAll) {
   $taskCommand=$taskProcess.CommandLine
-  if(-not $taskCommand -or $taskCommand.Length -gt 32768) { throw 'native-unavailable' }
+  if(-not $taskCommand -or $taskCommand.Length -gt 32768) {
+    $taskQueryReason='command-line-unavailable'
+    ${observeUnavailable ? String.raw`
+    $taskKind=if($null -eq $taskCommand){'null'}elseif(-not $taskCommand){'empty'}else{'too-long'}
+    $taskUnavailableRow=@{kind=$taskKind}
+    try {
+      if($taskProcess.ProcessId -and $taskProcess.CreationDate) {
+        $taskCreated=([DateTimeOffset]$taskProcess.CreationDate).UtcTicks.ToString([Globalization.CultureInfo]::InvariantCulture)
+        $taskUnavailableRow=@{kind=$taskKind;pid=[uint32]$taskProcess.ProcessId;createdTicks=$taskCreated}
+      }
+    } catch {}
+    ` : ''}
+    throw 'native-unavailable'
+  }
+  if($taskExtension -and $taskCommand.Replace('/','\') -match $taskExtensionPattern) {
+    $taskQueryReason='extension-path-conflict'
+    throw 'native-unavailable'
+  }
   if($taskCommand -match '(?:^|\s)--type(?:=|\s)') { continue }
   $taskMatches=[regex]::Matches($taskCommand,'(?:^|\s)(?:"--user-data-dir=([^"]+)"|--user-data-dir=(?:"([^"]+)"|([^\s"]+))|--user-data-dir\s+(?:"([^"]+)"|([^\s"]+)))')
-  if($taskCommand.Contains('--user-data-dir') -and $taskMatches.Count -eq 0) { throw 'native-unavailable' }
+  if($taskCommand.Contains('--user-data-dir') -and $taskMatches.Count -eq 0) { $taskQueryReason='command-line-format'; throw 'native-unavailable' }
   $taskSelected=$false
   foreach($taskMatch in $taskMatches) {
     foreach($taskGroup in $taskMatch.Groups | Select-Object -Skip 1) {
       if(-not $taskGroup.Success) { continue }
       $taskPath=$taskGroup.Value.Replace('/','\')
-      if(-not [IO.Path]::IsPathRooted($taskPath)) { throw 'native-unavailable' }
+      if(-not [IO.Path]::IsPathRooted($taskPath)) { $taskQueryReason='profile-path'; throw 'native-unavailable' }
       if([IO.Path]::GetFullPath($taskPath).TrimEnd('\').Equals($taskProfile,[StringComparison]::OrdinalIgnoreCase)) { $taskSelected=$true }
     }
   }
   if($taskSelected) { @{ ProcessId=[int]$taskProcess.ProcessId; startedAt=([DateTimeOffset]$taskProcess.CreationDate).ToUnixTimeMilliseconds(); CommandLine=$taskCommand } }
 })
-ConvertTo-Json -InputObject $taskRows -Compress`;
-  try { return JSON.parse(invoke('powershell.exe',['-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(script,'utf16le').toString('base64')],
-    {encoding:'utf8',stdio:['ignore','pipe','pipe'],windowsHide:true,timeout:15000,maxBuffer:1048576})); }
-  catch { throw fail('native-unavailable'); }
+ConvertTo-Json -InputObject $taskRows -Compress
+} catch {
+  $taskFailure=@{queryFailure=$taskQueryReason}
+  if($taskUnavailableRow){$taskFailure.unavailableRow=$taskUnavailableRow}
+  ConvertTo-Json -InputObject $taskFailure -Compress
+}`;
+  const unavailable=diagnostic=>Object.assign(fail('native-unavailable'),{queryDiagnostic:diagnostic});
+  if(deadline!==undefined&&!Number.isFinite(deadline))throw fail('native-unavailable');
+  const args=['-NoProfile','-NonInteractive','-EncodedCommand',Buffer.from(script,'utf16le').toString('base64')];
+  // Compute after import/script preparation; timeout zero would disable the subprocess limit.
+  const timeout=deadline===undefined?15000:Math.min(15000,Math.floor(deadline-performance.now()));
+  if(timeout<1)throw unavailable({reason:'timeout',timedOut:true});
+  let output;
+  try { output=invoke('powershell.exe',args,
+    {encoding:'utf8',stdio:['ignore','pipe','pipe'],windowsHide:true,timeout,maxBuffer:1048576}); }
+  catch(error) {
+    // Never attach the child error: it may contain another process's command line.
+    const timedOut=error?.code==='ETIMEDOUT',reason=timedOut?'timeout':['ENOBUFS','ERR_CHILD_PROCESS_STDIO_MAXBUFFER'].includes(error?.code)?'output-limit':'subprocess';
+    throw unavailable({reason,timedOut,...(Number.isSafeInteger(error?.status)?{exitCode:error.status}:{}),...(['SIGTERM','SIGKILL','SIGINT','SIGBREAK'].includes(error?.signal)?{signal:error.signal}:{})});
+  }
+  if(typeof output!=='string')throw unavailable({reason:'output-shape',timedOut:false});
+  if(Buffer.byteLength(output)>1048576)throw unavailable({reason:'output-limit',timedOut:false});
+  let rows;try{rows=JSON.parse(output);}catch{throw unavailable({reason:'json',timedOut:false});}
+  if(!Array.isArray(rows)){
+    const reason=['query-failed','command-line-unavailable','command-line-format','profile-path','extension-path-conflict'].includes(rows?.queryFailure)?rows.queryFailure:'output-shape';
+    const unavailableRow=observeUnavailable&&reason==='command-line-unavailable'&&performance.now()< (deadline??Infinity)&&commandLineUnavailableRow(rows.unavailableRow);
+    throw unavailable({reason,timedOut:false,...unavailableRow?{unavailableRow}:{}});
+  }
+  if(deadline!==undefined&&performance.now()>=deadline)throw unavailable({reason:'timeout',timedOut:true});
+  return rows;
 }
 async function readJSON(files,name,limit=1048576) {
   need((await files.lstat(name)).size <= limit); const bytes=await files.readFile(name); need(bytes.length<=limit);

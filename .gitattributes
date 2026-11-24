@@ -1,21 +1,25 @@
-vendor/hls.light.private.js text eol=lf
+extension/vendor/hls.light.private.js text eol=lf
 src/settings/*.ts text eol=lf
-/media-profiles.js text eol=lf linguist-generated=true
-/settings-contract.js text eol=lf linguist-generated=true
-/settings-client.js text eol=lf linguist-generated=true
-/settings-broker.js text eol=lf linguist-generated=true
+/extension/media-profiles.js text eol=lf linguist-generated=true
+/extension/gain-authority.js text eol=lf linguist-generated=true
+/extension/settings-contract.js text eol=lf linguist-generated=true
+/extension/settings-client.js text eol=lf linguist-generated=true
+/extension/audio-settings-ui.js text eol=lf linguist-generated=true
+/extension/settings-broker.js text eol=lf linguist-generated=true
 build-proof/*.ts text eol=lf
 src/main/**/*.ts text eol=lf
-web/runtime.js text eol=lf linguist-generated=true
-web/site-adapter.js text eol=lf linguist-generated=true
-web/audio.js text eol=lf linguist-generated=true
-web/player.js text eol=lf linguist-generated=true
-web/preview.js text eol=lf linguist-generated=true
-web/inject.js text eol=lf linguist-generated=true
-/config.js text eol=lf linguist-generated=true
-/style-schema.js text eol=lf linguist-generated=true
-/background.js text eol=lf linguist-generated=true
-/permission.js text eol=lf linguist-generated=true
-/popup.js text eol=lf linguist-generated=true
-/styles.js text eol=lf linguist-generated=true
-web/main.js text eol=lf linguist-generated=true
+extension/web/runtime.js text eol=lf linguist-generated=true
+extension/web/site-adapter.js text eol=lf linguist-generated=true
+extension/web/audio.js text eol=lf linguist-generated=true
+extension/web/audio-transition-worklet.js text eol=lf linguist-generated=true
+extension/web/player.js text eol=lf linguist-generated=true
+extension/web/preview.js text eol=lf linguist-generated=true
+extension/web/inject.js text eol=lf linguist-generated=true
+/extension/config.js text eol=lf linguist-generated=true
+/extension/style-schema.js text eol=lf linguist-generated=true
+/extension/background.js text eol=lf linguist-generated=true
+/extension/permission.js text eol=lf linguist-generated=true
+/extension/popup.js text eol=lf linguist-generated=true
+/extension/styles.js text eol=lf linguist-generated=true
+extension/web/main.js text eol=lf linguist-generated=true
+extension/web/player-gain.js text eol=lf linguist-generated=true

@@ -14,11 +14,11 @@ async function mainModule() {
   }
 }
 
-async function fixture(t) {
+async function fixture(t, mainFolder = 'src/main') {
   await fs.mkdir('output', { recursive: true });
   const root = await fs.mkdtemp(path.resolve('output/af03-main-'));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  await fs.cp('src/main', path.join(root, 'src/main'), { recursive: true });
+  await fs.cp('src/main', path.join(root, mainFolder), { recursive: true });
   for(const file of ['src/settings/media-profiles.ts','src/shared/media-contracts.ts']){
     await fs.mkdir(path.dirname(path.join(root,file)),{recursive:true});await fs.copyFile(file,path.join(root,file));
   }
@@ -101,7 +101,7 @@ test('MAIN runtime validator rejects a raw adapter publication', async () => {
 });
 
 test('generated MAIN runtime outputs are pinned to LF checkouts', () => {
-  const files = ['src/main/runtime/entry.ts', 'web/runtime.js', 'web/site-adapter.js', 'web/audio.js', 'web/player.js', 'web/preview.js', 'web/inject.js'];
+  const files = ['src/main/runtime/entry.ts', 'extension/web/runtime.js', 'extension/web/site-adapter.js', 'extension/web/audio.js', 'extension/web/player.js', 'extension/web/preview.js', 'extension/web/inject.js'];
   const result = spawnSync('git', ['check-attr', 'text', 'eol', '--', ...files], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stdout + result.stderr);
   const lines = new Set(result.stdout.trim().split(/\r?\n/));
@@ -143,14 +143,13 @@ test('MAIN runtime check is read-only for stale and unexpected outputs', async t
 
 test('MAIN runtime rejects linked sources and outputs', async t => {
   const mod = await mainModule();
-  const root = await fixture(t);
+  const root = await fixture(t, 'linked-source');
   const linkedSource = path.join(root, 'linked-source');
-  await fs.rename(path.join(root, 'src/main'), linkedSource);
   await fs.symlink(linkedSource, path.join(root, 'src/main'), process.platform === 'win32' ? 'junction' : 'dir');
   await assert.rejects(mod.renderMainRuntime(root), { code: 'owned-path-link' });
 
   await fs.rm(path.join(root, 'src/main'), { recursive: true });
-  await fs.rename(linkedSource, path.join(root, 'src/main'));
+  await fs.cp(linkedSource, path.join(root, 'src/main'), { recursive: true });
   const rendered = await mod.renderMainRuntime(root);
   await fs.rm(path.join(root, 'web'), { recursive: true });
   const linkedOutput = path.join(root, 'linked-output');
@@ -175,9 +174,9 @@ test('MAIN runtime rejects graph inputs outside the repository and CI writes', a
 
 test('repository generated MAIN runtime is current and check is read-only', async () => {
   const mod = await mainModule();
-  const before = await Promise.all(mod.MAIN_RUNTIME_ENTRIES.map(entry => fs.readFile(entry.output, 'utf8')));
+  const before = await Promise.all(mod.MAIN_RUNTIME_ENTRIES.map(entry => fs.readFile(path.join('extension',entry.output), 'utf8')));
   const report = await mod.checkMainRuntime(path.resolve('.'));
-  const after = await Promise.all(mod.MAIN_RUNTIME_ENTRIES.map(entry => fs.readFile(entry.output, 'utf8')));
+  const after = await Promise.all(mod.MAIN_RUNTIME_ENTRIES.map(entry => fs.readFile(path.join('extension',entry.output), 'utf8')));
   assert.deepEqual(after, before);
   assert.deepEqual(Object.keys(report).sort(), ['web/audio.js', 'web/inject.js', 'web/player.js', 'web/preview.js', 'web/runtime.js', 'web/site-adapter.js']);
 });

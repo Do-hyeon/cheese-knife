@@ -19,6 +19,7 @@ export const MAIN_RUNTIME_OPTIONS = Object.freeze({
   minify: CLASSIC_RUNTIME_OPTIONS.minify, sourcemap: CLASSIC_RUNTIME_OPTIONS.sourcemap,
   legalComments: CLASSIC_RUNTIME_OPTIONS.legalComments, charset: CLASSIC_RUNTIME_OPTIONS.charset, treeShaking: true,
 });
+export const AUDIO_WORKLET_ENTRY=Object.freeze({source:'src/main/features/audio/transition-worklet.ts',output:'web/audio-transition-worklet.js',kind:'feature-audio-worklet'});
 
 const codes = Object.freeze({
   outputSet: 'main-runtime-output-set', syntax: 'main-runtime-source-module', sourceMap: 'main-runtime-source-map',
@@ -105,11 +106,33 @@ export async function inspectMainRuntimeGraphs(root = repositoryRoot()) {
 }
 
 export async function checkMainRuntime(root = repositoryRoot()) {
-  return checkGeneratedRuntime(root, MAIN_RUNTIME_ENTRIES, renderMainRuntime, codes);
+  const classic=await checkGeneratedRuntime(root, MAIN_RUNTIME_ENTRIES, renderMainRuntime, codes);
+  await checkAudioWorklet(root);return classic;
 }
 
 export async function writeMainRuntime(root = repositoryRoot()) {
-  return writeGeneratedRuntime(root, MAIN_RUNTIME_ENTRIES, renderMainRuntime, codes);
+  await renderAudioWorklet(root);
+  const classic=await writeGeneratedRuntime(root, MAIN_RUNTIME_ENTRIES, renderMainRuntime, codes);
+  await writeGeneratedRuntime(root,[AUDIO_WORKLET_ENTRY],renderAudioWorklet,codes);return classic;
+}
+
+export async function renderAudioWorklet(root=repositoryRoot()){
+  const owned=await openOwnedRoot(root),entry=AUDIO_WORKLET_ENTRY;
+  await owned.resolve(entry.source,{type:'file'});
+  const result=await build({absWorkingDir:owned.root,entryPoints:[entry.source],outfile:entry.output,write:false,metafile:true,
+    ...MAIN_RUNTIME_OPTIONS,format:'esm',logLevel:'silent'});
+  if(result.outputFiles?.length!==1 || !result.metafile)throw generatedFailure(codes.outputSet);
+  for(const input of Object.keys(result.metafile.inputs)){
+    const relative=slash(path.isAbsolute(input)?path.relative(owned.root,input):input);
+    if(!relative.startsWith('src/main/features/audio/'))throw generatedFailure('audio-worklet-source-outside');
+    await owned.resolve(relative,{type:'file'});
+  }
+  const source=result.outputFiles[0].text.replace(/\r\n/g,'\n');validateClassicRuntime(source,[],codes);
+  if(/\b(?:import|export)\s/.test(source))throw generatedFailure('audio-worklet-external-module');
+  return {[entry.output]:marker(entry)+source};
+}
+export async function checkAudioWorklet(root=repositoryRoot()){
+  return checkGeneratedRuntime(root,[AUDIO_WORKLET_ENTRY],renderAudioWorklet,codes);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

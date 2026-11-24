@@ -42,7 +42,7 @@ function copyFileTree(sourceRoot, targetRoot, file) {
 function fixture(t) {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'knife-hls-verifier-'));
   t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
-  for (const file of [...inputFiles, 'vendor/hls.light.private.js', 'vendor/hls.js.LICENSE', 'THIRD_PARTY_NOTICES.md']) {
+  for (const file of [...inputFiles, 'extension/vendor/hls.light.private.js', 'extension/vendor/hls.js.LICENSE', 'THIRD_PARTY_NOTICES.md']) {
     copyFileTree(root, temporary, file);
   }
   for (const file of supportFiles) copyFileTree(root, temporary, file);
